@@ -1,0 +1,60 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Log in!{% endblock %}
+
+{% block body %}
+<main class="auth-container">
+    <div class="box">
+        <h1 class="title is-3 has-text-centered">Sign In</h1>
+
+        <form action="{{ path('app_login') }}" method="post" id="login-form" data-turbo="false">
+            {% for label, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="notification is-success">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            {% if error %}
+                <div class="notification is-danger">
+                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                </div>
+            {% endif %}
+
+            {% if app.user %}
+                <div class="notification is-info">
+                    You are logged in as {{ app.user.displayName }}, <a href="{{ path('app_logout') }}">Logout</a>
+                </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" required autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" autocomplete="current-password" required>
+            </div>
+            
+            <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
+
+            <div class="form-checkbox">
+                <label>
+                    <input type="checkbox" name="_remember_me">
+                    Remember me
+                </label>
+            </div>
+
+            <button class="button is-primary is-fullwidth mt-4" type="submit">
+                Sign in
+            </button>
+
+            <div class="mt-4 has-text-centered">
+                <p>Don't have an account yet? <a href="{{ path('app_register') }}" class="has-text-primary is-underlined" data-turbo="false">Register here</a></p>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}

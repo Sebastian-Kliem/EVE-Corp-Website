@@ -1,0 +1,341 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Orders{% endblock %}
+
+{% block body %}
+
+    <div class="container">
+
+        <h2 class="title is-3 mt-4">Bestellliste:</h2>
+
+        <details class="box mb-5 compact-box">
+            <summary>Neue Bestellung erstellen</summary>
+            <div class="details-content">
+                <form action="{{ path('app_order_create_order') }}" method="post">
+                    <div class="field">
+                        <label class="label" for="itemname_buy">Item:</label>
+                        <div class="control">
+                            {{ react_component('ItemAutocomplete', {
+                                'jwtToken': jwt_token(app.user),
+                                'inputId': 'itemname_buy',
+                                'inputName': 'itemname',
+                                'placeholder': 'Item eingeben und auswählen...'
+                            }) }}
+                        </div>
+                        <p class="help has-text-grey-light">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
+                    </div>
+
+                    <div class="columns mt-3">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="amount_buy">Menge:</label>
+                                <div class="control">
+                                    <input class="input" type="number" id="amount_buy" name="amount" min="1" step="1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="jita_buy">Prozent zu Jita-Buy:</label>
+                                <div class="control">
+                                    <input class="input" type="number" id="jita_buy" name="jita_buy" value="100" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="field">
+                                <label class="label">&nbsp;</label>
+                                <div class="control">
+                                    <button type="submit" class="button is-primary" title="Bestellung erstellen">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            <polyline points="12 5 19 12 12 19"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </details>
+
+        <table class="table is-striped is-fullwidth">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Menge</th>
+                <th>% zu Jita-Buy</th>
+                <th>Besteller</th>
+                <th>Wird bedient von</th>
+                <th></th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for buy_order in buy_orders %}
+                {% if editing_buy_order and editing_buy_order.id == buy_order.id %}
+                    <form id="edit_buy_form_{{ buy_order.id }}" action="{{ path('update_order', {'id': buy_order.id}) }}" method="post" style="display: none;"></form>
+                    <tr class="is-selected" style="background: rgba(0, 240, 255, 0.05);">
+                        <td>
+                            <div class="control" style="min-width: 250px;">
+                                {{ react_component('ItemAutocomplete', {
+                                    'jwtToken': jwt_token(app.user),
+                                    'inputId': 'itemname_buy_' ~ buy_order.id,
+                                    'inputName': 'itemname',
+                                    'defaultValue': buy_order.item|eve_item_name,
+                                    'defaultId': buy_order.item,
+                                    'placeholder': 'Item...',
+                                    'form': 'edit_buy_form_' ~ buy_order.id
+                                }) }}
+                            </div>
+                        </td>
+                        <td>
+                            <input class="input" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" style="max-width: 100px;" required>
+                        </td>
+                        <td>
+                            <input class="input" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" style="max-width: 100px;" required>
+                        </td>
+                        <td>{{ buy_order.buyer.displayName }}</td>
+                        <td>
+                            <div class="control" style="min-width: 180px;">
+                                {{ react_component('UserAutocomplete', {
+                                    'inputId': 'seller_' ~ buy_order.id,
+                                    'inputName': 'seller',
+                                    'defaultValue': buy_order.fulfiller ? buy_order.fulfiller.username : '',
+                                    'placeholder': 'Mitglied...',
+                                    'users': users,
+                                    'form': 'edit_buy_form_' ~ buy_order.id
+                                }) }}
+                            </div>
+                        </td>
+                        <td>
+                            <button type="submit" form="edit_buy_form_{{ buy_order.id }}" class="button is-small is-success">Speichern</button>
+                        </td>
+                        <td>
+                            <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>
+                            <div class="is-flex-align-center">
+                                {{ buy_order.item|eve_item_icon(24) }}
+                                <span class="ml-2">{{ buy_order.item|eve_item_name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ buy_order.amount }}</td>
+                        <td>{{ buy_order.percentToJitaBuy }}</td>
+                        <td>{{ buy_order.buyer.displayName }}</td>
+
+                        {% if buy_order.fulfiller %}
+                            <td>{{ buy_order.fulfiller.displayName }}</td>
+                        {% else %}
+                            <td>
+                                <form action="{{ path('set_order_fulfiller', {'id': buy_order.id}) }}"
+                                      method="POST"
+                                      class="m-0">
+                                    <button type="submit" class="button is-small is-primary is-outlined">
+                                        Annehmen
+                                    </button>
+                                </form>
+                            </td>
+                        {% endif %}
+
+                        <td>
+                            {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
+                                <a class="button is-small is-light" href="{{ path('update_order', {'id': buy_order.id}) }}">Bearbeiten</a>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
+                                <form action="{{ path('app_order_delete', {'id': buy_order.id}) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ buy_order.item|eve_item_name }} löschen möchten?');">
+
+                                    <input type="hidden"
+                                           name="_method"
+                                           value="DELETE">
+
+                                    <button type="submit" class="button is-small is-danger">
+                                        Löschen
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2 class="title is-3 mt-4">Verkaufsliste:</h2>
+
+        <details class="box mb-5 compact-box">
+            <summary>Neues Angebot erstellen</summary>
+            <div class="details-content">
+                <form action="{{ path('app_order_create_sell') }}" method="post">
+                    <div class="field">
+                        <label class="label" for="itemname_sell">Item:</label>
+                        <div class="control">
+                            {{ react_component('ItemAutocomplete', {
+                                'jwtToken': jwt_token(app.user),
+                                'inputId': 'itemname_sell',
+                                'inputName': 'itemname',
+                                'placeholder': 'Item eingeben und auswählen...'
+                            }) }}
+                        </div>
+                        <p class="help has-text-grey-light">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
+                    </div>
+
+                    <div class="columns mt-3">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="amount_sell">Menge:</label>
+                                <div class="control">
+                                    <input class="input" type="number" id="amount_sell" name="amount" min="1" step="1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="jita_sell">Prozent zu Jita-Sell:</label>
+                                <div class="control">
+                                    <input class="input" type="number" id="jita_sell" name="jita_sell" value="100" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-narrow">
+                            <div class="field">
+                                <label class="label">&nbsp;</label>
+                                <div class="control">
+                                    <button type="submit" class="button is-primary" title="Angebot erstellen">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            <polyline points="12 5 19 12 12 19"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </details>
+
+        <table class="table is-striped is-fullwidth">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Menge</th>
+                <th>% zu Jita-Sell</th>
+                <th>Verkäufer</th>
+                <th>Wird bedient von</th>
+                <th></th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for sell_order in sell_orders %}
+                {% if editing_sell_order and editing_sell_order.id == sell_order.id %}
+                    <form id="edit_sell_form_{{ sell_order.id }}" action="{{ path('update_sell', {'id': sell_order.id}) }}" method="post" style="display: none;"></form>
+                    <tr class="is-selected" style="background: rgba(0, 240, 255, 0.05);">
+                        <td>
+                            <div class="control" style="min-width: 250px;">
+                                {{ react_component('ItemAutocomplete', {
+                                    'jwtToken': jwt_token(app.user),
+                                    'inputId': 'itemname_sell_' ~ sell_order.id,
+                                    'inputName': 'itemname',
+                                    'defaultValue': sell_order.item|eve_item_name,
+                                    'defaultId': sell_order.item,
+                                    'placeholder': 'Item...',
+                                    'form': 'edit_sell_form_' ~ sell_order.id
+                                }) }}
+                            </div>
+                        </td>
+                        <td>
+                            <input class="input" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" style="max-width: 100px;" required>
+                        </td>
+                        <td>
+                            <input class="input" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" style="max-width: 100px;" required>
+                        </td>
+                        <td>{{ sell_order.seller.displayName }}</td>
+                        <td>
+                            <div class="control" style="min-width: 180px;">
+                                {{ react_component('UserAutocomplete', {
+                                    'inputId': 'buyer_' ~ sell_order.id,
+                                    'inputName': 'buyer',
+                                    'defaultValue': sell_order.buyer ? sell_order.buyer.username : '',
+                                    'placeholder': 'Mitglied...',
+                                    'users': users,
+                                    'form': 'edit_sell_form_' ~ sell_order.id
+                                }) }}
+                            </div>
+                        </td>
+                        <td>
+                            <button type="submit" form="edit_sell_form_{{ sell_order.id }}" class="button is-small is-success">Speichern</button>
+                        </td>
+                        <td>
+                            <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>
+                            <div class="is-flex-align-center">
+                                {{ sell_order.item|eve_item_icon(24) }}
+                                <span class="ml-2">{{ sell_order.item|eve_item_name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ sell_order.amount }}</td>
+                        <td>{{ sell_order.percentToJitaSell }}</td>
+                        <td>{{ sell_order.seller.displayName }}</td>
+
+                        {% if sell_order.buyer %}
+                            <td>{{ sell_order.buyer.displayName }}</td>
+                        {% else %}
+                            <td>
+                                <form action="{{ path('set_sell_fulfiller', {'id': sell_order.id}) }}"
+                                      method="POST"
+                                      class="m-0">
+                                    <button type="submit" class="button is-small is-primary is-outlined">
+                                        Annehmen
+                                    </button>
+                                </form>
+                            </td>
+                        {% endif %}
+
+                        <td>
+                            {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
+                                <a class="button is-small is-light" href="{{ path('update_sell', {'id': sell_order.id}) }}">Bearbeiten</a>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
+                                <form action="{{ path('app_sell_delete', {'id': sell_order.id}) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ sell_order.item|eve_item_name }} löschen möchten?');">
+
+                                    <input type="hidden"
+                                           name="_method"
+                                           value="DELETE">
+
+                                    <button type="submit" class="button is-small is-danger">
+                                        Löschen
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+{% endblock %}

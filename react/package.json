@@ -1,0 +1,20 @@
+{
+  "name": "wh-toolbox-react-islands",
+  "private": true,
+  "version": "1.0.0",
+  "description": "React + TypeScript Islands isolated in project root",
+  "scripts": {
+    "build": "esbuild src/index.tsx --bundle --minify --format=esm --sourcemap --outfile=../assets/react.js --tsconfig=tsconfig.json",
+    "watch": "esbuild src/index.tsx --bundle --format=esm --sourcemap --outfile=../assets/react.js --tsconfig=tsconfig.json --watch"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "esbuild": "^0.21.4",
+    "typescript": "^5.4.5"
+  }
+}

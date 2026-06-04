@@ -1,0 +1,31 @@
+
+###> symfony/framework-bundle ###
+/.env.dev
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+# Ensure migrations are always tracked
+!/migrations/
+!/migrations/*.php
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+/.ddev/config.local.yaml
+
+# React & TypeScript Islands
+/react/node_modules/
+/assets/react.js.map
+# /assets/react.js (einkommentieren, falls du die kompilierte JS-Datei nicht im Git haben willst)

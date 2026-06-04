@@ -1,0 +1,113 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Linksammlung{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <h2 class="title is-3 title-bordered mb-5">Linksammlung</h2>
+
+    {% if categories|length == 0 %}
+        <div class="box">
+            <p class="subtitle is-5">Es sind noch keine Einträge enthalten.</p>
+        </div>
+    {% else %}
+        {% for category in categories %}
+            {# Finde die Links dieser Kategorie #}
+            {% set categoryLinks = groupedLinks[category.name] ?? [] %}
+            
+            <div class="box category-block mb-5">
+                
+                <div class="is-flex is-justify-content-space-between is-align-items-center mb-4 category-header">
+                    <h3 class="title is-4 mb-0 has-text-primary">
+                        {{ category.name }}
+                    </h3>
+                    
+                    {% if is_granted('ROLE_OFFICER') %}
+                        {# Einklappbares Formular zum Erstellen eines Links direkt in dieser Kategorie #}
+                        <details class="compact-box category-add-link-details">
+                            <summary class="category-add-summary" title="Link in „{{ category.name }}“ hinzufügen">
+                                <img src="{{ asset('images/add_button.png') }}" class="add-link-btn-img" alt="Hinzufügen">
+                            </summary>
+                            <div class="box mt-3 add-link-dropdown">
+                                <h4 class="title is-5">Neuen Link hinzufügen</h4>
+                                <form method="post" action="{{ path('link_create_link') }}">
+                                    <input type="hidden" name="Category" value="{{ category.id }}">
+                                    
+                                    <div class="field">
+                                        <label class="label" for="Name_{{ category.id }}">Name:</label>
+                                        <div class="control">
+                                            <input class="input" type="text" id="Name_{{ category.id }}" name="Name" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="label" for="URL_{{ category.id }}">URL:</label>
+                                        <div class="control">
+                                            <input class="input" type="url" id="URL_{{ category.id }}" name="URL" placeholder="https://" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="label" for="Description_{{ category.id }}">Beschreibung:</label>
+                                        <div class="control">
+                                            <textarea class="textarea" id="Description_{{ category.id }}" name="Description" rows="2"></textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="control mt-4">
+                                        <input class="button is-primary is-fullwidth" type="submit" value="Link speichern">
+                                    </div>
+                                </form>
+                            </div>
+                        </details>
+                    {% endif %}
+                </div>
+                
+                <div class="content pl-3 mb-5 category-links-container">
+                    {% if categoryLinks|length == 0 %}
+                        <p class="has-text-grey-light italic mb-0">Keine Links in dieser Kategorie vorhanden.</p>
+                    {% else %}
+                        {% for link in categoryLinks %}
+                            <div class="link-item mb-4">
+                                <h4 class="title is-5 mb-1">
+                                    <a href="{{ link.url }}" target="_blank" class="has-text-primary">
+                                        {{ link.name }}
+                                    </a>
+                                </h4>
+                                {% if link.description %}
+                                    <p class="has-text-grey-light">{{ link.description }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {# Ganz unten: Kategorie erstellen #}
+    {% if is_granted('ROLE_OFFICER') %}
+        <details class="box mb-5 compact-box category-create-details">
+            <summary class="font-weight-600">
+                <span>+ Neue Kategorie erstellen</span>
+            </summary>
+            <div class="details-content">
+                <form method="post" action="{{ path('link_create_category') }}">
+                    <div class="field">
+                        <label class="label" for="CategoryName">Name der neuen Kategorie:</label>
+                        <div class="control">
+                            <input class="input" type="text" id="CategoryName" name="CategoryName" required>
+                        </div>
+                    </div>
+
+                    <div class="control mt-4">
+                        <input class="button is-primary is-fullwidth" type="submit" value="Kategorie erstellen">
+                    </div>
+                </form>
+            </div>
+        </details>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Register{% endblock %}
+
+{% block body %}
+<main class="auth-container">
+    <div class="box">
+        {% if success %}
+            <h1 class="title is-3 has-text-centered has-text-success">✔️ Registrierung erfolgreich!</h1>
+            
+            <div class="notification is-success mt-4">
+                <p class="title is-5 has-text-success">⌛ Warteschlange für Freischaltung</p>
+                <p class="mt-2">Dein Account <strong>{{ last_username }}</strong> wurde erfolgreich angelegt!</p>
+                <p class="mt-2">Bitte wende dich jetzt an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
+            </div>
+            
+            <a href="{{ path('app_login') }}" class="button is-primary is-fullwidth mt-5">
+                Zum Login
+            </a>
+        {% else %}
+            <h1 class="title is-3 has-text-centered">Register</h1>
+            
+            <form action="{{ path('app_register') }}" method="post" id="register-form" data-turbo="false">
+                {% if errors %}
+                    <div class="notification is-danger">
+                        <ul>
+                            {% for error in errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password * (minimum 6 characters)</label>
+                    <input type="password" name="password" id="password" autocomplete="new-password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password_confirm">Confirm Password *</label>
+                    <input type="password" name="password_confirm" id="password_confirm" required>
+                </div>
+                
+                <button class="button is-primary is-fullwidth mt-4" type="submit">
+                    Register
+                </button>
+
+                <div class="mt-4 has-text-centered">
+                    <p>Already have an account? <a href="{{ path('app_login') }}" class="has-text-primary is-underlined">Log in here</a></p>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

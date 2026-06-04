@@ -1,0 +1,56 @@
+<div class="container has-text-centered pt-4 pb-2">
+    <span class="brand-title">
+        Keepers of Duat
+    </span>
+</div>
+
+<nav class="navbar" role="navigation" aria-label="main navigation" data-controller="navbar">
+
+    <div class="container">
+
+        <div class="navbar-menu" data-navbar-target="menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="{{ path('home') }}">Home</a>
+                {% if is_granted('ROLE_MEMBER') %}
+                    <a class="navbar-item" href="{{ path('link_collection') }}">Linksammlung</a>
+                    <a class="navbar-item" href="{{ path('app_order_list') }}">Orders</a>
+                {% endif %}
+            </div>
+
+            <div class="navbar-end">
+                {% if app.user %}
+                    <div class="navbar-item has-dropdown">
+                        <a class="navbar-link is-arrowless" aria-label="Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="burger-icon">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </a>
+                        <div class="navbar-dropdown">
+                            <a class="navbar-item" href="{{ path('app_profile') }}" data-turbo="false">
+                                Mein Profil
+                            </a>
+                            {% if is_granted('ROLE_OFFICER') %}
+                                <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
+                                    Benutzerverwaltung
+                                </a>
+                            {% endif %}
+                            <hr class="navbar-divider">
+                            <a class="navbar-item" href="{{ path('app_logout') }}">
+                                🚪 Logout
+                            </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="navbar-item">
+                        <a class="button is-small is-primary" href="{{ path('app_login') }}" data-turbo="false">
+                            Login
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+

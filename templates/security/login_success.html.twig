@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login erfolgreich!{% endblock %}
+
+{% block body %}
+<div class="container container-narrow mt-6">
+    <div class="box">
+        <h1 class="title is-3 has-text-centered has-text-primary">✔️ Login erfolgreich!</h1>
+
+        <div class="suggested-links">
+            <a href="{{ path('home') }}" class="button is-fullwidth">
+                <span>zurück zur Startseite</span>
+                <span>→</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

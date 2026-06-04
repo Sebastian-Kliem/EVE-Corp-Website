@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Home{% endblock %}
+
+{% block body %}
+<div class="container container-medium mt-5">
+    <div class="box">
+        <h1 class="title is-2">Willkommen bei den Keepers of Duat</h1>
+        {% if is_granted('ROLE_MEMBER') %}
+            <p class="subtitle is-5 mt-3">
+                Das ist eine kleine Werkzeugkiste, um das Leben im Wurmloch zu vereinfachen.
+            </p>
+        {% elseif app.user and is_granted('ROLE_RECRUIT') %}
+            <div class="notification is-warning mt-4">
+                <p class="title is-5 has-text-warning">⌛ Warteschlange für Freischaltung</p>
+                <p class="mt-2">Dein Account wurde erfolgreich registriert! Bitte wende dich an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
+            </div>
+        {% else %}
+            <p class="subtitle is-5 mt-3">
+                Bitte logge dich ein oder registriere dich, um auf die Corp-Werkzeuge zuzugreifen.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

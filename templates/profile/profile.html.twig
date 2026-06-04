@@ -1,0 +1,84 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mein Profil{% endblock %}
+
+{% block body %}
+<div class="container container-narrow mt-5 mb-6">
+    <h1 class="title is-2 text-gradient">
+        Mein Profil
+    </h1>
+
+    <!-- Flash Messages -->
+    {% for message in app.flashes('success') %}
+        <div class="notification is-success">
+            ✔️ {{ message }}
+        </div>
+    {% endfor %}
+
+    <!-- Profile Details Box -->
+    <div class="box mt-5">
+        <h2 class="title is-4 title-bordered">
+            Account-Informationen
+        </h2>
+
+        <div class="form-group mt-4">
+            <label>Username</label>
+            <span class="is-size-6 has-text-grey-light">{{ user.username }}</span>
+        </div>
+
+        {% if not is_granted('ROLE_MEMBER') %}
+            <div class="form-group mt-4">
+                <label>Zugriffsstatus</label>
+                <div class="notification is-warning mb-0">
+                    Dein Account ist noch nicht freigeschaltet. Bitte wende dich an einen Corp-Officer oder Administrator, um verifiziert zu werden.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Password Change Form Box -->
+    <details class="box mt-5" {% if errors is not empty %}open{% endif %}>
+        <summary>🔑 Passwort ändern</summary>
+        <div class="details-content">
+            <!-- Errors -->
+            {% if errors is not empty %}
+                <div class="notification is-danger mt-3">
+                    <ul>
+                        {% for error in errors %}
+                            <li>❌ {{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <form action="{{ path('app_profile') }}" method="POST" class="mt-4">
+                <input type="hidden" name="_token" value="{{ csrf_token('change_password') }}">
+
+                <!-- Current Password -->
+                <div class="form-group">
+                    <label for="current_password">Aktuelles Passwort</label>
+                    <input type="password" id="current_password" name="current_password" required placeholder="Dein aktuelles Passwort...">
+                    <p class="has-text-grey-light is-size-7 mt-1">Wird zur Verifizierung benötigt (auch bei temporären Passwörtern).</p>
+                </div>
+
+                <!-- New Password -->
+                <div class="form-group mt-4">
+                    <label for="new_password">Neues Passwort</label>
+                    <input type="password" id="new_password" name="new_password" required placeholder="Mindestens 6 Zeichen...">
+                </div>
+
+                <!-- New Password Confirm -->
+                <div class="form-group mt-4">
+                    <label for="new_password_confirm">Neues Passwort wiederholen</label>
+                    <input type="password" id="new_password_confirm" name="new_password_confirm" required placeholder="Neues Passwort bestätigen...">
+                </div>
+
+                <!-- Submit button -->
+                <button type="submit" class="button is-primary is-fullwidth mt-5">
+                    Passwort aktualisieren
+                </button>
+            </form>
+        </div>
+    </details>
+</div>
+{% endblock %}
