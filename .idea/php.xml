@@ -151,6 +151,7 @@
       <path value="$PROJECT_DIR$/vendor/webmozart/assert" />
       <path value="$PROJECT_DIR$/vendor/theseer/tokenizer" />
       <path value="$PROJECT_DIR$/vendor/picocss/pico" />
+      <path value="$PROJECT_DIR$/vendor/dragonmantank/cron-expression" />
     </include_path>
   </component>
   <component name="PhpInterpreters">

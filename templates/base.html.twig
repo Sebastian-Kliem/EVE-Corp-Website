@@ -33,7 +33,7 @@
             {% for label, messages in app.flashes %}
                 {% for message in messages %}
                     <div class="notification {{ flash_classes[label] ?? 'is-info' }}">
-                        {{ message }}
+                        {{ message|raw }}
                     </div>
                 {% endfor %}
             {% endfor %}

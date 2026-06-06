@@ -4,7 +4,10 @@ namespace App\Controller;
 
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
+use App\Entity\EveCharacterAsset;
 use App\Entity\User;
+use App\Service\LocationService;
+use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -144,6 +147,201 @@ class EveAccountController extends AbstractController
         }
 
         $this->entityManager->flush();
+
+        return $this->redirectToRoute('app_profile');
+    }
+
+    #[Route('/profile/eve-character/{id}/assets', name: 'app_eve_character_assets', methods: ['GET'])]
+    public function showAssets(int $id, SdeService $sdeService): Response
+    {
+        $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
+
+        if (!$character || $character->getUser() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('Zugriff verweigert.');
+        }
+
+        $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy(
+            ['character' => $character],
+            ['locationId' => 'ASC']
+        );
+
+        // Group assets by location
+        $groupedAssets = [];
+        foreach ($assets as $asset) {
+            $locationId = $asset->getLocationId();
+            if (!isset($groupedAssets[$locationId])) {
+                $groupedAssets[$locationId] = [
+                    'name' => $sdeService->getLocationName($locationId),
+                    'items' => [],
+                ];
+            }
+            
+            $groupedAssets[$locationId]['items'][] = [
+                'typeId' => $asset->getTypeId(),
+                'name' => $sdeService->getItemName($asset->getTypeId()),
+                'quantity' => $asset->getQuantity(),
+                'locationFlag' => $asset->getLocationFlag(),
+                'isBlueprintCopy' => $asset->isBlueprintCopy(),
+                'isSingleton' => $asset->isSingleton(),
+            ];
+        }
+
+        // Sort items inside each location by name
+        foreach ($groupedAssets as &$group) {
+            usort($group['items'], function ($a, $b) {
+                return strcasecmp($a['name'], $b['name']);
+            });
+        }
+        unset($group);
+
+        // Sort groups by location name
+        uasort($groupedAssets, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        return $this->render('profile/character_assets.html.twig', [
+            'character' => $character,
+            'groupedAssets' => $groupedAssets,
+        ]);
+    }
+
+    #[Route('/profile/assets', name: 'app_profile_assets_overview', methods: ['GET'])]
+    public function assetsOverview(LocationService $locationService, SdeService $sdeService): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+            'user' => $currentUser
+        ]);
+
+        $totalWallet = 0.0;
+        $characterData = [];
+
+        foreach ($characters as $character) {
+            $walletBalance = (float) ($character->getWalletBalance() ?? 0.0);
+            $totalWallet += $walletBalance;
+
+            // Fetch and structure assets
+            $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy([
+                'character' => $character
+            ]);
+
+            // Rebuild tree
+            $assetsByItemId = [];
+            foreach ($assets as $asset) {
+                $assetsByItemId[$asset->getItemId()] = $asset;
+            }
+
+            $nestedAssets = [];
+            $topLevelAssetsByLocation = [];
+
+            foreach ($assets as $asset) {
+                $parentId = $asset->getLocationId();
+                if (isset($assetsByItemId[$parentId])) {
+                    $nestedAssets[$parentId][] = $asset;
+                } else {
+                    $topLevelAssetsByLocation[$parentId][] = $asset;
+                }
+            }
+
+            $locations = [];
+            foreach ($topLevelAssetsByLocation as $locationId => $topAssets) {
+                $resolved = $locationService->resolveLocation($locationId, $character);
+                $locationName = $resolved['name'];
+                $systemName = $resolved['systemName'];
+                
+                $items = [];
+                foreach ($topAssets as $asset) {
+                    $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService);
+                }
+
+                usort($items, function ($a, $b) {
+                    return strcasecmp($a['name'], $b['name']);
+                });
+
+                $locations[] = [
+                    'id' => $locationId,
+                    'name' => $locationName,
+                    'systemName' => $systemName,
+                    'items' => $items,
+                ];
+            }
+
+            // Sort locations primarily by system name, then by location name
+            usort($locations, function ($a, $b) {
+                $sysCompare = strcasecmp($a['systemName'], $b['systemName']);
+                if ($sysCompare !== 0) {
+                    return $sysCompare;
+                }
+                return strcasecmp($a['name'], $b['name']);
+            });
+
+            $characterData[] = [
+                'character' => $character,
+                'walletBalance' => $walletBalance,
+                'locations' => $locations,
+            ];
+        }
+
+        // Sort characters by name
+        usort($characterData, function ($a, $b) {
+            return strcasecmp($a['character']->getName(), $b['character']->getName());
+        });
+
+        return $this->render('profile/assets_overview.html.twig', [
+            'totalWallet' => $totalWallet,
+            'characterData' => $characterData,
+        ]);
+    }
+
+    private function buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService): array
+    {
+        $itemId = $asset->getItemId();
+        $children = [];
+        if (isset($nestedAssets[$itemId])) {
+            foreach ($nestedAssets[$itemId] as $childAsset) {
+                $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService);
+            }
+            usort($children, function ($a, $b) {
+                return strcasecmp($a['name'], $b['name']);
+            });
+        }
+
+        return [
+            'itemId' => $itemId,
+            'typeId' => $asset->getTypeId(),
+            'name' => $sdeService->getItemName($asset->getTypeId()),
+            'quantity' => $asset->getQuantity(),
+            'locationFlag' => $asset->getLocationFlag(),
+            'isBlueprintCopy' => $asset->isBlueprintCopy(),
+            'isSingleton' => $asset->isSingleton(),
+            'children' => $children,
+        ];
+    }
+
+    #[Route('/profile/eve-character/{id}/delete', name: 'app_eve_character_delete', methods: ['POST'])]
+    public function deleteCharacter(int $id, Request $request): Response
+    {
+        $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
+
+        if (!$character || $character->getUser() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('Zugriff verweigert.');
+        }
+
+        if (!$this->isCsrfTokenValid('eve_character_delete_' . $id, $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $charName = $character->getName();
+
+        $this->entityManager->remove($character);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', sprintf('Charakter "%s" wurde erfolgreich entfernt.', $charName));
 
         return $this->redirectToRoute('app_profile');
     }

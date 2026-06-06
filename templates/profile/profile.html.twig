@@ -85,6 +85,32 @@
                                         <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
                                     </div>
                                 </div>
+
+                                <!-- Wallet Balance & Sync Status -->
+                                <div class="is-size-7 mt-2 mb-2" style="border-top: 1px dashed #333; padding-top: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #888;">Wallet:</span>
+                                        <span class="has-text-weight-semibold" style="color: #00ffaa;">
+                                            {% if char.walletBalance is not null %}
+                                                {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+                                            {% else %}
+                                                <span style="color: #666;">Keine Daten</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <a href="{{ path('app_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small" style="flex: 1; font-size: 0.75rem; border-color: #444; height: 26px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                        🎒 Inventar
+                                    </a>
+                                    <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
+                                        <button type="submit" class="button is-danger is-small" style="font-size: 0.75rem; height: 26px; padding: 0 10px;" title="Charakter entfernen">
+                                            ❌
+                                        </button>
+                                    </form>
+                                </div>
                                 
                                 <!-- Zuweisungs-Formular -->
                                 <details style="margin-top: 8px;">
@@ -185,6 +211,32 @@
                                                     <div class="has-text-weight-semibold is-size-6" style="color: #eee;">{{ char.name }}</div>
                                                     <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
                                                 </div>
+                                            </div>
+
+                                            <!-- Wallet Balance & Sync Status -->
+                                            <div class="is-size-7 mt-2 mb-2" style="border-top: 1px dashed #333; padding-top: 8px;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <span style="color: #888;">Wallet:</span>
+                                                    <span class="has-text-weight-semibold" style="color: #00ffaa;">
+                                                        {% if char.walletBalance is not null %}
+                                                            {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+                                                        {% else %}
+                                                            <span style="color: #666;">Keine Daten</span>
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                                <a href="{{ path('app_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small" style="flex: 1; font-size: 0.75rem; border-color: #444; height: 26px; display: flex; align-items: center; justify-content: center; gap: 5px;">
+                                                    🎒 Inventar
+                                                </a>
+                                                <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
+                                                    <button type="submit" class="button is-danger is-small" style="font-size: 0.75rem; height: 26px; padding: 0 10px;" title="Charakter entfernen">
+                                                        ❌
+                                                    </button>
+                                                </form>
                                             </div>
                                             
                                             <!-- Zuweisungs-Formular -->

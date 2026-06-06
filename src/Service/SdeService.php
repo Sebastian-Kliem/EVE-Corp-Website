@@ -53,6 +53,40 @@ class SdeService
     }
 
     /**
+     * Translates a numeric locationID into a name (station, solar system, etc.)
+     */
+    public function getLocationName(int $locationId): string
+    {
+        try {
+            // Check if NPC station
+            if ($locationId >= 60000000 && $locationId < 64000000) {
+                $name = $this->connection->fetchOne(
+                    'SELECT stationName FROM staStations WHERE stationID = :id LIMIT 1',
+                    ['id' => $locationId]
+                );
+                if ($name) {
+                    return $name;
+                }
+            }
+            
+            // Check if solar system
+            if ($locationId >= 30000000 && $locationId < 32000000) {
+                $name = $this->connection->fetchOne(
+                    'SELECT solarSystemName FROM mapSolarSystems WHERE solarSystemID = :id LIMIT 1',
+                    ['id' => $locationId]
+                );
+                if ($name) {
+                    return $name;
+                }
+            }
+        } catch (\Exception $e) {
+            // Fallback
+        }
+        
+        return 'Location #' . $locationId;
+    }
+
+    /**
      * Checks if a typeID belongs to a blueprint group in the SDE database.
      */
     public function isBlueprint(int $itemId): bool

@@ -44,6 +44,9 @@
                                 <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
                                     Benutzerverwaltung
                                 </a>
+                                <a class="navbar-item" href="{{ path('app_admin_cron_index') }}" data-turbo="false">
+                                    Cron-Jobs
+                                </a>
                             {% endif %}
                         </div>
                     </div>
@@ -60,7 +63,7 @@
                             <a class="navbar-item is-disabled" href="#" onclick="return false;">Charakterübersicht (in Kürze)</a>
                             <a class="navbar-item is-disabled" href="#" onclick="return false;">PI-Planung (in Kürze)</a>
                             <a class="navbar-item is-disabled" href="#" onclick="return false;">Produktionsplanung (in Kürze)</a>
-                            <a class="navbar-item is-disabled" href="#" onclick="return false;">Inventar (in Kürze)</a>
+                            <a class="navbar-item" href="{{ path('app_profile_assets_overview') }}" data-turbo="false">Inventar</a>
                         </div>
                     </div>
                 {% endif %}

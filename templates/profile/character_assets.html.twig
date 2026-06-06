@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inventar von {{ character.name }}{% endblock %}
+
+{% block body %}
+<div class="container mt-5 mb-6">
+    <!-- Back Link -->
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="{{ path('app_profile') }}" style="color: var(--color-primary, #ffd700);">👤 Profil</a></li>
+            <li class="is-active"><a href="#" aria-current="page" class="has-text-grey-light">🎒 Inventar von {{ character.name }}</a></li>
+        </ul>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="box p-5" style="background-color: rgba(255, 255, 255, 0.01); border: 1px solid #333;">
+        <div class="columns is-vcentered">
+            <div class="column is-narrow">
+                <figure class="image is-64x64">
+                    <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: character.id, action: 'portrait' }) }}?size=128" alt="{{ character.name }}" class="is-rounded" style="border: 2px solid var(--color-primary, #ffd700); border-radius: 50%;">
+                </figure>
+            </div>
+            <div class="column">
+                <h1 class="title is-3 text-gradient mb-1">
+                    Inventar von {{ character.name }}
+                </h1>
+                <p class="subtitle is-6 has-text-grey">
+                    Letzter Stand: 
+                    {% if character.lastAssetsUpdate is not null %}
+                        {{ character.lastAssetsUpdate|date('d.m.Y H:i:s') }} Uhr
+                    {% else %}
+                        Noch nie aktualisiert (Cron-Job abwarten)
+                    {% endif %}
+                </p>
+            </div>
+            <div class="column is-narrow">
+                <!-- Search Box -->
+                <div class="field">
+                    <div class="control has-icons-left">
+                        <input id="asset-search" class="input" type="text" placeholder="Inventar durchsuchen..." style="background: #1a1a1a; color: #fff; border-color: #444; width: 250px;">
+                        <span class="icon is-small is-left">
+                            🔍
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets List -->
+    {% if groupedAssets is empty %}
+        <div class="notification is-info">
+            Für diesen Charakter wurden bisher keine Inventar-Daten in der Datenbank gefunden. Der regelmäßige Abruf erfolgt über einen Cron-Job im Hintergrund.
+        </div>
+    {% else %}
+        <div id="assets-container">
+            {% for locationId, group in groupedAssets %}
+                <div class="box mb-5 location-box" data-location-name="{{ group.name|e('html_attr') }}" style="background-color: rgba(0, 0, 0, 0.15); border: 1px solid #2a2a2a; border-radius: 6px;">
+                    <h2 class="title is-5 mb-3" style="color: #eee; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                        <span>📍 {{ group.name }}</span>
+                        <span class="tag is-dark is-rounded is-small font-family-monospace" style="font-size: 0.8rem; color: #aaa;">
+                            {{ group.items|length }} {{ group.items|length == 1 ? 'Gegenstand' : 'Gegenstände' }}
+                        </span>
+                    </h2>
+                    
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped is-hoverable" style="background: transparent;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; background: transparent; color: #888; border-bottom-color: #333;"></th>
+                                    <th style="background: transparent; color: #888; border-bottom-color: #333;">Gegenstand Name</th>
+                                    <th style="text-align: right; background: transparent; color: #888; border-bottom-color: #333;">Menge</th>
+                                    <th style="background: transparent; color: #888; border-bottom-color: #333;">Ort / Slot</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in group.items %}
+                                    <tr class="asset-item-row" data-item-name="{{ item.name|e('html_attr') }}" style="border-bottom: 1px solid #222;">
+                                        <td style="vertical-align: middle; border-bottom-color: #222;">
+                                            <figure class="image is-24x24">
+                                                <img src="{{ path('app_eve_image_proxy', { category: 'types', id: item.typeId, action: 'icon' }) }}?size=32" alt="{{ item.name }}" class="is-rounded" style="border-radius: 4px;">
+                                            </figure>
+                                        </td>
+                                        <td style="vertical-align: middle; color: #fff; font-weight: 500; border-bottom-color: #222;">
+                                            {{ item.name }}
+                                            {% if item.isBlueprintCopy %}
+                                                <span class="tag is-info is-light is-small ml-1" style="font-size: 0.65rem; padding: 2px 6px;">Kopie</span>
+                                            {% elseif item.isSingleton and not item.isBlueprintCopy %}
+                                                <span class="tag is-dark is-small ml-1" style="font-size: 0.65rem; padding: 2px 6px;">Modifiziert</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: right; vertical-align: middle; font-weight: bold; color: var(--color-primary, #ffd700); border-bottom-color: #222;">
+                                            {{ item.quantity|number_format(0, ',', '.') }}
+                                        </td>
+                                        <td style="vertical-align: middle; color: #888; font-size: 0.85rem; border-bottom-color: #222;">
+                                            {{ item.locationFlag }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('asset-search');
+    if (!searchInput) return;
+
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const locationBoxes = document.querySelectorAll('.location-box');
+
+        locationBoxes.forEach(box => {
+            let visibleRowsCount = 0;
+            const rows = box.querySelectorAll('.asset-item-row');
+            
+            rows.forEach(row => {
+                const itemName = row.getAttribute('data-item-name').toLowerCase();
+                if (itemName.includes(query)) {
+                    row.style.display = '';
+                    visibleRowsCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Hide the entire location container if no items inside match search
+            if (visibleRowsCount > 0 || query === '') {
+                box.style.display = '';
+            } else {
+                box.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

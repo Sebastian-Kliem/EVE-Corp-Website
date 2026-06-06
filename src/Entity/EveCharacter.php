@@ -41,6 +41,15 @@ class EveCharacter
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $user = null;
 
+    #[ORM\Column(type: 'decimal', precision: 20, scale: 2, nullable: true)]
+    private ?string $walletBalance = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastWalletUpdate = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastAssetsUpdate = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -157,6 +166,42 @@ class EveCharacter
     public function setUser(?User $user): static
     {
         $this->user = $user;
+
+        return $this;
+    }
+
+    public function getWalletBalance(): ?string
+    {
+        return $this->walletBalance;
+    }
+
+    public function setWalletBalance(?string $walletBalance): static
+    {
+        $this->walletBalance = $walletBalance;
+
+        return $this;
+    }
+
+    public function getLastWalletUpdate(): ?\DateTimeImmutable
+    {
+        return $this->lastWalletUpdate;
+    }
+
+    public function setLastWalletUpdate(?\DateTimeImmutable $lastWalletUpdate): static
+    {
+        $this->lastWalletUpdate = $lastWalletUpdate;
+
+        return $this;
+    }
+
+    public function getLastAssetsUpdate(): ?\DateTimeImmutable
+    {
+        return $this->lastAssetsUpdate;
+    }
+
+    public function setLastAssetsUpdate(?\DateTimeImmutable $lastAssetsUpdate): static
+    {
+        $this->lastAssetsUpdate = $lastAssetsUpdate;
 
         return $this;
     }

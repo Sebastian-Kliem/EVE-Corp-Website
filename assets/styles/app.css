@@ -1267,4 +1267,128 @@ input[type="number"] {
     }
 }
 
+/* ==========================================================================
+   5. ASSET INVENTORY OVERVIEW
+   ========================================================================== */
+
+/* Character assets container linking to the portrait */
+.character-assets-panel-content {
+    padding: 12px 20px 12px 24px;
+    border-left: 1px dashed #444;
+    margin-left: 36px;
+}
+
+/* Spacing and borders for location/station blocks */
+.location-block {
+    border-bottom: 1px solid #222;
+    padding-bottom: 8px;
+    margin-bottom: 0.75rem !important;
+}
+
+/* Header line for locations (stations) */
+.location-header {
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 0;
+    margin-bottom: 0.5rem !important;
+}
+
+.location-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.location-header-tag {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+/* Container for items inside a location */
+.location-assets-container {
+    border-left: 1px dashed #444;
+    margin-left: 8px;
+    margin-top: 5px;
+    padding-left: 1rem;
+}
+
+/* Individual node in the asset tree */
+.asset-tree-node {
+    margin-left: 4px;
+}
+
+/* Header row for a single item (supports flex alignment) */
+.asset-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.asset-header-row.has-children {
+    cursor: pointer;
+}
+
+/* Container for item texts (Name & Details stacked vertically) */
+.asset-item-details {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.asset-item-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.asset-item-name {
+    color: #eee;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.asset-item-tag {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    height: auto;
+    line-height: 1;
+}
+
+.asset-item-info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1px;
+}
+
+.asset-item-quantity {
+    color: #ffd700; /* Gold */
+    font-size: 0.85rem;
+    font-family: monospace;
+    font-weight: 700;
+}
+
+.asset-item-flag {
+    color: var(--theme-text-muted);
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 0.7rem;
+}
+
+/* Container for nested items (containers inside ships/containers) */
+.nested-children-container {
+    border-left: 1px dashed #444;
+    margin-left: 6px;
+    margin-top: 2px;
+    padding-left: 1rem;
+}
+
+
 
