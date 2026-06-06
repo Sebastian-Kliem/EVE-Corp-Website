@@ -124,7 +124,7 @@
                                              {% set current_role = 'ROLE_CEO' %}
                                          {% endif %}
 
-                                         <form action="{{ path('app_admin_set_role', {'id': user.id}) }}" method="POST" style="display: inline-block;">
+                                         <form action="{{ path('app_admin_set_role', {'id': user.id}) }}" method="POST" class="is-inline-block">
                                              <input type="hidden" name="_token" value="{{ csrf_token('set_role_' ~ user.id) }}">
                                              <div class="select is-small">
                                                  <select name="role" onchange="this.form.submit()">
@@ -144,7 +144,7 @@
                     </tr>
                     
                     <!-- Live-Search No Results Row -->
-                    <tr data-user-search-target="noResultsRow" style="display: none;">
+                    <tr data-user-search-target="noResultsRow" class="is-hidden">
                         <td colspan="3" class="has-text-centered py-5">
                             <span class="has-text-grey">Keine Benutzer mit diesem Namen gefunden.</span>
                         </td>

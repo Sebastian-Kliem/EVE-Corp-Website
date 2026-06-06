@@ -3,12 +3,16 @@ import { createRoot } from 'react-dom/client';
 import MyComponent from './components/MyComponent';
 import ItemAutocomplete from './components/ItemAutocomplete';
 import UserAutocomplete from './components/UserAutocomplete';
+import CharacterAssets from './components/CharacterAssets';
+import AssetsOverview from './components/AssetsOverview';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
     MyComponent,
     ItemAutocomplete,
     UserAutocomplete,
+    CharacterAssets,
+    AssetsOverview,
 };
 
 function mountReactComponents() {

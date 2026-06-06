@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin/cron')]
-#[IsGranted('ROLE_OFFICER')]
+#[IsGranted('ROLE_ADMIN')]
 class AdminCronController extends AbstractController
 {
     public function __construct(

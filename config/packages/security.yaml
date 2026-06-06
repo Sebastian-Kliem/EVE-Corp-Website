@@ -58,7 +58,7 @@ security:
         - { path: ^/link, roles: ROLE_MEMBER }
         - { path: ^/profile, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/order, roles: ROLE_MEMBER }
-        - { path: ^/admin, roles: ROLE_OFFICER }
+        - { path: ^/admin, roles: ROLE_ADMIN }
 
 when@test:
     security:

@@ -40,14 +40,6 @@
                         </a>
                         <div class="navbar-dropdown">
                             <a class="navbar-item" href="{{ path('app_order_list') }}">Orders</a>
-                            {% if is_granted('ROLE_OFFICER') %}
-                                <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
-                                    Benutzerverwaltung
-                                </a>
-                                <a class="navbar-item" href="{{ path('app_admin_cron_index') }}" data-turbo="false">
-                                    Cron-Jobs
-                                </a>
-                            {% endif %}
                         </div>
                     </div>
 
@@ -66,6 +58,24 @@
                             <a class="navbar-item" href="{{ path('app_profile_assets_overview') }}" data-turbo="false">Inventar</a>
                         </div>
                     </div>
+
+                    {% if is_granted('ROLE_CEO') %}
+                    <!-- Admin Panel -->
+                    <div class="navbar-item has-dropdown" data-controller="dropdown">
+                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
+                            ⚙️ Admin-Panel <span class="dropdown-caret">▼</span>
+                        </a>
+                        <div class="navbar-dropdown">
+                            <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
+                                Benutzerverwaltung
+                            </a>
+                            <a class="navbar-item" href="{{ path('app_admin_cron_index') }}" data-turbo="false">
+                                Cron-Jobs
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
                 {% endif %}
             </div>
 
