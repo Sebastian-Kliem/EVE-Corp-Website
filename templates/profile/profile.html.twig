@@ -36,6 +36,189 @@
         {% endif %}
     </div>
 
+    <!-- EVE Online Accounts & Characters Box -->
+    <div class="box mt-5">
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-4" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h2 class="title is-4 mb-0">EVE Online Accounts & Charaktere</h2>
+            <div style="display: flex; gap: 10px;">
+                <a href="{{ path('app_eve_sso_login') }}" class="button is-primary is-small">
+                    ➕ EVE Charakter hinzufügen
+                </a>
+            </div>
+        </div>
+
+        <!-- Neuen Account anlegen Form -->
+        <details class="mb-5" style="border: 1px dashed #444; border-radius: 6px; padding: 10px; background-color: rgba(255, 255, 255, 0.01);">
+            <summary style="cursor: pointer; font-weight: bold; color: var(--color-primary, #ffd700); list-style: none; display: flex; align-items: center; gap: 5px;">
+                <span>🛠️</span> Neuen Account-Ordner anlegen
+            </summary>
+            <form action="{{ path('app_eve_account_create') }}" method="POST" class="mt-3" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <input type="hidden" name="_token" value="{{ csrf_token('eve_account_create') }}">
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.8rem; display: block; margin-bottom: 5px; color: #ccc;">Account-Name (z.B. "Main Account")</label>
+                    <input type="text" name="name" required placeholder="Name eingeben..." style="width: 100%; padding: 6px 10px; background: #1a1a1a; border: 1px solid #333; color: #fff; border-radius: 4px;">
+                </div>
+                <button type="submit" class="button is-link is-small" style="height: 38px;">Erstellen</button>
+            </form>
+        </details>
+
+        <!-- Gruppe: Nicht zugewiesene Charaktere -->
+        {% if unassignedCharacters is not empty %}
+            <div class="box p-4 mb-4" style="background-color: rgba(238, 120, 32, 0.05); border: 1px dashed #ee7820;">
+                <div class="mb-3">
+                    <span class="has-text-weight-bold is-size-5" style="color: #ee7820;">
+                        ⚠️ Nicht zugewiesene Charaktere
+                    </span>
+                    <p class="is-size-7 has-text-grey mt-1">Hier landen frisch hinzugefügte Charaktere. Weise sie unten einem Account zu.</p>
+                </div>
+
+                <div class="columns is-multiline">
+                    {% for char in unassignedCharacters %}
+                        <div class="column is-4">
+                            <div class="p-3" style="background: rgba(0, 0, 0, 0.3); border-radius: 6px; border: 1px solid #2a2a2a;">
+                                <div class="is-flex is-align-items-center mb-3">
+                                    <figure class="image is-32x32 mr-3" style="margin-right: 12px; margin-bottom: 0;">
+                                        <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="is-rounded" style="border-radius: 50%;">
+                                    </figure>
+                                    <div>
+                                        <div class="has-text-weight-semibold is-size-6" style="color: #eee;">{{ char.name }}</div>
+                                        <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Zuweisungs-Formular -->
+                                <details style="margin-top: 8px;">
+                                    <summary style="cursor: pointer; font-size: 0.75rem; color: #aaa; list-style: none;">🔄 Account zuweisen</summary>
+                                    <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
+                                        <div class="select is-small is-fullwidth" style="width: 100%;">
+                                            <select name="accountId" onchange="this.form.submit()" style="background: #1a1a1a; color: #fff; border-color: #444; width: 100%; border-radius: 4px; padding: 4px; font-size: 0.85rem; cursor: pointer;">
+                                                <option value="unassigned" selected>-- Account auswählen --</option>
+                                                {% for account in user.eveAccounts %}
+                                                    <option value="{{ account.id }}">{{ account.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </form>
+                                </details>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Liste der Accounts nach Gruppen -->
+        {% if user.eveAccounts is empty and unassignedCharacters is empty %}
+            <div class="notification is-info mt-3">
+                Bisher sind keine EVE Online Charaktere mit diesem Account verknüpft. Klicke auf "EVE Charakter hinzufügen", um einen EVE Charakter über EVE SSO zu verbinden.
+            </div>
+        {% else %}
+            {% for groupName, accounts in groupedAccounts %}
+                <div class="mb-6">
+                    <h3 class="title is-5 mb-3" style="color: var(--color-primary, #ffd700); border-bottom: 1px dashed #444; padding-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                        🏷️ {{ groupName }}
+                        <span class="tag is-rounded is-small" style="font-size: 0.75rem; background-color: rgba(255,255,255,0.05); color: #888;">
+                            {{ accounts|length }} {{ accounts|length == 1 ? 'Account' : 'Accounts' }}
+                        </span>
+                    </h3>
+
+                    {% for account in accounts %}
+                        <div class="box p-4 mb-4" style="background-color: rgba(255, 255, 255, 0.01); border: 1px solid #333; position: relative;">
+                            
+                            <!-- Account Kopfzeile mit Einstellungen -->
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; border-bottom: 1px solid #2a2a2a; padding-bottom: 10px; margin-bottom: 15px; gap: 10px;">
+                                <div>
+                                    <span class="has-text-weight-bold is-size-5" style="color: #fff; display: flex; align-items: center; gap: 8px;">
+                                        📂 {{ account.name }}
+                                        {% if account.isOmega %}
+                                            <span class="tag is-warning">Omega</span>
+                                        {% else %}
+                                            <span class="tag is-dark">Alpha</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                <!-- Account bearbeiten dropdown/toggle -->
+                                <details style="background: rgba(0,0,0,0.2); border: 1px solid #444; border-radius: 4px; padding: 4px 8px;">
+                                    <summary style="cursor: pointer; font-size: 0.8rem; color: #ccc; list-style: none;">⚙️ Einstellungen</summary>
+                                    <div class="mt-3" style="min-width: 250px;">
+                                        <form action="{{ path('app_eve_account_update', { id: account.id }) }}" method="POST" class="mb-3">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_account_update_' ~ account.id) }}">
+                                            
+                                            <div class="field mb-2" style="margin-bottom: 8px;">
+                                                <label class="label is-small" style="color: #ccc; margin-bottom: 2px; font-size: 0.75rem; font-weight: 600;">Name</label>
+                                                <input class="input is-small" type="text" name="name" value="{{ account.name }}" required style="background: #1a1a1a; color: #fff; border-color: #444; width: 100%; border-radius: 4px; padding: 5px;">
+                                            </div>
+                                            
+                                            <div class="field mb-2" style="margin-bottom: 8px;">
+                                                <label class="label is-small" style="color: #ccc; margin-bottom: 2px; font-size: 0.75rem; font-weight: 600;">Gruppe / Cluster</label>
+                                                <input class="input is-small" type="text" name="groupName" value="{{ account.groupName }}" placeholder="z.B. Cynos, PI, Main..." style="background: #1a1a1a; color: #fff; border-color: #444; width: 100%; border-radius: 4px; padding: 5px;">
+                                            </div>
+                                            
+                                            <div class="field mb-3" style="margin-bottom: 12px; display: flex; align-items: center; gap: 5px;">
+                                                <input type="checkbox" id="isOmega_{{ account.id }}" name="isOmega" value="1" {% if account.isOmega %}checked{% endif %}>
+                                                <label for="isOmega_{{ account.id }}" style="color: #ccc; font-size: 0.85rem; cursor: pointer; user-select: none;">Omega Account</label>
+                                            </div>
+                                            
+                                            <button type="submit" class="button is-success is-small is-fullwidth" style="width: 100%;">Speichern</button>
+                                        </form>
+                                        
+                                        <form action="{{ path('app_eve_account_delete', { id: account.id }) }}" method="POST" onsubmit="return confirm('Diesen Account wirklich löschen? Zugeordnete Charaktere werden dadurch nicht gelöscht, sondern werden unassigned.')">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_account_delete_' ~ account.id) }}">
+                                            <button type="submit" class="button is-danger is-small is-fullwidth" style="width: 100%;">❌ Account löschen</button>
+                                        </form>
+                                    </div>
+                                </details>
+                            </div>
+
+                            <!-- Charaktere in diesem Account -->
+                            <div class="columns is-multiline">
+                                {% for char in account.characters %}
+                                    <div class="column is-4">
+                                        <div class="p-3" style="background: rgba(0, 0, 0, 0.2); border-radius: 6px; border: 1px solid #2a2a2a;">
+                                            <div class="is-flex is-align-items-center mb-3">
+                                                <figure class="image is-32x32 mr-3" style="margin-right: 12px; margin-bottom: 0;">
+                                                    <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="is-rounded" style="border-radius: 50%;">
+                                                </figure>
+                                                <div>
+                                                    <div class="has-text-weight-semibold is-size-6" style="color: #eee;">{{ char.name }}</div>
+                                                    <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Zuweisungs-Formular -->
+                                            <details style="margin-top: 8px;">
+                                                <summary style="cursor: pointer; font-size: 0.75rem; color: #aaa; list-style: none;">🔄 Account verschieben</summary>
+                                                <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
+                                                    <div class="select is-small is-fullwidth" style="width: 100%;">
+                                                        <select name="accountId" onchange="this.form.submit()" style="background: #1a1a1a; color: #fff; border-color: #444; width: 100%; border-radius: 4px; padding: 4px; font-size: 0.85rem; cursor: pointer;">
+                                                            {% for acc in user.eveAccounts %}
+                                                                <option value="{{ acc.id }}" {% if acc.id == account.id %}selected{% endif %}>{{ acc.name }}</option>
+                                                            {% endfor %}
+                                                            <option value="unassigned">-- Nicht zugewiesen --</option>
+                                                        </select>
+                                                    </div>
+                                                </form>
+                                            </details>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                {% if account.characters is empty %}
+                                    <div class="column is-12">
+                                        <p class="is-size-7 has-text-grey has-text-centered">Keine Charaktere in diesem Account. Weise einen unassigned Charakter oben diesem Account zu.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
     <!-- Password Change Form Box -->
     <details class="box mt-5" {% if errors is not empty %}open{% endif %}>
         <summary>🔑 Passwort ändern</summary>

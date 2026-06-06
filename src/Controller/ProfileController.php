@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\EveCharacter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -70,6 +71,26 @@ class ProfileController extends AbstractController
             }
         }
 
+        $unassignedCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+            'user' => $currentUser,
+            'account' => null,
+        ]);
+
+        $groupedAccounts = [];
+        $uncategorized = [];
+        foreach ($currentUser->getEveAccounts() as $account) {
+            $groupName = $account->getGroupName();
+            if ($groupName) {
+                $groupedAccounts[$groupName][] = $account;
+            } else {
+                $uncategorized[] = $account;
+            }
+        }
+        ksort($groupedAccounts);
+        if (!empty($uncategorized)) {
+            $groupedAccounts['Ungruppiert'] = $uncategorized;
+        }
+
         $response = new Response();
         if (!empty($errors) && $request->isMethod('POST')) {
             $response->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -79,6 +100,8 @@ class ProfileController extends AbstractController
             'user' => $currentUser,
             'errors' => $errors,
             'success' => $success,
+            'unassignedCharacters' => $unassignedCharacters,
+            'groupedAccounts' => $groupedAccounts,
         ], $response);
     }
 }
