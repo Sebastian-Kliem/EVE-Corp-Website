@@ -1137,3 +1137,134 @@ details.box .details-content {
 .category-add-summary::-webkit-details-marker {
     display: none;
 }
+
+/* --- RESPONSIVE TABLE & INPUT STYLES --- */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.5rem;
+}
+
+/* Custom scrollbar to keep it visible and matching the EVE theme */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+    display: block;
+}
+.table-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--theme-card-border);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 240, 255, 0.1);
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-primary);
+    box-shadow: 0 0 8px var(--theme-primary);
+}
+
+/* --- TABLE & FORM UTILITY CLASSES --- */
+.is-display-none {
+    display: none !important;
+}
+.tr-editing-selected {
+    background: rgba(0, 240, 255, 0.05) !important;
+}
+.control-item-autocomplete {
+    min-width: 250px;
+}
+.control-user-autocomplete {
+    min-width: 180px;
+}
+.input-narrow {
+    max-width: 100px;
+}
+.cursor-help {
+    cursor: help;
+}
+
+/* Hide spin-buttons for number inputs in forms and tables to avoid overlapping on small screens */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Transform tables into beautiful, readable card lists on mobile viewports */
+@media screen and (max-width: 1024px) {
+    .table-responsive-cards table {
+        border: none !important;
+        display: block !important;
+    }
+    
+    .table-responsive-cards thead {
+        display: none !important; /* Hide headers */
+    }
+    
+    .table-responsive-cards tbody {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    .table-responsive-cards tr {
+        display: block !important;
+        margin-bottom: 1.5rem;
+        background-color: var(--theme-card-bg) !important;
+        border: 1px solid var(--theme-card-border) !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+        box-shadow: var(--theme-shadow) !important;
+    }
+    
+    .table-responsive-cards tr.is-selected {
+        border-color: var(--theme-primary) !important;
+        background-color: rgba(0, 240, 255, 0.03) !important;
+    }
+    
+    .table-responsive-cards td {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding: 0.75rem 0 !important;
+        text-align: right !important;
+        width: 100% !important;
+    }
+    
+    .table-responsive-cards td:last-child {
+        border-bottom: none !important;
+    }
+    
+    .table-responsive-cards td[data-label]::before {
+        content: attr(data-label) !important;
+        font-weight: 600 !important;
+        color: var(--theme-text-muted) !important;
+        text-align: left !important;
+        margin-right: 1rem !important;
+        font-size: 0.9rem !important;
+    }
+    
+    /* Align action cells nicely on mobile */
+    .table-responsive-cards td:not([data-label]) {
+        justify-content: center !important;
+    }
+    
+    /* Make inputs and autocomplete expand nicely on mobile edit mode */
+    .table-responsive-cards td .control,
+    .table-responsive-cards td input {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .table-responsive-cards td input.input {
+        text-align: right;
+    }
+}
+
+

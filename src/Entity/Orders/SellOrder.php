@@ -111,4 +111,24 @@ class SellOrder
 
         return $this;
     }
+
+    private ?array $jitaPriceInfo = null;
+
+    public function getJitaPriceInfo(): ?array
+    {
+        return $this->jitaPriceInfo;
+    }
+
+    public function setJitaPriceInfo(?array $jitaPriceInfo): void
+    {
+        $this->jitaPriceInfo = $jitaPriceInfo;
+    }
+
+    public function getCalculatedTotal(): ?float
+    {
+        if ($this->jitaPriceInfo === null || $this->jitaPriceInfo['price'] === null) {
+            return null;
+        }
+        return $this->jitaPriceInfo['price'] * $this->amount * ($this->percentToJitaSell / 100);
+    }
 }

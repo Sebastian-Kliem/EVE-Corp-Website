@@ -60,115 +60,151 @@
             </div>
         </details>
 
-        <table class="table is-striped is-fullwidth">
-            <thead>
-            <tr>
-                <th>Item</th>
-                <th>Menge</th>
-                <th>% zu Jita-Buy</th>
-                <th>Besteller</th>
-                <th>Wird bedient von</th>
-                <th></th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for buy_order in buy_orders %}
-                {% if editing_buy_order and editing_buy_order.id == buy_order.id %}
-                    <form id="edit_buy_form_{{ buy_order.id }}" action="{{ path('update_order', {'id': buy_order.id}) }}" method="post" style="display: none;"></form>
-                    <tr class="is-selected" style="background: rgba(0, 240, 255, 0.05);">
-                        <td>
-                            <div class="control" style="min-width: 250px;">
-                                {{ react_component('ItemAutocomplete', {
-                                    'jwtToken': jwt_token(app.user),
-                                    'inputId': 'itemname_buy_' ~ buy_order.id,
-                                    'inputName': 'itemname',
-                                    'defaultValue': buy_order.item|eve_item_name,
-                                    'defaultId': buy_order.item,
-                                    'placeholder': 'Item...',
-                                    'form': 'edit_buy_form_' ~ buy_order.id
-                                }) }}
-                            </div>
-                        </td>
-                        <td>
-                            <input class="input" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" style="max-width: 100px;" required>
-                        </td>
-                        <td>
-                            <input class="input" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" style="max-width: 100px;" required>
-                        </td>
-                        <td>{{ buy_order.buyer.displayName }}</td>
-                        <td>
-                            <div class="control" style="min-width: 180px;">
-                                {{ react_component('UserAutocomplete', {
-                                    'inputId': 'seller_' ~ buy_order.id,
-                                    'inputName': 'seller',
-                                    'defaultValue': buy_order.fulfiller ? buy_order.fulfiller.username : '',
-                                    'placeholder': 'Mitglied...',
-                                    'users': users,
-                                    'form': 'edit_buy_form_' ~ buy_order.id
-                                }) }}
-                            </div>
-                        </td>
-                        <td>
-                            <button type="submit" form="edit_buy_form_{{ buy_order.id }}" class="button is-small is-success">Speichern</button>
-                        </td>
-                        <td>
-                            <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td>
-                            <div class="is-flex-align-center">
-                                {{ buy_order.item|eve_item_icon(24) }}
-                                <span class="ml-2">{{ buy_order.item|eve_item_name }}</span>
-                            </div>
-                        </td>
-                        <td>{{ buy_order.amount }}</td>
-                        <td>{{ buy_order.percentToJitaBuy }}</td>
-                        <td>{{ buy_order.buyer.displayName }}</td>
-
-                        {% if buy_order.fulfiller %}
-                            <td>{{ buy_order.fulfiller.displayName }}</td>
-                        {% else %}
-                            <td>
-                                <form action="{{ path('set_order_fulfiller', {'id': buy_order.id}) }}"
-                                      method="POST"
-                                      class="m-0">
-                                    <button type="submit" class="button is-small is-primary is-outlined">
-                                        Annehmen
-                                    </button>
-                                </form>
+        <div class="table-container table-responsive-cards">
+            <table class="table is-striped is-fullwidth">
+                <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Menge</th>
+                    <th>% zu Jita-Buy</th>
+                    <th>Gesamtwert</th>
+                    <th>Besteller</th>
+                    <th>Wird bedient von</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for buy_order in buy_orders %}
+                    {% if editing_buy_order and editing_buy_order.id == buy_order.id %}
+                        <form id="edit_buy_form_{{ buy_order.id }}" action="{{ path('update_order', {'id': buy_order.id}) }}" method="post" class="is-display-none"></form>
+                        <tr class="is-selected tr-editing-selected">
+                            <td data-label="Item">
+                                <div class="control control-item-autocomplete">
+                                    {{ react_component('ItemAutocomplete', {
+                                        'jwtToken': jwt_token(app.user),
+                                        'inputId': 'itemname_buy_' ~ buy_order.id,
+                                        'inputName': 'itemname',
+                                        'defaultValue': buy_order.item|eve_item_name,
+                                        'defaultId': buy_order.item,
+                                        'placeholder': 'Item...',
+                                        'form': 'edit_buy_form_' ~ buy_order.id
+                                    }) }}
+                                    {% if buy_order.jitaPriceInfo and buy_order.jitaPriceInfo.price is not null %}
+                                        <p class="help has-text-grey-light mt-1">
+                                            Jita-Buy: {{ buy_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
+                                            {% if buy_order.jitaPriceInfo.warning %}
+                                                <span class="has-text-warning" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
+                                            {% endif %}
+                                        </p>
+                                    {% endif %}
+                                </div>
                             </td>
-                        {% endif %}
-
-                        <td>
-                            {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
-                                <a class="button is-small is-light" href="{{ path('update_order', {'id': buy_order.id}) }}">Bearbeiten</a>
+                            <td data-label="Menge">
+                                <input class="input input-narrow" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" required>
+                            </td>
+                            <td data-label="% zu Jita-Buy">
+                                <input class="input input-narrow" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" required>
+                            </td>
+                            <td data-label="Gesamtwert">
+                                {% if buy_order.calculatedTotal is not null %}
+                                    <strong>{{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                {% else %}
+                                    <span class="has-text-grey-light">-</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
+                            <td data-label="Wird bedient von">
+                                <div class="control control-user-autocomplete">
+                                    {{ react_component('UserAutocomplete', {
+                                        'inputId': 'seller_' ~ buy_order.id,
+                                        'inputName': 'seller',
+                                        'defaultValue': buy_order.fulfiller ? buy_order.fulfiller.username : '',
+                                        'placeholder': 'Mitglied...',
+                                        'users': users,
+                                        'form': 'edit_buy_form_' ~ buy_order.id
+                                    }) }}
+                                </div>
+                            </td>
+                            <td>
+                                <button type="submit" form="edit_buy_form_{{ buy_order.id }}" class="button is-small is-success">Speichern</button>
+                            </td>
+                            <td>
+                                <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td data-label="Item">
+                                <div class="is-flex-align-center">
+                                    {{ buy_order.item|eve_item_icon(24) }}
+                                    <div>
+                                        <span class="ml-2">{{ buy_order.item|eve_item_name }}</span>
+                                        {% if buy_order.jitaPriceInfo and buy_order.jitaPriceInfo.price is not null %}
+                                            <br>
+                                            <span class="ml-2 is-size-7 has-text-grey-light">
+                                                Jita-Buy: {{ buy_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
+                                                {% if buy_order.jitaPriceInfo.warning %}
+                                                    <span class="has-text-warning cursor-help" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Menge">{{ buy_order.amount }}</td>
+                            <td data-label="% zu Jita-Buy">{{ buy_order.percentToJitaBuy }}%</td>
+                            <td data-label="Gesamtwert">
+                                {% if buy_order.calculatedTotal is not null %}
+                                    <strong>{{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                {% else %}
+                                    <span class="has-text-grey-light">-</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
+     
+                            {% if buy_order.fulfiller %}
+                                <td data-label="Wird bedient von">{{ buy_order.fulfiller.displayName }}</td>
+                            {% else %}
+                                <td data-label="Wird bedient von">
+                                    <form action="{{ path('set_order_fulfiller', {'id': buy_order.id}) }}"
+                                          method="POST"
+                                          class="m-0">
+                                        <button type="submit" class="button is-small is-primary is-outlined">
+                                            Annehmen
+                                        </button>
+                                    </form>
+                                </td>
                             {% endif %}
-                        </td>
-
-                        <td>
-                            {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
-                                <form action="{{ path('app_order_delete', {'id': buy_order.id}) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ buy_order.item|eve_item_name }} löschen möchten?');">
-
-                                    <input type="hidden"
-                                           name="_method"
-                                           value="DELETE">
-
-                                    <button type="submit" class="button is-small is-danger">
-                                        Löschen
-                                    </button>
-                                </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endif %}
-            {% endfor %}
-            </tbody>
-        </table>
+     
+                            <td>
+                                {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
+                                    <a class="button is-small is-light" href="{{ path('update_order', {'id': buy_order.id}) }}">Bearbeiten</a>
+                                {% endif %}
+                            </td>
+     
+                            <td>
+                                {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
+                                    <form action="{{ path('app_order_delete', {'id': buy_order.id}) }}"
+                                          method="POST"
+                                          onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ buy_order.item|eve_item_name }} löschen möchten?');">
+     
+                                        <input type="hidden"
+                                               name="_method"
+                                               value="DELETE">
+     
+                                        <button type="submit" class="button is-small is-danger">
+                                            Löschen
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         <hr>
 
@@ -226,115 +262,151 @@
             </div>
         </details>
 
-        <table class="table is-striped is-fullwidth">
-            <thead>
-            <tr>
-                <th>Item</th>
-                <th>Menge</th>
-                <th>% zu Jita-Sell</th>
-                <th>Verkäufer</th>
-                <th>Wird bedient von</th>
-                <th></th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for sell_order in sell_orders %}
-                {% if editing_sell_order and editing_sell_order.id == sell_order.id %}
-                    <form id="edit_sell_form_{{ sell_order.id }}" action="{{ path('update_sell', {'id': sell_order.id}) }}" method="post" style="display: none;"></form>
-                    <tr class="is-selected" style="background: rgba(0, 240, 255, 0.05);">
-                        <td>
-                            <div class="control" style="min-width: 250px;">
-                                {{ react_component('ItemAutocomplete', {
-                                    'jwtToken': jwt_token(app.user),
-                                    'inputId': 'itemname_sell_' ~ sell_order.id,
-                                    'inputName': 'itemname',
-                                    'defaultValue': sell_order.item|eve_item_name,
-                                    'defaultId': sell_order.item,
-                                    'placeholder': 'Item...',
-                                    'form': 'edit_sell_form_' ~ sell_order.id
-                                }) }}
-                            </div>
-                        </td>
-                        <td>
-                            <input class="input" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" style="max-width: 100px;" required>
-                        </td>
-                        <td>
-                            <input class="input" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" style="max-width: 100px;" required>
-                        </td>
-                        <td>{{ sell_order.seller.displayName }}</td>
-                        <td>
-                            <div class="control" style="min-width: 180px;">
-                                {{ react_component('UserAutocomplete', {
-                                    'inputId': 'buyer_' ~ sell_order.id,
-                                    'inputName': 'buyer',
-                                    'defaultValue': sell_order.buyer ? sell_order.buyer.username : '',
-                                    'placeholder': 'Mitglied...',
-                                    'users': users,
-                                    'form': 'edit_sell_form_' ~ sell_order.id
-                                }) }}
-                            </div>
-                        </td>
-                        <td>
-                            <button type="submit" form="edit_sell_form_{{ sell_order.id }}" class="button is-small is-success">Speichern</button>
-                        </td>
-                        <td>
-                            <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td>
-                            <div class="is-flex-align-center">
-                                {{ sell_order.item|eve_item_icon(24) }}
-                                <span class="ml-2">{{ sell_order.item|eve_item_name }}</span>
-                            </div>
-                        </td>
-                        <td>{{ sell_order.amount }}</td>
-                        <td>{{ sell_order.percentToJitaSell }}</td>
-                        <td>{{ sell_order.seller.displayName }}</td>
-
-                        {% if sell_order.buyer %}
-                            <td>{{ sell_order.buyer.displayName }}</td>
-                        {% else %}
-                            <td>
-                                <form action="{{ path('set_sell_fulfiller', {'id': sell_order.id}) }}"
-                                      method="POST"
-                                      class="m-0">
-                                    <button type="submit" class="button is-small is-primary is-outlined">
-                                        Annehmen
-                                    </button>
-                                </form>
+        <div class="table-container table-responsive-cards">
+            <table class="table is-striped is-fullwidth">
+                <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Menge</th>
+                    <th>% zu Jita-Sell</th>
+                    <th>Gesamtwert</th>
+                    <th>Verkäufer</th>
+                    <th>Wird bedient von</th>
+                    <th></th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for sell_order in sell_orders %}
+                    {% if editing_sell_order and editing_sell_order.id == sell_order.id %}
+                        <form id="edit_sell_form_{{ sell_order.id }}" action="{{ path('update_sell', {'id': sell_order.id}) }}" method="post" class="is-display-none"></form>
+                        <tr class="is-selected tr-editing-selected">
+                            <td data-label="Item">
+                                <div class="control control-item-autocomplete">
+                                    {{ react_component('ItemAutocomplete', {
+                                        'jwtToken': jwt_token(app.user),
+                                        'inputId': 'itemname_sell_' ~ sell_order.id,
+                                        'inputName': 'itemname',
+                                        'defaultValue': sell_order.item|eve_item_name,
+                                        'defaultId': sell_order.item,
+                                        'placeholder': 'Item...',
+                                        'form': 'edit_sell_form_' ~ sell_order.id
+                                    }) }}
+                                    {% if sell_order.jitaPriceInfo and sell_order.jitaPriceInfo.price is not null %}
+                                        <p class="help has-text-grey-light mt-1">
+                                            Jita-Sell: {{ sell_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
+                                            {% if sell_order.jitaPriceInfo.warning %}
+                                                <span class="has-text-warning" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
+                                            {% endif %}
+                                        </p>
+                                    {% endif %}
+                                </div>
                             </td>
-                        {% endif %}
-
-                        <td>
-                            {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
-                                <a class="button is-small is-light" href="{{ path('update_sell', {'id': sell_order.id}) }}">Bearbeiten</a>
+                            <td data-label="Menge">
+                                <input class="input input-narrow" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" required>
+                            </td>
+                            <td data-label="% zu Jita-Sell">
+                                <input class="input input-narrow" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" required>
+                            </td>
+                            <td data-label="Gesamtwert">
+                                {% if sell_order.calculatedTotal is not null %}
+                                    <strong>{{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                {% else %}
+                                    <span class="has-text-grey-light">-</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
+                            <td data-label="Wird bedient von">
+                                <div class="control control-user-autocomplete">
+                                    {{ react_component('UserAutocomplete', {
+                                        'inputId': 'buyer_' ~ sell_order.id,
+                                        'inputName': 'buyer',
+                                        'defaultValue': sell_order.buyer ? sell_order.buyer.username : '',
+                                        'placeholder': 'Mitglied...',
+                                        'users': users,
+                                        'form': 'edit_sell_form_' ~ sell_order.id
+                                    }) }}
+                                </div>
+                            </td>
+                            <td>
+                                <button type="submit" form="edit_sell_form_{{ sell_order.id }}" class="button is-small is-success">Speichern</button>
+                            </td>
+                            <td>
+                                <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td data-label="Item">
+                                <div class="is-flex-align-center">
+                                    {{ sell_order.item|eve_item_icon(24) }}
+                                    <div>
+                                        <span class="ml-2">{{ sell_order.item|eve_item_name }}</span>
+                                        {% if sell_order.jitaPriceInfo and sell_order.jitaPriceInfo.price is not null %}
+                                            <br>
+                                            <span class="ml-2 is-size-7 has-text-grey-light">
+                                                Jita-Sell: {{ sell_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
+                                                {% if sell_order.jitaPriceInfo.warning %}
+                                                    <span class="has-text-warning cursor-help" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Menge">{{ sell_order.amount }}</td>
+                            <td data-label="% zu Jita-Sell">{{ sell_order.percentToJitaSell }}%</td>
+                            <td data-label="Gesamtwert">
+                                {% if sell_order.calculatedTotal is not null %}
+                                    <strong>{{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                {% else %}
+                                    <span class="has-text-grey-light">-</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
+     
+                            {% if sell_order.buyer %}
+                                <td data-label="Wird bedient von">{{ sell_order.buyer.displayName }}</td>
+                            {% else %}
+                                <td data-label="Wird bedient von">
+                                    <form action="{{ path('set_sell_fulfiller', {'id': sell_order.id}) }}"
+                                          method="POST"
+                                          class="m-0">
+                                        <button type="submit" class="button is-small is-primary is-outlined">
+                                            Annehmen
+                                        </button>
+                                    </form>
+                                </td>
                             {% endif %}
-                        </td>
-
-                        <td>
-                            {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
-                                <form action="{{ path('app_sell_delete', {'id': sell_order.id}) }}"
-                                      method="POST"
-                                      onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ sell_order.item|eve_item_name }} löschen möchten?');">
-
-                                    <input type="hidden"
-                                           name="_method"
-                                           value="DELETE">
-
-                                    <button type="submit" class="button is-small is-danger">
-                                        Löschen
-                                    </button>
-                                </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endif %}
-            {% endfor %}
-            </tbody>
-        </table>
+     
+                            <td>
+                                {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
+                                    <a class="button is-small is-light" href="{{ path('update_sell', {'id': sell_order.id}) }}">Bearbeiten</a>
+                                {% endif %}
+                            </td>
+     
+                            <td>
+                                {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
+                                    <form action="{{ path('app_sell_delete', {'id': sell_order.id}) }}"
+                                          method="POST"
+                                          onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ sell_order.item|eve_item_name }} löschen möchten?');">
+     
+                                        <input type="hidden"
+                                               name="_method"
+                                               value="DELETE">
+     
+                                        <button type="submit" class="button is-small is-danger">
+                                            Löschen
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
     </div>
 

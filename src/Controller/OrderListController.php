@@ -14,6 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use App\Repository\UserRepository;
 use App\Service\SdeService;
+use App\Service\JitaPriceService;
 
 #[IsGranted('ROLE_MEMBER')]
 final class OrderListController extends AbstractController
@@ -23,11 +24,28 @@ final class OrderListController extends AbstractController
         Request             $request,
         BuyOrderRepository  $orderRepository,
         SellOrderRepository $sellRepository,
-        UserRepository      $userRepository
+        UserRepository      $userRepository,
+        JitaPriceService    $jitaPriceService
     ): Response
     {
         $orders = $orderRepository->findAll();
         $sell = $sellRepository->findAll();
+
+        // Populate Jita prices for buy orders
+        foreach ($orders as $order) {
+            $itemId = $order->getItem();
+            if (is_numeric($itemId)) {
+                $order->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, true));
+            }
+        }
+
+        // Populate Jita prices for sell orders
+        foreach ($sell as $sellOrder) {
+            $itemId = $sellOrder->getItem();
+            if (is_numeric($itemId)) {
+                $sellOrder->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, false));
+            }
+        }
 
         $editingBuyOrder = null;
         $editingSellOrder = null;

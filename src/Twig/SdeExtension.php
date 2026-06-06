@@ -79,7 +79,7 @@ class SdeExtension extends AbstractExtension
             }
         }
 
-        $url = sprintf('https://images.evetech.net/types/%d/%s?size=%d', $itemId, $variation, $requestSize);
+        $url = sprintf('/eve/image/types/%d/%s?size=%d', $itemId, $variation, $requestSize);
 
         return sprintf(
             '<img src="%s" style="width: %dpx; height: %dpx; vertical-align: middle; border-radius: 4px; margin-right: 8px;" alt="Icon" loading="lazy">',
