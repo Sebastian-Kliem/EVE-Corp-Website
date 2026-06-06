@@ -106,6 +106,27 @@ Die React-Komponenten liegen unter `react/` und werden via Esbuild direkt in den
 
 ---
 
+## 👥 Rechte- & Rollenkonzept (Nutzerverwaltung)
+
+Dieses Projekt steuert den Zugriff auf die verschiedenen Bereiche und Corp-Tools über ein mehrstufiges, hierarchisches Symfony-Rechtesystem. Höhere Rollen erben automatisch alle Rechte der untergeordneten Rollen.
+
+### 1. Rollen-Hierarchie
+Die Rollen sind wie folgt von unten nach oben hierarchisch strukturiert (eine Rolle rechts erbt alle Berechtigungen der Rollen links davon):
+`ROLE_USER` ➔ `ROLE_RECRUIT` ➔ `ROLE_MEMBER` ➔ `ROLE_OFFICER` ➔ `ROLE_CEO` ➔ `ROLE_ADMIN`
+
+### 2. Berechtigungen (Wer darf was?)
+
+| Bereich / URL | Mindestrolle | Beschreibung & Berechtigungen |
+| :--- | :--- | :--- |
+| **Öffentlicher Bereich** (`/login`, `/api/login`) | *Jeder (Anonym)* | Login-Seiten und API-Authentifizierung. |
+| **Eigenes Profil** (`/profile`) | `IS_AUTHENTICATED_FULLY` | Zugriff auf das eigene Benutzerprofil. |
+| **Rekruten** (`ROLE_RECRUIT` / `ROLE_USER`) | `ROLE_RECRUIT` | Kann sich anmelden und sein Profil einsehen, hat aber **keinen** Zugriff auf interne Corp-Tools. |
+| **Interne Corp-Tools** (`/link`, `/order`) | `ROLE_MEMBER` | Vollwertiges Mitglied. Hat Zugriff auf die Linksammlung sowie Kauf- und Verkaufsaufträge (Orders). |
+| **REST-API** (`/api/*`) | `ROLE_MEMBER` | Zugriff auf die statuslosen API-Endpunkte (z. B. für externe Tools oder Corp-Skripte). |
+| **Admin-Bereich** (`/admin/*`) | `ROLE_OFFICER` | Zugriff auf administrative Oberflächen und Verwaltungs-Tools. Gilt auch für `ROLE_CEO` und `ROLE_ADMIN`. |
+
+---
+
 ## 💡 Entwickler-Tipps & Best Practices
 
 ### 🔒 Sicherheit & Authentifizierung
