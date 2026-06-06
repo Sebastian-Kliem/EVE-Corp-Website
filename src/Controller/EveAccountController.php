@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
+use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\LocationService;
 use App\Service\SdeService;
@@ -304,6 +305,152 @@ class EveAccountController extends AbstractController
         if (isset($nestedAssets[$itemId])) {
             foreach ($nestedAssets[$itemId] as $childAsset) {
                 $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService);
+            }
+            usort($children, function ($a, $b) {
+                return strcasecmp($a['name'], $b['name']);
+            });
+        }
+
+        return [
+            'itemId' => $itemId,
+            'typeId' => $asset->getTypeId(),
+            'name' => $sdeService->getItemName($asset->getTypeId()),
+            'quantity' => $asset->getQuantity(),
+            'locationFlag' => $asset->getLocationFlag(),
+            'isBlueprintCopy' => $asset->isBlueprintCopy(),
+            'isSingleton' => $asset->isSingleton(),
+            'children' => $children,
+        ];
+    }
+
+    #[Route('/corp/assets', name: 'app_corp_assets_overview', methods: ['GET'])]
+    public function corpAssetsOverview(LocationService $locationService, SdeService $sdeService, \App\Service\Esi\EsiClient $esiClient): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+            'user' => $currentUser
+        ]);
+
+        $corpIds = [];
+        foreach ($characters as $character) {
+            if ($character->getCorporationId()) {
+                $corpIds[] = $character->getCorporationId();
+            }
+        }
+        $corpIds = array_unique($corpIds);
+
+        $corpData = [];
+
+        foreach ($corpIds as $corpId) {
+            // Fetch assets for this corporation
+            $assets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy([
+                'corporationId' => $corpId
+            ]);
+
+            // Try to find the sync character for this corp
+            $syncCharacter = $this->entityManager->getRepository(EveCharacter::class)->createQueryBuilder('c')
+                ->where('c.corporationId = :corpId')
+                ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
+                ->setParameter('corpId', $corpId)
+                ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+
+            $corpName = 'Corporation ' . $corpId;
+            try {
+                $corpInfo = $esiClient->request('GET', sprintf('corporations/%d/', $corpId));
+                if (isset($corpInfo['name'])) {
+                    $corpName = $corpInfo['name'];
+                }
+            } catch (\Exception $e) {
+                // Ignore
+            }
+
+            // Rebuild tree
+            $assetsByItemId = [];
+            foreach ($assets as $asset) {
+                $assetsByItemId[$asset->getItemId()] = $asset;
+            }
+
+            $nestedAssets = [];
+            $topLevelAssetsByLocation = [];
+
+            foreach ($assets as $asset) {
+                $parentId = $asset->getLocationId();
+                if (isset($assetsByItemId[$parentId])) {
+                    $nestedAssets[$parentId][] = $asset;
+                } else {
+                    $topLevelAssetsByLocation[$parentId][] = $asset;
+                }
+            }
+
+            $locations = [];
+            foreach ($topLevelAssetsByLocation as $locationId => $topAssets) {
+                $resolved = $locationService->resolveLocation($locationId, $syncCharacter);
+                $locationName = $resolved['name'];
+                $systemName = $resolved['systemName'];
+                
+                $items = [];
+                foreach ($topAssets as $asset) {
+                    $items[] = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService);
+                }
+
+                usort($items, function ($a, $b) {
+                    return strcasecmp($a['name'], $b['name']);
+                });
+
+                $locations[] = [
+                    'id' => $locationId,
+                    'name' => $locationName,
+                    'systemName' => $systemName,
+                    'items' => $items,
+                ];
+            }
+
+            // Sort locations primarily by system name, then by location name
+            usort($locations, function ($a, $b) {
+                $sysCompare = strcasecmp($a['systemName'], $b['systemName']);
+                if ($sysCompare !== 0) {
+                    return $sysCompare;
+                }
+                return strcasecmp($a['name'], $b['name']);
+            });
+
+            $corpData[] = [
+                'corporation' => [
+                    'id' => $corpId,
+                    'name' => $corpName,
+                    'lastAssetsUpdate' => $syncCharacter && $syncCharacter->getLastCorpAssetsUpdate() 
+                        ? $syncCharacter->getLastCorpAssetsUpdate()->format('d.m.Y H:i') 
+                        : null,
+                    'syncCharacterName' => $syncCharacter ? $syncCharacter->getName() : null
+                ],
+                'locations' => $locations,
+            ];
+        }
+
+        // Sort corps by name
+        usort($corpData, function ($a, $b) {
+            return strcasecmp($a['corporation']['name'], $b['corporation']['name']);
+        });
+
+        return $this->render('profile/corp_assets_overview.html.twig', [
+            'corpData' => $corpData,
+        ]);
+    }
+
+    private function buildCorpAssetTreeNode(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService): array
+    {
+        $itemId = $asset->getItemId();
+        $children = [];
+        if (isset($nestedAssets[$itemId])) {
+            foreach ($nestedAssets[$itemId] as $childAsset) {
+                $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService);
             }
             usort($children, function ($a, $b) {
                 return strcasecmp($a['name'], $b['name']);

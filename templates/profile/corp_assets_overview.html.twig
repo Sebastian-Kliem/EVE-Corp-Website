@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Corp-Inventar{% endblock %}
+
+{% block body %}
+{% set corpDataProps = [] %}
+{% for data in corpData %}
+    {% set corpProps = {
+        id: data.corporation.id,
+        name: data.corporation.name,
+        lastAssetsUpdate: data.corporation.lastAssetsUpdate,
+        syncCharacterName: data.corporation.syncCharacterName
+    } %}
+    {% set corpDataProps = corpDataProps|merge([{
+        corporation: corpProps,
+        locations: data.locations
+    }]) %}
+{% endfor %}
+
+{% set reactProps = {
+    corpData: corpDataProps,
+    imagePaths: {
+        types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+        corporations: path('app_eve_image_proxy', { category: 'corporations', id: 12345, action: 'logo' })
+    }
+} %}
+
+<div data-react-component="CorpAssetsOverview" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+{% endblock %}
