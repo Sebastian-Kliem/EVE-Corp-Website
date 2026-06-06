@@ -98,7 +98,7 @@ class SdeService
             );
 
             if ($groupName) {
-                return (bool)preg_match('/blueprint/i', $groupName);
+                return (bool)preg_match('/(blueprint|formula)/i', $groupName);
             }
         } catch (\Exception $e) {
             // Keep going and return false on errors

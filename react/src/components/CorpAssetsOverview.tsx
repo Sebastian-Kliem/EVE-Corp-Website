@@ -184,6 +184,8 @@ export default function CorpAssetsOverview({
                 >
                     {item.typeId === 0 ? (
                         <span className="asset-item-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', margin: 0, padding: 0 }}>📁</span>
+                    ) : item.typeId === 27 ? (
+                        <span className="asset-item-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', margin: 0, padding: 0 }}>🏢</span>
                     ) : (
                         <img
                             src={getTypeIconUrl(item)}
