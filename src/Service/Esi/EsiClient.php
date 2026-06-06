@@ -131,7 +131,8 @@ class EsiClient
 
             return true;
         } catch (\Exception $e) {
-            // Log error or clear token if unauthorized (user revoked app permission)
+            // Log error to system error log for easy developer troubleshooting
+            error_log(sprintf('[EsiClient] Failed to refresh token for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
             return false;
         }
     }
@@ -139,7 +140,7 @@ class EsiClient
     /**
      * Performs a request to the ESI API.
      */
-    public function request(string $method, string $path, array $options = [], ?EveCharacter $character = null): array
+    public function request(string $method, string $path, array $options = [], ?EveCharacter $character = null): mixed
     {
         $method = strtoupper($method);
         
@@ -175,8 +176,26 @@ class EsiClient
         $options['headers'] = $headers;
         $url = self::BASE_URL . ltrim($path, '/');
 
-        $response = $this->httpClient->request($method, $url, $options);
-        $data = $response->toArray();
+        try {
+            $response = $this->httpClient->request($method, $url, $options);
+            $data = json_decode($response->getContent(), true);
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
+            if ($character && $e->getResponse()->getStatusCode() === 401) {
+                error_log(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()));
+                if ($this->refreshToken($character)) {
+                    $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
+                    $options['headers'] = $headers;
+                    
+                    $response = $this->httpClient->request($method, $url, $options);
+                    $data = json_decode($response->getContent(), true);
+                } else {
+                    throw $e;
+                }
+            } else {
+                throw $e;
+            }
+        }
 
         // Cache the response if it was a successful GET request and contains Expires header
         if ($useCache && $cacheItem !== null) {
