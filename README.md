@@ -17,7 +17,7 @@ In diesem Projekt verwenden wir **[Bulma](https://bulma.io/)** als CSS-Framework
 ## 🛠️ Technologie-Stack
 
 - **Backend:** Symfony 7.3 (PHP 8.2+)
-- **Datenbank:** Doctrine ORM (MySQL/MariaDB) + SQLite für EVE SDE
+- **Datenbank:** Doctrine ORM (**zwingend MariaDB**, da die Migrationen diese voraussetzen) + SQLite für EVE SDE
 - **Frontend-Pipeline:** Symfony AssetMapper (kein Webpack Encore/Vite im Hauptprojekt nötig!)
 - **Dynamische UI-Komponenten:** React & TypeScript als "Insellösung" (Islands Architecture)
 - **Kommunikation:** Symfony UX Turbo & Stimulus
@@ -40,10 +40,18 @@ Hier findest du eine Übersicht aller spezifischen Commands dieser App:
 
 ### 1. Installation & SDE-Update
 * **App vollständig installieren:**
-  Richtet die Datenbank ein, führt alle Migrationen aus und lädt die neuesten EVE SDE-Daten herunter.
+  Richtet die Datenbank ein, führt alle Migrationen aus, lädt die neuesten EVE SDE-Daten herunter und erstellt interaktiv einen Administrator-Benutzer.
   ```bash
   ddev php bin/console app:install
   ```
+  **Ablauf des Installationsprozesses:**
+  1. **Datenbank erstellen:** Legt die Hauptdatenbank an (falls sie noch nicht existiert).
+  2. **Migrationen ausführen:** Führt alle Doctrine-Migrationen aus (benötigt zwingend eine MariaDB).
+  3. **EVE Online SDE initialisieren:** Lädt den neuesten Static Data Export (SQLite) von Fuzzwork herunter und importiert ihn.
+  4. **Administrator erstellen (Interaktiv):**
+     - Wenn die Konsole im interaktiven Modus läuft, fragt das Skript nacheinander nach einem **Admin-Benutzernamen** (Vorschlag: `admin`) und einem **Admin-Passwort** (verdeckte Eingabe).
+     - Bei der Ausführung im nicht-interaktiven Modus (z. B. mit `--no-interaction`) wird dieser Schritt automatisch übersprungen.
+
 * **EVE Online SDE aktualisieren:**
   Prüft auf Aktualisierungen des EVE Online Static Data Exports (SQLite von Fuzzwork) und lädt diesen bei Bedarf herunter.
   ```bash
@@ -54,28 +62,25 @@ Hier findest du eine Übersicht aller spezifischen Commands dieser App:
   - `-u <URL>` / `--url=<URL>`: Alternative Download-Quelle für das `sqlite.bz2`-File.
 
 ### 2. Benutzer- & Rechteverwaltung
-Das Projekt verfügt über ein vierstufiges Rechtesystem:
-- **`ROLE_GUEST`**: Gast (Standard nach Registrierung, wartet auf Freischaltung).
-- **`ROLE_USER`**: Normales Corp-Mitglied (Zugriff auf internen Bereich: Linksammlung, API).
-- **`ROLE_TRUSTED`**: Erweitertes Mitglied (Zugriff auf Orders, darf Gäste freischalten).
+Das Projekt verfügt über ein mehrstufiges Rechtesystem:
+- **`ROLE_RECRUIT`**: Rekrut (Standard nach Erstellung).
+- **`ROLE_MEMBER`**: Normales Corp-Mitglied (Zugriff auf internen Bereich).
+- **`ROLE_OFFICER`**: Offizier.
+- **`ROLE_CEO`**: CEO.
 - **`ROLE_ADMIN`**: Administrator (darf alle Rollen verwalten).
 
 * **Benutzer erstellen:**
   ```bash
-  ddev php bin/console app:create-user <email> <password> [<role>] [<displayName>]
+  ddev php bin/console app:create-user <username> <password> [<role>]
   ```
-  *(Erstellt einen Benutzer direkt über die CLI mit optionaler Rolle - Standard ist `ROLE_GUEST`)*
+  *(Erstellt einen Benutzer direkt über die CLI mit optionaler Rolle - Standard ist `ROLE_RECRUIT`)*
 * **Rolle nachträglich zuweisen (Promotion):**
   ```bash
-  ddev php bin/console app:promote-user <email> <role>
-  ```
-* **Anzeigename ändern:**
-  ```bash
-  ddev php bin/console app:set-displayname <email> "<Anzeigename>"
+  ddev php bin/console app:promote-user <username> <role>
   ```
 * **Passwort zurücksetzen (Notfall-CLI):**
   ```bash
-  ddev php bin/console app:reset-password <email> [<new-password>]
+  ddev php bin/console app:reset-password <username> [<new-password>]
   ```
   *(Setzt das Passwort eines Benutzers zurück. Wenn kein Wunschpasswort angegeben wird, generiert das Command ein zufälliges temporäres Passwort.)*
 
