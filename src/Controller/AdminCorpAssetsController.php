@@ -156,7 +156,7 @@ class AdminCorpAssetsController extends AbstractController
             return $this->redirectToRoute('app_admin_corp_assets_visibility');
         }
 
-        // 6. Map divisions for rendering (Hangar 1-7 + Deliveries)
+        // 6. Map divisions for rendering (Hangar 1-7)
         $flagsToMap = [
             'CorpSAG1' => 1,
             'CorpSAG2' => 2,
@@ -164,8 +164,7 @@ class AdminCorpAssetsController extends AbstractController
             'CorpSAG4' => 4,
             'CorpSAG5' => 5,
             'CorpSAG6' => 6,
-            'CorpSAG7' => 7,
-            'CorpDeliveries' => 'deliveries'
+            'CorpSAG7' => 7
         ];
 
         return $this->render('admin/corp_assets_visibility.html.twig', [

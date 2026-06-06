@@ -42,18 +42,16 @@
                     {% endif %}
                 </h3>
                 
-                <div class="columns is-multiline">
+                <div class="admin-visibility-list">
                     {% for flag, label in flagsToMap %}
-                        {% set hangarName = defaultDivisions[label] ?? (flag == 'CorpDeliveries' ? 'Lieferungen (Deliveries)' : 'Hangar ' ~ label) %}
+                        {% set hangarName = defaultDivisions[label] ?? 'Hangar ' ~ label %}
                         {% set isChecked = visibilityMap[locId][flag] ?? false %}
-                        <div class="column is-one-quarter-desktop is-one-half-tablet">
-                            <div class="field">
-                                <div class="control">
-                                    <label class="checkbox has-text-grey-light admin-visibility-checkbox-label">
-                                        <input type="checkbox" name="visibility[{{ locId }}][{{ flag }}]" value="1" {% if isChecked %}checked{% endif %} class="admin-visibility-checkbox">
-                                        <span>{{ hangarName }}</span>
-                                    </label>
-                                </div>
+                        <div class="field mb-3">
+                            <div class="control">
+                                <label class="checkbox has-text-grey-light admin-visibility-checkbox-label">
+                                    <input type="checkbox" name="visibility[{{ locId }}][{{ flag }}]" value="1" {% if isChecked %}checked{% endif %} class="admin-visibility-checkbox">
+                                    <span>{{ hangarName }}</span>
+                                </label>
                             </div>
                         </div>
                     {% endfor %}
