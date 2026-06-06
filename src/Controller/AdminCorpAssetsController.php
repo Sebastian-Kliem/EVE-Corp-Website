@@ -72,7 +72,11 @@ class AdminCorpAssetsController extends AbstractController
                     $divData = $this->esiClient->request('GET', sprintf('corporations/%d/divisions/', $corpId), [], $syncCharacter);
                     if (isset($divData['hangar']) && is_array($divData['hangar'])) {
                         foreach ($divData['hangar'] as $div) {
-                            $divisionNames[(int) $div['division']] = $div['name'];
+                            $name = $div['name'];
+                            if (!preg_match('/^Hangar\s*\d+$/i', $name)) {
+                                $name = preg_replace('/\s*\d+$/', '', $name);
+                            }
+                            $divisionNames[(int) $div['division']] = $name;
                         }
                     }
                 } catch (\Exception $e) {
