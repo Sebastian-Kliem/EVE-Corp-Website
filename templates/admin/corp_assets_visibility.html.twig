@@ -36,7 +36,7 @@
         {% for locId, loc in locations %}
             <div class="box mb-5">
                 <h3 class="title is-5 mb-4 admin-visibility-header">
-                    📍 {{ loc.name }} 
+                    {{ loc.name }} 
                     {% if loc.systemName %}
                         <span class="tag is-dark ml-2">{{ loc.systemName }}</span>
                     {% endif %}

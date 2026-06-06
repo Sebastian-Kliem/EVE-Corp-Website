@@ -392,8 +392,8 @@ class EveAccountController extends AbstractController
                     if (isset($divData['hangar']) && is_array($divData['hangar'])) {
                         foreach ($divData['hangar'] as $div) {
                             $name = $div['name'];
-                            if (!preg_match('/^Hangar\s*\d+$/i', $name)) {
-                                $name = preg_replace('/\s*\d+$/', '', $name);
+                            if (!preg_match('/^Hangar\s*\d+$/ui', $name)) {
+                                $name = preg_replace('/\s*\d+$/u', '', $name);
                             }
                             $divisionNames[(int) $div['division']] = $name;
                         }
