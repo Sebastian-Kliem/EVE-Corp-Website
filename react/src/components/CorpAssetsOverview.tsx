@@ -8,6 +8,7 @@ interface AssetNode {
     quantity: number;
     locationFlag: string;
     isBlueprintCopy: boolean;
+    isBlueprint?: boolean;
     isSingleton: boolean;
     children: AssetNode[];
 }
@@ -65,8 +66,16 @@ export default function CorpAssetsOverview({
     // Tracks expanded asset nodes
     const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
 
-    const getTypeIconUrl = (typeId: number) => {
-        return imagePaths.types.replace('12345', typeId.toString());
+    const getTypeIconUrl = (item: AssetNode) => {
+        let url = imagePaths.types.replace('12345', item.typeId.toString());
+        if (item.isBlueprint) {
+            if (item.isBlueprintCopy) {
+                url = url.replace('/icon', '/bpc');
+            } else {
+                url = url.replace('/icon', '/bp');
+            }
+        }
+        return url;
     };
 
     const getCorpLogoUrl = (corpId: number) => {
@@ -177,7 +186,7 @@ export default function CorpAssetsOverview({
                         <span className="asset-item-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', margin: 0, padding: 0 }}>📁</span>
                     ) : (
                         <img
-                            src={getTypeIconUrl(item.typeId)}
+                            src={getTypeIconUrl(item)}
                             alt={item.name}
                             className="asset-item-icon"
                             loading="lazy"

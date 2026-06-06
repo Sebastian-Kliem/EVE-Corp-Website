@@ -184,6 +184,7 @@ class EveAccountController extends AbstractController
                 'quantity' => $asset->getQuantity(),
                 'locationFlag' => $asset->getLocationFlag(),
                 'isBlueprintCopy' => $asset->isBlueprintCopy(),
+                'isBlueprint' => $sdeService->isBlueprint($asset->getTypeId()),
                 'isSingleton' => $asset->isSingleton(),
             ];
         }
@@ -320,6 +321,7 @@ class EveAccountController extends AbstractController
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
+            'isBlueprint' => $sdeService->isBlueprint($asset->getTypeId()),
             'isSingleton' => $asset->isSingleton(),
             'children' => $children,
         ];
@@ -645,6 +647,7 @@ class EveAccountController extends AbstractController
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
+            'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
             'children' => $children,
         ];

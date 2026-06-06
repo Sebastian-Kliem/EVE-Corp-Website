@@ -13,6 +13,7 @@ interface AssetItem {
     quantity: number;
     locationFlag: string;
     isBlueprintCopy: boolean;
+    isBlueprint?: boolean;
     isSingleton: boolean;
 }
 
@@ -39,8 +40,16 @@ export default function CharacterAssets({
 }: CharacterAssetsProps) {
     const [searchQuery, setSearchQuery] = useState('');
 
-    const getTypeIconUrl = (typeId: number) => {
-        return imagePaths.types.replace('12345', typeId.toString());
+    const getTypeIconUrl = (item: AssetItem) => {
+        let url = imagePaths.types.replace('12345', item.typeId.toString());
+        if (item.isBlueprint) {
+            if (item.isBlueprintCopy) {
+                url = url.replace('/icon', '/bpc');
+            } else {
+                url = url.replace('/icon', '/bp');
+            }
+        }
+        return url;
     };
 
     const getCharacterPortraitUrl = (charId: number) => {
@@ -171,7 +180,7 @@ export default function CharacterAssets({
                                                 <td>
                                                     <figure className="image is-16x16">
                                                         <img
-                                                            src={getTypeIconUrl(item.typeId)}
+                                                            src={getTypeIconUrl(item)}
                                                             alt={item.name}
                                                             className="is-rounded assets-type-icon"
                                                             loading="lazy"

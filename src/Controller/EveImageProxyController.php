@@ -20,7 +20,7 @@ class EveImageProxyController extends AbstractController
     {
         // Allowed categories and actions to prevent arbitrary external requests
         $allowedCategories = ['types', 'characters', 'corporations', 'alliances'];
-        $allowedActions = ['icon', 'portrait', 'logo', 'render'];
+        $allowedActions = ['icon', 'portrait', 'logo', 'render', 'bp', 'bpc'];
         
         if (!in_array($category, $allowedCategories) || !in_array($action, $allowedActions)) {
             throw $this->createNotFoundException('Invalid category or action.');
