@@ -6,11 +6,12 @@
 
 ## 🎨 Frontend & Design
 
-### CSS-Framework: Bulma
-In diesem Projekt verwenden wir **[Bulma](https://bulma.io/)** als CSS-Framework für das grundlegende Styling. 
-- **Dateien:** Die Stylesheets liegen unter `assets/styles/bulma.min.css`.
-- **Eigene Anpassungen (Dark & Light Mode):** Wir haben ein maßgeschneidertes EVE Online Dark-Theme mit modernen Glassmorphism-Effekten und einem lokalen, GDPR-konformen Theme-Umschalter implementiert. Dies ist in `assets/styles/app.css` definiert und erweitert/überschreibt die Standard-Bulma-Klassen.
-- **Theme-Steuerung:** Das Theme wird per JavaScript (im Template `templates/base.html.twig`) über das HTML-Attribut `data-theme` (`dark` oder `light`) gesteuert.
+### CSS-Styling (Vanilla CSS)
+In diesem Projekt verwenden wir **kein** externes CSS-Framework wie Bootstrap, Bulma oder TailwindCSS. Stattdessen basiert das gesamte Design auf einem maßgeschneiderten, nativen CSS-System.
+- **Zentrale Style-Datei:** Das gesamte Styling ist in `assets/styles/app.css` definiert.
+- **Design-System (EVE Online Sci-Fi Dark Theme):** In `app.css` werden globale CSS-Variablen (`:root`) für Farben, Hintergründe, Rahmen und Schatten verwendet (z. B. `--theme-bg`, `--theme-primary`, `--theme-card-bg`). Das Styling zeichnet sich durch moderne Glassmorphism-Effekte und subtile Sci-Fi-Elemente aus.
+- **Layout-Hilfsklassen:** Es wurden einfache Layout-Hilfsklassen auf Basis von nativem Flexbox und Grid implementiert (z. B. `.container`, `.columns`, `.column`, `.level`), um die UI sauber zu strukturieren.
+- **Theme-Steuerung:** Das Theme wird standardmäßig über das HTML-Attribut `data-theme="dark"` (im Template `templates/base.html.twig`) gesteuert.
 
 ---
 
@@ -114,15 +115,16 @@ Die React-Komponenten liegen unter `react/` und werden via Esbuild direkt in den
   - *Token mitsenden:* Header `Authorization: Bearer <token>` bei Anfragen an `/api/*`
 
 ### 🛡️ DSGVO-Konformität & Lokale Ressourcen
-- **CSS & Fonts:** Alle CSS-Frameworks (Bulma) und Styling-Ressourcen liegen zu 100% lokal im Projekt vor (`assets/styles/`). Es werden keine externen CDNs oder Google-Fonts geladen.
+- **CSS & Fonts:** Alle CSS- und Styling-Ressourcen liegen zu 100% lokal im Projekt vor (`assets/styles/`). Es werden keine externen CDNs oder Google-Fonts geladen.
 - **EVE Online Asset-Bilder (Image-Proxy):** Um zu verhindern, dass die IP-Adresse der Benutzer an fremde Server (wie den CCP Image Server) übertragen wird, verwenden wir einen lokalen **Image-Proxy** mit On-Demand Caching.
   - **Route:** `/eve/image/{category}/{id}/{action}?size={size}`
   - **Verwendung:** Statt `https://images.evetech.net/types/34/icon` fragt das Frontend `/eve/image/types/34/icon?size=64` an.
   - **Funktionsweise:** Unser Server lädt das Bild im Hintergrund von CCP herunter, speichert es unter `var/eve_image_cache/` und liefert es direkt aus. Nach dem ersten Abruf beträgt die Ladezeit 0ms externe Latenz.
 
 ### 🎨 Styling & Layouts
-- Verwende für Formulare und Boxen die Bulma-Klassen wie `.box`, `.card`, `.field`, `.control`, `.input`.
-- Der Dark Mode passt diese automatisch im EVE Dark-Glassmorphism-Stil an, solange du dich an die Bulma-Struktur hältst!
+- **Keine Inline-Styles:** Schreibe nach Möglichkeit kein Inline-CSS. Nutze stattdessen die in `assets/styles/app.css` bereitgestellten CSS-Variablen und Layout-Klassen.
+- **Layouts & Grids:** Verwende `.columns` und `.column` (mit Modifikatoren wie `.is-half` oder `.is-one-third`) für mehrspaltige Layouts und `.level` zur horizontalen Ausrichtung.
+- **Formulare & Karten:** Verwende Klassen wie `.card`, `.button`, `.input` und `.textarea`, um Formulare und Container im passenden EVE Sci-Fi-Stil anzuzeigen.
 
 ### 📝 Sprache & Code-Richtlinien
 - **Kommunikation im CLI:** Deutsch.
