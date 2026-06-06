@@ -23,41 +23,54 @@
             <div class="navbar-start">
                 <a class="navbar-item" href="{{ path('home') }}">Home</a>
                 {% if is_granted('ROLE_MEMBER') %}
-                    <a class="navbar-item" href="{{ path('link_collection') }}">Linksammlung</a>
-                    <a class="navbar-item" href="{{ path('app_order_list') }}">Orders</a>
-                {% endif %}
-            </div>
-
-            <div class="navbar-end">
-                {% if app.user %}
+                    <!-- Allgemein -->
                     <div class="navbar-item has-dropdown" data-controller="dropdown">
-                        <a class="navbar-link is-arrowless" aria-label="Menu" data-action="click->dropdown#toggle">
-                            <span class="desktop-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="burger-icon">
-                                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                                </svg>
-                            </span>
-                            <span class="mobile-label">
-                                Verwaltung <span class="dropdown-caret">▼</span>
-                            </span>
+                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
+                            Allgemein <span class="dropdown-caret">▼</span>
                         </a>
                         <div class="navbar-dropdown">
-                            <a class="navbar-item" href="{{ path('app_profile') }}" data-turbo="false">
-                                Mein Profil
-                            </a>
+                            <a class="navbar-item" href="{{ path('link_collection') }}">Linksammlung</a>
+                        </div>
+                    </div>
+
+                    <!-- Corp -->
+                    <div class="navbar-item has-dropdown" data-controller="dropdown">
+                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
+                            Corp <span class="dropdown-caret">▼</span>
+                        </a>
+                        <div class="navbar-dropdown">
+                            <a class="navbar-item" href="{{ path('app_order_list') }}">Orders</a>
                             {% if is_granted('ROLE_OFFICER') %}
                                 <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
                                     Benutzerverwaltung
                                 </a>
                             {% endif %}
-                            <hr class="navbar-divider">
-                            <a class="navbar-item" href="{{ path('app_logout') }}">
-                                🚪 Logout
-                            </a>
                         </div>
                     </div>
+
+                    <!-- Persönlich -->
+                    <div class="navbar-item has-dropdown" data-controller="dropdown">
+                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
+                            Persönlich <span class="dropdown-caret">▼</span>
+                        </a>
+                        <div class="navbar-dropdown">
+                            <a class="navbar-item" href="{{ path('app_profile') }}" data-turbo="false">
+                                Mein Profil
+                            </a>
+                            <a class="navbar-item is-disabled" href="#" onclick="return false;">Charakterübersicht (in Kürze)</a>
+                            <a class="navbar-item is-disabled" href="#" onclick="return false;">PI-Planung (in Kürze)</a>
+                            <a class="navbar-item is-disabled" href="#" onclick="return false;">Produktionsplanung (in Kürze)</a>
+                            <a class="navbar-item is-disabled" href="#" onclick="return false;">Inventar (in Kürze)</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="navbar-end">
+                {% if app.user %}
+                    <a class="navbar-item" href="{{ path('app_logout') }}">
+                        🚪 Logout
+                    </a>
                 {% else %}
                     <div class="navbar-item">
                         <a class="button is-small is-primary" href="{{ path('app_login') }}" data-turbo="false">

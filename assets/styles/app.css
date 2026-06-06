@@ -836,6 +836,23 @@ details.box .details-content {
     display: none;
 }
 
+.dropdown-caret {
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    display: none;
+    transition: transform 0.2s ease;
+}
+
+.navbar-item.has-dropdown.is-active .dropdown-caret {
+    transform: rotate(180deg);
+}
+
+.navbar-item.is-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 @media screen and (max-width: 1023px) {
     .brand-title-container {
         display: none;
@@ -963,14 +980,7 @@ details.box .details-content {
     }
 
     .dropdown-caret {
-        font-size: 0.75rem;
-        margin-left: 0.5rem;
         display: inline-block;
-        transition: transform 0.2s ease;
-    }
-
-    .navbar-item.has-dropdown.is-active .dropdown-caret {
-        transform: rotate(180deg);
     }
 
     .navbar-link::after {
