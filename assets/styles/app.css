@@ -2068,6 +2068,25 @@ input[type="number"] {
     font-style: italic !important;
 }
 
+.admin-visibility-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding-bottom: 10px !important;
+}
+
+.admin-visibility-checkbox-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+}
+
+.admin-visibility-checkbox {
+    accent-color: var(--theme-primary, #00f0ff) !important;
+    width: 18px !important;
+    height: 18px !important;
+    cursor: pointer !important;
+}
+
 
 
 

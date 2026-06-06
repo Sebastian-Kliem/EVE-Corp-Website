@@ -335,6 +335,15 @@ class EveAccountController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        $isCeoOrAdmin = $this->isGranted('ROLE_CEO') || $this->isGranted('ROLE_ADMIN');
+        $visibilityMap = [];
+        if (!$isCeoOrAdmin) {
+            $visibilities = $this->entityManager->getRepository(\App\Entity\CorpAssetVisibility::class)->findBy(['isVisible' => true]);
+            foreach ($visibilities as $visibility) {
+                $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
+            }
+        }
+
         $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
             'user' => $currentUser
         ]);
@@ -431,8 +440,23 @@ class EveAccountController extends AbstractController
                 $groupedByDivision = [];
                 foreach ($topAssets as $asset) {
                     $flag = $asset->getLocationFlag();
+                    
+                    if (!$isCeoOrAdmin) {
+                        if (in_array($flag, ['CorpSAG1', 'CorpSAG2', 'CorpSAG3', 'CorpSAG4', 'CorpSAG5', 'CorpSAG6', 'CorpSAG7', 'CorpDeliveries'], true)) {
+                            if (!isset($visibilityMap[$locationId][$flag])) {
+                                continue; // Not approved for visibility
+                            }
+                        }
+                    }
+
                     $folderName = $getDivisionName($flag);
-                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames);
+                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
+                    
+                    // If this is an Office (typeId 27) and has no visible children (divisions) left after filtering, skip it
+                    if ($node['typeId'] === 27 && empty($node['children'])) {
+                        continue;
+                    }
+
                     $groupedByDivision[$folderName][] = $node;
                 }
 
@@ -445,10 +469,18 @@ class EveAccountController extends AbstractController
 
                 $divisions = [];
                 foreach ($groupedByDivision as $folderName => $items) {
+                    if (empty($items)) {
+                        continue;
+                    }
                     $divisions[] = [
                         'name' => $folderName,
                         'items' => $items,
                     ];
+                }
+
+                // If no divisions are visible/left for this location, hide the location entirely
+                if (empty($divisions)) {
+                    continue;
                 }
 
                 // Sort divisions
@@ -515,8 +547,14 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    private function buildCorpAssetTreeNode(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService, array $divisionNames = []): array
-    {
+    private function buildCorpAssetTreeNode(
+        EveCorporationAsset $asset, 
+        array $nestedAssets, 
+        SdeService $sdeService, 
+        array $divisionNames = [],
+        bool $isCeoOrAdmin = true,
+        array $visibilityMap = []
+    ): array {
         $itemId = $asset->getItemId();
         $typeId = $asset->getTypeId();
         
@@ -533,7 +571,7 @@ class EveAccountController extends AbstractController
 
             if ($hasOffice && $officeAsset !== null) {
                 // Bypass the office node completely: directly add the office's children (hangars/deliveries)
-                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames);
+                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
                 $children = $officeNode['children'];
             } else {
                 foreach ($nestedAssets[$itemId] as $childAsset) {
@@ -557,7 +595,7 @@ class EveAccountController extends AbstractController
                         continue;
                     }
 
-                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames);
+                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
                 }
             }
             
@@ -582,6 +620,12 @@ class EveAccountController extends AbstractController
                     $divName = $getDivisionName($flag);
 
                     if ($divName !== null) {
+                        if (!$isCeoOrAdmin) {
+                            $locId = $asset->getLocationId(); // Office's locationId is the structure ID
+                            if (!isset($visibilityMap[$locId][$flag])) {
+                                continue; // Hangar is not approved for normal users
+                            }
+                        }
                         $groupedByDiv[$divName][] = $child;
                     } else {
                         $nonDivChildren[] = $child;
