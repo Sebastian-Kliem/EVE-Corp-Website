@@ -63,7 +63,12 @@ class EveImageProxyController extends AbstractController
             // Log error if logger exists or simply let it fail gracefully
         }
 
-        // Fallback: If external server fails or item doesn't exist, return a 404
+        // Fallback: If external server fails or item doesn't exist, return the local fallback image
+        $fallbackPath = $projectDir . '/assets/images/fallback_item.png';
+        if (file_exists($fallbackPath)) {
+            return new BinaryFileResponse($fallbackPath);
+        }
+
         return new Response('Image not found or failed to fetch.', Response::HTTP_NOT_FOUND);
     }
 }
