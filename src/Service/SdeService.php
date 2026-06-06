@@ -172,7 +172,8 @@ class SdeService
             $stmt = $this->connection->prepare(
                 "SELECT DISTINCT t.typeid FROM invTypes t 
                  JOIN invGroups g ON t.groupid = g.groupid 
-                 WHERE t.typeid IN ($placeholders) AND g.categoryid IN (6, 20)"
+                 WHERE t.typeid IN ($placeholders) 
+                   AND (g.categoryid = 6 OR g.groupid IN (12, 340, 448, 649))"
             );
             
             $result = $stmt->executeQuery($typeIds);
