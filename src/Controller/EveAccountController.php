@@ -522,46 +522,43 @@ class EveAccountController extends AbstractController
         
         $children = [];
         if (isset($nestedAssets[$itemId])) {
+            $hasOffice = false;
+            $officeAsset = null;
             foreach ($nestedAssets[$itemId] as $childAsset) {
-                // Filter out structure fittings, rigs, core, and fuel blocks
-                $flag = $childAsset->getLocationFlag();
-                if (in_array($flag, [
-                    'QuantumCoreRoom',
-                    'StructureFuel',
-                    'StructureServiceSlot0',
-                    'StructureServiceSlot1',
-                    'StructureServiceSlot2',
-                    'StructureServiceSlot3',
-                    'StructureServiceSlot4',
-                    'StructureServiceSlot5',
-                    'StructureServiceSlot6',
-                    'StructureServiceSlot7',
-                    'RigSlot0',
-                    'RigSlot1',
-                    'RigSlot2',
-                ], true)) {
-                    continue;
-                }
-
-                $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames);
-            }
-            
-            // Check if this node is a structure hosting a corp office
-            $hasOfficeChild = false;
-            foreach ($children as $child) {
-                if (($child['locationFlag'] ?? '') === 'OfficeFolder' || ($child['typeId'] ?? 0) === 27) {
-                    $hasOfficeChild = true;
-                    break;
+                if ($childAsset->getTypeId() === 27) {
+                    $hasOffice = true;
+                    $officeAsset = $childAsset;
                 }
             }
 
-            // If this is a Citadel structure containing a corp office, filter out any fitted modules
-            // (they are not inside the office, but directly under the Citadel's hi/mid/low/etc. slots)
-            if ($hasOfficeChild) {
-                $children = array_filter($children, function ($child) {
-                    return ($child['locationFlag'] ?? '') === 'OfficeFolder' || ($child['typeId'] ?? 0) === 27;
-                });
-                $children = array_values($children);
+            if ($hasOffice && $officeAsset !== null) {
+                // Bypass the office node completely: directly add the office's children (hangars/deliveries)
+                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames);
+                $children = $officeNode['children'];
+            } else {
+                foreach ($nestedAssets[$itemId] as $childAsset) {
+                    // Filter out structure fittings, rigs, core, and fuel blocks
+                    $flag = $childAsset->getLocationFlag();
+                    if (in_array($flag, [
+                        'QuantumCoreRoom',
+                        'StructureFuel',
+                        'StructureServiceSlot0',
+                        'StructureServiceSlot1',
+                        'StructureServiceSlot2',
+                        'StructureServiceSlot3',
+                        'StructureServiceSlot4',
+                        'StructureServiceSlot5',
+                        'StructureServiceSlot6',
+                        'StructureServiceSlot7',
+                        'RigSlot0',
+                        'RigSlot1',
+                        'RigSlot2',
+                    ], true)) {
+                        continue;
+                    }
+
+                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames);
+                }
             }
             
             // If this is an Office (typeId 27), group its children by division!
