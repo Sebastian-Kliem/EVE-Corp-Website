@@ -371,6 +371,35 @@ class EveAccountController extends AbstractController
                 // Ignore
             }
 
+            // Fetch division names
+            $divisionNames = [];
+            if ($syncCharacter) {
+                try {
+                    $divData = $esiClient->request('GET', sprintf('corporations/%d/divisions/', $corpId), [], $syncCharacter);
+                    if (isset($divData['hangar']) && is_array($divData['hangar'])) {
+                        foreach ($divData['hangar'] as $div) {
+                            $divisionNames[(int) $div['division']] = $div['name'];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Ignore
+                }
+            }
+
+            $getDivisionName = function (string $flag) use ($divisionNames) {
+                if (preg_match('/^CorpSAG(\d)$/', $flag, $matches)) {
+                    $divIndex = (int) $matches[1];
+                    return $divisionNames[$divIndex] ?? 'Hangar ' . $divIndex;
+                }
+                if ($flag === 'CorpDeliveries') {
+                    return 'Lieferungen (Deliveries)';
+                }
+                if ($flag === 'Hangar' || $flag === 'HangarAll') {
+                    return 'Hangar';
+                }
+                return $flag;
+            };
+
             // Rebuild tree
             $assetsByItemId = [];
             foreach ($assets as $asset) {
@@ -395,12 +424,50 @@ class EveAccountController extends AbstractController
                 $locationName = $resolved['name'];
                 $systemName = $resolved['systemName'];
                 
-                $items = [];
+                $groupedByDivision = [];
                 foreach ($topAssets as $asset) {
-                    $items[] = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService);
+                    $flag = $asset->getLocationFlag();
+                    $folderName = $getDivisionName($flag);
+                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService);
+                    $groupedByDivision[$folderName][] = $node;
                 }
 
-                usort($items, function ($a, $b) {
+                foreach ($groupedByDivision as $folderName => &$items) {
+                    usort($items, function ($a, $b) {
+                        return strcasecmp($a['name'], $b['name']);
+                    });
+                }
+                unset($items);
+
+                $divisions = [];
+                foreach ($groupedByDivision as $folderName => $items) {
+                    $divisions[] = [
+                        'name' => $folderName,
+                        'items' => $items,
+                    ];
+                }
+
+                // Sort divisions
+                usort($divisions, function ($a, $b) use ($divisionNames) {
+                    $getDivOrder = function ($name) use ($divisionNames) {
+                        if ($name === 'Lieferungen (Deliveries)') {
+                            return 8;
+                        }
+                        foreach ($divisionNames as $idx => $divName) {
+                            if ($name === $divName) {
+                                return $idx;
+                            }
+                        }
+                        if (preg_match('/^Hangar (\d)$/', $name, $matches)) {
+                            return (int) $matches[1];
+                        }
+                        return 99;
+                    };
+                    $orderA = $getDivOrder($a['name']);
+                    $orderB = $getDivOrder($b['name']);
+                    if ($orderA !== $orderB) {
+                        return $orderA <=> $orderB;
+                    }
                     return strcasecmp($a['name'], $b['name']);
                 });
 
@@ -408,7 +475,7 @@ class EveAccountController extends AbstractController
                     'id' => $locationId,
                     'name' => $locationName,
                     'systemName' => $systemName,
-                    'items' => $items,
+                    'divisions' => $divisions,
                 ];
             }
 

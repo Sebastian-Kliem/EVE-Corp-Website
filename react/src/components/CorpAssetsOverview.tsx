@@ -11,11 +11,16 @@ interface AssetNode {
     children: AssetNode[];
 }
 
+interface DivisionData {
+    name: string;
+    items: AssetNode[];
+}
+
 interface LocationData {
     id: number;
     name: string;
     systemName: string;
-    items: AssetNode[];
+    divisions: DivisionData[];
 }
 
 interface Corporation {
@@ -127,19 +132,26 @@ export default function CorpAssetsOverview({
         }
 
         const filteredLocations = data.locations.map((loc) => {
-            const matchedItems: AssetNode[] = [];
-            loc.items.forEach((item) => {
-                const { node, hasMatch } = filterAssetNode(item, query);
-                if (hasMatch && node) {
-                    matchedItems.push(node);
-                }
-            });
+            const filteredDivisions = loc.divisions.map((div) => {
+                const matchedItems: AssetNode[] = [];
+                div.items.forEach((item) => {
+                    const { node, hasMatch } = filterAssetNode(item, query);
+                    if (hasMatch && node) {
+                        matchedItems.push(node);
+                    }
+                });
+
+                return {
+                    ...div,
+                    items: matchedItems,
+                };
+            }).filter((div) => div.items.length > 0);
 
             return {
                 ...loc,
-                items: matchedItems,
+                divisions: filteredDivisions,
             };
-        }).filter((loc) => loc.items.length > 0);
+        }).filter((loc) => loc.divisions.length > 0);
 
         return {
             ...data,
@@ -336,19 +348,27 @@ export default function CorpAssetsOverview({
                                                         <span>{location.name}</span>
                                                     </span>
                                                     <span className="tag is-dark location-items-count">
-                                                        {location.items.length} {location.items.length === 1 ? 'Gruppe' : 'Gruppen'}
+                                                        {location.divisions.length} {location.divisions.length === 1 ? 'Abteilung' : 'Abteilungen'}
                                                     </span>
                                                 </h3>
 
                                                 <div className={`location-content ${isLocExpanded ? '' : 'is-hidden'}`}>
-                                                    <div className="asset-tree-container">
-                                                        {location.items.map((item, idx) => (
-                                                            <RenderAssetNode
-                                                                key={`${item.itemId}-${idx}`}
-                                                                item={item}
-                                                            />
-                                                        ))}
-                                                    </div>
+                                                    {location.divisions.map((div) => (
+                                                        <div key={div.name} className="division-block mb-4" style={{ borderLeft: '2px solid #ffaa00', paddingLeft: '12px', marginTop: '12px' }}>
+                                                            <div className="division-header mb-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#ffaa00' }}>📁 {div.name}</span>
+                                                                <span className="tag is-dark is-small" style={{ fontSize: '0.7rem' }}>{div.items.length}</span>
+                                                            </div>
+                                                            <div className="asset-tree-container">
+                                                                {div.items.map((item, idx) => (
+                                                                    <RenderAssetNode
+                                                                        key={`${item.itemId}-${idx}`}
+                                                                        item={item}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         );
