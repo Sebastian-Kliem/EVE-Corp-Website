@@ -2050,6 +2050,24 @@ input[type="number"] {
     font-size: 0.75rem !important;
 }
 
+.assets-item-name-wrapper {
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.assets-item-custom-name {
+    color: #00ffaa !important;
+    font-weight: 600 !important;
+}
+
+.assets-item-type-name {
+    color: var(--theme-text-muted, #94a3b8) !important;
+    font-size: 0.85rem !important;
+    font-style: italic !important;
+}
+
 
 
 

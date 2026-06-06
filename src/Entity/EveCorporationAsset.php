@@ -42,6 +42,9 @@ class EveCorporationAsset
     #[ORM\Column(nullable: true)]
     private ?bool $isBlueprintCopy = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $customName = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -151,6 +154,18 @@ class EveCorporationAsset
     public function setIsBlueprintCopy(?bool $isBlueprintCopy): static
     {
         $this->isBlueprintCopy = $isBlueprintCopy;
+
+        return $this;
+    }
+
+    public function getCustomName(): ?string
+    {
+        return $this->customName;
+    }
+
+    public function setCustomName(?string $customName): static
+    {
+        $this->customName = $customName;
 
         return $this;
     }

@@ -159,4 +159,26 @@ class SdeService
             return false;
         }
     }
+
+    public function filterCustomizableTypeIds(array $typeIds): array
+    {
+        $typeIds = array_values(array_unique(array_filter(array_map('intval', $typeIds))));
+        if (empty($typeIds)) {
+            return [];
+        }
+
+        try {
+            $placeholders = implode(',', array_fill(0, count($typeIds), '?'));
+            $stmt = $this->connection->prepare(
+                "SELECT DISTINCT t.typeid FROM invTypes t 
+                 JOIN invGroups g ON t.groupid = g.groupid 
+                 WHERE t.typeid IN ($placeholders) AND g.categoryid IN (6, 20)"
+            );
+            
+            $result = $stmt->executeQuery($typeIds);
+            return array_map('intval', $result->fetchFirstColumn());
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
 }

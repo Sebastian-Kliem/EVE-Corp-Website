@@ -9,6 +9,7 @@ interface Character {
 interface AssetItem {
     typeId: number;
     name: string;
+    customName?: string | null;
     quantity: number;
     locationFlag: string;
     isBlueprintCopy: boolean;
@@ -50,7 +51,8 @@ export default function CharacterAssets({
     const filteredGroupedAssets = Object.entries(groupedAssets)
         .map(([locationId, group]) => {
             const filteredItems = group.items.filter((item) =>
-                item.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
+                item.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+                (item.customName && item.customName.toLowerCase().includes(searchQuery.toLowerCase().trim()))
             );
 
             return {
@@ -177,7 +179,14 @@ export default function CharacterAssets({
                                                     </figure>
                                                 </td>
                                                 <td className="assets-table-cell-name">
-                                                    {item.name}
+                                                    {item.customName ? (
+                                                        <div className="assets-item-name-wrapper">
+                                                            <span className="assets-item-custom-name">{item.customName}</span>
+                                                            <span className="assets-item-type-name">({item.name})</span>
+                                                        </div>
+                                                    ) : (
+                                                        item.name
+                                                    )}
                                                     {item.isBlueprintCopy && (
                                                         <span className="tag is-info is-light is-small ml-1 assets-badge-blueprint-copy">
                                                             Kopie

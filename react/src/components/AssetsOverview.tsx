@@ -4,6 +4,7 @@ interface AssetNode {
     itemId: number;
     typeId: number;
     name: string;
+    customName?: string | null;
     quantity: number;
     locationFlag: string;
     isBlueprintCopy: boolean;
@@ -94,7 +95,8 @@ export default function AssetsOverview({
     // Recursive function to filter asset nodes based on search query
     // Returns the filtered node (with matching children) and a boolean indicating if there's any match in this branch
     const filterAssetNode = (node: AssetNode, query: string): { node: AssetNode | null; hasMatch: boolean } => {
-        const isSelfMatch = node.name.toLowerCase().includes(query);
+        const isSelfMatch = node.name.toLowerCase().includes(query) ||
+            (node.customName && node.customName.toLowerCase().includes(query));
 
         let filteredChildren: AssetNode[] = [];
         let anyChildMatches = false;
@@ -178,7 +180,14 @@ export default function AssetsOverview({
 
                     <div className="asset-item-details">
                         <div className="asset-item-name-row">
-                            <span className="asset-item-name">{item.name}</span>
+                            {item.customName ? (
+                                <div className="assets-item-name-wrapper">
+                                    <span className="assets-item-custom-name">{item.customName}</span>
+                                    <span className="assets-item-type-name">({item.name})</span>
+                                </div>
+                            ) : (
+                                <span className="asset-item-name">{item.name}</span>
+                            )}
                             {item.isBlueprintCopy ? (
                                 <span className="tag is-info is-light is-small asset-item-tag">Kopie</span>
                             ) : hasChildren ? (

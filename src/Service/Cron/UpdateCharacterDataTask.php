@@ -8,6 +8,7 @@ use App\Entity\EveCorporationAsset;
 use App\Repository\EveCharacterAssetRepository;
 use App\Repository\EveCorporationAssetRepository;
 use App\Service\Esi\EsiClient;
+use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -18,6 +19,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         private readonly EsiClient $esiClient,
         private readonly EveCharacterAssetRepository $assetRepository,
         private readonly EveCorporationAssetRepository $corpAssetRepository,
+        private readonly SdeService $sdeService,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -146,8 +148,31 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
+        // Collect singleton item IDs and their type IDs
+        $singletonItemIds = [];
+        $itemToTypeMap = [];
+        foreach ($allAssets as $assetData) {
+            if (!empty($assetData['is_singleton'])) {
+                $itemId = (int) $assetData['item_id'];
+                $singletonItemIds[] = $itemId;
+                $itemToTypeMap[$itemId] = (int) $assetData['type_id'];
+            }
+        }
+
+        // Filter out only item IDs that are customizable (Ships and Containers) using SdeService
+        $customizableTypeIds = $this->sdeService->filterCustomizableTypeIds(array_unique(array_values($itemToTypeMap)));
+        $customizableItemIds = [];
+        foreach ($singletonItemIds as $itemId) {
+            $typeId = $itemToTypeMap[$itemId];
+            if (in_array($typeId, $customizableTypeIds, true)) {
+                $customizableItemIds[] = $itemId;
+            }
+        }
+
+        $namesMap = $this->fetchCharacterAssetNames($character, $customizableItemIds);
+
         // Perform asset database update in a transaction
-        $this->entityManager->wrapInTransaction(function() use ($character, $allAssets) {
+        $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap) {
             // 1. Clear existing assets
             $this->assetRepository->clearAssetsForCharacter($character->getId());
 
@@ -168,6 +193,10 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 
                 if (isset($assetData['is_blueprint_copy'])) {
                     $asset->setIsBlueprintCopy((bool) $assetData['is_blueprint_copy']);
+                }
+
+                if (isset($namesMap[$assetData['item_id']])) {
+                    $asset->setCustomName($namesMap[$assetData['item_id']]);
                 }
 
                 $this->entityManager->persist($asset);
@@ -226,8 +255,31 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
+        // Collect singleton item IDs and their type IDs
+        $singletonItemIds = [];
+        $itemToTypeMap = [];
+        foreach ($allAssets as $assetData) {
+            if (!empty($assetData['is_singleton'])) {
+                $itemId = (int) $assetData['item_id'];
+                $singletonItemIds[] = $itemId;
+                $itemToTypeMap[$itemId] = (int) $assetData['type_id'];
+            }
+        }
+
+        // Filter out only item IDs that are customizable (Ships and Containers) using SdeService
+        $customizableTypeIds = $this->sdeService->filterCustomizableTypeIds(array_unique(array_values($itemToTypeMap)));
+        $customizableItemIds = [];
+        foreach ($singletonItemIds as $itemId) {
+            $typeId = $itemToTypeMap[$itemId];
+            if (in_array($typeId, $customizableTypeIds, true)) {
+                $customizableItemIds[] = $itemId;
+            }
+        }
+
+        $namesMap = $this->fetchCorpAssetNames($character, $corpId, $customizableItemIds);
+
         // Perform asset database update in a transaction
-        $this->entityManager->wrapInTransaction(function() use ($corpId, $allAssets, $character) {
+        $this->entityManager->wrapInTransaction(function() use ($corpId, $allAssets, $character, $namesMap) {
             // 1. Clear existing corp assets
             $this->corpAssetRepository->clearAssetsForCorporation($corpId);
 
@@ -250,6 +302,10 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     $asset->setIsBlueprintCopy((bool) $assetData['is_blueprint_copy']);
                 }
 
+                if (isset($namesMap[$assetData['item_id']])) {
+                    $asset->setCustomName($namesMap[$assetData['item_id']]);
+                }
+
                 $this->entityManager->persist($asset);
                 
                 $i++;
@@ -268,5 +324,90 @@ class UpdateCharacterDataTask implements CronTaskInterface
             $corpId,
             $character->getName()
         ));
+    }
+
+    private function fetchCharacterAssetNames(EveCharacter $character, array $itemIds): array
+    {
+        if (empty($itemIds)) {
+            return [];
+        }
+
+        $namesMap = [];
+        $chunks = array_chunk($itemIds, 1000);
+
+        foreach ($chunks as $chunk) {
+            try {
+                $namesData = $this->esiClient->request(
+                    'POST',
+                    sprintf('characters/%d/assets/names/', $character->getId()),
+                    [
+                        'json' => $chunk
+                    ],
+                    $character
+                );
+
+                if (is_array($namesData)) {
+                    foreach ($namesData as $nameItem) {
+                        if (isset($nameItem['item_id']) && isset($nameItem['name'])) {
+                            $name = trim($nameItem['name']);
+                            if ($name !== '' && $name !== 'None') {
+                                $namesMap[(int) $nameItem['item_id']] = $name;
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                $this->logger->warning(sprintf(
+                    '[Cron] Failed to fetch character asset names for %s: %s',
+                    $character->getName(),
+                    $e->getMessage()
+                ));
+            }
+        }
+
+        return $namesMap;
+    }
+
+    private function fetchCorpAssetNames(EveCharacter $character, int $corpId, array $itemIds): array
+    {
+        if (empty($itemIds)) {
+            return [];
+        }
+
+        $namesMap = [];
+        $chunks = array_chunk($itemIds, 1000);
+
+        foreach ($chunks as $chunk) {
+            try {
+                $namesData = $this->esiClient->request(
+                    'POST',
+                    sprintf('corporations/%d/assets/names/', $corpId),
+                    [
+                        'json' => $chunk
+                    ],
+                    $character
+                );
+
+                if (is_array($namesData)) {
+                    foreach ($namesData as $nameItem) {
+                        if (isset($nameItem['item_id']) && isset($nameItem['name'])) {
+                            $name = trim($nameItem['name']);
+                            if ($name !== '' && $name !== 'None') {
+                                $namesMap[(int) $nameItem['item_id']] = $name;
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                $this->logger->warning(sprintf(
+                    '[Cron] Failed to fetch corporation asset names for corp %d using %s: %s',
+                    $corpId,
+                    $character->getName(),
+                    $e->getMessage()
+                ));
+            }
+        }
+
+        return $namesMap;
     }
 }

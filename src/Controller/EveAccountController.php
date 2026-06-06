@@ -180,6 +180,7 @@ class EveAccountController extends AbstractController
             $groupedAssets[$locationId]['items'][] = [
                 'typeId' => $asset->getTypeId(),
                 'name' => $sdeService->getItemName($asset->getTypeId()),
+                'customName' => $asset->getCustomName(),
                 'quantity' => $asset->getQuantity(),
                 'locationFlag' => $asset->getLocationFlag(),
                 'isBlueprintCopy' => $asset->isBlueprintCopy(),
@@ -315,6 +316,7 @@ class EveAccountController extends AbstractController
             'itemId' => $itemId,
             'typeId' => $asset->getTypeId(),
             'name' => $sdeService->getItemName($asset->getTypeId()),
+            'customName' => $asset->getCustomName(),
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
@@ -639,6 +641,7 @@ class EveAccountController extends AbstractController
             'itemId' => $itemId,
             'typeId' => $typeId,
             'name' => $sdeService->getItemName($typeId),
+            'customName' => $asset->getCustomName(),
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
