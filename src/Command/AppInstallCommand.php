@@ -68,6 +68,39 @@ class AppInstallCommand extends Command
             return Command::FAILURE;
         }
 
+        // 4. Create Admin User
+        $io->section('Step 4: Create Admin User');
+        if ($input->isInteractive()) {
+            $username = $io->ask('Admin Username', 'admin', function ($value) {
+                if (empty($value)) {
+                    throw new \RuntimeException('Username cannot be empty.');
+                }
+                return $value;
+            });
+
+            $password = $io->askHidden('Admin Password', function ($value) {
+                if (empty($value)) {
+                    throw new \RuntimeException('Password cannot be empty.');
+                }
+                return $value;
+            });
+
+            try {
+                $createUserCommand = $application->find('app:create-user');
+                $createUserInput = new ArrayInput([
+                    'username' => $username,
+                    'password' => $password,
+                    'role' => 'ROLE_ADMIN',
+                ]);
+                $createUserCommand->run($createUserInput, $output);
+            } catch (\Exception $e) {
+                $io->error('Failed to create admin user: ' . $e->getMessage());
+                return Command::FAILURE;
+            }
+        } else {
+            $io->note('Non-interactive mode: Skipping admin user creation.');
+        }
+
         $io->newLine();
         $io->success('WH-Toolbox has been installed successfully!');
         
