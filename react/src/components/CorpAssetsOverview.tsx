@@ -171,12 +171,16 @@ export default function CorpAssetsOverview({
                     className={`py-1 asset-header-row ${hasChildren ? 'has-children' : ''}`}
                     onClick={() => hasChildren && toggleNode(item.itemId)}
                 >
-                    <img
-                        src={getTypeIconUrl(item.typeId)}
-                        alt={item.name}
-                        className="asset-item-icon"
-                        loading="lazy"
-                    />
+                    {item.typeId === 0 ? (
+                        <span className="asset-item-icon" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', margin: 0, padding: 0 }}>📁</span>
+                    ) : (
+                        <img
+                            src={getTypeIconUrl(item.typeId)}
+                            alt={item.name}
+                            className="asset-item-icon"
+                            loading="lazy"
+                        />
+                    )}
 
                     <div className="asset-item-details">
                         <div className="asset-item-name-row">

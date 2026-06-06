@@ -428,7 +428,7 @@ class EveAccountController extends AbstractController
                 foreach ($topAssets as $asset) {
                     $flag = $asset->getLocationFlag();
                     $folderName = $getDivisionName($flag);
-                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService);
+                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames);
                     $groupedByDivision[$folderName][] = $node;
                 }
 
@@ -511,23 +511,96 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    private function buildCorpAssetTreeNode(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService): array
+    private function buildCorpAssetTreeNode(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService, array $divisionNames = []): array
     {
         $itemId = $asset->getItemId();
+        $typeId = $asset->getTypeId();
+        
         $children = [];
         if (isset($nestedAssets[$itemId])) {
             foreach ($nestedAssets[$itemId] as $childAsset) {
-                $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService);
+                $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames);
             }
-            usort($children, function ($a, $b) {
-                return strcasecmp($a['name'], $b['name']);
-            });
+            
+            // If this is an Office (typeId 27), group its children by division!
+            if ($typeId === 27) {
+                $getDivisionName = function (string $flag) use ($divisionNames) {
+                    if (preg_match('/^CorpSAG(\d)$/', $flag, $matches)) {
+                        $divIndex = (int) $matches[1];
+                        return $divisionNames[$divIndex] ?? 'Hangar ' . $divIndex;
+                    }
+                    if ($flag === 'CorpDeliveries') {
+                        return 'Lieferungen (Deliveries)';
+                    }
+                    return null;
+                };
+
+                $groupedByDiv = [];
+                $nonDivChildren = [];
+
+                foreach ($children as $child) {
+                    $flag = $child['locationFlag'] ?? '';
+                    $divName = $getDivisionName($flag);
+
+                    if ($divName !== null) {
+                        $groupedByDiv[$divName][] = $child;
+                    } else {
+                        $nonDivChildren[] = $child;
+                    }
+                }
+
+                foreach ($groupedByDiv as $divName => &$items) {
+                    usort($items, function ($a, $b) {
+                        return strcasecmp($a['name'], $b['name']);
+                    });
+                }
+                unset($items);
+
+                $divNodes = [];
+                $virtualIdCounter = 1;
+                foreach ($groupedByDiv as $divName => $items) {
+                    $divNodes[] = [
+                        'itemId' => -($itemId * 10 + $virtualIdCounter++), // unique negative ID
+                        'typeId' => 0, // special type ID for division folders
+                        'name' => $divName,
+                        'quantity' => count($items),
+                        'locationFlag' => 'Division',
+                        'isBlueprintCopy' => false,
+                        'isSingleton' => false,
+                        'children' => $items,
+                    ];
+                }
+
+                usort($divNodes, function ($a, $b) use ($divisionNames) {
+                    $getDivOrder = function ($name) use ($divisionNames) {
+                        if ($name === 'Lieferungen (Deliveries)') {
+                            return 8;
+                        }
+                        foreach ($divisionNames as $idx => $divName) {
+                            if ($name === $divName) {
+                                return $idx;
+                            }
+                        }
+                        if (preg_match('/^Hangar (\d)$/', $name, $matches)) {
+                            return (int) $matches[1];
+                        }
+                        return 99;
+                    };
+                    return $getDivOrder($a['name']) <=> $getDivOrder($b['name']);
+                });
+
+                $children = array_merge($divNodes, $nonDivChildren);
+            } else {
+                usort($children, function ($a, $b) {
+                    return strcasecmp($a['name'], $b['name']);
+                });
+            }
         }
 
         return [
             'itemId' => $itemId,
-            'typeId' => $asset->getTypeId(),
-            'name' => $sdeService->getItemName($asset->getTypeId()),
+            'typeId' => $typeId,
+            'name' => $sdeService->getItemName($typeId),
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
