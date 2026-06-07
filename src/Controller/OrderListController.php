@@ -111,6 +111,9 @@ final class OrderListController extends AbstractController
             $order->setItem($itemId);
             $order->setAmount((int)$amount);
             $order->setPercentToJitaBuy((int)$request->get('jita_buy', 100));
+            
+            $note = $request->get('note');
+            $order->setNote($note ? trim((string)$note) : null);
 
             $order->setBuyer($this->getUser());
 
@@ -152,6 +155,9 @@ final class OrderListController extends AbstractController
             $order->setItem($itemId);
             $order->setAmount((int)$amount);
             $order->setPercentToJitaBuy((int)$request->get('jita_buy', 100));
+
+            $note = $request->get('note');
+            $order->setNote($note ? trim((string)$note) : null);
 
             $sellerName = $request->get('seller');
             if ($sellerName) {
@@ -228,6 +234,9 @@ final class OrderListController extends AbstractController
             $sell->setAmount((int)$amount);
             $sell->setPercentToJitaSell((int)$request->get('jita_sell', 100));
 
+            $note = $request->get('note');
+            $sell->setNote($note ? trim((string)$note) : null);
+
             $sell->setSeller($this->getUser());
 
             $entityManager->persist($sell);
@@ -268,6 +277,9 @@ final class OrderListController extends AbstractController
             $sell->setItem($itemId);
             $sell->setAmount((int)$amount);
             $sell->setPercentToJitaSell((int)$request->get('jita_sell', 100));
+
+            $note = $request->get('note');
+            $sell->setNote($note ? trim((string)$note) : null);
 
             $buyerName = $request->get('buyer');
             if ($buyerName) {

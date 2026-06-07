@@ -42,6 +42,14 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="note_buy">Notiz:</label>
+                                <div class="control">
+                                    <input class="input" type="text" id="note_buy" name="note" placeholder="Optional...">
+                                </div>
+                            </div>
+                        </div>
                         <div class="column is-narrow">
                             <div class="field">
                                 <label class="label">&nbsp;</label>
@@ -68,6 +76,7 @@
                     <th>Menge</th>
                     <th>% zu Jita-Buy</th>
                     <th>Gesamtwert</th>
+                    <th>Notiz</th>
                     <th>Besteller</th>
                     <th>Wird bedient von</th>
                     <th></th>
@@ -108,10 +117,25 @@
                             </td>
                             <td data-label="Gesamtwert">
                                 {% if buy_order.calculatedTotal is not null %}
-                                    <strong>{{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                    <strong class="copyable-price" 
+                                            title="Wert kopieren (für EVE)"
+                                            onclick="if (this.dataset.original) return;
+                                                     this.dataset.original = this.innerHTML;
+                                                     navigator.clipboard.writeText('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
+                                                         this.innerHTML = 'Kopiert!';
+                                                         setTimeout(() => {
+                                                             this.innerHTML = this.dataset.original;
+                                                             delete this.dataset.original;
+                                                         }, 1000);
+                                                     })">
+                                        {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
+                                    </strong>
                                 {% else %}
                                     <span class="has-text-grey-light">-</span>
                                 {% endif %}
+                            </td>
+                            <td data-label="Notiz">
+                                <input class="input" type="text" name="note" value="{{ buy_order.note }}" form="edit_buy_form_{{ buy_order.id }}" placeholder="Notiz...">
                             </td>
                             <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
                             <td data-label="Wird bedient von">
@@ -156,10 +180,25 @@
                             <td data-label="% zu Jita-Buy">{{ buy_order.percentToJitaBuy }}%</td>
                             <td data-label="Gesamtwert">
                                 {% if buy_order.calculatedTotal is not null %}
-                                    <strong>{{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                    <strong class="copyable-price" 
+                                            title="Wert kopieren (für EVE)"
+                                            onclick="if (this.dataset.original) return;
+                                                     this.dataset.original = this.innerHTML;
+                                                     navigator.clipboard.writeText('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
+                                                         this.innerHTML = 'Kopiert!';
+                                                         setTimeout(() => {
+                                                             this.innerHTML = this.dataset.original;
+                                                             delete this.dataset.original;
+                                                         }, 1000);
+                                                     })">
+                                        {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
+                                    </strong>
                                 {% else %}
                                     <span class="has-text-grey-light">-</span>
                                 {% endif %}
+                            </td>
+                            <td data-label="Notiz">
+                                {{ buy_order.note ?: '<span class="has-text-grey-light">-</span>' }}
                             </td>
                             <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
      
@@ -244,6 +283,14 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label" for="note_sell">Notiz:</label>
+                                <div class="control">
+                                    <input class="input" type="text" id="note_sell" name="note" placeholder="Optional...">
+                                </div>
+                            </div>
+                        </div>
                         <div class="column is-narrow">
                             <div class="field">
                                 <label class="label">&nbsp;</label>
@@ -270,6 +317,7 @@
                     <th>Menge</th>
                     <th>% zu Jita-Sell</th>
                     <th>Gesamtwert</th>
+                    <th>Notiz</th>
                     <th>Verkäufer</th>
                     <th>Wird bedient von</th>
                     <th></th>
@@ -310,10 +358,25 @@
                             </td>
                             <td data-label="Gesamtwert">
                                 {% if sell_order.calculatedTotal is not null %}
-                                    <strong>{{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                    <strong class="copyable-price" 
+                                            title="Wert kopieren (für EVE)"
+                                            onclick="if (this.dataset.original) return;
+                                                     this.dataset.original = this.innerHTML;
+                                                     navigator.clipboard.writeText('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
+                                                         this.innerHTML = 'Kopiert!';
+                                                         setTimeout(() => {
+                                                             this.innerHTML = this.dataset.original;
+                                                             delete this.dataset.original;
+                                                         }, 1000);
+                                                     })">
+                                        {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
+                                    </strong>
                                 {% else %}
                                     <span class="has-text-grey-light">-</span>
                                 {% endif %}
+                            </td>
+                            <td data-label="Notiz">
+                                <input class="input" type="text" name="note" value="{{ sell_order.note }}" form="edit_sell_form_{{ sell_order.id }}" placeholder="Notiz...">
                             </td>
                             <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
                             <td data-label="Wird bedient von">
@@ -358,10 +421,25 @@
                             <td data-label="% zu Jita-Sell">{{ sell_order.percentToJitaSell }}%</td>
                             <td data-label="Gesamtwert">
                                 {% if sell_order.calculatedTotal is not null %}
-                                    <strong>{{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK</strong>
+                                    <strong class="copyable-price" 
+                                            title="Wert kopieren (für EVE)"
+                                            onclick="if (this.dataset.original) return;
+                                                     this.dataset.original = this.innerHTML;
+                                                     navigator.clipboard.writeText('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
+                                                         this.innerHTML = 'Kopiert!';
+                                                         setTimeout(() => {
+                                                             this.innerHTML = this.dataset.original;
+                                                             delete this.dataset.original;
+                                                         }, 1000);
+                                                     })">
+                                        {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
+                                    </strong>
                                 {% else %}
                                     <span class="has-text-grey-light">-</span>
                                 {% endif %}
+                            </td>
+                            <td data-label="Notiz">
+                                {{ sell_order.note ?: '<span class="has-text-grey-light">-</span>' }}
                             </td>
                             <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
      

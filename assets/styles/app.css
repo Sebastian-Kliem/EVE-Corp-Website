@@ -2087,6 +2087,17 @@ input[type="number"] {
     cursor: pointer !important;
 }
 
+.copyable-price {
+    cursor: pointer !important;
+    transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.copyable-price:hover {
+    color: var(--theme-primary, #00f0ff) !important;
+    text-decoration: underline !important;
+}
+
+
 
 
 
