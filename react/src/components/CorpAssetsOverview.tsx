@@ -264,48 +264,35 @@ export default function CorpAssetsOverview({
     return (
         <div className="container mt-5 mb-6">
             {/* Header */}
-            <div className="box p-5 mb-5 assets-header-gradient" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div className="box p-5 mb-5 assets-header-gradient">
                 <div className="assets-header-bg-text">CORP</div>
-                {(() => {
-                    const totalCorpAssetsVal = corpData.reduce((corpSum, data) => {
-                        return corpSum + data.locations.reduce((locSum, loc) => {
-                            return locSum + loc.divisions.reduce((divSum, div) => {
-                                return divSum + div.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
-                            }, 0);
-                        }, 0);
-                    }, 0);
-
-                    return (
-                        <div className="columns is-vcentered">
-                            <div className="column">
-                                <span className="has-text-grey-light is-size-6 uppercase-tracking" style={{ letterSpacing: '1px' }}>
-                                    GESAMTWERT CORP-INVENTAR
-                                </span>
-                                <h1 className="title is-1 mt-1 mb-2 assets-header-title" style={{ fontSize: '2.5rem', fontWeight: 700 }}>
-                                    {totalCorpAssetsVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                                    <span className="is-size-3">ISK</span>
-                                </h1>
-                            </div>
-                            {hasCorps && (
-                                <div className="column is-narrow">
-                                    <div className="field">
-                                        <div className="control has-icons-left">
-                                            <input
-                                                id="global-asset-search"
-                                                className="input assets-search-input assets-overview-search-input"
-                                                type="text"
-                                                placeholder="Gegenstände suchen..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                            <span className="icon is-small is-left">🔍</span>
-                                        </div>
-                                    </div>
+                <div className="columns is-vcentered">
+                    <div className="column">
+                        <span className="has-text-grey-light is-size-6 uppercase-tracking">
+                            EVE Online Corporation
+                        </span>
+                        <h1 className="title is-1 mt-1 assets-header-title">
+                            Corp-Inventar
+                        </h1>
+                    </div>
+                    {hasCorps && (
+                        <div className="column is-narrow">
+                            <div className="field">
+                                <div className="control has-icons-left">
+                                    <input
+                                        id="global-asset-search"
+                                        className="input assets-search-input assets-overview-search-input"
+                                        type="text"
+                                        placeholder="Gegenstände suchen..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <span className="icon is-small is-left">🔍</span>
                                 </div>
-                            )}
+                            </div>
                         </div>
-                    );
-                })()}
+                    )}
+                </div>
             </div>
 
             {/* Accordion Panels */}
