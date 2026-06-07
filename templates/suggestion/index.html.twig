@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Anpassungsvorschläge{% endblock %}
+
+{% block body %}
+<div class="container mt-5 mb-6">
+    <div class="level mb-5">
+        <div class="level-left">
+            <h1 class="title is-2 text-gradient">
+                Anpassungsvorschläge
+            </h1>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="notification is-{{ label == 'error' ? 'danger' : 'success' }} mb-4">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="columns">
+        <!-- Suggestions List -->
+        <div class="column is-two-thirds">
+            <h2 class="title is-4 mb-4">
+                Vorschläge der Corpmates
+            </h2>
+
+            {% for suggestion in suggestions %}
+                <div class="box mb-4" style="{% if suggestion.isCompleted %}opacity: 0.6; border-color: rgba(16, 185, 129, 0.3);{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <div>
+                            <h3 class="title is-5 mb-1" style="{% if suggestion.isCompleted %}text-decoration: line-through; color: var(--theme-text-muted);{% endif %}">
+                                {% if suggestion.isCompleted %}
+                                    <span style="color: #10b981; margin-right: 0.5rem;">✓</span>
+                                {% endif %}
+                                {{ suggestion.title }}
+                            </h3>
+                            <span class="has-text-grey-light is-size-7">
+                                Eingereicht von <strong>{{ suggestion.user.displayName }}</strong> am {{ suggestion.createdAt|date('d.m.Y H:i') }}
+                            </span>
+                        </div>
+
+                        <!-- Admin Actions -->
+                        {% if isAdmin %}
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <!-- Toggle Completed -->
+                                <form action="{{ path('app_suggestions_toggle', {id: suggestion.id}) }}" method="POST" style="margin: 0;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ suggestion.id) }}">
+                                    <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.85rem; color: var(--theme-text-muted);">
+                                        <input type="checkbox" onChange="this.form.submit()" {% if suggestion.isCompleted %}checked{% endif %} style="cursor: pointer; width: 0.95rem; height: 0.95rem; accent-color: var(--theme-primary);">
+                                        Erledigt
+                                    </label>
+                                </form>
+
+                                <!-- Delete Suggestion -->
+                                <form action="{{ path('app_suggestions_delete', {id: suggestion.id}) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Möchtest du diesen Vorschlag wirklich löschen?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_' ~ suggestion.id) }}">
+                                    <button type="submit" class="button is-danger is-small" style="
+                                        padding: 0.2rem 0.5rem;
+                                        font-size: 0.75rem;
+                                        background-color: #ef4444;
+                                        color: #fff;
+                                        border: none;
+                                        border-radius: 4px;
+                                        cursor: pointer;
+                                    ">
+                                        🗑️ Löschen
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <p style="white-space: pre-line; color: var(--theme-text-muted);">
+                        {{ suggestion.description }}
+                    </p>
+                </div>
+            {% else %}
+                <div class="box has-text-centered p-5">
+                    <p class="has-text-grey-light">
+                        Es wurden bisher keine Anpassungsvorschläge eingereicht. Mach den ersten Schritt!
+                    </p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Add Suggestion Form -->
+        <div class="column is-one-third">
+            <div class="box">
+                <h2 class="title is-4 mb-4">
+                    Vorschlag einreichen
+                </h2>
+                
+                <form action="{{ path('app_suggestions') }}" method="POST">
+                    <input type="hidden" name="_token" value="{{ csrf_token('create_suggestion') }}">
+
+                    <div class="form-group mb-4">
+                        <label for="title" class="label">Überschrift</label>
+                        <input 
+                            type="text" 
+                            id="title" 
+                            name="title" 
+                            class="input" 
+                            required 
+                            placeholder="Z. B. Hangar-Filterung verfeinern"
+                        >
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label for="description" class="label">Beschreibung</label>
+                        <textarea 
+                            id="description" 
+                            name="description" 
+                            class="textarea" 
+                            required 
+                            rows="5"
+                            placeholder="Beschreibe deinen Vorschlag möglichst genau..."
+                        ></textarea>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        name="submit_suggestion" 
+                        class="button is-primary is-fullwidth"
+                    >
+                        🚀 Vorschlag absenden
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
