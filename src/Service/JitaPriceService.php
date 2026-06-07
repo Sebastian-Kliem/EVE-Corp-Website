@@ -94,6 +94,7 @@ class JitaPriceService
                 'warning' => true,
                 'message' => 'Fehler beim Abrufen der ESI-Preise: ' . $e->getMessage()
             ];
+        }
     }
 
     /**
