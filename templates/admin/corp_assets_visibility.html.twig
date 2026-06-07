@@ -29,46 +29,14 @@
     <form action="{{ path('app_admin_corp_assets_visibility') }}" method="POST">
         <input type="hidden" name="_token" value="{{ csrf_token('admin_corp_assets_visibility') }}">
 
-        {% for locId, loc in locations %}
-            <div class="box mb-5">
-                <h3 class="title is-5 mb-4 admin-visibility-header">
-                    {{ loc.name }}
-                    {% if loc.systemName %}
-                        <span class="tag is-dark ml-2">{{ loc.systemName }}</span>
-                    {% endif %}
-                </h3>
-
-                <div class="admin-visibility-list">
-                    {% for flag, label in flagsToMap %}
-                        {% set hangarName = defaultDivisions[label] ?? ('Hangar ' ~ label) %}
-                        {% set isChecked = visibilityMap[locId][flag] ?? false %}
-                        <div class="field mb-3">
-                            <div class="control">
-                                <label class="checkbox has-text-grey-light admin-visibility-checkbox-label">
-                                    <input type="checkbox" name="visibility[{{ locId }}][{{ flag }}]" value="1" {% if isChecked %}checked{% endif %} class="admin-visibility-checkbox">
-                                    <span>{{ hangarName }}</span>
-                                </label>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% else %}
-            <div class="notification is-warning">
-                Bisher wurden keine Corporation-Assets in der Datenbank gefunden.
-                Bitte stelle sicher, dass der Synchronisierungs-Cronjob gelaufen ist.
-            </div>
-        {% endfor %}
-
-        {% if locations is not empty %}
-            <div class="field mt-5">
-                <div class="control">
-                    <button type="submit" class="button is-primary is-fullwidth">
-                        💾 Sichtbarkeits-Freigaben speichern
-                    </button>
-                </div>
-            </div>
-        {% endif %}
+        <div data-react-component="CorpAssetsVisibilityManager" data-react-props="{{ {
+            locations: locations,
+            flagsToMap: flagsToMap,
+            defaultDivisions: defaultDivisions,
+            corpDivisions: corpDivisions,
+            initialVisibility: visibilityMap,
+            allUsers: allUsers
+        }|json_encode|e('html_attr') }}"></div>
     </form>
 </div>
 {% endblock %}

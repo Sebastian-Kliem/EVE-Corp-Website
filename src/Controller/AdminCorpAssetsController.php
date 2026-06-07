@@ -118,8 +118,21 @@ class AdminCorpAssetsController extends AbstractController
         $visibilities = $this->entityManager->getRepository(CorpAssetVisibility::class)->findAll();
         $visibilityMap = [];
         foreach ($visibilities as $visibility) {
-            $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = $visibility->isVisible();
+            $allowedUsers = [];
+            foreach ($visibility->getUsers() as $user) {
+                $allowedUsers[] = $user->getUsername();
+            }
+            $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = [
+                'visible' => $visibility->isVisible(),
+                'users' => $allowedUsers
+            ];
         }
+
+        // Fetch all users for the autocomplete component
+        $users = $this->entityManager->getRepository(\App\Entity\User::class)->findAll();
+        $allUsers = array_map(fn($u) => $u->getUsername(), $users);
+        natcasesort($allUsers);
+        $allUsers = array_values($allUsers);
 
         // 5. Handle Form Submission (POST)
         if ($request->isMethod('POST')) {
@@ -140,17 +153,29 @@ class AdminCorpAssetsController extends AbstractController
             $this->entityManager->flush();
 
             // Insert new visibilities
-            foreach ($submittedVisibility as $locId => $flags) {
-                if (!is_array($flags)) {
-                    continue;
-                }
-                foreach ($flags as $flag => $value) {
-                    if ($value === '1') {
-                        $v = new CorpAssetVisibility();
-                        $v->setLocationId((string)$locId);
-                        $v->setLocationFlag((string)$flag);
-                        $v->setIsVisible(true);
-                        $this->entityManager->persist($v);
+            if (is_array($submittedVisibility)) {
+                foreach ($submittedVisibility as $locId => $flags) {
+                    if (!is_array($flags)) {
+                        continue;
+                    }
+                    foreach ($flags as $flag => $data) {
+                        if (is_array($data) && isset($data['visible']) && $data['visible'] === '1') {
+                            $v = new CorpAssetVisibility();
+                            $v->setLocationId((string)$locId);
+                            $v->setLocationFlag((string)$flag);
+                            $v->setIsVisible(true);
+
+                            if (isset($data['users']) && is_array($data['users'])) {
+                                foreach ($data['users'] as $username) {
+                                    $user = $this->entityManager->getRepository(\App\Entity\User::class)->findOneBy(['username' => $username]);
+                                    if ($user) {
+                                        $v->addUser($user);
+                                    }
+                                }
+                            }
+
+                            $this->entityManager->persist($v);
+                        }
                     }
                 }
             }
@@ -176,7 +201,8 @@ class AdminCorpAssetsController extends AbstractController
             'flagsToMap' => $flagsToMap,
             'corpDivisions' => $corpDivisions,
             'defaultDivisions' => !empty($corpDivisions) ? reset($corpDivisions) : [],
-            'visibilityMap' => $visibilityMap
+            'visibilityMap' => $visibilityMap,
+            'allUsers' => $allUsers
         ]);
     }
 

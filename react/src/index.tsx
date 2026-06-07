@@ -6,6 +6,7 @@ import UserAutocomplete from './components/UserAutocomplete';
 import CharacterAssets from './components/CharacterAssets';
 import AssetsOverview from './components/AssetsOverview';
 import CorpAssetsOverview from './components/CorpAssetsOverview';
+import CorpAssetsVisibilityManager from './components/CorpAssetsVisibilityManager';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
@@ -15,6 +16,7 @@ const components: Record<string, React.ComponentType<any>> = {
     CharacterAssets,
     AssetsOverview,
     CorpAssetsOverview,
+    CorpAssetsVisibilityManager,
 };
 
 function mountReactComponents() {

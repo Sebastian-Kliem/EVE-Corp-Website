@@ -340,7 +340,17 @@ class EveAccountController extends AbstractController
         if (!$isCeoOrAdmin) {
             $visibilities = $this->entityManager->getRepository(\App\Entity\CorpAssetVisibility::class)->findBy(['isVisible' => true]);
             foreach ($visibilities as $visibility) {
-                $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
+                $allowedUsers = $visibility->getUsers();
+                if ($allowedUsers->isEmpty()) {
+                    $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
+                } else {
+                    foreach ($allowedUsers as $allowedUser) {
+                        if ($allowedUser->getId() === $currentUser->getId()) {
+                            $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
