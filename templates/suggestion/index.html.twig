@@ -4,7 +4,7 @@
 
 {% block body %}
 <div class="container mt-5 mb-6">
-    <div class="level mb-5">
+    <div class="level mb-4">
         <div class="level-left">
             <h1 class="title is-2 text-gradient">
                 Anpassungsvorschläge
@@ -15,90 +15,22 @@
     <!-- Flash Messages -->
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="notification is-{{ label == 'error' ? 'danger' : 'success' }} mb-4">
+            <div class="notification is-{{ label == 'error' ? 'danger' : (label == 'danger' ? 'danger' : 'success') }} mt-4 mb-4">
                 {{ message }}
             </div>
         {% endfor %}
     {% endfor %}
 
-    <div class="columns">
-        <!-- Suggestions List -->
-        <div class="column is-two-thirds">
-            <h2 class="title is-4 mb-4">
-                Vorschläge der Corpmates
-            </h2>
+    <!-- Create Suggestion Details Box (similar to Orders) -->
+    <details class="box mb-5 compact-box" {% if app.request.method == 'POST' and not app.session.flashBag.has('success') %}open{% endif %}>
+        <summary>Neuen Vorschlag einreichen</summary>
+        <div class="details-content">
+            <form action="{{ path('app_suggestions') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('create_suggestion') }}">
 
-            {% for suggestion in suggestions %}
-                <div class="box mb-4" style="{% if suggestion.isCompleted %}opacity: 0.6; border-color: rgba(16, 185, 129, 0.3);{% endif %}">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <div>
-                            <h3 class="title is-5 mb-1" style="{% if suggestion.isCompleted %}text-decoration: line-through; color: var(--theme-text-muted);{% endif %}">
-                                {% if suggestion.isCompleted %}
-                                    <span style="color: #10b981; margin-right: 0.5rem;">✓</span>
-                                {% endif %}
-                                {{ suggestion.title }}
-                            </h3>
-                            <span class="has-text-grey-light is-size-7">
-                                Eingereicht von <strong>{{ suggestion.user.displayName }}</strong> am {{ suggestion.createdAt|date('d.m.Y H:i') }}
-                            </span>
-                        </div>
-
-                        <!-- Admin Actions -->
-                        {% if isAdmin %}
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <!-- Toggle Completed -->
-                                <form action="{{ path('app_suggestions_toggle', {id: suggestion.id}) }}" method="POST" style="margin: 0;">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ suggestion.id) }}">
-                                    <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.85rem; color: var(--theme-text-muted);">
-                                        <input type="checkbox" onChange="this.form.submit()" {% if suggestion.isCompleted %}checked{% endif %} style="cursor: pointer; width: 0.95rem; height: 0.95rem; accent-color: var(--theme-primary);">
-                                        Erledigt
-                                    </label>
-                                </form>
-
-                                <!-- Delete Suggestion -->
-                                <form action="{{ path('app_suggestions_delete', {id: suggestion.id}) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Möchtest du diesen Vorschlag wirklich löschen?');">
-                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_' ~ suggestion.id) }}">
-                                    <button type="submit" class="button is-danger is-small" style="
-                                        padding: 0.2rem 0.5rem;
-                                        font-size: 0.75rem;
-                                        background-color: #ef4444;
-                                        color: #fff;
-                                        border: none;
-                                        border-radius: 4px;
-                                        cursor: pointer;
-                                    ">
-                                        🗑️ Löschen
-                                    </button>
-                                </form>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <p style="white-space: pre-line; color: var(--theme-text-muted);">
-                        {{ suggestion.description }}
-                    </p>
-                </div>
-            {% else %}
-                <div class="box has-text-centered p-5">
-                    <p class="has-text-grey-light">
-                        Es wurden bisher keine Anpassungsvorschläge eingereicht. Mach den ersten Schritt!
-                    </p>
-                </div>
-            {% endfor %}
-        </div>
-
-        <!-- Add Suggestion Form -->
-        <div class="column is-one-third">
-            <div class="box">
-                <h2 class="title is-4 mb-4">
-                    Vorschlag einreichen
-                </h2>
-                
-                <form action="{{ path('app_suggestions') }}" method="POST">
-                    <input type="hidden" name="_token" value="{{ csrf_token('create_suggestion') }}">
-
-                    <div class="form-group mb-4">
-                        <label for="title" class="label">Überschrift</label>
+                <div class="field">
+                    <label for="title" class="label">Überschrift:</label>
+                    <div class="control">
                         <input 
                             type="text" 
                             id="title" 
@@ -108,29 +40,145 @@
                             placeholder="Z. B. Hangar-Filterung verfeinern"
                         >
                     </div>
+                </div>
 
-                    <div class="form-group mb-4">
-                        <label for="description" class="label">Beschreibung</label>
+                <div class="field mt-3">
+                    <label for="description" class="label">Beschreibung:</label>
+                    <div class="control">
                         <textarea 
                             id="description" 
                             name="description" 
                             class="textarea" 
                             required 
-                            rows="5"
+                            rows="4"
                             placeholder="Beschreibe deinen Vorschlag möglichst genau..."
                         ></textarea>
                     </div>
+                </div>
 
-                    <button 
-                        type="submit" 
-                        name="submit_suggestion" 
-                        class="button is-primary is-fullwidth"
-                    >
-                        🚀 Vorschlag absenden
-                    </button>
-                </form>
-            </div>
+                <div class="field mt-4">
+                    <div class="control">
+                        <button type="submit" name="submit_suggestion" class="button is-primary">
+                            🚀 Vorschlag absenden
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
+    </details>
+
+    <!-- Suggestions Table -->
+    <div class="table-container table-responsive-cards">
+        <table class="table is-striped is-fullwidth">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Status</th>
+                    <th>Überschrift</th>
+                    <th>Beschreibung</th>
+                    <th>Erstellt von</th>
+                    <th style="width: 150px;">Datum</th>
+                    <th style="width: 100px;"></th>
+                    <th style="width: 100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for suggestion in suggestions %}
+                {% if editing_suggestion and editing_suggestion.id == suggestion.id %}
+                    <!-- Editing Mode -->
+                    <form id="edit_form_{{ suggestion.id }}" action="{{ path('app_suggestions_update', {'id': suggestion.id}) }}" method="post" class="is-display-none"></form>
+                    <tr class="is-selected tr-editing-selected">
+                        <td data-label="Status">
+                            <!-- In edit mode, status remains as text or simple indicator -->
+                            {% if suggestion.isCompleted %}
+                                <span style="color: #10b981; font-weight: bold;">✓ erledigt</span>
+                            {% else %}
+                                <span style="color: var(--theme-text-muted);">offen</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Überschrift">
+                            <input type="hidden" name="_token" value="{{ csrf_token('update_' ~ suggestion.id) }}" form="edit_form_{{ suggestion.id }}">
+                            <input class="input" type="text" name="title" value="{{ suggestion.title }}" form="edit_form_{{ suggestion.id }}" required>
+                        </td>
+                        <td data-label="Beschreibung">
+                            <textarea class="textarea" name="description" rows="3" form="edit_form_{{ suggestion.id }}" required>{{ suggestion.description }}</textarea>
+                        </td>
+                        <td data-label="Erstellt von">
+                            {{ suggestion.user.displayName }}
+                        </td>
+                        <td data-label="Datum">
+                            {{ suggestion.createdAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td>
+                            <button type="submit" form="edit_form_{{ suggestion.id }}" class="button is-small is-success">Speichern</button>
+                        </td>
+                        <td>
+                            <a href="{{ path('app_suggestions') }}" class="button is-small is-light">Abbrechen</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <!-- Normal Mode -->
+                    <tr style="{% if suggestion.isCompleted %}opacity: 0.6;{% endif %}">
+                        <td data-label="Status">
+                            {% if isAdmin %}
+                                <form id="toggle_form_{{ suggestion.id }}" action="{{ path('app_suggestions_toggle', {id: suggestion.id}) }}" method="POST" style="margin: 0;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_' ~ suggestion.id) }}">
+                                    <label style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.85rem; color: var(--theme-text-muted);">
+                                        <input type="checkbox" onChange="this.form.submit()" {% if suggestion.isCompleted %}checked{% endif %} style="cursor: pointer; width: 1.05rem; height: 1.05rem; accent-color: var(--theme-primary);">
+                                        Erledigt
+                                    </label>
+                                </form>
+                            {% else %}
+                                {% if suggestion.isCompleted %}
+                                    <span style="color: #10b981; font-weight: bold;">✓ erledigt</span>
+                                {% else %}
+                                    <span style="color: var(--theme-text-muted);">offen</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td data-label="Überschrift">
+                            <span style="font-weight: 600; {% if suggestion.isCompleted %}text-decoration: line-through; color: var(--theme-text-muted);{% endif %}">
+                                {{ suggestion.title }}
+                            </span>
+                        </td>
+                        <td data-label="Beschreibung">
+                            <p style="white-space: pre-line; {% if suggestion.isCompleted %}color: var(--theme-text-muted);{% endif %}">
+                                {{ suggestion.description }}
+                            </p>
+                        </td>
+                        <td data-label="Erstellt von">
+                            {{ suggestion.user.displayName }}
+                        </td>
+                        <td data-label="Datum">
+                            {{ suggestion.createdAt|date('d.m.Y H:i') }}
+                        </td>
+                        <td>
+                            {% if suggestion.user == app.user or isAdmin %}
+                                <a class="button is-small is-light" href="{{ path('app_suggestions', {edit_suggestion: suggestion.id}) }}">
+                                    Bearbeiten
+                                </a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if suggestion.user == app.user or isAdmin %}
+                                <form action="{{ path('app_suggestions_delete', {id: suggestion.id}) }}" method="POST" onsubmit="return confirm('Möchtest du diesen Vorschlag wirklich löschen?');" style="margin: 0;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_' ~ suggestion.id) }}">
+                                    <button type="submit" class="button is-small is-danger">
+                                        Löschen
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="has-text-centered has-text-grey-light p-4">
+                        Es wurden bisher keine Anpassungsvorschläge eingereicht.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
