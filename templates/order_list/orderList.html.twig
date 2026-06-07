@@ -119,15 +119,7 @@
                                 {% if buy_order.calculatedTotal is not null %}
                                     <strong class="copyable-price" 
                                             title="Wert kopieren (für EVE)"
-                                            onclick="if (this.dataset.original) return;
-                                                     this.dataset.original = this.innerHTML;
-                                                     navigator.clipboard.writeText('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
-                                                         this.innerHTML = 'Kopiert!';
-                                                         setTimeout(() => {
-                                                             this.innerHTML = this.dataset.original;
-                                                             delete this.dataset.original;
-                                                         }, 1000);
-                                                     })">
+                                            onclick="window.copyToClipboard('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
@@ -182,15 +174,7 @@
                                 {% if buy_order.calculatedTotal is not null %}
                                     <strong class="copyable-price" 
                                             title="Wert kopieren (für EVE)"
-                                            onclick="if (this.dataset.original) return;
-                                                     this.dataset.original = this.innerHTML;
-                                                     navigator.clipboard.writeText('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
-                                                         this.innerHTML = 'Kopiert!';
-                                                         setTimeout(() => {
-                                                             this.innerHTML = this.dataset.original;
-                                                             delete this.dataset.original;
-                                                         }, 1000);
-                                                     })">
+                                            onclick="window.copyToClipboard('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
@@ -360,15 +344,7 @@
                                 {% if sell_order.calculatedTotal is not null %}
                                     <strong class="copyable-price" 
                                             title="Wert kopieren (für EVE)"
-                                            onclick="if (this.dataset.original) return;
-                                                     this.dataset.original = this.innerHTML;
-                                                     navigator.clipboard.writeText('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
-                                                         this.innerHTML = 'Kopiert!';
-                                                         setTimeout(() => {
-                                                             this.innerHTML = this.dataset.original;
-                                                             delete this.dataset.original;
-                                                         }, 1000);
-                                                     })">
+                                            onclick="window.copyToClipboard('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
@@ -423,15 +399,7 @@
                                 {% if sell_order.calculatedTotal is not null %}
                                     <strong class="copyable-price" 
                                             title="Wert kopieren (für EVE)"
-                                            onclick="if (this.dataset.original) return;
-                                                     this.dataset.original = this.innerHTML;
-                                                     navigator.clipboard.writeText('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}').then(() => {
-                                                         this.innerHTML = 'Kopiert!';
-                                                         setTimeout(() => {
-                                                             this.innerHTML = this.dataset.original;
-                                                             delete this.dataset.original;
-                                                         }, 1000);
-                                                     })">
+                                            onclick="window.copyToClipboard('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}

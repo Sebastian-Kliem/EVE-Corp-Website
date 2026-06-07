@@ -10,3 +10,67 @@ import './styles/app.css';
 import './react.js';
 
 console.log('This log comes from assets/app.js - welcome to AssetMapper! 🎉');
+
+// Global clipboard copy helper with fallback for insecure contexts
+window.copyToClipboard = function(text, element) {
+    if (element.dataset.original) return;
+    
+    // Save original innerHTML
+    element.dataset.original = element.innerHTML;
+
+    // Helper to restore element state on successful copy
+    const onSuccess = () => {
+        element.innerHTML = 'Kopiert! ✓';
+        element.classList.add('is-copied');
+        setTimeout(() => {
+            element.innerHTML = element.dataset.original;
+            element.classList.remove('is-copied');
+            delete element.dataset.original;
+        }, 1200);
+    };
+
+    // Try modern Clipboard API if available and secure
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(onSuccess)
+            .catch(err => {
+                console.warn('Modern clipboard API failed, trying fallback: ', err);
+                fallbackCopy(text, onSuccess);
+            });
+    } else {
+        fallbackCopy(text, onSuccess);
+    }
+};
+
+function fallbackCopy(text, callback) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    // Prevent scrolling and position offscreen
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            callback();
+        } else {
+            console.error('Fallback copy command was unsuccessful');
+        }
+    } catch (err) {
+        console.error('Fallback copy command failed: ', err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
