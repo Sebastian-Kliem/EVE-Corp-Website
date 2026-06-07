@@ -10,7 +10,19 @@ interface AssetNode {
     isBlueprintCopy: boolean;
     isBlueprint?: boolean;
     isSingleton: boolean;
+    price?: number;
     children: AssetNode[];
+}
+
+function getAssetValue(node: AssetNode): number {
+    const ownVal = node.typeId === 0 ? 0 : (node.price || 0) * node.quantity;
+    let childrenVal = 0;
+    if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+            childrenVal += getAssetValue(child);
+        });
+    }
+    return ownVal + childrenVal;
 }
 
 interface DivisionData {
@@ -213,11 +225,27 @@ export default function CorpAssetsOverview({
                                 </span>
                             ) : null}
                         </div>
-                        <div className="asset-item-info-row">
+                        <div className="asset-item-info-row" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <span className="asset-item-quantity">
                                 x{item.quantity.toLocaleString('de-DE')}
                             </span>
                             <span className="asset-item-flag">{item.locationFlag}</span>
+                            {item.price && item.price > 0 ? (
+                                <>
+                                    <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>
+                                        Einzelwert: {item.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                </>
+                            ) : (
+                                getAssetValue(item) > 0 && (
+                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
@@ -236,35 +264,48 @@ export default function CorpAssetsOverview({
     return (
         <div className="container mt-5 mb-6">
             {/* Header */}
-            <div className="box p-5 mb-5 assets-header-gradient">
+            <div className="box p-5 mb-5 assets-header-gradient" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div className="assets-header-bg-text">CORP</div>
-                <div className="columns is-vcentered">
-                    <div className="column">
-                        <span className="has-text-grey-light is-size-6 uppercase-tracking">
-                            EVE Online Corporation
-                        </span>
-                        <h1 className="title is-1 mt-1 assets-header-title">
-                            Corp-Inventar
-                        </h1>
-                    </div>
-                    {hasCorps && (
-                        <div className="column is-narrow">
-                            <div className="field">
-                                <div className="control has-icons-left">
-                                    <input
-                                        id="global-asset-search"
-                                        className="input assets-search-input assets-overview-search-input"
-                                        type="text"
-                                        placeholder="Gegenstände suchen..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                    <span className="icon is-small is-left">🔍</span>
-                                </div>
+                {(() => {
+                    const totalCorpAssetsVal = corpData.reduce((corpSum, data) => {
+                        return corpSum + data.locations.reduce((locSum, loc) => {
+                            return locSum + loc.divisions.reduce((divSum, div) => {
+                                return divSum + div.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
+                            }, 0);
+                        }, 0);
+                    }, 0);
+
+                    return (
+                        <div className="columns is-vcentered">
+                            <div className="column">
+                                <span className="has-text-grey-light is-size-6 uppercase-tracking" style={{ letterSpacing: '1px' }}>
+                                    GESAMTWERT CORP-INVENTAR
+                                </span>
+                                <h1 className="title is-1 mt-1 mb-2 assets-header-title" style={{ fontSize: '2.5rem', fontWeight: 700 }}>
+                                    {totalCorpAssetsVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                                    <span className="is-size-3">ISK</span>
+                                </h1>
                             </div>
+                            {hasCorps && (
+                                <div className="column is-narrow">
+                                    <div className="field">
+                                        <div className="control has-icons-left">
+                                            <input
+                                                id="global-asset-search"
+                                                className="input assets-search-input assets-overview-search-input"
+                                                type="text"
+                                                placeholder="Gegenstände suchen..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                            <span className="icon is-small is-left">🔍</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    );
+                })()}
             </div>
 
             {/* Accordion Panels */}
@@ -313,10 +354,23 @@ export default function CorpAssetsOverview({
                                         </span>
                                     </div>
                                 </div>
-                                <div className="has-text-right">
+                                <div className="has-text-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                     {lastUpdate ? (
                                         <>
-                                            <span className="has-text-grey block assets-character-wallet-block">
+                                            {(() => {
+                                                const corpVal = data.locations.reduce((locSum, loc) => {
+                                                    return locSum + loc.divisions.reduce((divSum, div) => {
+                                                        return divSum + div.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
+                                                    }, 0);
+                                                }, 0);
+
+                                                return (
+                                                    <span className="has-text-weight-bold" style={{ fontSize: '1.05rem', color: 'var(--theme-text)' }}>
+                                                        Wert: {corpVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                    </span>
+                                                );
+                                            })()}
+                                            <span className="has-text-grey block assets-character-wallet-block" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>
                                                 Stand: {lastUpdate}
                                             </span>
                                             <span className="has-text-grey block is-size-7" style={{ marginTop: '2px' }}>
@@ -371,17 +425,39 @@ export default function CorpAssetsOverview({
                                                     <span className="location-header-title">
                                                         <span>{location.name}</span>
                                                     </span>
-                                                    <span className="tag is-dark location-items-count">
-                                                        {location.divisions.length} {location.divisions.length === 1 ? 'Abteilung' : 'Abteilungen'}
-                                                    </span>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <span className="tag is-dark location-items-count">
+                                                            {location.divisions.length} {location.divisions.length === 1 ? 'Abteilung' : 'Abteilungen'}
+                                                        </span>
+                                                        {(() => {
+                                                            const locVal = location.divisions.reduce((sum, div) => {
+                                                                return sum + div.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
+                                                            }, 0);
+                                                            return (
+                                                                <span className="tag is-info is-rounded is-small font-family-monospace location-header-tag" style={{ backgroundColor: 'rgba(0, 240, 255, 0.1)', border: '1px solid rgba(0, 240, 255, 0.2)', color: 'var(--theme-primary)' }}>
+                                                                    {locVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </h3>
 
                                                 <div className={`location-content ${isLocExpanded ? '' : 'is-hidden'}`}>
                                                     {location.divisions.map((div) => (
                                                         <div key={div.name} className="division-block mb-4" style={{ borderLeft: '2px solid #ffaa00', paddingLeft: '12px', marginTop: '12px' }}>
-                                                            <div className="division-header mb-2" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div className="division-header mb-2" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', paddingBottom: '4px' }}>
                                                                 <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#ffaa00' }}>📁 {div.name}</span>
-                                                                <span className="tag is-dark is-small" style={{ fontSize: '0.7rem' }}>{div.items.length}</span>
+                                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                                    <span className="tag is-dark is-small" style={{ fontSize: '0.7rem' }}>{div.items.length}</span>
+                                                                    {(() => {
+                                                                        const divVal = div.items.reduce((sum, item) => sum + getAssetValue(item), 0);
+                                                                        return (
+                                                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--theme-primary)' }}>
+                                                                                {divVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
                                                             </div>
                                                             <div className="asset-tree-container">
                                                                 {div.items.map((item, idx) => (

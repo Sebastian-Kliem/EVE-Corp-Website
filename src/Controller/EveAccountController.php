@@ -9,6 +9,7 @@ use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\LocationService;
 use App\Service\SdeService;
+use App\Service\JitaPriceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,7 +21,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class EveAccountController extends AbstractController
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly JitaPriceService $jitaPriceService
     ) {}
 
     #[Route('/profile/eve-account/create', name: 'app_eve_account_create', methods: ['POST'])]
@@ -216,6 +218,8 @@ class EveAccountController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
+        $prices = $this->jitaPriceService->getGlobalPrices();
+
         $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
             'user' => $currentUser
         ]);
@@ -258,7 +262,7 @@ class EveAccountController extends AbstractController
                 
                 $items = [];
                 foreach ($topAssets as $asset) {
-                    $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService);
+                    $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService, $prices);
                 }
 
                 usort($items, function ($a, $b) {
@@ -300,13 +304,14 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    private function buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService): array
+    private function buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
     {
         $itemId = $asset->getItemId();
+        $typeId = $asset->getTypeId();
         $children = [];
         if (isset($nestedAssets[$itemId])) {
             foreach ($nestedAssets[$itemId] as $childAsset) {
-                $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService);
+                $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService, $prices);
             }
             usort($children, function ($a, $b) {
                 return strcasecmp($a['name'], $b['name']);
@@ -315,14 +320,15 @@ class EveAccountController extends AbstractController
 
         return [
             'itemId' => $itemId,
-            'typeId' => $asset->getTypeId(),
-            'name' => $sdeService->getItemName($asset->getTypeId()),
+            'typeId' => $typeId,
+            'name' => $sdeService->getItemName($typeId),
             'customName' => $asset->getCustomName(),
             'quantity' => $asset->getQuantity(),
             'locationFlag' => $asset->getLocationFlag(),
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
-            'isBlueprint' => $sdeService->isBlueprint($asset->getTypeId()),
+            'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
+            'price' => $prices[$typeId] ?? 0.0,
             'children' => $children,
         ];
     }
@@ -334,6 +340,8 @@ class EveAccountController extends AbstractController
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
         }
+
+        $prices = $this->jitaPriceService->getGlobalPrices();
 
         $isCeoOrAdmin = $this->isGranted('ROLE_CEO') || $this->isGranted('ROLE_ADMIN');
         $visibilityMap = [];
@@ -464,7 +472,7 @@ class EveAccountController extends AbstractController
                     }
 
                     $folderName = $getDivisionName($flag);
-                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
+                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                     
                     // If this is an Office (typeId 27) and has no visible children (divisions) left after filtering, skip it
                     if ($node['typeId'] === 27 && empty($node['children'])) {
@@ -567,7 +575,8 @@ class EveAccountController extends AbstractController
         SdeService $sdeService, 
         array $divisionNames = [],
         bool $isCeoOrAdmin = true,
-        array $visibilityMap = []
+        array $visibilityMap = [],
+        array $prices = []
     ): array {
         $itemId = $asset->getItemId();
         $typeId = $asset->getTypeId();
@@ -585,7 +594,7 @@ class EveAccountController extends AbstractController
 
             if ($hasOffice && $officeAsset !== null) {
                 // Bypass the office node completely: directly add the office's children (hangars/deliveries)
-                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
+                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                 $children = $officeNode['children'];
             } else {
                 foreach ($nestedAssets[$itemId] as $childAsset) {
@@ -609,7 +618,7 @@ class EveAccountController extends AbstractController
                         continue;
                     }
 
-                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap);
+                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                 }
             }
             
@@ -704,6 +713,7 @@ class EveAccountController extends AbstractController
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
+            'price' => $prices[$typeId] ?? 0.0,
             'children' => $children,
         ];
     }

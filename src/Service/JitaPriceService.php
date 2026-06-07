@@ -94,6 +94,32 @@ class JitaPriceService
                 'warning' => true,
                 'message' => 'Fehler beim Abrufen der ESI-Preise: ' . $e->getMessage()
             ];
+    }
+
+    /**
+     * Fetch all global market prices from ESI.
+     * Returns a map of typeId => averagePrice
+     * 
+     * @return array<int, float>
+     */
+    public function getGlobalPrices(): array
+    {
+        try {
+            $data = $this->esiClient->request('GET', 'markets/prices/');
+            if (!is_array($data)) {
+                return [];
+            }
+
+            $prices = [];
+            foreach ($data as $row) {
+                if (isset($row['type_id']) && isset($row['average_price'])) {
+                    $prices[(int)$row['type_id']] = (float)$row['average_price'];
+                }
+            }
+            return $prices;
+        } catch (\Exception $e) {
+            error_log('[JitaPriceService] Failed to fetch global prices: ' . $e->getMessage());
+            return [];
         }
     }
 }

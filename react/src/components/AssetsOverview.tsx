@@ -10,7 +10,19 @@ interface AssetNode {
     isBlueprintCopy: boolean;
     isBlueprint?: boolean;
     isSingleton: boolean;
+    price?: number;
     children: AssetNode[];
+}
+
+function getAssetValue(node: AssetNode): number {
+    const ownVal = node.typeId === 0 ? 0 : (node.price || 0) * node.quantity;
+    let childrenVal = 0;
+    if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+            childrenVal += getAssetValue(child);
+        });
+    }
+    return ownVal + childrenVal;
 }
 
 interface LocationData {
@@ -209,11 +221,27 @@ export default function AssetsOverview({
                                 </span>
                             ) : null}
                         </div>
-                        <div className="asset-item-info-row">
+                        <div className="asset-item-info-row" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                             <span className="asset-item-quantity">
                                 x{item.quantity.toLocaleString('de-DE')}
                             </span>
                             <span className="asset-item-flag">{item.locationFlag}</span>
+                            {item.price && item.price > 0 ? (
+                                <>
+                                    <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>
+                                        Einzelwert: {item.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                </>
+                            ) : (
+                                getAssetValue(item) > 0 && (
+                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                    </span>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>
@@ -248,36 +276,61 @@ export default function AssetsOverview({
             </nav>
 
             {/* Header & Combined Wallet Balance */}
-            <div className="box p-5 mb-5 assets-header-gradient">
+            <div className="box p-5 mb-5 assets-header-gradient" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div className="assets-header-bg-text">ISK</div>
-                <div className="columns is-vcentered">
-                    <div className="column">
-                        <span className="has-text-grey-light is-size-6 uppercase-tracking">
-                            Gesamtguthaben aller Accounts
-                        </span>
-                        <h1 className="title is-1 mt-1 assets-header-title">
-                            {totalWallet.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                            <span className="is-size-3">ISK</span>
-                        </h1>
-                    </div>
-                    {hasCharacters && (
-                        <div className="column is-narrow">
-                            <div className="field">
-                                <div className="control has-icons-left">
-                                    <input
-                                        id="global-asset-search"
-                                        className="input assets-search-input assets-overview-search-input"
-                                        type="text"
-                                        placeholder="Gegenstände suchen..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                    <span className="icon is-small is-left">🔍</span>
+                {(() => {
+                    const totalAssetVal = characterData.reduce((charSum, char) => {
+                        return charSum + char.locations.reduce((locSum, loc) => {
+                            return locSum + loc.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
+                        }, 0);
+                    }, 0);
+                    const netWorth = totalWallet + totalAssetVal;
+
+                    return (
+                        <div className="columns is-vcentered">
+                            <div className="column">
+                                <span className="has-text-grey-light is-size-6 uppercase-tracking" style={{ letterSpacing: '1px' }}>
+                                    GESAMTVERMÖGEN (Wallet + Assets)
+                                </span>
+                                <h1 className="title is-1 mt-1 mb-3 assets-header-title" style={{ fontSize: '2.5rem', fontWeight: 700 }}>
+                                    {netWorth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+                                    <span className="is-size-3">ISK</span>
+                                </h1>
+                                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
+                                    <div>
+                                        <span className="has-text-grey-light is-size-7 uppercase-tracking">Wallet</span>
+                                        <p style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--theme-text)' }}>
+                                            {totalWallet.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="has-text-grey-light is-size-7 uppercase-tracking">Assets</span>
+                                        <p style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--theme-primary)' }}>
+                                            {totalAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
+                            {hasCharacters && (
+                                <div className="column is-narrow">
+                                    <div className="field">
+                                        <div className="control has-icons-left">
+                                            <input
+                                                id="global-asset-search"
+                                                className="input assets-search-input assets-overview-search-input"
+                                                type="text"
+                                                placeholder="Gegenstände suchen..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                            <span className="icon is-small is-left">🔍</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    );
+                })()}
             </div>
 
             {/* Character Accordion Panels */}
@@ -323,15 +376,26 @@ export default function AssetsOverview({
                                         </span>
                                     </div>
                                 </div>
-                                <div className="has-text-right">
-                                    <span className="has-text-weight-bold assets-character-wallet">
-                                        {data.walletBalance.toLocaleString('de-DE', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                        })}{' '}
-                                        ISK
-                                    </span>
-                                    <span className="has-text-grey block assets-character-wallet-block">
+                                <div className="has-text-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                    {(() => {
+                                        const charAssetVal = data.locations.reduce((locSum, loc) => {
+                                            return locSum + loc.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
+                                        }, 0);
+                                        const charTotal = data.walletBalance + charAssetVal;
+                                        
+                                        return (
+                                            <>
+                                                <span className="has-text-weight-bold assets-character-wallet" style={{ fontSize: '1.05rem', color: 'var(--theme-text)' }}>
+                                                    Gesamt: {charTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                </span>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)', marginTop: '0.2rem' }}>
+                                                    Wallet: {data.walletBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK | 
+                                                    Assets: {charAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
+                                    <span className="has-text-grey block assets-character-wallet-block" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>
                                         Stand:{' '}
                                         {data.character.lastAssetsUpdate
                                             ? data.character.lastAssetsUpdate
@@ -370,9 +434,19 @@ export default function AssetsOverview({
                                                     <span className="location-header-title">
                                                         <span>{location.name}</span>
                                                     </span>
-                                                    <span className="tag is-dark is-rounded is-small font-family-monospace location-header-tag">
-                                                        {location.items.length} Top-Level
-                                                    </span>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                        <span className="tag is-dark is-rounded is-small font-family-monospace location-header-tag">
+                                                            {location.items.length} Top-Level
+                                                        </span>
+                                                        {(() => {
+                                                            const locVal = location.items.reduce((sum, item) => sum + getAssetValue(item), 0);
+                                                            return (
+                                                                <span className="tag is-info is-rounded is-small font-family-monospace location-header-tag" style={{ backgroundColor: 'rgba(0, 240, 255, 0.1)', border: '1px solid rgba(0, 240, 255, 0.2)', color: 'var(--theme-primary)' }}>
+                                                                    {locVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </h3>
 
                                                 <div
