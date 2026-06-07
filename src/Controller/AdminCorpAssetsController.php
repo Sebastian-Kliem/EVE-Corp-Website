@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_CEO')]
 class AdminCorpAssetsController extends AbstractController
 {
     public function __construct(
@@ -29,7 +29,7 @@ class AdminCorpAssetsController extends AbstractController
     {
         // 1. Fetch all unique locations and their corporation IDs from EveCorporationAsset
         $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findAll();
-        
+
         $assetsByItemId = [];
         foreach ($corpAssets as $asset) {
             $assetsByItemId[(string)$asset->getItemId()] = $asset;
@@ -39,14 +39,14 @@ class AdminCorpAssetsController extends AbstractController
         $corpIds = [];
         foreach ($corpAssets as $asset) {
             $corpIds[] = $asset->getCorporationId();
-            
+
             // Resolve the physical base location (NPC Station or owned structure)
             $baseLocId = $this->getBaseLocationId((string)$asset->getLocationId(), $assetsByItemId);
-            
+
             $baseLocNum = (int)$baseLocId;
             $isNpcStation = ($baseLocNum >= 60000000 && $baseLocNum < 64000000);
             $isOwnedStructure = ($baseLocNum >= 1000000000000 && isset($assetsByItemId[$baseLocId]));
-            
+
             if ($isNpcStation || $isOwnedStructure) {
                 $locationIds[] = $baseLocId;
             }
@@ -187,33 +187,33 @@ class AdminCorpAssetsController extends AbstractController
     private function getBaseLocationId(string $locationId, array $assetsByItemId): string
     {
         $currentId = $locationId;
-        
+
         while (true) {
             $currentIdNum = (int)$currentId;
-            
+
             if ($currentIdNum >= 60000000 && $currentIdNum < 64000000) {
                 return $currentId;
             }
-            
+
             if ($currentIdNum >= 30000000 && $currentIdNum < 32000000) {
                 return $currentId;
             }
-            
+
             if (isset($assetsByItemId[$currentId])) {
                 $parentAsset = $assetsByItemId[$currentId];
                 $parentId = $parentAsset->getLocationId();
                 $parentIdNum = (int)$parentId;
-                
+
                 if ($parentIdNum >= 30000000 && $parentIdNum < 32000000) {
                     return $currentId;
                 }
-                
+
                 $currentId = $parentId;
             } else {
                 break;
             }
         }
-        
+
         return $currentId;
     }
 }

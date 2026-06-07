@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/admin/cron')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_CEO')]
 class AdminCronController extends AbstractController
 {
     public function __construct(
@@ -101,14 +101,14 @@ class AdminCronController extends AbstractController
         // Run command programmatically in the background / request context
         $application = new Application($kernel);
         $application->setAutoExit(false);
-        
+
         $input = new ArrayInput(['command' => 'app:cron:run']);
         $output = new BufferedOutput();
-        
+
         try {
             $application->run($input, $output);
             $outputContent = $output->fetch();
-            
+
             $this->addFlash('success', 'Cron-Runner wurde erfolgreich gestartet.');
             if (!empty($outputContent)) {
                 $this->addFlash('info', $this->formatCommandOutput($outputContent));

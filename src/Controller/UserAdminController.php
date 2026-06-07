@@ -13,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[Route('/admin')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_CEO')]
 class UserAdminController extends AbstractController
 {
     public function __construct(
@@ -25,7 +25,7 @@ class UserAdminController extends AbstractController
     public function index(Request $request): Response
     {
         $search = trim($request->query->get('search', ''));
-        
+
         if (!empty($search)) {
             $users = $this->userRepository->createQueryBuilder('u')
                 ->where('u.username LIKE :search')
@@ -78,16 +78,16 @@ class UserAdminController extends AbstractController
 
         // 3. Permission checks based on current user roles
         $isCeo = $this->isGranted('ROLE_CEO');
-        
+
         if (!$isCeo) {
             // ROLE_OFFICER can only toggle between ROLE_RECRUIT and ROLE_MEMBER (members verifications)
-            // They are not allowed to change users with existing ROLE_OFFICER, ROLE_CEO or ROLE_ADMIN, 
+            // They are not allowed to change users with existing ROLE_OFFICER, ROLE_CEO or ROLE_ADMIN,
             // and cannot assign ROLE_OFFICER, ROLE_CEO or ROLE_ADMIN to anyone.
             $targetUserHasHigherRole = in_array('ROLE_ADMIN', $user->getRoles(), true)
                 || in_array('ROLE_CEO', $user->getRoles(), true)
                 || in_array('ROLE_OFFICER', $user->getRoles(), true);
             $actionIsToHigherRole = in_array($role, ['ROLE_ADMIN', 'ROLE_CEO', 'ROLE_OFFICER'], true);
-            
+
             if ($targetUserHasHigherRole || $actionIsToHigherRole) {
                 $this->addFlash('error', 'Du hast keine Berechtigung, erweiterte Rollen zu verwalten.');
                 return $this->redirectToRoute('app_admin_users');
@@ -144,7 +144,7 @@ class UserAdminController extends AbstractController
         // 4. Generate temporary password
         $tempPassword = 'Keepers-' . random_int(100000, 999999);
         $hashedPassword = $passwordHasher->hashPassword($user, $tempPassword);
-        
+
         $user->setPassword($hashedPassword);
         $this->entityManager->flush();
 
