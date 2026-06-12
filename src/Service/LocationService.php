@@ -95,6 +95,22 @@ class LocationService
      */
     private function resolvePlayerStructure(int $locationId, ?EveCharacter $character = null): array
     {
+        // Check if we can find this location in corporation assets (e.g. Customs Offices)
+        $corpAsset = $this->entityManager->getRepository(\App\Entity\EveCorporationAsset::class)->findOneBy(['itemId' => $locationId]);
+        if ($corpAsset && $corpAsset->getCustomName()) {
+            $structureName = $corpAsset->getCustomName();
+            $solarSystemName = 'Unbekannt';
+            if (preg_match('/\(([^)]+)\)/', $structureName, $matches)) {
+                $parts = explode(' ', trim($matches[1]));
+                $solarSystemName = $parts[0];
+            }
+            return [
+                'name' => $structureName,
+                'systemName' => $solarSystemName,
+                'rawName' => $structureName,
+            ];
+        }
+
         $structureRepo = $this->entityManager->getRepository(EveStructure::class);
         $structure = $structureRepo->find((string)$locationId);
 

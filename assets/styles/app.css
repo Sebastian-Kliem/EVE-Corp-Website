@@ -2101,3 +2101,573 @@ input[type="number"] {
     color: #48c78e !important;
     font-weight: bold;
 }
+
+/* ==========================================================================
+   7. PLANETARY INTERACTION (PI) OVERVIEW
+   ========================================================================== */
+.pi-dashboard {
+    padding: 1.5rem;
+    font-family: inherit;
+}
+.pi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.05) 0%, rgba(0, 0, 0, 0.4) 100%);
+    border: 1px solid var(--theme-card-border, #333);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+.pi-title-block h1 {
+    font-size: 2rem;
+    color: var(--theme-primary, #00f0ff);
+    margin: 0 0 0.5rem 0;
+    font-weight: 800;
+}
+.pi-title-block .subtitle {
+    color: var(--theme-text-muted, #94a3b8);
+    margin: 0;
+}
+.pi-stats-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.pi-stats-grid .stat-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 0.75rem 1.25rem;
+    min-width: 120px;
+    text-align: center;
+}
+.pi-stats-grid .stat-label {
+    font-size: 0.75rem;
+    color: var(--theme-text-muted, #94a3b8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+.pi-stats-grid .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.pi-filter-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.pi-filter-bar .filter-item {
+    flex: 1;
+    min-width: 200px;
+}
+.pi-filter-bar .search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.pi-filter-bar .search-icon {
+    position: absolute;
+    left: 10px;
+    color: #888;
+}
+.pi-filter-bar .search-input-wrapper input {
+    padding-left: 2.2rem !important;
+}
+.input-dark, .select-dark {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid var(--theme-card-border, #444) !important;
+    color: #fff !important;
+    border-radius: 4px;
+}
+.input-dark:focus, .select-dark:focus {
+    border-color: var(--theme-primary, #00f0ff) !important;
+    box-shadow: 0 0 5px rgba(0, 240, 255, 0.3) !important;
+}
+
+.pi-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: #aaa;
+    gap: 1rem;
+}
+.pi-loading-state .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 240, 255, 0.1);
+    border-top: 4px solid var(--theme-primary, #00f0ff);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.pi-error-state {
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 2rem;
+}
+
+.pi-content {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+@media screen and (max-width: 1024px) {
+    .pi-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pi-accounts-sidebar {
+    background-color: var(--theme-card-bg, rgba(255,255,255,0.01));
+    border: 1px solid var(--theme-card-border, #333);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+.pi-accounts-sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: #fff;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.5rem;
+}
+.sidebar-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.sidebar-group .group-title {
+    font-size: 0.85rem;
+    color: var(--theme-primary, #00f0ff);
+    text-transform: uppercase;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 0.05em;
+}
+.sidebar-account {
+    margin-bottom: 0.75rem;
+    padding-left: 0.25rem;
+}
+.sidebar-account .account-title {
+    font-size: 0.9rem;
+    color: #ccc;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.sidebar-chars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.sidebar-char-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.85rem;
+    color: #aaa;
+}
+.sidebar-char-item .char-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+}
+.sidebar-char-item .char-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pi-planets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+.character-block {
+    background-color: var(--theme-card-bg, rgba(255,255,255,0.01));
+    border: 1px solid var(--theme-card-border, #333);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.character-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    user-select: none;
+}
+.character-header .char-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.character-header .char-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--theme-primary, #00f0ff);
+}
+.character-header h2 {
+    font-size: 1.25rem;
+    color: #fff;
+    margin: 0;
+}
+.character-planets-grid {
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+.planet-card {
+    background: rgba(0,0,0,0.15);
+    border: 1px solid #2a2a2a;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.planet-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    user-select: none;
+}
+.planet-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.planet-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #eee;
+    margin: 0;
+}
+.planet-system {
+    color: #888;
+    font-size: 0.9rem;
+}
+.planet-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Planet Type Badges styling */
+.planet-type-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    background: #444;
+    color: #fff;
+}
+.planet-type-badge.type-temperate { background: #3b82f6; }
+.planet-type-badge.type-barren { background: #6b7280; }
+.planet-type-badge.type-gas { background: #f59e0b; }
+.planet-type-badge.type-lava { background: #ef4444; }
+.planet-type-badge.type-ice { background: #06b6d4; }
+.planet-type-badge.type-plasma { background: #8b5cf6; }
+.planet-type-badge.type-storm { background: #ec4899; }
+.planet-type-badge.type-oceanic { background: #0d9488; }
+
+.pi-section {
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    padding-bottom: 1.25rem;
+}
+.pi-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.pi-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    color: #fff;
+    font-weight: 600;
+}
+.pi-section .section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.pi-section .section-title h4 {
+    margin-bottom: 0;
+}
+.resolved-status {
+    font-size: 0.8rem;
+}
+.empty-text {
+    color: #666;
+    font-size: 0.85rem;
+    margin: 0;
+    font-style: italic;
+}
+.empty-text-indent {
+    color: #666;
+    font-size: 0.85rem;
+    margin: 0 0 0 0.5rem;
+    font-style: italic;
+}
+
+/* Materials items Grid */
+.materials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+}
+.materials-grid-indent {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-left: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.material-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.material-item .item-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+}
+.material-item .item-icon-small {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+.material-item .item-qty {
+    color: #ffd700;
+    font-weight: bold;
+    font-family: monospace;
+}
+.material-item .item-name {
+    color: #ccc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Storage Cards styling */
+.storage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.storage-card {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+.storage-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding-bottom: 4px;
+}
+.storage-card-header h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #eee;
+    font-weight: 600;
+}
+.storage-type-badge {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+/* Routing Block styling */
+.routing-block {
+    margin-top: 0.75rem;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 0.8rem;
+}
+.routing-block.inputs {
+    border-left: 3px solid #f59e0b;
+}
+.routing-block.outputs {
+    border-left: 3px solid #10b981;
+}
+.route-direction {
+    display: block;
+    color: #888;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+.routes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 4px;
+}
+.route-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.route-desc {
+    color: #ccc;
+}
+.route-arrow {
+    color: #888;
+}
+.route-dest {
+    color: #aaa;
+    font-style: italic;
+}
+
+/* Extractor Card styling */
+.extractor-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+.extractor-card {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+.extractor-card.running {
+    border-left: 3px solid #10b981;
+}
+.extractor-card.idle {
+    border-left: 3px solid #ef4444;
+}
+.extractor-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding-bottom: 4px;
+}
+.extractor-card-header h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #eee;
+    font-weight: 600;
+}
+.extractor-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+.extractor-details .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.extractor-details .label {
+    color: #888;
+}
+.extractor-details .value {
+    color: #eee;
+}
+
+/* Factory Grid styling */
+.factory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+}
+.factory-card {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 0.75rem;
+    border-left: 3px solid #8b5cf6;
+}
+.factory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    padding-bottom: 4px;
+}
+.factory-card-header h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #eee;
+    font-weight: 600;
+}
+.schematic-badge {
+    font-size: 0.75rem;
+    color: #c084fc;
+    background: rgba(139, 92, 246, 0.1);
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+.factory-recipe {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+.recipe-block h6 {
+    margin: 0 0 2px 0;
+    color: #888;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.recipe-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 4px;
+    margin-bottom: 2px;
+}
+.recipe-item .item-icon-small {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+}
+.factory-meta {
+    border-top: 1px dotted rgba(255, 255, 255, 0.05);
+    padding-top: 4px;
+    color: #666;
+    font-size: 0.75rem;
+    text-align: right;
+}
+

@@ -182,4 +182,52 @@ class SdeService
             return [];
         }
     }
+
+    public function getSchematicDetails(int $schematicId): ?array
+    {
+        try {
+            $schematic = $this->connection->fetchAssociative(
+                'SELECT schematicName, cycleTime FROM planetSchematics WHERE schematicID = :id LIMIT 1',
+                ['id' => $schematicId]
+            );
+
+            if (!$schematic) {
+                return null;
+            }
+
+            $types = $this->connection->fetchAllAssociative(
+                'SELECT t.typeID, t.typeName, m.quantity, m.isInput 
+                 FROM planetSchematicsTypeMap m 
+                 JOIN invTypes t ON m.typeID = t.typeID 
+                 WHERE m.schematicID = :id',
+                ['id' => $schematicId]
+            );
+
+            $inputs = [];
+            $outputs = [];
+
+            foreach ($types as $row) {
+                $item = [
+                    'type_id' => (int)$row['typeID'],
+                    'name' => $row['typeName'],
+                    'quantity' => (int)$row['quantity'],
+                ];
+                if ($row['isInput']) {
+                    $inputs[] = $item;
+                } else {
+                    $outputs[] = $item;
+                }
+            }
+
+            return [
+                'name' => $schematic['schematicName'],
+                'cycleTime' => (int)$schematic['cycleTime'],
+                'inputs' => $inputs,
+                'outputs' => $outputs,
+            ];
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }
+
