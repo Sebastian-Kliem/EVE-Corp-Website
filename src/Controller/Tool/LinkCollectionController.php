@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Tool;
 
 use App\Entity\LinkCollection\LinkCollectionCategory;
 use App\Entity\LinkCollection\LinkCollectionItem;

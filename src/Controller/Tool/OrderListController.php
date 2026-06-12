@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Tool;
 
 use App\Entity\Orders\BuyOrder;
 use App\Entity\Orders\SellOrder;

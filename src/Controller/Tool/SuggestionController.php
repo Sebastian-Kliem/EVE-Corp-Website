@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Tool;
 
 use App\Entity\Suggestion;
 use App\Entity\User;

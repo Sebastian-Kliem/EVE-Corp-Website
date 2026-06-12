@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller;
+namespace App\Controller\Profile;
 
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
