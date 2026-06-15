@@ -46,6 +46,15 @@ class EveCharacterAsset
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $customName = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $materialEfficiency = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $timeEfficiency = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $runs = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -167,6 +176,42 @@ class EveCharacterAsset
     public function setCustomName(?string $customName): static
     {
         $this->customName = $customName;
+
+        return $this;
+    }
+
+    public function getMaterialEfficiency(): ?int
+    {
+        return $this->materialEfficiency;
+    }
+
+    public function setMaterialEfficiency(?int $materialEfficiency): static
+    {
+        $this->materialEfficiency = $materialEfficiency;
+
+        return $this;
+    }
+
+    public function getTimeEfficiency(): ?int
+    {
+        return $this->timeEfficiency;
+    }
+
+    public function setTimeEfficiency(?int $timeEfficiency): static
+    {
+        $this->timeEfficiency = $timeEfficiency;
+
+        return $this;
+    }
+
+    public function getRuns(): ?int
+    {
+        return $this->runs;
+    }
+
+    public function setRuns(?int $runs): static
+    {
+        $this->runs = $runs;
 
         return $this;
     }

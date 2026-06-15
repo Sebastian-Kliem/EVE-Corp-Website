@@ -15,6 +15,9 @@ interface AssetItem {
     isBlueprintCopy: boolean;
     isBlueprint?: boolean;
     isSingleton: boolean;
+    materialEfficiency?: number | null;
+    timeEfficiency?: number | null;
+    runs?: number | null;
 }
 
 interface GroupedAsset {
@@ -196,7 +199,26 @@ export default function CharacterAssets({
                                                     ) : (
                                                         item.name
                                                     )}
-                                                    {item.isBlueprintCopy && (
+                                                    {item.isBlueprint ? (
+                                                        <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: '4px' }}>
+                                                            {item.isBlueprintCopy ? (
+                                                                <>
+                                                                    <span className="asset-blueprint-tag bpc">Kopie</span>
+                                                                    {item.runs !== undefined && item.runs !== null && item.runs >= 0 && (
+                                                                        <span className="asset-blueprint-tag runs">{item.runs} Runs</span>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <span className="asset-blueprint-tag bpo">Original</span>
+                                                            )}
+                                                            {item.materialEfficiency !== undefined && item.materialEfficiency !== null && (
+                                                                <span className="asset-blueprint-tag me">ME: {item.materialEfficiency}%</span>
+                                                            )}
+                                                            {item.timeEfficiency !== undefined && item.timeEfficiency !== null && (
+                                                                <span className="asset-blueprint-tag te">TE: {item.timeEfficiency}%</span>
+                                                            )}
+                                                        </span>
+                                                    ) : item.isBlueprintCopy && (
                                                         <span className="tag is-info is-light is-small ml-1 assets-badge-blueprint-copy">
                                                             Kopie
                                                         </span>

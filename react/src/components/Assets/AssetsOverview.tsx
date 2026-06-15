@@ -11,6 +11,9 @@ interface AssetNode {
     isBlueprint?: boolean;
     isSingleton: boolean;
     price?: number;
+    materialEfficiency?: number | null;
+    timeEfficiency?: number | null;
+    runs?: number | null;
     children: AssetNode[];
 }
 
@@ -213,7 +216,26 @@ export default function AssetsOverview({
                             ) : (
                                 <span className="asset-item-name">{item.name}</span>
                             )}
-                            {item.isBlueprintCopy ? (
+                            {item.isBlueprint ? (
+                                <span style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '4px' }}>
+                                    {item.isBlueprintCopy ? (
+                                        <>
+                                            <span className="asset-blueprint-tag bpc">Kopie</span>
+                                            {item.runs !== undefined && item.runs !== null && item.runs >= 0 && (
+                                                <span className="asset-blueprint-tag runs">{item.runs} Runs</span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="asset-blueprint-tag bpo">Original</span>
+                                    )}
+                                    {item.materialEfficiency !== undefined && item.materialEfficiency !== null && (
+                                        <span className="asset-blueprint-tag me">ME: {item.materialEfficiency}%</span>
+                                    )}
+                                    {item.timeEfficiency !== undefined && item.timeEfficiency !== null && (
+                                        <span className="asset-blueprint-tag te">TE: {item.timeEfficiency}%</span>
+                                    )}
+                                </span>
+                            ) : item.isBlueprintCopy ? (
                                 <span className="tag is-info is-light is-small asset-item-tag">Kopie</span>
                             ) : hasChildren ? (
                                 <span className="tag is-small asset-item-tag is-content-badge">

@@ -171,8 +171,40 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $namesMap = $this->fetchCharacterAssetNames($character, $customizableItemIds);
 
+        // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
+        $blueprintsMap = [];
+        $page = 1;
+        while (true) {
+            try {
+                $blueprints = $this->esiClient->request(
+                    'GET',
+                    sprintf('characters/%d/blueprints/', $character->getId()),
+                    [
+                        'query' => ['page' => $page]
+                    ],
+                    $character
+                );
+                if (empty($blueprints)) {
+                    break;
+                }
+                foreach ($blueprints as $bp) {
+                    $blueprintsMap[(int)$bp['item_id']] = [
+                        'me' => (int)($bp['material_efficiency'] ?? 0),
+                        'te' => (int)($bp['time_efficiency'] ?? 0),
+                        'runs' => (int)($bp['runs'] ?? -1),
+                    ];
+                }
+                $page++;
+            } catch (\Exception $e) {
+                if ($page === 1) {
+                    error_log(sprintf('[UpdateCharacterDataTask] Failed to fetch blueprints for character %d: %s', $character->getId(), $e->getMessage()));
+                }
+                break;
+            }
+        }
+
         // Perform asset database update in a transaction
-        $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap) {
+        $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap, $blueprintsMap) {
             // 1. Clear existing assets
             $this->assetRepository->clearAssetsForCharacter($character->getId());
 
@@ -197,6 +229,12 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
                 if (isset($namesMap[$assetData['item_id']])) {
                     $asset->setCustomName($namesMap[$assetData['item_id']]);
+                }
+
+                if (isset($blueprintsMap[$assetData['item_id']])) {
+                    $asset->setMaterialEfficiency($blueprintsMap[$assetData['item_id']]['me']);
+                    $asset->setTimeEfficiency($blueprintsMap[$assetData['item_id']]['te']);
+                    $asset->setRuns($blueprintsMap[$assetData['item_id']]['runs']);
                 }
 
                 $this->entityManager->persist($asset);
@@ -278,8 +316,40 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $namesMap = $this->fetchCorpAssetNames($character, $corpId, $customizableItemIds);
 
+        // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
+        $blueprintsMap = [];
+        $page = 1;
+        while (true) {
+            try {
+                $blueprints = $this->esiClient->request(
+                    'GET',
+                    sprintf('corporations/%d/blueprints/', $corpId),
+                    [
+                        'query' => ['page' => $page]
+                    ],
+                    $character
+                );
+                if (empty($blueprints)) {
+                    break;
+                }
+                foreach ($blueprints as $bp) {
+                    $blueprintsMap[(int)$bp['item_id']] = [
+                        'me' => (int)($bp['material_efficiency'] ?? 0),
+                        'te' => (int)($bp['time_efficiency'] ?? 0),
+                        'runs' => (int)($bp['runs'] ?? -1),
+                    ];
+                }
+                $page++;
+            } catch (\Exception $e) {
+                if ($page === 1) {
+                    error_log(sprintf('[UpdateCharacterDataTask] Failed to fetch corporation blueprints for corp %d: %s', $corpId, $e->getMessage()));
+                }
+                break;
+            }
+        }
+
         // Perform asset database update in a transaction
-        $this->entityManager->wrapInTransaction(function() use ($corpId, $allAssets, $character, $namesMap) {
+        $this->entityManager->wrapInTransaction(function() use ($corpId, $allAssets, $character, $namesMap, $blueprintsMap) {
             // 1. Clear existing corp assets
             $this->corpAssetRepository->clearAssetsForCorporation($corpId);
 
@@ -304,6 +374,12 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
                 if (isset($namesMap[$assetData['item_id']])) {
                     $asset->setCustomName($namesMap[$assetData['item_id']]);
+                }
+
+                if (isset($blueprintsMap[$assetData['item_id']])) {
+                    $asset->setMaterialEfficiency($blueprintsMap[$assetData['item_id']]['me']);
+                    $asset->setTimeEfficiency($blueprintsMap[$assetData['item_id']]['te']);
+                    $asset->setRuns($blueprintsMap[$assetData['item_id']]['runs']);
                 }
 
                 $this->entityManager->persist($asset);

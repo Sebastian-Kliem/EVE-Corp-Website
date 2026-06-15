@@ -328,7 +328,10 @@ class EveAccountController extends AbstractController
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
-            'price' => $prices[$typeId] ?? 0.0,
+            'price' => $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'materialEfficiency' => $asset->getMaterialEfficiency(),
+            'timeEfficiency' => $asset->getTimeEfficiency(),
+            'runs' => $asset->getRuns(),
             'children' => $children,
         ];
     }
@@ -713,7 +716,10 @@ class EveAccountController extends AbstractController
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
-            'price' => $prices[$typeId] ?? 0.0,
+            'price' => $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'materialEfficiency' => $asset->getMaterialEfficiency(),
+            'timeEfficiency' => $asset->getTimeEfficiency(),
+            'runs' => $asset->getRuns(),
             'children' => $children,
         ];
     }
