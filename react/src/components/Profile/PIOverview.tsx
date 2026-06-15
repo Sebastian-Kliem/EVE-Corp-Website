@@ -11,6 +11,7 @@ interface Material {
     type_id: number;
     name: string;
     quantity: number;
+    container?: string;
 }
 
 interface RouteMaterial {
@@ -494,6 +495,11 @@ export default function PIOverview({
                                                                                     <span key={item.type_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', padding: '0.1rem 0.4rem', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
                                                                                         <img src={getTypeIconUrl(item.type_id)} alt={item.name} style={{ width: '16px', height: '16px' }} />
                                                                                         {item.quantity.toLocaleString()}x {item.name}
+                                                                                        {item.container && (
+                                                                                            <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.75rem', marginLeft: '0.25rem' }}>
+                                                                                                ({item.container})
+                                                                                            </span>
+                                                                                        )}
                                                                                     </span>
                                                                                 ))}
                                                                             </div>
@@ -524,6 +530,11 @@ export default function PIOverview({
                                                                                     <span key={item.type_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', padding: '0.1rem 0.4rem', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
                                                                                         <img src={getTypeIconUrl(item.type_id)} alt={item.name} style={{ width: '16px', height: '16px' }} />
                                                                                         {item.quantity.toLocaleString()}x {item.name}
+                                                                                        {item.container && (
+                                                                                            <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.75rem', marginLeft: '0.25rem' }}>
+                                                                                                ({item.container})
+                                                                                            </span>
+                                                                                        )}
                                                                                     </span>
                                                                                 ))}
                                                                             </div>

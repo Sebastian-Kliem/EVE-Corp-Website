@@ -6,6 +6,7 @@ use App\Entity\User;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCorporationAsset;
+use App\Entity\EveStructure;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,6 +28,7 @@ class ProfilePiController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly EsiClient $esiClient,
         private readonly SdeService $sdeService,
+        private readonly \App\Service\LocationService $locationService,
         ManagerRegistry $doctrine
     ) {
         // Get SDE database connection for raw queries
@@ -123,6 +125,50 @@ class ProfilePiController extends AbstractController
             }
 
             try {
+                // Pre-load and group character assets that are PI materials in all locations
+                $charAssets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy(['character' => $character]);
+                
+                // Map to quickly find parent assets (containers)
+                $assetsByItemId = [];
+                foreach ($charAssets as $asset) {
+                    $assetsByItemId[$asset->getItemId()] = $asset;
+                }
+
+                $pocoAssetsMap = []; // locationId => [ [type_id, name, quantity, container], ... ]
+                foreach ($charAssets as $asset) {
+                    $category = $this->sdeService->getItemCategory($asset->getTypeId());
+                    if ($category === 'pi') {
+                        // Resolve nested container path to find the real location (Station, Citadel, POCO)
+                        $realLocId = $asset->getLocationId();
+                        $containerPath = [];
+                        $visited = []; // Prevent infinite loops
+                        while (isset($assetsByItemId[$realLocId]) && !in_array($realLocId, $visited, true)) {
+                            $visited[] = $realLocId;
+                            $containerAsset = $assetsByItemId[$realLocId];
+                            
+                            $cName = $containerAsset->getCustomName();
+                            if (!$cName) {
+                                $cName = $this->sdeService->getItemName($containerAsset->getTypeId());
+                            }
+                            $containerPath[] = $cName;
+                            
+                            $realLocId = $containerAsset->getLocationId();
+                        }
+
+                        $containerName = null;
+                        if (!empty($containerPath)) {
+                            $containerName = implode(' > ', array_reverse($containerPath));
+                        }
+
+                        $pocoAssetsMap[$realLocId][] = [
+                            'type_id' => $asset->getTypeId(),
+                            'name' => $this->sdeService->getItemName($asset->getTypeId()),
+                            'quantity' => $asset->getQuantity(),
+                            'container' => $containerName,
+                        ];
+                    }
+                }
+
                 // Fetch basic planet list for character
                 $planets = $this->esiClient->request(
                     'GET',
@@ -240,9 +286,8 @@ class ProfilePiController extends AbstractController
                     }
 
                     // 4. Trace routes to link factories and launchpads
-                    // We want to see: which launchpad provides inputs to which factory, and which launchpad receives outputs.
-                    $launchpadInputs = [];  // launchpad_pin_id => [ ['factory_name', 'material_name', 'qty_per_cycle'] ]
-                    $launchpadOutputs = []; // launchpad_pin_id => [ ['factory_name', 'material_name', 'qty_per_cycle'] ]
+                    $launchpadInputs = [];
+                    $launchpadOutputs = [];
 
                     foreach ($routes as $route) {
                         $sourceId = (string)$route['source_pin_id'];
@@ -255,7 +300,6 @@ class ProfilePiController extends AbstractController
                         $destPin = $processedPins[$destId] ?? null;
 
                         if ($sourcePin && $destPin) {
-                            // Case 1: Route from Launchpad/Storage to Factory (Launchpad supplies input)
                             if (in_array($sourcePin['category'], ['launchpad', 'storage']) && $destPin['category'] === 'factory') {
                                 $launchpadInputs[$sourceId][] = [
                                     'factory_id' => $destId,
@@ -266,7 +310,6 @@ class ProfilePiController extends AbstractController
                                     'quantity' => $qty,
                                 ];
                             }
-                            // Case 2: Route from Factory to Launchpad/Storage (Launchpad receives output)
                             if ($sourcePin['category'] === 'factory' && in_array($destPin['category'], ['launchpad', 'storage'])) {
                                 $launchpadOutputs[$destId][] = [
                                     'factory_id' => $sourceId,
@@ -280,7 +323,6 @@ class ProfilePiController extends AbstractController
                         }
                     }
 
-                    // Attach routes data to launchpads/storages
                     foreach ($processedPins as $pinId => &$pinRef) {
                         if (in_array($pinRef['category'], ['launchpad', 'storage'])) {
                             $pinRef['supplied_inputs'] = $launchpadInputs[$pinId] ?? [];
@@ -292,6 +334,8 @@ class ProfilePiController extends AbstractController
                     // 5. Try to find Customs Office (POCO) materials for this planet in database
                     $pocoMaterials = [];
                     $pocoName = 'Zollamt (POCO)';
+                    $pocoResolved = false;
+                    $pocoId = null;
                     
                     // Search in EveCorporationAsset for POCO orbiting this planet
                     $pocoAsset = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('ca')
@@ -303,28 +347,27 @@ class ProfilePiController extends AbstractController
 
                     if ($pocoAsset) {
                         $pocoName = $pocoAsset->getCustomName();
-                        
-                        // Find character assets stored inside this POCO
-                        $assetsInPoco = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy([
-                            'character' => $character,
-                            'locationId' => $pocoAsset->getItemId()
-                        ]);
-
-                        foreach ($assetsInPoco as $asset) {
-                            $pocoMaterials[] = [
-                                'type_id' => $asset->getTypeId(),
-                                'name' => $this->sdeService->getItemName($asset->getTypeId()),
-                                'quantity' => $asset->getQuantity(),
-                            ];
-                        }
+                        $pocoId = $pocoAsset->getItemId();
+                        $pocoResolved = true;
                     } else {
-                        // Fallback: Check if there are any character assets with locationId > 1,000,000,000,000
-                        // where the locationId is NOT registered as a station or a citadel/refinery,
-                        // and they contain planetary materials, and the solar system matches.
-                        // However, to keep it simple, we just check for character assets in locationId != station
-                        // matching our solar system.
-                        // First, get all locationIds for character assets where locationType = 'other' or locationType = 'item'
-                        // and see if we can query LocationService to resolve it. But we already do that.
+                        // Fallback: Search in EveStructure (renamed by user)
+                        $pocoStructure = $this->entityManager->getRepository(EveStructure::class)->createQueryBuilder('s')
+                            ->where('s.name LIKE :planetName')
+                            ->setParameter('planetName', '%' . $planetName . '%')
+                            ->setMaxResults(1)
+                            ->getQuery()
+                            ->getOneOrNullResult();
+
+                        if ($pocoStructure) {
+                            $pocoName = $pocoStructure->getName();
+                            $pocoId = (int)$pocoStructure->getId();
+                            $pocoResolved = true;
+                        }
+                    }
+
+                    if ($pocoId && isset($pocoAssetsMap[$pocoId])) {
+                        $pocoMaterials = $pocoAssetsMap[$pocoId];
+                        unset($pocoAssetsMap[$pocoId]); // Removed so it won't show up in unassigned
                     }
 
                     $planetData[] = [
@@ -340,8 +383,21 @@ class ProfilePiController extends AbstractController
                         'poco' => [
                             'name' => $pocoName,
                             'contents' => $pocoMaterials,
-                            'resolved' => ($pocoAsset !== null),
+                            'resolved' => $pocoResolved,
                         ]
+                    ];
+                }
+
+                // 6. Gather remaining items in pocoAssetsMap as unassigned POCOs
+                $unassignedPocos = [];
+                foreach ($pocoAssetsMap as $locId => $materials) {
+                    $resolved = $this->locationService->resolveLocation($locId, $character);
+                    
+                    $unassignedPocos[] = [
+                        'location_id' => $locId,
+                        'name' => $resolved['name'],
+                        'solar_system_name' => $resolved['systemName'],
+                        'contents' => $materials,
                     ];
                 }
 
@@ -349,15 +405,16 @@ class ProfilePiController extends AbstractController
                     'character_id' => $character->getId(),
                     'character_name' => $character->getName(),
                     'planets' => $planetData,
+                    'unassigned_pocos' => $unassignedPocos,
                 ];
 
             } catch (\Exception $e) {
-                // If a character's PI fails to sync, log and skip/indicate error
                 $data[] = [
                     'character_id' => $character->getId(),
                     'character_name' => $character->getName(),
                     'error' => 'Kein Zugriff oder Fehler beim Abrufen der PI: ' . $e->getMessage(),
                     'planets' => [],
+                    'unassigned_pocos' => [],
                 ];
             }
         }
