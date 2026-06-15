@@ -41,7 +41,10 @@ class EveImageProxyController extends AbstractController
 
         // If cached file exists locally, serve it immediately (0ms external latency)
         if (file_exists($cachePath)) {
-            return new BinaryFileResponse($cachePath);
+            $response = new BinaryFileResponse($cachePath);
+            $response->setMaxAge(2592000); // 30 days
+            $response->setPublic();
+            return $response;
         }
 
         // Otherwise, fetch it from CCP Image Server in the background (Server-to-Server)
@@ -57,7 +60,10 @@ class EveImageProxyController extends AbstractController
                 $content = $response->getContent();
                 file_put_contents($cachePath, $content);
                 
-                return new BinaryFileResponse($cachePath);
+                $fileResponse = new BinaryFileResponse($cachePath);
+                $fileResponse->setMaxAge(2592000); // 30 days
+                $fileResponse->setPublic();
+                return $fileResponse;
             }
         } catch (\Exception $e) {
             // Log error if logger exists or simply let it fail gracefully

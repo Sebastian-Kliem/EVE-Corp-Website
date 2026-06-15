@@ -55,6 +55,7 @@ interface AssetsOverviewProps {
         characters: string;
     };
     profileUrl: string;
+    jwtToken: string;
 }
 
 export default function AssetsOverview({
@@ -62,6 +63,7 @@ export default function AssetsOverview({
     characterData,
     imagePaths,
     profileUrl,
+    jwtToken,
 }: AssetsOverviewProps) {
     const [searchQuery, setSearchQuery] = useState('');
     // Tracks which character panels are expanded. Initially all character panels are expanded.
@@ -112,6 +114,7 @@ export default function AssetsOverview({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`,
                 },
                 body: JSON.stringify({
                     name: editName.trim(),
@@ -180,8 +183,8 @@ export default function AssetsOverview({
     // Recursive function to filter asset nodes based on search query and active filter
     // Returns the filtered node (with matching children) and a boolean indicating if there's any match in this branch
     const filterAssetNode = (node: AssetNode, query: string, filter: string): { node: AssetNode | null; hasMatch: boolean } => {
-        const matchesQuery = query === '' || 
-            node.name.toLowerCase().includes(query) || 
+        const matchesQuery = query === '' ||
+            node.name.toLowerCase().includes(query) ||
             (node.customName && node.customName.toLowerCase().includes(query));
 
         let matchesFilter = true;
@@ -361,21 +364,6 @@ export default function AssetsOverview({
 
     return (
         <div className="container mt-5 mb-6">
-            {/* Breadcrumbs */}
-            <nav className="breadcrumb" aria-label="breadcrumbs">
-                <ul>
-                    <li>
-                        <a href={profileUrl} className="assets-breadcrumbs-link">
-                            👤 Profil
-                        </a>
-                    </li>
-                    <li className="is-active">
-                        <a href="#" aria-current="page" className="has-text-grey-light">
-                            🎒 Gesamt-Inventar & Wallet
-                        </a>
-                    </li>
-                </ul>
-            </nav>
 
             {/* Header & Combined Wallet Balance */}
             <div className="box p-5 mb-5 assets-header-gradient" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -438,49 +426,49 @@ export default function AssetsOverview({
             {/* Filter bar */}
             {hasCharacters && (
                 <div className="assets-filter-bar mb-5" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'all' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('all')}
                     >
                         🌐 Alle
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'ship' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('ship')}
                     >
                         🚀 Schiffe
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'blueprint' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('blueprint')}
                     >
                         📄 Blueprints
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'mineral' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('mineral')}
                     >
                         💎 Mineralien
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'ore' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('ore')}
                     >
                         ☄️ Erze
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'gas' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('gas')}
                     >
                         💨 Gase
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'pi' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('pi')}
                     >
                         🪐 PI-Materialien
                     </button>
-                    <button 
+                    <button
                         className={`button is-small ${activeFilter === 'highvalue' ? 'is-primary' : 'is-dark'}`}
                         onClick={() => setActiveFilter('highvalue')}
                     >
@@ -538,14 +526,14 @@ export default function AssetsOverview({
                                             return locSum + loc.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
                                         }, 0);
                                         const charTotal = data.walletBalance + charAssetVal;
-                                        
+
                                         return (
                                             <>
                                                 <span className="has-text-weight-bold assets-character-wallet" style={{ fontSize: '1.05rem', color: 'var(--theme-text)' }}>
                                                     Gesamt: {charTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                                 </span>
                                                 <div style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)', marginTop: '0.2rem' }}>
-                                                    Wallet: {data.walletBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK | 
+                                                    Wallet: {data.walletBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK |
                                                     Assets: {charAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                                 </div>
                                             </>
@@ -590,8 +578,8 @@ export default function AssetsOverview({
                                                 >
                                                     <span className="location-header-title" style={{ flexGrow: 1, marginRight: '1rem' }}>
                                                         {editingStructureId === location.id ? (
-                                                            <div 
-                                                                style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }} 
+                                                            <div
+                                                                style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 <input
@@ -611,14 +599,14 @@ export default function AssetsOverview({
                                                                     value={editSystem}
                                                                     onChange={(e) => setEditSystem(e.target.value)}
                                                                 />
-                                                                <button 
-                                                                    className={`button is-primary is-small ${isSaving ? 'is-loading' : ''}`} 
+                                                                <button
+                                                                    className={`button is-primary is-small ${isSaving ? 'is-loading' : ''}`}
                                                                     onClick={() => handleSave(location.id)}
                                                                 >
                                                                     Speichern
                                                                 </button>
-                                                                <button 
-                                                                    className="button is-dark is-small" 
+                                                                <button
+                                                                    className="button is-dark is-small"
                                                                     onClick={() => setEditingStructureId(null)}
                                                                 >
                                                                     Abbrechen

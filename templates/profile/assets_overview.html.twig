@@ -24,7 +24,8 @@
         types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
         characters: path('app_eve_image_proxy', { category: 'characters', id: 12345, action: 'portrait' })
     },
-    profileUrl: path('app_profile')
+    profileUrl: path('app_profile'),
+    jwtToken: jwt_token(app.user)
 } %}
 
 <div data-react-component="AssetsOverview" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
