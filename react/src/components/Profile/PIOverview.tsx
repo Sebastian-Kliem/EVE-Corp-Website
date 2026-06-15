@@ -528,43 +528,16 @@ export default function PIOverview({
                                                     }
                                                 });
 
-                                                // Determine what is produced/won on this planet (P1 if factories exist, otherwise P0)
-                                                interface ProducedMaterial {
+                                                // Determine what is extracted (P0) on this planet
+                                                interface ExtractedMaterial {
                                                     typeId: number;
                                                     name: string;
                                                     ratePerHour: number;
                                                     totalRemainingQty?: number;
                                                 }
-                                                const producedMaterials: ProducedMaterial[] = [];
+                                                const extractedMaterials: ExtractedMaterial[] = [];
 
-                                                if (factories.length > 0) {
-                                                    // Processed outputs from factories (P1/P2/P3/P4)
-                                                    const factoryOutputs: Record<number, { name: string; ratePerHour: number }> = {};
-                                                    factories.forEach((pin) => {
-                                                        if (pin.factory_info) {
-                                                            const cycleTimeHours = pin.factory_info.cycle_time / 3600;
-                                                            if (cycleTimeHours > 0) {
-                                                                pin.factory_info.outputs.forEach((out) => {
-                                                                    const rate = out.quantity / cycleTimeHours;
-                                                                    if (!factoryOutputs[out.type_id]) {
-                                                                        factoryOutputs[out.type_id] = { name: out.name, ratePerHour: 0 };
-                                                                    }
-                                                                    factoryOutputs[out.type_id].ratePerHour += rate;
-                                                                });
-                                                            }
-                                                        }
-                                                    });
-
-                                                    Object.entries(factoryOutputs).forEach(([typeIdStr, data]) => {
-                                                        const typeId = parseInt(typeIdStr, 10);
-                                                        producedMaterials.push({
-                                                            typeId,
-                                                            name: data.name,
-                                                            ratePerHour: data.ratePerHour,
-                                                            totalRemainingQty: maxRemainingMs > 0 ? data.ratePerHour * (maxRemainingMs / (1000 * 3600)) : undefined
-                                                        });
-                                                    });
-                                                } else if (extractors.length > 0) {
+                                                if (extractors.length > 0) {
                                                     // Raw outputs from extractors (P0)
                                                     const extractorOutputs: Record<number, { name: string; ratePerHour: number }> = {};
                                                     extractors.forEach((pin) => {
@@ -585,7 +558,7 @@ export default function PIOverview({
 
                                                     Object.entries(extractorOutputs).forEach(([typeIdStr, data]) => {
                                                         const typeId = parseInt(typeIdStr, 10);
-                                                        producedMaterials.push({
+                                                        extractedMaterials.push({
                                                             typeId,
                                                             name: data.name,
                                                             ratePerHour: data.ratePerHour,
@@ -699,7 +672,7 @@ export default function PIOverview({
                                                             </div>
 
                                                             <div className="planet-summary-badges">
-                                                                {producedMaterials.map((mat) => {
+                                                                {extractedMaterials.map((mat) => {
                                                                     const qtyStr = mat.totalRemainingQty !== undefined
                                                                         ? Math.round(mat.totalRemainingQty).toLocaleString()
                                                                         : null;
@@ -708,7 +681,7 @@ export default function PIOverview({
                                                                         <span
                                                                             key={mat.typeId}
                                                                             className="planet-output-badge"
-                                                                            title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Produktion'} (~${Math.round(mat.ratePerHour)}/h)`}
+                                                                            title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Abbau'} (~${Math.round(mat.ratePerHour)}/h)`}
                                                                         >
                                                                             <img
                                                                                 src={getTypeIconUrl(mat.typeId)}
