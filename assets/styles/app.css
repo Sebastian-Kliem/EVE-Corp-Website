@@ -2436,6 +2436,79 @@ input[type="number"] {
 .planet-type-badge.type-storm { background: #ec4899; }
 .planet-type-badge.type-oceanic { background: #0d9488; }
 
+/* Badge utility classes */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--theme-text);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.badge-success {
+    background-color: rgba(72, 199, 142, 0.15);
+    color: #48c78e;
+    border-color: rgba(72, 199, 142, 0.3);
+}
+.badge-warning {
+    background-color: rgba(245, 182, 26, 0.15);
+    color: #f5b61a;
+    border-color: rgba(245, 182, 26, 0.3);
+}
+.badge-danger {
+    background-color: rgba(241, 70, 104, 0.15);
+    color: #f14668;
+    border-color: rgba(241, 70, 104, 0.3);
+}
+.badge-secondary {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--theme-text-muted);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+.badge-primary {
+    background-color: rgba(0, 240, 255, 0.15);
+    color: var(--theme-primary);
+    border-color: rgba(0, 240, 255, 0.3);
+}
+
+.planet-summary-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.planet-output-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #ddd;
+}
+
+.planet-output-badge img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.planet-output-badge .qty {
+    font-weight: bold;
+}
+
+.planet-output-badge .rate {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+
 .pi-section {
     border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
     padding-bottom: 1.25rem;

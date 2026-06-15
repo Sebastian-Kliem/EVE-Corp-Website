@@ -48,6 +48,7 @@ interface PinData {
     extractor_info: ExtractorInfo | null;
     factory_info: FactoryInfo | null;
     last_cycle_start: string | null;
+    expiry_time?: string | null;
     supplied_inputs?: RouteMaterial[];
     received_outputs?: RouteMaterial[];
 }
@@ -501,7 +502,7 @@ export default function PIOverview({
                                             })()}
                                             <div className="character-planets-grid">
                                                 {charData.planets.map((planet) => {
-                                                const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
+                                                                                                const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
                                                 
                                                 // Group pins by category
                                                 const commandCenters = planet.pins.filter(p => p.category === 'command_center');
@@ -509,6 +510,89 @@ export default function PIOverview({
                                                 const storages = planet.pins.filter(p => p.category === 'storage');
                                                 const extractors = planet.pins.filter(p => p.category === 'extractor');
                                                 const factories = planet.pins.filter(p => p.category === 'factory');
+
+                                                // Calculate remaining extractor program time
+                                                let maxRemainingMs = -1;
+                                                let hasActiveExtractor = false;
+
+                                                extractors.forEach((pin) => {
+                                                    if (pin.expiry_time) {
+                                                        const expiryTime = new Date(pin.expiry_time).getTime();
+                                                        const remaining = expiryTime - Date.now();
+                                                        if (remaining > 0) {
+                                                            hasActiveExtractor = true;
+                                                            if (remaining > maxRemainingMs) {
+                                                                maxRemainingMs = remaining;
+                                                            }
+                                                        }
+                                                    }
+                                                });
+
+                                                // Determine what is produced/won on this planet (P1 if factories exist, otherwise P0)
+                                                interface ProducedMaterial {
+                                                    typeId: number;
+                                                    name: string;
+                                                    ratePerHour: number;
+                                                    totalRemainingQty?: number;
+                                                }
+                                                const producedMaterials: ProducedMaterial[] = [];
+
+                                                if (factories.length > 0) {
+                                                    // Processed outputs from factories (P1/P2/P3/P4)
+                                                    const factoryOutputs: Record<number, { name: string; ratePerHour: number }> = {};
+                                                    factories.forEach((pin) => {
+                                                        if (pin.factory_info) {
+                                                            const cycleTimeHours = pin.factory_info.cycle_time / 3600;
+                                                            if (cycleTimeHours > 0) {
+                                                                pin.factory_info.outputs.forEach((out) => {
+                                                                    const rate = out.quantity / cycleTimeHours;
+                                                                    if (!factoryOutputs[out.type_id]) {
+                                                                        factoryOutputs[out.type_id] = { name: out.name, ratePerHour: 0 };
+                                                                    }
+                                                                    factoryOutputs[out.type_id].ratePerHour += rate;
+                                                                });
+                                                            }
+                                                        }
+                                                    });
+
+                                                    Object.entries(factoryOutputs).forEach(([typeIdStr, data]) => {
+                                                        const typeId = parseInt(typeIdStr, 10);
+                                                        producedMaterials.push({
+                                                            typeId,
+                                                            name: data.name,
+                                                            ratePerHour: data.ratePerHour,
+                                                            totalRemainingQty: maxRemainingMs > 0 ? data.ratePerHour * (maxRemainingMs / (1000 * 3600)) : undefined
+                                                        });
+                                                    });
+                                                } else if (extractors.length > 0) {
+                                                    // Raw outputs from extractors (P0)
+                                                    const extractorOutputs: Record<number, { name: string; ratePerHour: number }> = {};
+                                                    extractors.forEach((pin) => {
+                                                        if (pin.extractor_info) {
+                                                            const cycleTimeHours = pin.extractor_info.cycle_time / 3600;
+                                                            if (cycleTimeHours > 0) {
+                                                                const rate = pin.extractor_info.qty_per_cycle / cycleTimeHours;
+                                                                const typeId = pin.extractor_info.product_type_id;
+                                                                if (typeId > 0) {
+                                                                    if (!extractorOutputs[typeId]) {
+                                                                        extractorOutputs[typeId] = { name: pin.extractor_info.product_name, ratePerHour: 0 };
+                                                                    }
+                                                                    extractorOutputs[typeId].ratePerHour += rate;
+                                                                }
+                                                            }
+                                                        }
+                                                    });
+
+                                                    Object.entries(extractorOutputs).forEach(([typeIdStr, data]) => {
+                                                        const typeId = parseInt(typeIdStr, 10);
+                                                        producedMaterials.push({
+                                                            typeId,
+                                                            name: data.name,
+                                                            ratePerHour: data.ratePerHour,
+                                                            totalRemainingQty: maxRemainingMs > 0 ? data.ratePerHour * (maxRemainingMs / (1000 * 3600)) : undefined
+                                                        });
+                                                    });
+                                                }
 
                                                 // 1. Determine if it's a production planet (has factories but NO extractors)
                                                 const isProduction = factories.length > 0 && extractors.length === 0;
@@ -580,23 +664,6 @@ export default function PIOverview({
                                                     }
                                                 } else if (extractors.length > 0) {
                                                     // Pure extractor planet: calculate extraction time remaining
-                                                    let maxRemainingMs = -1;
-                                                    let hasActiveExtractor = false;
-
-                                                    extractors.forEach((pin) => {
-                                                        if (pin.expiry_time) {
-                                                            const expiryTime = new Date(pin.expiry_time).getTime();
-                                                            const now = Date.now();
-                                                            const remaining = expiryTime - now;
-                                                            if (remaining > 0) {
-                                                                hasActiveExtractor = true;
-                                                                if (remaining > maxRemainingMs) {
-                                                                    maxRemainingMs = remaining;
-                                                                }
-                                                            }
-                                                        }
-                                                    });
-
                                                     if (hasActiveExtractor && maxRemainingMs > 0) {
                                                         const totalHours = maxRemainingMs / (1000 * 60 * 60);
                                                         if (totalHours >= 24) {
@@ -632,6 +699,26 @@ export default function PIOverview({
                                                             </div>
 
                                                             <div className="planet-summary-badges">
+                                                                {producedMaterials.map((mat) => {
+                                                                    const qtyStr = mat.totalRemainingQty !== undefined
+                                                                        ? Math.round(mat.totalRemainingQty).toLocaleString()
+                                                                        : null;
+
+                                                                    return (
+                                                                        <span
+                                                                            key={mat.typeId}
+                                                                            className="planet-output-badge"
+                                                                            title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Produktion'} (~${Math.round(mat.ratePerHour)}/h)`}
+                                                                        >
+                                                                            <img
+                                                                                src={getTypeIconUrl(mat.typeId)}
+                                                                                alt={mat.name}
+                                                                            />
+                                                                            {qtyStr !== null && <span className="qty">{qtyStr}</span>}
+                                                                            <span className="rate">({Math.round(mat.ratePerHour)}/h)</span>
+                                                                        </span>
+                                                                    );
+                                                                })}
                                                                 <span className={`badge ${statusClass}`} style={{ marginRight: '8px', fontWeight: 'bold' }}>
                                                                     {statusText}
                                                                 </span>
@@ -640,6 +727,7 @@ export default function PIOverview({
                                                                 </span>
                                                             </div>
                                                         </div>
+
 
                                                         {!isCollapsed && (
                                                             <div className="planet-card-body">
