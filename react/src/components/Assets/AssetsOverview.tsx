@@ -79,6 +79,67 @@ export default function AssetsOverview({
     // Tracks which asset nodes (containers/ships) are expanded.
     const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
 
+    // Active category filter
+    const [activeFilter, setActiveFilter] = useState<string>('all');
+
+    // Structure renaming states
+    const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editSystem, setEditSystem] = useState('');
+    const [editError, setEditError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [localLocations, setLocalLocations] = useState<Record<number, { name: string; systemName: string }>>({});
+
+    const startEditing = (location: LocationData) => {
+        setEditingStructureId(location.id);
+        const currentOverride = localLocations[location.id];
+        setEditName(currentOverride?.name ?? (location.name === 'Spieler-Struktur' ? '' : location.name));
+        setEditSystem(currentOverride?.systemName ?? (location.systemName === 'Unbekannt' ? '' : location.systemName));
+        setEditError(null);
+    };
+
+    const handleSave = async (locationId: number) => {
+        if (!editName.trim()) {
+            setEditError('Name darf nicht leer sein.');
+            return;
+        }
+
+        setIsSaving(true);
+        setEditError(null);
+
+        try {
+            const response = await fetch(`/api/structures/${locationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: editName.trim(),
+                    solarSystemName: editSystem.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setEditError(data.message || 'Fehler beim Speichern.');
+            } else {
+                setLocalLocations((prev) => ({
+                    ...prev,
+                    [locationId]: {
+                        name: data.name,
+                        systemName: data.solarSystemName,
+                    },
+                }));
+                setEditingStructureId(null);
+            }
+        } catch (e) {
+            setEditError('Netzwerkfehler beim Speichern.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const getTypeIconUrl = (item: AssetNode) => {
         let url = imagePaths.types.replace('12345', item.typeId.toString());
         if (item.isBlueprint) {
@@ -116,18 +177,29 @@ export default function AssetsOverview({
         }));
     };
 
-    // Recursive function to filter asset nodes based on search query
+    // Recursive function to filter asset nodes based on search query and active filter
     // Returns the filtered node (with matching children) and a boolean indicating if there's any match in this branch
-    const filterAssetNode = (node: AssetNode, query: string): { node: AssetNode | null; hasMatch: boolean } => {
-        const isSelfMatch = node.name.toLowerCase().includes(query) ||
+    const filterAssetNode = (node: AssetNode, query: string, filter: string): { node: AssetNode | null; hasMatch: boolean } => {
+        const matchesQuery = query === '' || 
+            node.name.toLowerCase().includes(query) || 
             (node.customName && node.customName.toLowerCase().includes(query));
+
+        let matchesFilter = true;
+        if (filter !== 'all') {
+            if (filter === 'highvalue') {
+                const itemValue = node.typeId === 0 ? 0 : (node.price || 0) * node.quantity;
+                matchesFilter = itemValue >= 10000000; // >= 10M ISK
+            } else {
+                matchesFilter = node.category === filter;
+            }
+        }
 
         let filteredChildren: AssetNode[] = [];
         let anyChildMatches = false;
 
         if (node.children && node.children.length > 0) {
             node.children.forEach((child) => {
-                const result = filterAssetNode(child, query);
+                const result = filterAssetNode(child, query, filter);
                 if (result.hasMatch && result.node) {
                     filteredChildren.push(result.node);
                     anyChildMatches = true;
@@ -135,7 +207,8 @@ export default function AssetsOverview({
             });
         }
 
-        const hasMatch = isSelfMatch || anyChildMatches;
+        const isDirectMatch = node.typeId !== 0 && matchesQuery && matchesFilter;
+        const hasMatch = isDirectMatch || anyChildMatches;
 
         if (hasMatch) {
             return {
@@ -150,17 +223,18 @@ export default function AssetsOverview({
         return { node: null, hasMatch: false };
     };
 
-    // Filter characters, locations and items based on search query
+    // Filter characters, locations and items based on search query and active filter
     const queryNormalized = searchQuery.toLowerCase().trim();
     const isSearching = queryNormalized !== '';
+    const isFiltering = activeFilter !== 'all';
 
     const processedCharacterData = characterData.map((data) => {
         const filteredLocations = data.locations.map((loc) => {
             let filteredItems: AssetNode[] = [];
 
             loc.items.forEach((item) => {
-                if (isSearching) {
-                    const result = filterAssetNode(item, queryNormalized);
+                if (isSearching || isFiltering) {
+                    const result = filterAssetNode(item, queryNormalized, activeFilter);
                     if (result.node) {
                         filteredItems.push(result.node);
                     }
@@ -186,8 +260,8 @@ export default function AssetsOverview({
     // Helper component to render nested assets recursively
     const RenderAssetNode = ({ item }: { item: AssetNode }) => {
         const hasChildren = item.children && item.children.length > 0;
-        // Nodes are expanded if clicked by user, or automatically expanded if searching
-        const isNodeExpanded = isSearching || !!expandedNodes[item.itemId];
+        // Nodes are expanded if clicked by user, or automatically expanded if searching or filtering
+        const isNodeExpanded = isSearching || isFiltering || !!expandedNodes[item.itemId];
 
         return (
             <div className="asset-tree-node" data-item-name={item.name}>
@@ -361,6 +435,60 @@ export default function AssetsOverview({
                 })()}
             </div>
 
+            {/* Filter bar */}
+            {hasCharacters && (
+                <div className="assets-filter-bar mb-5" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    <button 
+                        className={`button is-small ${activeFilter === 'all' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('all')}
+                    >
+                        🌐 Alle
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'ship' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('ship')}
+                    >
+                        🚀 Schiffe
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'blueprint' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('blueprint')}
+                    >
+                        📄 Blueprints
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'mineral' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('mineral')}
+                    >
+                        💎 Mineralien
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'ore' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('ore')}
+                    >
+                        ☄️ Erze
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'gas' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('gas')}
+                    >
+                        💨 Gase
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'pi' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('pi')}
+                    >
+                        🪐 PI-Materialien
+                    </button>
+                    <button 
+                        className={`button is-small ${activeFilter === 'highvalue' ? 'is-primary' : 'is-dark'}`}
+                        onClick={() => setActiveFilter('highvalue')}
+                    >
+                        💰 Wertvoll (ab 10M)
+                    </button>
+                </div>
+            )}
+
             {/* Character Accordion Panels */}
             {!hasCharacters ? (
                 <div className="notification is-info">
@@ -448,19 +576,77 @@ export default function AssetsOverview({
                                         const locKey = `${charId}-${location.id}`;
                                         // Locations are expanded if search is active or if user clicked to expand
                                         const isLocExpanded = isSearching || !!expandedLocations[locKey];
+                                        const displayName = localLocations[location.id]?.name || location.name;
 
                                         return (
                                             <div
                                                 key={locKey}
                                                 className="location-block"
-                                                data-location-name={location.name}
+                                                data-location-name={displayName}
                                             >
                                                 <h3
                                                     className="title is-6 location-header"
                                                     onClick={() => toggleLocation(locKey)}
                                                 >
-                                                    <span className="location-header-title">
-                                                        <span>{location.name}</span>
+                                                    <span className="location-header-title" style={{ flexGrow: 1, marginRight: '1rem' }}>
+                                                        {editingStructureId === location.id ? (
+                                                            <div 
+                                                                style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }} 
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <input
+                                                                    type="text"
+                                                                    className="input is-small"
+                                                                    style={{ width: '200px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                                    placeholder="Strukturname"
+                                                                    value={editName}
+                                                                    onChange={(e) => setEditName(e.target.value)}
+                                                                    autoFocus
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    className="input is-small"
+                                                                    style={{ width: '130px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                                    placeholder="Sonnensystem"
+                                                                    value={editSystem}
+                                                                    onChange={(e) => setEditSystem(e.target.value)}
+                                                                />
+                                                                <button 
+                                                                    className={`button is-primary is-small ${isSaving ? 'is-loading' : ''}`} 
+                                                                    onClick={() => handleSave(location.id)}
+                                                                >
+                                                                    Speichern
+                                                                </button>
+                                                                <button 
+                                                                    className="button is-dark is-small" 
+                                                                    onClick={() => setEditingStructureId(null)}
+                                                                >
+                                                                    Abbrechen
+                                                                </button>
+                                                                {editError && (
+                                                                    <span style={{ color: '#f14668', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                                                                        ⚠️ {editError}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <span>📍 {displayName}</span>
+                                                                {location.id >= 1000000000000 && (
+                                                                    <button
+                                                                        className="button is-dark is-small p-1 ml-2"
+                                                                        style={{ border: 'none', background: 'transparent', opacity: 0.6 }}
+                                                                        title="Struktur bearbeiten"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            startEditing(location);
+                                                                        }}
+                                                                    >
+                                                                        ✏️
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </span>
                                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                                         <span className="tag is-dark is-rounded is-small font-family-monospace location-header-tag">

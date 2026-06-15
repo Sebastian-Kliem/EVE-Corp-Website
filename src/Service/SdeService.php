@@ -106,29 +106,65 @@ class SdeService
         return false;
     }
 
-    private array $shipCache = [];
-    private array $containerCache = [];
+    private array $categoryCache = [];
+
+    /**
+     * Categorizes an item based on its categoryID, groupID or groupName from the EVE SDE.
+     * Returns: 'ship' | 'blueprint' | 'container' | 'mineral' | 'ore' | 'gas' | 'pi' | 'other'
+     */
+    public function getItemCategory(int $typeId): string
+    {
+        if (isset($this->categoryCache[$typeId])) {
+            return $this->categoryCache[$typeId];
+        }
+
+        try {
+            $row = $this->connection->fetchAssociative(
+                'SELECT g.categoryID, g.groupID, g.groupName FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = :id LIMIT 1',
+                ['id' => $typeId]
+            );
+
+            if (!$row) {
+                $this->categoryCache[$typeId] = 'other';
+                return 'other';
+            }
+
+            $categoryId = (int)$row['categoryID'];
+            $groupId = (int)$row['groupID'];
+            $groupName = (string)$row['groupName'];
+
+            $category = 'other';
+
+            if ($categoryId === 6) {
+                $category = 'ship';
+            } elseif (preg_match('/(blueprint|formula)/i', $groupName)) {
+                $category = 'blueprint';
+            } elseif (preg_match('/container/i', $groupName)) {
+                $category = 'container';
+            } elseif ($groupId === 18) {
+                $category = 'mineral';
+            } elseif ($categoryId === 25) {
+                $category = 'ore';
+            } elseif ($groupId === 711) {
+                $category = 'gas';
+            } elseif ($categoryId === 43 || in_array($groupId, [1031, 1034, 1042], true) || preg_match('/planetary/i', $groupName)) {
+                $category = 'pi';
+            }
+
+            $this->categoryCache[$typeId] = $category;
+            return $category;
+
+        } catch (\Exception $e) {
+            return 'other';
+        }
+    }
 
     /**
      * Checks if a typeID belongs to a ship group (categoryID = 6) in the SDE database.
      */
     public function isShip(int $typeId): bool
     {
-        if (isset($this->shipCache[$typeId])) {
-            return $this->shipCache[$typeId];
-        }
-
-        try {
-            $categoryId = $this->connection->fetchOne(
-                'SELECT g.categoryID FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = :id LIMIT 1',
-                ['id' => $typeId]
-            );
-            $isShip = ($categoryId !== false && (int)$categoryId === 6);
-            $this->shipCache[$typeId] = $isShip;
-            return $isShip;
-        } catch (\Exception $e) {
-            return false;
-        }
+        return $this->getItemCategory($typeId) === 'ship';
     }
 
     /**
@@ -136,21 +172,7 @@ class SdeService
      */
     public function isContainer(int $typeId): bool
     {
-        if (isset($this->containerCache[$typeId])) {
-            return $this->containerCache[$typeId];
-        }
-
-        try {
-            $groupName = $this->connection->fetchOne(
-                'SELECT g.groupName FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = :id LIMIT 1',
-                ['id' => $typeId]
-            );
-            $isContainer = $groupName && (bool)preg_match('/container/i', $groupName);
-            $this->containerCache[$typeId] = $isContainer;
-            return $isContainer;
-        } catch (\Exception $e) {
-            return false;
-        }
+        return $this->getItemCategory($typeId) === 'container';
     }
 
     /**

@@ -155,7 +155,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/profile/eve-character/{id}/assets', name: 'app_eve_character_assets', methods: ['GET'])]
-    public function showAssets(int $id, SdeService $sdeService): Response
+    public function showAssets(int $id, SdeService $sdeService, LocationService $locationService): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
 
@@ -173,8 +173,9 @@ class EveAccountController extends AbstractController
         foreach ($assets as $asset) {
             $locationId = $asset->getLocationId();
             if (!isset($groupedAssets[$locationId])) {
+                $resolved = $locationService->resolveLocation($locationId, $character);
                 $groupedAssets[$locationId] = [
-                    'name' => $sdeService->getLocationName($locationId),
+                    'name' => $resolved['name'],
                     'items' => [],
                 ];
             }
@@ -335,6 +336,7 @@ class EveAccountController extends AbstractController
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
             'price' => $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'category' => $sdeService->getItemCategory($typeId),
             'materialEfficiency' => $asset->getMaterialEfficiency(),
             'timeEfficiency' => $asset->getTimeEfficiency(),
             'runs' => $asset->getRuns(),
@@ -717,6 +719,7 @@ class EveAccountController extends AbstractController
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
             'price' => $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'category' => $sdeService->getItemCategory($typeId),
             'materialEfficiency' => $asset->getMaterialEfficiency(),
             'timeEfficiency' => $asset->getTimeEfficiency(),
             'runs' => $asset->getRuns(),

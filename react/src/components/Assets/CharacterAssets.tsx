@@ -43,6 +43,65 @@ export default function CharacterAssets({
 }: CharacterAssetsProps) {
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Structure renaming states
+    const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editSystem, setEditSystem] = useState('');
+    const [editError, setEditError] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [localLocations, setLocalLocations] = useState<Record<number, { name: string; systemName: string }>>({});
+
+    const startEditing = (locationId: number, currentName: string) => {
+        setEditingStructureId(locationId);
+        const currentOverride = localLocations[locationId];
+        const initialName = currentOverride?.name ?? (currentName === 'Spieler-Struktur' ? '' : currentName);
+        setEditName(initialName);
+        setEditSystem(currentOverride?.systemName ?? '');
+        setEditError(null);
+    };
+
+    const handleSave = async (locationId: number) => {
+        if (!editName.trim()) {
+            setEditError('Name darf nicht leer sein.');
+            return;
+        }
+
+        setIsSaving(true);
+        setEditError(null);
+
+        try {
+            const response = await fetch(`/api/structures/${locationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: editName.trim(),
+                    solarSystemName: editSystem.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setEditError(data.message || 'Fehler beim Speichern.');
+            } else {
+                setLocalLocations((prev) => ({
+                    ...prev,
+                    [locationId]: {
+                        name: data.name,
+                        systemName: data.solarSystemName,
+                    },
+                }));
+                setEditingStructureId(null);
+            }
+        } catch (e) {
+            setEditError('Netzwerkfehler beim Speichern.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const getTypeIconUrl = (item: AssetItem) => {
         let url = imagePaths.types.replace('12345', item.typeId.toString());
         if (item.isBlueprint) {
@@ -153,19 +212,82 @@ export default function CharacterAssets({
                 </div>
             ) : (
                 <div id="assets-container">
-                    {filteredGroupedAssets.map((group) => (
-                        <div
-                            key={group.locationId}
-                            className="box mb-5 location-box assets-location-box"
-                            data-location-name={group.name}
-                        >
-                            <h2 className="title is-5 mb-3 assets-location-title">
-                                <span>📍 {group.name}</span>
-                                <span className="tag is-dark is-rounded is-small font-family-monospace assets-location-count-tag">
-                                    {group.items.length}{' '}
-                                    {group.items.length === 1 ? 'Gegenstand' : 'Gegenstände'}
-                                </span>
-                            </h2>
+                    {filteredGroupedAssets.map((group) => {
+                        const numericLocationId = parseInt(group.locationId, 10);
+                        const displayName = localLocations[numericLocationId]?.name || group.name;
+
+                        return (
+                            <div
+                                key={group.locationId}
+                                className="box mb-5 location-box assets-location-box"
+                                data-location-name={displayName}
+                            >
+                                <h2 className="title is-5 mb-3 assets-location-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', flexGrow: 1, gap: '8px' }}>
+                                        {editingStructureId === numericLocationId ? (
+                                            <div 
+                                                style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }} 
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="text"
+                                                    className="input is-small"
+                                                    style={{ width: '200px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                    placeholder="Strukturname"
+                                                    value={editName}
+                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    type="text"
+                                                    className="input is-small"
+                                                    style={{ width: '130px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                    placeholder="Sonnensystem"
+                                                    value={editSystem}
+                                                    onChange={(e) => setEditSystem(e.target.value)}
+                                                />
+                                                <button 
+                                                    className={`button is-primary is-small ${isSaving ? 'is-loading' : ''}`} 
+                                                    onClick={() => handleSave(numericLocationId)}
+                                                >
+                                                    Speichern
+                                                </button>
+                                                <button 
+                                                    className="button is-dark is-small" 
+                                                    onClick={() => setEditingStructureId(null)}
+                                                >
+                                                    Abbrechen
+                                                </button>
+                                                {editError && (
+                                                    <span style={{ color: '#f14668', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                                                        ⚠️ {editError}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span>📍 {displayName}</span>
+                                                {numericLocationId >= 1000000000000 && (
+                                                    <button
+                                                        className="button is-dark is-small p-1 ml-2"
+                                                        style={{ border: 'none', background: 'transparent', opacity: 0.6 }}
+                                                        title="Struktur bearbeiten"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            startEditing(numericLocationId, group.name);
+                                                        }}
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </span>
+                                    <span className="tag is-dark is-rounded is-small font-family-monospace assets-location-count-tag" style={{ flexShrink: 0 }}>
+                                        {group.items.length}{' '}
+                                        {group.items.length === 1 ? 'Gegenstand' : 'Gegenstände'}
+                                    </span>
+                                </h2>
 
                             <div className="table-container">
                                 <table className="table is-fullwidth is-striped is-hoverable assets-table">
@@ -236,7 +358,7 @@ export default function CharacterAssets({
                                 </table>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
