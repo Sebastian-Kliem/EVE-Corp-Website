@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 
 interface CharacterListItem {
     id: number;
@@ -11,6 +11,7 @@ interface Material {
     type_id: number;
     name: string;
     quantity: number;
+    volume?: number;
     container?: string;
 }
 
@@ -94,13 +95,193 @@ interface PIOverviewProps {
         types: string;
         characters: string;
     };
+    jwtToken?: string;
+}
+
+interface UnassignedPocoRowProps {
+    poco: UnassignedPoco;
+    planets: PlanetData[];
+    apiDataUrl: string;
+    setLoading: (loading: boolean) => void;
+    setPiData: (data: CharacterPiData[]) => void;
+    getTypeIconUrl: (typeId: number) => string;
+    jwtToken?: string;
+}
+
+function UnassignedPocoRow({
+                                poco,
+                                planets,
+                                apiDataUrl,
+                                setLoading,
+                                setPiData,
+                                getTypeIconUrl,
+                                jwtToken
+                            }: UnassignedPocoRowProps) {
+    const [mappingPlanetId, setMappingPlanetId] = useState<string>('');
+    const [mappingLoading, setMappingLoading] = useState<boolean>(false);
+
+    const handleMapPoco = async () => {
+        if (!mappingPlanetId) return;
+        const targetPlanet = planets.find(p => p.planet_id.toString() === mappingPlanetId);
+        if (!targetPlanet) return;
+
+        setMappingLoading(true);
+        const formattedType = targetPlanet.type.charAt(0).toUpperCase() + targetPlanet.type.slice(1);
+        const newName = `Custom-Office - Planet ${formattedType} - ${targetPlanet.name}`;
+
+        const token = jwtToken || localStorage.getItem('token');
+        try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const res = await fetch(`/api/structures/${poco.location_id}`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({
+                    name: newName,
+                    solarSystemName: targetPlanet.solar_system_name,
+                }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Fehler beim Speichern der Struktur.');
+            }
+
+            setLoading(true);
+            const refreshRes = await fetch(apiDataUrl);
+            if (refreshRes.ok) {
+                const freshData = await refreshRes.json();
+                setPiData(freshData);
+            }
+        } catch (err: any) {
+            alert(err.message || 'Verknüpfung fehlgeschlagen.');
+        } finally {
+            setMappingLoading(false);
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{
+            padding: '0.75rem',
+            borderRadius: '4px',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.05)'
+        }}>
+            <div style={{
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                marginBottom: '0.25rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem'
+            }}>
+                <span>📍 {poco.name} <span style={{
+                    color: 'var(--theme-text-muted)',
+                    fontWeight: 'normal',
+                    fontSize: '0.8rem'
+                }}>(ID: {poco.location_id})</span></span>
+                <span style={{
+                    color: 'var(--theme-text-muted)',
+                    fontSize: '0.8rem'
+                }}>System: {poco.solar_system_name}</span>
+            </div>
+            <div style={{
+                display: 'flex',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginTop: '0.25rem',
+                marginBottom: '0.75rem'
+            }}>
+                {poco.contents.map((item) => (
+                    <span key={item.type_id} style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        fontSize: '0.8rem',
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: '3px',
+                        backgroundColor: 'rgba(255,255,255,0.08)'
+                    }}>
+                        <img src={getTypeIconUrl(item.type_id)}
+                             alt={item.name} style={{
+                            width: '16px',
+                            height: '16px'
+                        }}/>
+                        {item.quantity.toLocaleString()}x {item.name}
+                        {item.container && (
+                            <span style={{
+                                color: 'var(--theme-text-muted)',
+                                fontSize: '0.75rem',
+                                marginLeft: '0.25rem'
+                            }}>
+                                ({item.container})
+                            </span>
+                        )}
+                    </span>
+                ))}
+            </div>
+            <div style={{
+                display: 'flex',
+                gap: '0.5rem',
+                alignItems: 'center',
+                marginTop: '0.5rem',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                paddingTop: '0.5rem'
+            }}>
+                <select
+                    value={mappingPlanetId}
+                    onChange={(e) => setMappingPlanetId(e.target.value)}
+                    disabled={mappingLoading}
+                    style={{
+                        padding: '0.3rem 0.5rem',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--theme-bg-dark, #1e1e24)',
+                        color: 'var(--theme-text, #ffffff)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        fontSize: '0.85rem',
+                        flex: '1'
+                    }}
+                >
+                    <option value="">-- Planeten auswählen --</option>
+                    {planets.map(planet => (
+                        <option key={planet.planet_id} value={planet.planet_id}>
+                            {planet.name} ({planet.type})
+                        </option>
+                    ))}
+                </select>
+                <button
+                    onClick={handleMapPoco}
+                    disabled={!mappingPlanetId || mappingLoading}
+                    style={{
+                        padding: '0.3rem 0.75rem',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--theme-primary, #007bff)',
+                        color: '#fff',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        opacity: (!mappingPlanetId || mappingLoading) ? 0.6 : 1
+                    }}
+                >
+                    {mappingLoading ? 'Verknüpfe...' : 'Verknüpfen'}
+                </button>
+            </div>
+        </div>
+    );
 }
 
 export default function PIOverview({
-    charactersList,
-    apiDataUrl,
-    imagePaths,
-}: PIOverviewProps) {
+                                       charactersList,
+                                       apiDataUrl,
+                                       imagePaths,
+                                       jwtToken,
+                                   }: PIOverviewProps) {
     const [loading, setLoading] = useState(true);
     const [piData, setPiData] = useState<CharacterPiData[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -397,7 +578,8 @@ export default function PIOverview({
                                                                 className="char-icon"
                                                             />
                                                             <span className="char-name">{char.name}</span>
-                                                            <span className="badge badge-secondary">{planetCount} P</span>
+                                                            <span
+                                                                className="badge badge-secondary">{planetCount} P</span>
                                                         </div>
                                                     );
                                                 })}
@@ -450,12 +632,12 @@ export default function PIOverview({
                                                 const unassignedPocos = unassignedList.filter((poco) => {
                                                     const isNpcStation = poco.location_id >= 60000000 && poco.location_id < 64000000;
                                                     const nameLower = poco.name.toLowerCase();
-                                                    const isPocoName = nameLower.includes('zollamt') || 
-                                                                       nameLower.includes('customs office') || 
-                                                                       nameLower.includes('poco') || 
-                                                                       nameLower.includes('custom office') ||
-                                                                       nameLower === 'spieler-struktur';
-                                                    
+                                                    const isPocoName = nameLower.includes('zollamt') ||
+                                                        nameLower.includes('customs office') ||
+                                                        nameLower.includes('poco') ||
+                                                        nameLower.includes('custom office') ||
+                                                        nameLower === 'spieler-struktur';
+
                                                     return !isNpcStation && isPocoName;
                                                 });
 
@@ -463,484 +645,403 @@ export default function PIOverview({
                                                     return null;
                                                 }
 
-                                                return (
-                                                    <div className="char-unassigned-pocos-alert" style={{ margin: '1rem', padding: '1rem', borderRadius: '4px', backgroundColor: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                                            <span style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>⚠️</span>
-                                                            <strong style={{ color: '#ffc107' }}>Nicht zugeordnete Zolllager (POCOs) gefunden</strong>
+                                                    return (
+                                                        <div className="char-unassigned-pocos-alert" style={{
+                                                            margin: '1rem',
+                                                            padding: '1rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                                            border: '1px solid rgba(255, 193, 7, 0.3)'
+                                                        }}>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                marginBottom: '0.5rem'
+                                                            }}>
+                                                                <span style={{
+                                                                    fontSize: '1.2rem',
+                                                                    marginRight: '0.5rem'
+                                                                }}>⚠️</span>
+                                                                <strong style={{color: '#ffc107'}}>Nicht zugeordnete
+                                                                    Zolllager (POCOs) gefunden</strong>
+                                                            </div>
+                                                            <p style={{
+                                                                fontSize: '0.85rem',
+                                                                marginBottom: '1rem',
+                                                                color: 'var(--theme-text-muted)',
+                                                                lineHeight: '1.4'
+                                                            }}>
+                                                                Es wurden PI-Materialien in Zolllagern (POCOs) gefunden, die
+                                                                nicht automatisch einem Planeten zugeordnet sind.
+                                                                Wähle unten einen Planeten aus, um das Zollamt direkt zu verknüpfen (benennt die Struktur automatisch in <code>Custom-Office - Planet [Typ] - [Name]</code> um), oder passe den Namen manuell in der <a
+                                                                href="/profile/assets" style={{
+                                                                textDecoration: 'underline',
+                                                                color: 'var(--theme-primary)'
+                                                            }}>Assets-Übersicht</a> an.
+                                                            </p>
+                                                            <div style={{
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                gap: '0.75rem'
+                                                            }}>
+                                                                {unassignedPocos.map((poco) => (
+                                                                    <UnassignedPocoRow
+                                                                        key={poco.location_id}
+                                                                        poco={poco}
+                                                                        planets={charData.planets}
+                                                                        apiDataUrl={apiDataUrl}
+                                                                        setLoading={setLoading}
+                                                                        setPiData={setPiData}
+                                                                        getTypeIconUrl={getTypeIconUrl}
+                                                                        jwtToken={jwtToken}
+                                                                    />
+                                                                ))}
+                                                            </div>
                                                         </div>
-                                                        <p style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--theme-text-muted)', lineHeight: '1.4' }}>
-                                                            Es wurden PI-Materialien in Zolllagern (POCOs) gefunden, die nicht automatisch einem Planeten zugeordnet sind. 
-                                                            Bitte bearbeite den Namen der Struktur in deiner <a href="/profile/assets" style={{ textDecoration: 'underline', color: 'var(--theme-primary)' }}>Assets-Übersicht</a> (Stift-Symbol ✏️) 
-                                                            und füge den Planetennamen in Klammern hinzu (z. B. <code>Zollamt ({charData.planets[0]?.name || 'PlanetName'})</code>), damit sie hier korrekt zugewiesen werden.
-                                                        </p>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                                            {unassignedPocos.map((poco) => (
-                                                                <div key={poco.location_id} style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
-                                                                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                                                        <span>📍 {poco.name} <span style={{ color: 'var(--theme-text-muted)', fontWeight: 'normal', fontSize: '0.8rem' }}>(ID: {poco.location_id})</span></span>
-                                                                        <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.8rem' }}>System: {poco.solar_system_name}</span>
-                                                                    </div>
-                                                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                                                                        {poco.contents.map((item) => (
-                                                                            <span key={item.type_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', padding: '0.1rem 0.4rem', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
-                                                                                <img src={getTypeIconUrl(item.type_id)} alt={item.name} style={{ width: '16px', height: '16px' }} />
-                                                                                {item.quantity.toLocaleString()}x {item.name}
-                                                                                {item.container && (
-                                                                                    <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.75rem', marginLeft: '0.25rem' }}>
-                                                                                        ({item.container})
-                                                                                    </span>
-                                                                                )}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
+                                                    );
+                                                })()}
                                             <div className="character-planets-grid">
                                                 {charData.planets.map((planet) => {
-                                                                                                const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
-                                                
-                                                // Group pins by category
-                                                const commandCenters = planet.pins.filter(p => p.category === 'command_center');
-                                                const launchpads = planet.pins.filter(p => p.category === 'launchpad');
-                                                const storages = planet.pins.filter(p => p.category === 'storage');
-                                                const extractors = planet.pins.filter(p => p.category === 'extractor');
-                                                const factories = planet.pins.filter(p => p.category === 'factory');
+                                                    const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
 
-                                                // Calculate remaining extractor program time
-                                                let maxRemainingMs = -1;
-                                                let hasActiveExtractor = false;
+                                                    // Group pins by category
+                                                    const commandCenters = planet.pins.filter(p => p.category === 'command_center');
+                                                    const launchpads = planet.pins.filter(p => p.category === 'launchpad');
+                                                    const storages = planet.pins.filter(p => p.category === 'storage');
+                                                    const extractors = planet.pins.filter(p => p.category === 'extractor');
+                                                    const factories = planet.pins.filter(p => p.category === 'factory');
 
-                                                extractors.forEach((pin) => {
-                                                    if (pin.expiry_time) {
-                                                        const expiryTime = new Date(pin.expiry_time).getTime();
-                                                        const remaining = expiryTime - Date.now();
-                                                        if (remaining > 0) {
-                                                            hasActiveExtractor = true;
-                                                            if (remaining > maxRemainingMs) {
-                                                                maxRemainingMs = remaining;
-                                                            }
-                                                        }
-                                                    }
-                                                });
+                                                    // Calculate Launchpad capacity and utilization
+                                                    const launchpadCapacity = launchpads.length * 10000; // 10,000 m3 per Launchpad
+                                                    let launchpadVolumeUsed = 0;
+                                                    launchpads.forEach((pin) => {
+                                                        pin.contents.forEach((item) => {
+                                                            launchpadVolumeUsed += item.quantity * (item.volume ?? 0);
+                                                        });
+                                                    });
+                                                    const launchpadPercent = launchpadCapacity > 0 ? (launchpadVolumeUsed / launchpadCapacity) * 100 : 0;
 
-                                                // Determine what is extracted (P0) on this planet
-                                                interface ExtractedMaterial {
-                                                    typeId: number;
-                                                    name: string;
-                                                    ratePerHour: number;
-                                                    totalRemainingQty?: number;
-                                                }
-                                                const extractedMaterials: ExtractedMaterial[] = [];
+                                                    // Calculate remaining extractor program time
+                                                    let maxRemainingMs = -1;
+                                                    let hasActiveExtractor = false;
 
-                                                if (extractors.length > 0) {
-                                                    // Raw outputs from extractors (P0)
-                                                    const extractorOutputs: Record<number, { name: string; ratePerHour: number }> = {};
                                                     extractors.forEach((pin) => {
-                                                        if (pin.extractor_info) {
-                                                            const cycleTimeHours = pin.extractor_info.cycle_time / 3600;
-                                                            if (cycleTimeHours > 0) {
-                                                                const rate = pin.extractor_info.qty_per_cycle / cycleTimeHours;
-                                                                const typeId = pin.extractor_info.product_type_id;
-                                                                if (typeId > 0) {
-                                                                    if (!extractorOutputs[typeId]) {
-                                                                        extractorOutputs[typeId] = { name: pin.extractor_info.product_name, ratePerHour: 0 };
-                                                                    }
-                                                                    extractorOutputs[typeId].ratePerHour += rate;
+                                                        if (pin.expiry_time) {
+                                                            const expiryTime = new Date(pin.expiry_time).getTime();
+                                                            const remaining = expiryTime - Date.now();
+                                                            if (remaining > 0) {
+                                                                hasActiveExtractor = true;
+                                                                if (remaining > maxRemainingMs) {
+                                                                    maxRemainingMs = remaining;
                                                                 }
                                                             }
                                                         }
                                                     });
 
-                                                    Object.entries(extractorOutputs).forEach(([typeIdStr, data]) => {
-                                                        const typeId = parseInt(typeIdStr, 10);
-                                                        extractedMaterials.push({
-                                                            typeId,
-                                                            name: data.name,
-                                                            ratePerHour: data.ratePerHour,
-                                                            totalRemainingQty: maxRemainingMs > 0 ? data.ratePerHour * (maxRemainingMs / (1000 * 3600)) : undefined
+                                                    // Determine what is extracted (P0) on this planet
+                                                    interface ExtractedMaterial {
+                                                        typeId: number;
+                                                        name: string;
+                                                        ratePerHour: number;
+                                                        totalRemainingQty?: number;
+                                                    }
+
+                                                    const extractedMaterials: ExtractedMaterial[] = [];
+
+                                                    if (extractors.length > 0) {
+                                                        // Raw outputs from extractors (P0)
+                                                        const extractorOutputs: Record<number, {
+                                                            name: string;
+                                                            ratePerHour: number
+                                                        }> = {};
+                                                        extractors.forEach((pin) => {
+                                                            if (pin.extractor_info) {
+                                                                const cycleTimeHours = pin.extractor_info.cycle_time / 3600;
+                                                                if (cycleTimeHours > 0) {
+                                                                    const rate = pin.extractor_info.qty_per_cycle / cycleTimeHours;
+                                                                    const typeId = pin.extractor_info.product_type_id;
+                                                                    if (typeId > 0) {
+                                                                        if (!extractorOutputs[typeId]) {
+                                                                            extractorOutputs[typeId] = {
+                                                                                name: pin.extractor_info.product_name,
+                                                                                ratePerHour: 0
+                                                                            };
+                                                                        }
+                                                                        extractorOutputs[typeId].ratePerHour += rate;
+                                                                    }
+                                                                }
+                                                            }
                                                         });
-                                                    });
-                                                }
 
-                                                // 1. Determine if it's a production planet (has factories but NO extractors)
-                                                const isProduction = factories.length > 0 && extractors.length === 0;
-
-                                                let statusText = '';
-                                                let statusClass = '';
-
-                                                if (isProduction) {
-                                                    // Calculate supply duration
-                                                    // Stock: Launchpads + Storages + Command Centers
-                                                    const stock: Record<number, number> = {};
-                                                    planet.pins.forEach((pin) => {
-                                                        if (pin.contents) {
-                                                            pin.contents.forEach((item) => {
-                                                                stock[item.type_id] = (stock[item.type_id] || 0) + item.quantity;
+                                                        Object.entries(extractorOutputs).forEach(([typeIdStr, data]) => {
+                                                            const typeId = parseInt(typeIdStr, 10);
+                                                            extractedMaterials.push({
+                                                                typeId,
+                                                                name: data.name,
+                                                                ratePerHour: data.ratePerHour,
+                                                                totalRemainingQty: maxRemainingMs > 0 ? data.ratePerHour * (maxRemainingMs / (1000 * 3600)) : undefined
                                                             });
-                                                        }
-                                                    });
+                                                        });
+                                                    }
 
-                                                    // Consumption rate per hour
-                                                    const consumption: Record<number, number> = {};
-                                                    factories.forEach((pin) => {
-                                                        if (pin.factory_info) {
-                                                            const cycleTimeHours = pin.factory_info.cycle_time / 3600;
-                                                            if (cycleTimeHours > 0) {
-                                                                pin.factory_info.inputs.forEach((input) => {
-                                                                    const ratePerHour = input.quantity / cycleTimeHours;
-                                                                    consumption[input.type_id] = (consumption[input.type_id] || 0) + ratePerHour;
+                                                    // 1. Determine if it's a production planet (has factories but NO extractors)
+                                                    const isProduction = factories.length > 0 && extractors.length === 0;
+
+                                                    let statusText = '';
+                                                    let statusClass = '';
+
+                                                    if (isProduction) {
+                                                        // Calculate supply duration
+                                                        // Stock: Launchpads + Storages + Command Centers
+                                                        const stock: Record<number, number> = {};
+                                                        planet.pins.forEach((pin) => {
+                                                            if (pin.contents) {
+                                                                pin.contents.forEach((item) => {
+                                                                    stock[item.type_id] = (stock[item.type_id] || 0) + item.quantity;
                                                                 });
                                                             }
-                                                        }
-                                                    });
+                                                        });
 
-                                                    let minDurationHours = Infinity;
-                                                    let hasConsumption = false;
-                                                    Object.entries(consumption).forEach(([typeIdStr, rate]) => {
-                                                        const typeId = parseInt(typeIdStr, 10);
-                                                        if (rate > 0) {
-                                                            hasConsumption = true;
-                                                            const currentStock = stock[typeId] || 0;
-                                                            const durationHours = currentStock / rate;
-                                                            if (durationHours < minDurationHours) {
-                                                                minDurationHours = durationHours;
+                                                        // Consumption rate per hour
+                                                        const consumption: Record<number, number> = {};
+                                                        factories.forEach((pin) => {
+                                                            if (pin.factory_info) {
+                                                                const cycleTimeHours = pin.factory_info.cycle_time / 3600;
+                                                                if (cycleTimeHours > 0) {
+                                                                    pin.factory_info.inputs.forEach((input) => {
+                                                                        const ratePerHour = input.quantity / cycleTimeHours;
+                                                                        consumption[input.type_id] = (consumption[input.type_id] || 0) + ratePerHour;
+                                                                    });
+                                                                }
                                                             }
-                                                        }
-                                                    });
+                                                        });
 
-                                                    if (hasConsumption) {
-                                                        if (minDurationHours === Infinity) {
-                                                            statusText = 'Unbekannt';
-                                                            statusClass = 'badge-secondary';
-                                                        } else if (minDurationHours === 0) {
-                                                            statusText = 'Vorrat LEER!';
-                                                            statusClass = 'badge-danger';
+                                                        let minDurationHours = Infinity;
+                                                        let hasConsumption = false;
+                                                        Object.entries(consumption).forEach(([typeIdStr, rate]) => {
+                                                            const typeId = parseInt(typeIdStr, 10);
+                                                            if (rate > 0) {
+                                                                hasConsumption = true;
+                                                                const currentStock = stock[typeId] || 0;
+                                                                const durationHours = currentStock / rate;
+                                                                if (durationHours < minDurationHours) {
+                                                                    minDurationHours = durationHours;
+                                                                }
+                                                            }
+                                                        });
+
+                                                        if (hasConsumption) {
+                                                            if (minDurationHours === Infinity) {
+                                                                statusText = 'Unbekannt';
+                                                                statusClass = 'badge-secondary';
+                                                            } else if (minDurationHours === 0) {
+                                                                statusText = 'Vorrat LEER!';
+                                                                statusClass = 'badge-danger';
+                                                            } else {
+                                                                const totalHours = minDurationHours;
+                                                                if (totalHours >= 24) {
+                                                                    const days = Math.floor(totalHours / 24);
+                                                                    const hours = Math.round(totalHours % 24);
+                                                                    statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                } else {
+                                                                    statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                }
+                                                                statusClass = totalHours < 6 ? 'badge-danger' : (totalHours < 24 ? 'badge-warning' : 'badge-success');
+                                                            }
                                                         } else {
-                                                            const totalHours = minDurationHours;
+                                                            statusText = 'Kein Verbrauch';
+                                                            statusClass = 'badge-secondary';
+                                                        }
+                                                    } else if (extractors.length > 0) {
+                                                        // Pure extractor planet: calculate extraction time remaining
+                                                        if (hasActiveExtractor && maxRemainingMs > 0) {
+                                                            const totalHours = maxRemainingMs / (1000 * 60 * 60);
                                                             if (totalHours >= 24) {
                                                                 const days = Math.floor(totalHours / 24);
                                                                 const hours = Math.round(totalHours % 24);
-                                                                statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                statusText = `Abbau: ${days}d ${hours}h`;
                                                             } else {
-                                                                statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
+                                                                statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
                                                             }
-                                                            statusClass = totalHours < 6 ? 'badge-danger' : (totalHours < 24 ? 'badge-warning' : 'badge-success');
+                                                            statusClass = 'badge-success';
+                                                        } else {
+                                                            statusText = 'Abbau beendet!';
+                                                            statusClass = 'badge-danger';
                                                         }
                                                     } else {
-                                                        statusText = 'Kein Verbrauch';
+                                                        statusText = 'Inaktiv';
                                                         statusClass = 'badge-secondary';
                                                     }
-                                                } else if (extractors.length > 0) {
-                                                    // Pure extractor planet: calculate extraction time remaining
-                                                    if (hasActiveExtractor && maxRemainingMs > 0) {
-                                                        const totalHours = maxRemainingMs / (1000 * 60 * 60);
-                                                        if (totalHours >= 24) {
-                                                            const days = Math.floor(totalHours / 24);
-                                                            const hours = Math.round(totalHours % 24);
-                                                            statusText = `Abbau: ${days}d ${hours}h`;
-                                                        } else {
-                                                            const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
-                                                            statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
-                                                        }
-                                                        statusClass = 'badge-success';
-                                                    } else {
-                                                        statusText = 'Abbau beendet!';
-                                                        statusClass = 'badge-danger';
-                                                    }
-                                                } else {
-                                                    statusText = 'Inaktiv';
-                                                    statusClass = 'badge-secondary';
-                                                }
 
-                                                return (
-                                                    <div key={planet.planet_id} className={`planet-card planet-type-${planet.type}`}>
-                                                        <div
-                                                            className="planet-card-header"
-                                                            onClick={() => togglePlanet(planet.planet_id)}
-                                                        >
-                                                            <div className="planet-meta">
-                                                                <span className={`planet-type-badge type-${planet.type}`}>
+                                                    return (
+                                                        <div key={planet.planet_id}
+                                                             className={`planet-card planet-type-${planet.type}`}>
+                                                            <div
+                                                                className="planet-card-header"
+                                                                onClick={() => togglePlanet(planet.planet_id)}
+                                                            >
+                                                                <div className="planet-meta">
+                                                                <span
+                                                                    className={`planet-type-badge type-${planet.type}`}>
                                                                     {planet.type}
                                                                 </span>
-                                                                <h3 className="planet-title">{planet.name}</h3>
-                                                                <span className="planet-system">({planet.solar_system_name})</span>
-                                                            </div>
+                                                                    <h3 className="planet-title">{planet.name}</h3>
+                                                                    <span
+                                                                        className="planet-system">({planet.solar_system_name})</span>
+                                                                </div>
 
-                                                            <div className="planet-summary-badges">
-                                                                {extractedMaterials.map((mat) => {
-                                                                    const qtyStr = mat.totalRemainingQty !== undefined
-                                                                        ? Math.round(mat.totalRemainingQty).toLocaleString()
-                                                                        : null;
-
-                                                                    return (
+                                                                <div className="planet-summary-badges">
+                                                                    {launchpadCapacity > 0 && (
                                                                         <span
-                                                                            key={mat.typeId}
-                                                                            className="planet-output-badge"
-                                                                            title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Abbau'} (~${Math.round(mat.ratePerHour)}/h)`}
+                                                                            className={`badge ${launchpadPercent >= 90 ? 'badge-danger' : (launchpadPercent >= 75 ? 'badge-warning' : 'badge-success')}`}
+                                                                            title={`Launchpad-Auslastung: ${Math.round(launchpadVolumeUsed).toLocaleString()} / ${launchpadCapacity.toLocaleString()} m³ (${Math.round(launchpadPercent)}%)`}
                                                                         >
+                                                                        🚀 {Math.round(launchpadPercent)}%
+                                                                    </span>
+                                                                    )}
+                                                                    {extractedMaterials.map((mat) => {
+                                                                        const qtyStr = mat.totalRemainingQty !== undefined
+                                                                            ? Math.round(mat.totalRemainingQty).toLocaleString()
+                                                                            : null;
+
+                                                                        return (
+                                                                            <span
+                                                                                key={mat.typeId}
+                                                                                className="planet-output-badge"
+                                                                                title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Abbau'} (~${Math.round(mat.ratePerHour)}/h)`}
+                                                                            >
                                                                             <img
                                                                                 src={getTypeIconUrl(mat.typeId)}
                                                                                 alt={mat.name}
                                                                             />
-                                                                            {qtyStr !== null && <span className="qty">{qtyStr}</span>}
-                                                                            <span className="rate">({Math.round(mat.ratePerHour)}/h)</span>
+                                                                                {qtyStr !== null && <span
+                                                                                    className="qty">{qtyStr}</span>}
+                                                                                <span
+                                                                                    className="rate">({Math.round(mat.ratePerHour)}/h)</span>
                                                                         </span>
-                                                                    );
-                                                                })}
-                                                                <span className={`badge ${statusClass}`} style={{ marginRight: '8px', fontWeight: 'bold' }}>
+                                                                        );
+                                                                    })}
+                                                                    <span className={`badge ${statusClass}`}>
                                                                     {statusText}
                                                                 </span>
-                                                                <span className="collapse-arrow">
+                                                                    <span className="collapse-arrow">
                                                                     {isCollapsed ? '▶' : '▼'}
                                                                 </span>
+                                                                </div>
                                                             </div>
-                                                        </div>
 
 
-                                                        {!isCollapsed && (
-                                                            <div className="planet-card-body">
-                                                                
-                                                                {/* Custom Office (POCO) section */}
-                                                                <div className="pi-section poco-section">
-                                                                    <div className="section-title">
-                                                                        <h4>🪐 Zollamt (POCO): {planet.poco.name}</h4>
-                                                                        {planet.poco.resolved ? (
-                                                                            <span className="resolved-status text-success">✓ Verbunden</span>
+                                                            {!isCollapsed && (
+                                                                <div className="planet-card-body">
+
+                                                                    {/* Custom Office (POCO) section */}
+                                                                    <div className="pi-section poco-section">
+                                                                        <div className="section-title">
+                                                                            <h4>🪐 Zollamt
+                                                                                (POCO): {planet.poco.name}</h4>
+                                                                            {planet.poco.resolved ? (
+                                                                                <span
+                                                                                    className="resolved-status text-success">✓ Verbunden</span>
+                                                                            ) : (
+                                                                                <span
+                                                                                    className="resolved-status text-muted">⚠ Unverbunden</span>
+                                                                            )}
+                                                                        </div>
+                                                                        {planet.poco.contents.length === 0 ? (
+                                                                            <p className="empty-text">Keine Materialien
+                                                                                im Zollamt gelagert.</p>
                                                                         ) : (
-                                                                            <span className="resolved-status text-muted">⚠ Unverbunden</span>
+                                                                            <div className="materials-grid">
+                                                                                {planet.poco.contents.map((item) => (
+                                                                                    <div key={item.type_id}
+                                                                                         className="material-item">
+                                                                                        <img
+                                                                                            src={getTypeIconUrl(item.type_id)}
+                                                                                            alt={item.name}
+                                                                                            className="item-icon"/>
+                                                                                        <span
+                                                                                            className="item-qty">{item.quantity.toLocaleString()}x</span>
+                                                                                        <span
+                                                                                            className="item-name">{item.name}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
                                                                         )}
                                                                     </div>
-                                                                    {planet.poco.contents.length === 0 ? (
-                                                                        <p className="empty-text">Keine Materialien im Zollamt gelagert.</p>
-                                                                    ) : (
-                                                                        <div className="materials-grid">
-                                                                            {planet.poco.contents.map((item) => (
-                                                                                <div key={item.type_id} className="material-item">
-                                                                                    <img src={getTypeIconUrl(item.type_id)} alt={item.name} className="item-icon" />
-                                                                                    <span className="item-qty">{item.quantity.toLocaleString()}x</span>
-                                                                                    <span className="item-name">{item.name}</span>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
 
-                                                                {/* Launchpads and Storage Silos */}
-                                                                <div className="pi-section storage-section">
-                                                                    <h4>📦 Startrampen & Lager</h4>
-                                                                    {[...launchpads, ...storages].length === 0 ? (
-                                                                        <p className="empty-text">Keine Startrampen oder Lagerhallen gefunden.</p>
-                                                                    ) : (
-                                                                        <div className="storage-list">
-                                                                            {[...launchpads, ...storages].map((pin) => (
-                                                                                <div key={pin.pin_id} className="storage-card">
-                                                                                    <div className="storage-card-header">
-                                                                                        <h5>{pin.name}</h5>
-                                                                                        <span className="storage-type-badge">{pin.category === 'launchpad' ? 'Startrampe (10.000 m³)' : 'Lagersilo (40.000 m³)'}</span>
-                                                                                    </div>
-                                                                                    
-                                                                                    {pin.contents.length === 0 ? (
-                                                                                        <p className="empty-text-indent">Lager ist leer.</p>
-                                                                                    ) : (
-                                                                                        <div className="materials-grid-indent">
-                                                                                            {pin.contents.map((item) => (
-                                                                                                <div key={item.type_id} className="material-item">
-                                                                                                    <img src={getTypeIconUrl(item.type_id)} alt={item.name} className="item-icon" />
-                                                                                                    <span className="item-qty">{item.quantity.toLocaleString()}x</span>
-                                                                                                    <span className="item-name">{item.name}</span>
-                                                                                                </div>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    )}
+                                                                    {/* Launchpads and Storage Silos */}
+                                                                    <div className="pi-section storage-section">
+                                                                        <h4>📦 Startrampen & Lager</h4>
+                                                                        {[...launchpads, ...storages].length === 0 ? (
+                                                                            <p className="empty-text">Keine Startrampen
+                                                                                oder Lagerhallen gefunden.</p>
+                                                                        ) : (
+                                                                            <div className="storage-list">
+                                                                                {[...launchpads, ...storages].map((pin) => {
+                                                                                    const capacity = pin.category === 'launchpad' ? 10000 : 40000;
+                                                                                    let usedVolume = 0;
+                                                                                    pin.contents.forEach((item) => {
+                                                                                        usedVolume += item.quantity * (item.volume ?? 0);
+                                                                                    });
+                                                                                    const percent = capacity > 0 ? (usedVolume / capacity) * 100 : 0;
 
-                                                                                    {/* Production Line Routing: Inputs and Outputs */}
-                                                                                    {(pin.supplied_inputs && pin.supplied_inputs.length > 0) && (
-                                                                                        <div className="routing-block inputs">
-                                                                                            <span className="route-direction">➡️ Versorgt Fabrik-Eingänge:</span>
-                                                                                            <div className="routes-list">
-                                                                                                {pin.supplied_inputs.map((route, idx) => (
-                                                                                                    <div key={idx} className="route-item">
-                                                                                                        <span className="route-desc">
-                                                                                                            <strong>{route.material_name}</strong> ({route.quantity} Stk/Zyklus)
-                                                                                                        </span>
-                                                                                                        <span className="route-arrow">➔</span>
-                                                                                                        <span className="route-dest" title={route.factory_name}>
-                                                                                                            {route.schematic_name}
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    )}
-
-                                                                                    {(pin.received_outputs && pin.received_outputs.length > 0) && (
-                                                                                        <div className="routing-block outputs">
-                                                                                            <span className="route-direction">⬅️ Empfängt Fabrik-Ausgänge:</span>
-                                                                                            <div className="routes-list">
-                                                                                                {pin.received_outputs.map((route, idx) => (
-                                                                                                    <div key={idx} className="route-item">
-                                                                                                        <span className="route-dest" title={route.factory_name}>
-                                                                                                            {route.schematic_name}
-                                                                                                        </span>
-                                                                                                        <span className="route-arrow">➔</span>
-                                                                                                        <span className="route-desc">
-                                                                                                            <strong>{route.material_name}</strong> ({route.quantity} Stk/Zyklus)
-                                                                                                        </span>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Extractors */}
-                                                                <div className="pi-section extractors-section">
-                                                                    <h4>⚡ Rohstoffgewinnung (Extraktoren)</h4>
-                                                                    {extractors.length === 0 ? (
-                                                                        <p className="empty-text">Keine Extraktoren installiert.</p>
-                                                                    ) : (
-                                                                        <div className="extractor-list">
-                                                                            {extractors.map((pin) => {
-                                                                                const isRunning = pin.extractor_info && pin.extractor_info.qty_per_cycle > 0;
-                                                                                
-                                                                                // Calculate remaining time for this specific extractor
-                                                                                let timeRemainingStr = '';
-                                                                                if (pin.expiry_time) {
-                                                                                    const expiryTime = new Date(pin.expiry_time).getTime();
-                                                                                    const remaining = expiryTime - Date.now();
-                                                                                    if (remaining > 0) {
-                                                                                        const totalHours = remaining / (1000 * 60 * 60);
-                                                                                        if (totalHours >= 24) {
-                                                                                            const days = Math.floor(totalHours / 24);
-                                                                                            const hours = Math.round(totalHours % 24);
-                                                                                            timeRemainingStr = `${days}d ${hours}h`;
-                                                                                        } else {
-                                                                                            const mins = Math.round((remaining / (1000 * 60)) % 60);
-                                                                                            timeRemainingStr = `${Math.floor(totalHours)}h ${mins}m`;
-                                                                                        }
-                                                                                    } else {
-                                                                                        timeRemainingStr = 'Beendet';
-                                                                                    }
-                                                                                }
-
-                                                                                return (
-                                                                                    <div key={pin.pin_id} className={`extractor-card ${isRunning ? 'running' : 'idle'}`}>
-                                                                                        <div className="extractor-card-header">
-                                                                                            <h5>{pin.name}</h5>
-                                                                                            <span className={`status-badge ${isRunning ? 'badge-success' : 'badge-danger'}`}>
-                                                                                                {isRunning ? 'AKTIV' : 'INAKTIV / LEER'}
+                                                                                    return (
+                                                                                        <div key={pin.pin_id}
+                                                                                             className="storage-card">
+                                                                                            <div
+                                                                                                className="storage-card-header">
+                                                                                                <h5>{pin.name}</h5>
+                                                                                                <span
+                                                                                                    className="storage-type-badge">
+                                                                                                {pin.category === 'launchpad' ? 'Startrampe' : 'Lagersilo'}
+                                                                                                    {` (${Math.round(usedVolume).toLocaleString()} / ${capacity.toLocaleString()} m³ - ${Math.round(percent)}%)`}
                                                                                             </span>
+                                                                                            </div>
+
+                                                                                            <div
+                                                                                                className="pi-progress-bar-container">
+                                                                                                <div
+                                                                                                    className={`pi-progress-bar ${percent >= 90 ? 'bg-danger' : (percent >= 75 ? 'bg-warning' : 'bg-success')}`}
+                                                                                                    style={{width: `${Math.min(percent, 100)}%`}}
+                                                                                                />
+                                                                                            </div>
+
+                                                                                            {pin.contents.length === 0 ? (
+                                                                                                <p className="empty-text-indent">Lager
+                                                                                                    ist leer.</p>
+                                                                                            ) : (
+                                                                                                <div
+                                                                                                    className="materials-grid-indent">
+                                                                                                    {pin.contents.map((item) => (
+                                                                                                        <div
+                                                                                                            key={item.type_id}
+                                                                                                            className="material-item">
+                                                                                                            <img
+                                                                                                                src={getTypeIconUrl(item.type_id)}
+                                                                                                                alt={item.name}
+                                                                                                                className="item-icon"/>
+                                                                                                            <span
+                                                                                                                className="item-qty">{item.quantity.toLocaleString()}x</span>
+                                                                                                            <span
+                                                                                                                className="item-name">{item.name}</span>
+                                                                                                        </div>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            )}
+
                                                                                         </div>
-                                                                                        {isRunning && pin.extractor_info ? (
-                                                                                            <div className="extractor-details">
-                                                                                                <div className="detail-row">
-                                                                                                    <span className="label">Produkt:</span>
-                                                                                                    <span className="value font-weight-bold">
-                                                                                                        <img src={getTypeIconUrl(pin.extractor_info.product_type_id)} className="item-icon-small" />
-                                                                                                        {pin.extractor_info.product_name}
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                                <div className="detail-row">
-                                                                                                    <span className="label">Ertrag / Zyklus:</span>
-                                                                                                    <span className="value">
-                                                                                                        {pin.extractor_info.qty_per_cycle.toLocaleString()} Einheiten
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                                <div className="detail-row">
-                                                                                                    <span className="label">Zyklusdauer:</span>
-                                                                                                    <span className="value">
-                                                                                                        {(pin.extractor_info.cycle_time / 60).toFixed(0)} Min.
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                                {/* Only show heads details on production planets, omit for pure extractor planets */}
-                                                                                                {isProduction && (
-                                                                                                    <div className="detail-row">
-                                                                                                        <span className="label">Bohrköpfe:</span>
-                                                                                                        <span className="value">{pin.extractor_info.heads_count} Köpfe</span>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                                {timeRemainingStr && (
-                                                                                                    <div className="detail-row">
-                                                                                                        <span className="label">Restlaufzeit:</span>
-                                                                                                        <span className="value font-weight-bold text-success">{timeRemainingStr}</span>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </div>
-                                                                                        ) : (
-                                                                                            <p className="empty-text-indent text-warning">Dieser Extraktor fördert derzeit keine Rohstoffe.</p>
-                                                                                        )}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    )}
+                                                                                    );
+                                                                             })}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
                                                                 </div>
-
-                                                                {/* Factories */}
-                                                                <div className="pi-section factories-section">
-                                                                    <h4>🏭 Produktionslinien (Fabriken)</h4>
-                                                                    {factories.length === 0 ? (
-                                                                        <p className="empty-text">Keine Fabriken installiert.</p>
-                                                                    ) : (
-                                                                        <div className="factory-grid">
-                                                                            {factories.map((pin) => (
-                                                                                <div key={pin.pin_id} className="factory-card">
-                                                                                    <div className="factory-card-header">
-                                                                                        <h5>{pin.name}</h5>
-                                                                                        <span className="schematic-badge" title={pin.factory_info?.name ?? 'Kein Rezept'}>
-                                                                                            {pin.factory_info?.name ?? 'Kein Rezept'}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    
-                                                                                    {pin.factory_info ? (
-                                                                                        <div className="factory-recipe">
-                                                                                            <div className="recipe-block inputs">
-                                                                                                <h6>Eingang (Verbrauch):</h6>
-                                                                                                {pin.factory_info.inputs.map((inp) => (
-                                                                                                    <div key={inp.type_id} className="recipe-item">
-                                                                                                        <img src={getTypeIconUrl(inp.type_id)} alt={inp.name} className="item-icon-small" />
-                                                                                                        <span>{inp.quantity}x {inp.name}</span>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-                                                                                            
-                                                                                            <div className="recipe-block outputs">
-                                                                                                <h6>Ausgang (Produktion):</h6>
-                                                                                                {pin.factory_info.outputs.map((out) => (
-                                                                                                    <div key={out.type_id} className="recipe-item text-success font-weight-bold">
-                                                                                                        <img src={getTypeIconUrl(out.type_id)} alt={out.name} className="item-icon-small" />
-                                                                                                        <span>{out.quantity}x {out.name}</span>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                            </div>
-
-                                                                                            <div className="factory-meta">
-                                                                                                <span>Zyklus: {(pin.factory_info.cycle_time / 60).toFixed(0)} Min.</span>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <p className="empty-text-indent text-danger">Keine Produktionslinie eingestellt.</p>
-                                                                                    )}
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </>
                                     )}
