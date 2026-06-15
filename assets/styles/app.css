@@ -2784,3 +2784,26 @@ input[type="number"] {
     text-align: right;
 }
 
+/* Storage & Launchpad Progress Bar styling */
+.pi-progress-bar-container {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 4px 0 8px 0;
+}
+.pi-progress-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+.pi-progress-bar.bg-success {
+    background-color: #10b981;
+}
+.pi-progress-bar.bg-warning {
+    background-color: #f59e0b;
+}
+.pi-progress-bar.bg-danger {
+    background-color: #ef4444;
+}
+
+

@@ -231,10 +231,15 @@ class ProfilePiController extends AbstractController
                         if (!empty($pin['contents'])) {
                             foreach ($pin['contents'] as $content) {
                                 $cTypeId = (int)$content['type_id'];
+                                $volume = (float)$this->sdeConnection->fetchOne(
+                                    'SELECT volume FROM invTypes WHERE typeID = :id LIMIT 1',
+                                    ['id' => $cTypeId]
+                                );
                                 $contents[] = [
                                     'type_id' => $cTypeId,
                                     'name' => $this->sdeService->getItemName($cTypeId),
                                     'quantity' => (int)$content['amount'],
+                                    'volume' => $volume,
                                 ];
                             }
                         }

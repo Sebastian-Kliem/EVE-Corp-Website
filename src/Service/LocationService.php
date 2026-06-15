@@ -118,7 +118,12 @@ class LocationService
         $cacheExpiryDays = 7;
 
         // If cached and still valid, return cached info
-        if ($structure && $structure->getLastUpdated()->modify('+' . $cacheExpiryDays . ' days') > $now) {
+        // We only use cached info if it is a fully resolved structure name, not our fallback
+        if ($structure && 
+            $structure->getName() !== 'Spieler-Struktur' && 
+            $structure->getSolarSystemName() !== 'Unbekannt' && 
+            $structure->getLastUpdated()->modify('+' . $cacheExpiryDays . ' days') > $now
+        ) {
             return [
                 'name' => $structure->getName(),
                 'systemName' => $structure->getSolarSystemName() ?? 'Unbekannt',
@@ -126,75 +131,113 @@ class LocationService
             ];
         }
 
-        // Try to fetch from ESI if we have a character token
-        if ($character) {
+        $resolvedData = null;
+        $charactersToTry = [];
+
+        // 1. Queue the passed character first
+        if ($character && !empty($character->getRefreshToken())) {
+            $charactersToTry[] = $character;
+        }
+
+        // 2. Queue other characters from the same user account
+        if ($character && $character->getUser()) {
+            $userChars = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $character->getUser()]);
+            foreach ($userChars as $uc) {
+                if ($character && $uc->getId() === $character->getId()) {
+                    continue;
+                }
+                if (!empty($uc->getRefreshToken())) {
+                    $charactersToTry[] = $uc;
+                }
+            }
+        }
+
+        // 3. Queue all other characters in the database as a final fallback
+        $allChars = $this->entityManager->getRepository(EveCharacter::class)->findAll();
+        foreach ($allChars as $ac) {
+            if ($character && $ac->getId() === $character->getId()) {
+                continue;
+            }
+            // Avoid adding duplicates
+            $alreadyQueued = false;
+            foreach ($charactersToTry as $q) {
+                if ($q->getId() === $ac->getId()) {
+                    $alreadyQueued = true;
+                    break;
+                }
+            }
+            if (!$alreadyQueued && !empty($ac->getRefreshToken())) {
+                $charactersToTry[] = $ac;
+            }
+        }
+
+        // Try to fetch from ESI using queued characters
+        foreach ($charactersToTry as $tryChar) {
             try {
                 $data = $this->esiClient->request(
                     'GET',
                     sprintf('universe/structures/%d/', $locationId),
                     [],
-                    $character
+                    $tryChar
                 );
 
                 if ($data && !empty($data['name'])) {
-                    $structureName = $data['name'];
-                    $solarSystemId = (int)($data['solar_system_id'] ?? 0);
-                    $solarSystemName = 'Unbekannt';
-
-                    if ($solarSystemId > 0) {
-                        $solarSystemName = $this->sdeConnection->fetchOne(
-                            'SELECT solarSystemName FROM mapSolarSystems WHERE solarSystemID = :id LIMIT 1',
-                            ['id' => $solarSystemId]
-                        ) ?: 'Unbekannt';
-                    }
-
-                    // Save to local cache
-                    if (!$structure) {
-                        $structure = new EveStructure();
-                        $structure->setId((string)$locationId);
-                    }
-                    $structure->setName($structureName);
-                    $structure->setSolarSystemId($solarSystemId);
-                    $structure->setSolarSystemName($solarSystemName);
-                    $structure->setLastUpdated($now);
-
-                    $this->entityManager->persist($structure);
-                    $this->entityManager->flush();
-
-                    return [
-                        'name' => $structureName,
-                        'systemName' => $solarSystemName,
-                        'rawName' => $structureName,
-                    ];
+                    $resolvedData = $data;
+                    break;
                 }
             } catch (\Exception $e) {
-                // If fetching fails (e.g. 403 Forbidden or network issue), cache a fallback so we don't spam ESI
-                if (!$structure) {
-                    $structure = new EveStructure();
-                    $structure->setId((string)$locationId);
-                    $structure->setName('Spieler-Struktur');
-                    $structure->setSolarSystemId(0);
-                    $structure->setSolarSystemName('Unbekannt');
-                }
-                $structure->setLastUpdated($now);
-                $this->entityManager->persist($structure);
-                $this->entityManager->flush();
+                // Keep trying other characters
             }
         }
 
-        // Return current cache (even if expired/fallback) or a final fallback
-        if ($structure) {
+        if ($resolvedData && !empty($resolvedData['name'])) {
+            $structureName = $resolvedData['name'];
+            $solarSystemId = (int)($resolvedData['solar_system_id'] ?? 0);
+            $solarSystemName = 'Unbekannt';
+
+            if ($solarSystemId > 0) {
+                $solarSystemName = $this->sdeConnection->fetchOne(
+                    'SELECT solarSystemName FROM mapSolarSystems WHERE solarSystemID = :id LIMIT 1',
+                    ['id' => $solarSystemId]
+                ) ?: 'Unbekannt';
+            }
+
+            // Save to local cache
+            if (!$structure) {
+                $structure = new EveStructure();
+                $structure->setId((string)$locationId);
+            }
+            $structure->setName($structureName);
+            $structure->setSolarSystemId($solarSystemId);
+            $structure->setSolarSystemName($solarSystemName);
+            $structure->setLastUpdated($now);
+
+            $this->entityManager->persist($structure);
+            $this->entityManager->flush();
+
             return [
-                'name' => $structure->getName(),
-                'systemName' => $structure->getSolarSystemName() ?? 'Unbekannt',
-                'rawName' => $structure->getName(),
+                'name' => $structureName,
+                'systemName' => $solarSystemName,
+                'rawName' => $structureName,
             ];
         }
 
+        // If fetching fails completely, cache a fallback so we don't spam ESI
+        if (!$structure) {
+            $structure = new EveStructure();
+            $structure->setId((string)$locationId);
+            $structure->setName('Spieler-Struktur');
+            $structure->setSolarSystemId(0);
+            $structure->setSolarSystemName('Unbekannt');
+        }
+        $structure->setLastUpdated($now);
+        $this->entityManager->persist($structure);
+        $this->entityManager->flush();
+
         return [
-            'name' => 'Struktur #' . $locationId,
-            'systemName' => 'Struktur',
-            'rawName' => 'Struktur #' . $locationId,
+            'name' => $structure->getName(),
+            'systemName' => $structure->getSolarSystemName() ?? 'Unbekannt',
+            'rawName' => $structure->getName(),
         ];
     }
 }

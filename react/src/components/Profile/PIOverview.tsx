@@ -784,6 +784,51 @@ export default function PIOverview({
                                                         });
                                                     }
 
+                                                    // Determine what is produced (e.g. P1/P2/P3/P4) on this planet
+                                                    interface ProducedMaterial {
+                                                        typeId: number;
+                                                        name: string;
+                                                        ratePerHour: number;
+                                                    }
+
+                                                    const producedMaterials: ProducedMaterial[] = [];
+
+                                                    if (factories.length > 0) {
+                                                        const factoryOutputs: Record<number, {
+                                                            name: string;
+                                                            ratePerHour: number
+                                                        }> = {};
+                                                        factories.forEach((pin) => {
+                                                            if (pin.factory_info && pin.factory_info.outputs) {
+                                                                const cycleTimeHours = pin.factory_info.cycle_time / 3600;
+                                                                if (cycleTimeHours > 0) {
+                                                                    pin.factory_info.outputs.forEach((out) => {
+                                                                        const rate = out.quantity / cycleTimeHours;
+                                                                        const typeId = out.type_id;
+                                                                        if (typeId > 0) {
+                                                                            if (!factoryOutputs[typeId]) {
+                                                                                factoryOutputs[typeId] = {
+                                                                                    name: out.name,
+                                                                                    ratePerHour: 0
+                                                                                };
+                                                                            }
+                                                                            factoryOutputs[typeId].ratePerHour += rate;
+                                                                        }
+                                                                    });
+                                                                }
+                                                            }
+                                                        });
+
+                                                        Object.entries(factoryOutputs).forEach(([typeIdStr, data]) => {
+                                                            const typeId = parseInt(typeIdStr, 10);
+                                                            producedMaterials.push({
+                                                                typeId,
+                                                                name: data.name,
+                                                                ratePerHour: data.ratePerHour,
+                                                            });
+                                                        });
+                                                    }
+
                                                     // 1. Determine if it's a production planet (has factories but NO extractors)
                                                     const isProduction = factories.length > 0 && extractors.length === 0;
 
@@ -892,6 +937,19 @@ export default function PIOverview({
                                                                 </div>
 
                                                                 <div className="planet-summary-badges">
+                                                                    {producedMaterials.map((mat) => (
+                                                                        <span
+                                                                            key={mat.typeId}
+                                                                            className="planet-output-badge"
+                                                                            title={`${mat.name} (Hergestellt)`}
+                                                                            style={{ borderStyle: 'dashed' }}
+                                                                        >
+                                                                            <img
+                                                                                src={getTypeIconUrl(mat.typeId)}
+                                                                                alt={mat.name}
+                                                                            />
+                                                                        </span>
+                                                                    ))}
                                                                     {launchpadCapacity > 0 && (
                                                                         <span
                                                                             className={`badge ${launchpadPercent >= 90 ? 'badge-danger' : (launchpadPercent >= 75 ? 'badge-warning' : 'badge-success')}`}
@@ -900,28 +958,6 @@ export default function PIOverview({
                                                                         🚀 {Math.round(launchpadPercent)}%
                                                                     </span>
                                                                     )}
-                                                                    {extractedMaterials.map((mat) => {
-                                                                        const qtyStr = mat.totalRemainingQty !== undefined
-                                                                            ? Math.round(mat.totalRemainingQty).toLocaleString()
-                                                                            : null;
-
-                                                                        return (
-                                                                            <span
-                                                                                key={mat.typeId}
-                                                                                className="planet-output-badge"
-                                                                                title={`${mat.name}: ${qtyStr !== null ? `${qtyStr} verbleibend` : 'Abbau'} (~${Math.round(mat.ratePerHour)}/h)`}
-                                                                            >
-                                                                            <img
-                                                                                src={getTypeIconUrl(mat.typeId)}
-                                                                                alt={mat.name}
-                                                                            />
-                                                                                {qtyStr !== null && <span
-                                                                                    className="qty">{qtyStr}</span>}
-                                                                                <span
-                                                                                    className="rate">({Math.round(mat.ratePerHour)}/h)</span>
-                                                                        </span>
-                                                                        );
-                                                                    })}
                                                                     <span className={`badge ${statusClass}`}>
                                                                     {statusText}
                                                                 </span>
@@ -934,6 +970,63 @@ export default function PIOverview({
 
                                                             {!isCollapsed && (
                                                                 <div className="planet-card-body">
+
+                                                                    {/* Extractors (P0) section */}
+                                                                    {extractors.length > 0 && (
+                                                                        <div className="pi-section extractor-section">
+                                                                            <div className="section-title">
+                                                                                <h4>⛏️ Extraktion (P0-Material)</h4>
+                                                                            </div>
+                                                                            <div className="storage-list">
+                                                                                {extractors.map((pin) => {
+                                                                                    if (!pin.extractor_info) return null;
+                                                                                    const cycleTimeHours = pin.extractor_info.cycle_time / 3600;
+                                                                                    const rate = cycleTimeHours > 0 ? pin.extractor_info.qty_per_cycle / cycleTimeHours : 0;
+                                                                                    const typeId = pin.extractor_info.product_type_id;
+
+                                                                                    let remainingStr = 'Kein aktives Programm';
+                                                                                    if (pin.expiry_time) {
+                                                                                        const expiryTime = new Date(pin.expiry_time).getTime();
+                                                                                        const remaining = expiryTime - Date.now();
+                                                                                        if (remaining > 0) {
+                                                                                            const totalHours = remaining / (1000 * 60 * 60);
+                                                                                            if (totalHours >= 24) {
+                                                                                                const days = Math.floor(totalHours / 24);
+                                                                                                const hours = Math.round(totalHours % 24);
+                                                                                                remainingStr = `Abbau läuft: ${days}d ${hours}h verbleibend`;
+                                                                                            } else {
+                                                                                                const mins = Math.round((remaining / (1000 * 60)) % 60);
+                                                                                                remainingStr = `Abbau läuft: ${Math.floor(totalHours)}h ${mins}m verbleibend`;
+                                                                                            }
+                                                                                        } else {
+                                                                                            remainingStr = 'Abbau beendet!';
+                                                                                        }
+                                                                                    }
+
+                                                                                    return (
+                                                                                        <div key={pin.pin_id} className="storage-card" style={{ padding: '0.75rem' }}>
+                                                                                            <div className="storage-card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                                                                                                <h5 style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                                                    <img
+                                                                                                        src={getTypeIconUrl(typeId)}
+                                                                                                        alt={pin.extractor_info.product_name}
+                                                                                                        style={{ width: '20px', height: '20px' }}
+                                                                                                    />
+                                                                                                    {pin.extractor_info.product_name}
+                                                                                                </h5>
+                                                                                                <span className="storage-type-badge" style={{ fontSize: '0.8rem' }}>
+                                                                                                    ~{Math.round(rate).toLocaleString()}/h ({pin.extractor_info.heads_count} Köpfe)
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)', marginTop: '0.25rem', paddingLeft: '28px' }}>
+                                                                                                {remainingStr}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
 
                                                                     {/* Custom Office (POCO) section */}
                                                                     <div className="pi-section poco-section">
