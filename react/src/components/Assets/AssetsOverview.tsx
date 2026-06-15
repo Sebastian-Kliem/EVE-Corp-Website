@@ -632,7 +632,7 @@ export default function AssetsOverview({
                                                         ) : (
                                                             <>
                                                                 <span>📍 {displayName}</span>
-                                                                {location.id >= 1000000000000 && (
+                                                                {location.id >= 1000000000000 && (displayName === 'Spieler-Struktur' || displayName.startsWith('Struktur #') || displayName.startsWith('Location #')) && (
                                                                     <button
                                                                         className="button is-dark is-small p-1 ml-2"
                                                                         style={{ border: 'none', background: 'transparent', opacity: 0.6 }}

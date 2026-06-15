@@ -267,19 +267,19 @@ export default function CharacterAssets({
                                         ) : (
                                             <>
                                                 <span>📍 {displayName}</span>
-                                                {numericLocationId >= 1000000000000 && (
-                                                    <button
-                                                        className="button is-dark is-small p-1 ml-2"
-                                                        style={{ border: 'none', background: 'transparent', opacity: 0.6 }}
-                                                        title="Struktur bearbeiten"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            startEditing(numericLocationId, group.name);
-                                                        }}
-                                                    >
-                                                        ✏️
-                                                    </button>
-                                                )}
+                                                {numericLocationId >= 1000000000000 && (displayName === 'Spieler-Struktur' || displayName.startsWith('Struktur #') || displayName.startsWith('Location #')) && (
+                                                     <button
+                                                         className="button is-dark is-small p-1 ml-2"
+                                                         style={{ border: 'none', background: 'transparent', opacity: 0.6 }}
+                                                         title="Struktur bearbeiten"
+                                                         onClick={(e) => {
+                                                             e.stopPropagation();
+                                                             startEditing(numericLocationId, group.name);
+                                                         }}
+                                                     >
+                                                         ✏️
+                                                     </button>
+                                                 )}
                                             </>
                                         )}
                                     </span>
