@@ -191,9 +191,19 @@ class EveAccountController extends AbstractController
             ];
         }
 
-        // Sort items inside each location by name
+        // Sort items inside each location (ships first, then containers, then others)
         foreach ($groupedAssets as &$group) {
-            usort($group['items'], function ($a, $b) {
+            usort($group['items'], function ($a, $b) use ($sdeService) {
+                $aIsShip = $sdeService->isShip($a['typeId']);
+                $bIsShip = $sdeService->isShip($b['typeId']);
+                if ($aIsShip && !$bIsShip) return -1;
+                if (!$aIsShip && $bIsShip) return 1;
+
+                $aIsContainer = $sdeService->isContainer($a['typeId']);
+                $bIsContainer = $sdeService->isContainer($b['typeId']);
+                if ($aIsContainer && !$bIsContainer) return -1;
+                if (!$aIsContainer && $bIsContainer) return 1;
+
                 return strcasecmp($a['name'], $b['name']);
             });
         }
@@ -265,9 +275,7 @@ class EveAccountController extends AbstractController
                     $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService, $prices);
                 }
 
-                usort($items, function ($a, $b) {
-                    return strcasecmp($a['name'], $b['name']);
-                });
+                $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
 
                 $locations[] = [
                     'id' => $locationId,
@@ -313,9 +321,7 @@ class EveAccountController extends AbstractController
             foreach ($nestedAssets[$itemId] as $childAsset) {
                 $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService, $prices);
             }
-            usort($children, function ($a, $b) {
-                return strcasecmp($a['name'], $b['name']);
-            });
+            $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
         }
 
         return [
@@ -486,9 +492,7 @@ class EveAccountController extends AbstractController
                 }
 
                 foreach ($groupedByDivision as $folderName => &$items) {
-                    usort($items, function ($a, $b) {
-                        return strcasecmp($a['name'], $b['name']);
-                    });
+                    $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
                 }
                 unset($items);
 
@@ -659,9 +663,7 @@ class EveAccountController extends AbstractController
                 }
 
                 foreach ($groupedByDiv as $divName => &$items) {
-                    usort($items, function ($a, $b) {
-                        return strcasecmp($a['name'], $b['name']);
-                    });
+                    $items = $this->groupAndSortNodes($items, $sdeService, $itemId);
                 }
                 unset($items);
 
@@ -700,9 +702,7 @@ class EveAccountController extends AbstractController
 
                 $children = array_merge($divNodes, $nonDivChildren);
             } else {
-                usort($children, function ($a, $b) {
-                    return strcasecmp($a['name'], $b['name']);
-                });
+                $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
             }
         }
 
@@ -722,6 +722,73 @@ class EveAccountController extends AbstractController
             'runs' => $asset->getRuns(),
             'children' => $children,
         ];
+    }
+
+    /**
+     * Groups and sorts assets.
+     * 1. Ships are grouped under a virtual folder "Schiffe (Ships)".
+     * 2. Containers with content are placed next.
+     * 3. All other items are placed last.
+     * Each sub-group is sorted alphabetically by name.
+     */
+    private function groupAndSortNodes(array $nodes, SdeService $sdeService, int $parentId): array
+    {
+        $shipNodes = [];
+        $containerWithContentNodes = [];
+        $otherNodes = [];
+
+        foreach ($nodes as $node) {
+            $typeId = $node['typeId'] ?? 0;
+            $hasChildren = !empty($node['children']);
+
+            if ($sdeService->isShip($typeId)) {
+                $shipNodes[] = $node;
+            } elseif ($sdeService->isContainer($typeId) && $hasChildren) {
+                $containerWithContentNodes[] = $node;
+            } else {
+                $otherNodes[] = $node;
+            }
+        }
+
+        // Sort each category alphabetically by name
+        usort($shipNodes, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        usort($containerWithContentNodes, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        usort($otherNodes, function ($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        $finalNodes = [];
+
+        // 1. Ships (under a virtual folder if there are any)
+        if (count($shipNodes) > 0) {
+            $finalNodes[] = [
+                'itemId' => -((int)abs($parentId) * 10 + 9999), // unique virtual ID
+                'typeId' => 0, // special type ID for virtual folder
+                'name' => 'Schiffe (Ships)',
+                'quantity' => count($shipNodes),
+                'locationFlag' => 'Group',
+                'isBlueprintCopy' => false,
+                'isSingleton' => false,
+                'children' => $shipNodes,
+                'price' => 0.0,
+            ];
+        }
+
+        // 2. Containers with content
+        foreach ($containerWithContentNodes as $node) {
+            $finalNodes[] = $node;
+        }
+
+        // 3. Other items
+        foreach ($otherNodes as $node) {
+            $finalNodes[] = $node;
+        }
+
+        return $finalNodes;
     }
 
     #[Route('/profile/eve-character/{id}/delete', name: 'app_eve_character_delete', methods: ['POST'])]

@@ -106,6 +106,53 @@ class SdeService
         return false;
     }
 
+    private array $shipCache = [];
+    private array $containerCache = [];
+
+    /**
+     * Checks if a typeID belongs to a ship group (categoryID = 6) in the SDE database.
+     */
+    public function isShip(int $typeId): bool
+    {
+        if (isset($this->shipCache[$typeId])) {
+            return $this->shipCache[$typeId];
+        }
+
+        try {
+            $categoryId = $this->connection->fetchOne(
+                'SELECT g.categoryID FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = :id LIMIT 1',
+                ['id' => $typeId]
+            );
+            $isShip = ($categoryId !== false && (int)$categoryId === 6);
+            $this->shipCache[$typeId] = $isShip;
+            return $isShip;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks if a typeID belongs to a container group in the SDE database.
+     */
+    public function isContainer(int $typeId): bool
+    {
+        if (isset($this->containerCache[$typeId])) {
+            return $this->containerCache[$typeId];
+        }
+
+        try {
+            $groupName = $this->connection->fetchOne(
+                'SELECT g.groupName FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.typeID = :id LIMIT 1',
+                ['id' => $typeId]
+            );
+            $isContainer = $groupName && (bool)preg_match('/container/i', $groupName);
+            $this->containerCache[$typeId] = $isContainer;
+            return $isContainer;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
     /**
      * Searches for published items in the EVE SDE database by name.
      * Returns an array of items matching the query.
