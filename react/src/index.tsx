@@ -7,6 +7,7 @@ import AssetsOverview from './components/Assets/AssetsOverview';
 import CorpAssetsOverview from './components/Assets/CorpAssetsOverview';
 import CorpAssetsVisibilityManager from './components/Admin/CorpAssetsVisibilityManager';
 import PIOverview from './components/Profile/PIOverview';
+import MiningLedger from './components/Profile/MiningLedger';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
@@ -17,6 +18,7 @@ const components: Record<string, React.ComponentType<any>> = {
     CorpAssetsOverview,
     CorpAssetsVisibilityManager,
     PIOverview,
+    MiningLedger,
 };
 
 function mountReactComponents() {
