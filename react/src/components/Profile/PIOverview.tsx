@@ -57,6 +57,13 @@ interface PocoData {
     resolved: boolean;
 }
 
+interface UnassignedPoco {
+    location_id: number;
+    name: string;
+    solar_system_name: string;
+    contents: Material[];
+}
+
 interface PlanetData {
     planet_id: number;
     name: string;
@@ -74,6 +81,7 @@ interface CharacterPiData {
     character_id: number;
     character_name: string;
     planets: PlanetData[];
+    unassigned_pocos?: UnassignedPoco[];
     error?: string;
 }
 
@@ -434,8 +442,101 @@ export default function PIOverview({
                                     )}
 
                                     {!collapsedCharacters[charData.character_id] && (
-                                        <div className="character-planets-grid">
-                                            {charData.planets.map((planet) => {
+                                        <>
+                                            {(() => {
+                                                const unassignedList = charData.unassigned_pocos || [];
+                                                const stationsAndHubs = unassignedList.filter((poco) => {
+                                                    const isNpcStation = poco.location_id >= 60000000 && poco.location_id < 64000000;
+                                                    const nameLower = poco.name.toLowerCase();
+                                                    const isPocoName = nameLower.includes('zollamt') || 
+                                                                       nameLower.includes('customs office') || 
+                                                                       nameLower.includes('poco') || 
+                                                                       nameLower.includes('custom office') ||
+                                                                       nameLower === 'spieler-struktur';
+                                                    
+                                                    return isNpcStation || !isPocoName;
+                                                });
+
+                                                const unassignedPocos = unassignedList.filter((poco) => {
+                                                    const isNpcStation = poco.location_id >= 60000000 && poco.location_id < 64000000;
+                                                    const nameLower = poco.name.toLowerCase();
+                                                    const isPocoName = nameLower.includes('zollamt') || 
+                                                                       nameLower.includes('customs office') || 
+                                                                       nameLower.includes('poco') || 
+                                                                       nameLower.includes('custom office') ||
+                                                                       nameLower === 'spieler-struktur';
+                                                    
+                                                    return !isNpcStation && isPocoName;
+                                                });
+
+                                                return (
+                                                    <>
+                                                        {unassignedPocos.length > 0 && (
+                                                            <div className="char-unassigned-pocos-alert" style={{ margin: '1rem', padding: '1rem', borderRadius: '4px', backgroundColor: 'rgba(255, 193, 7, 0.1)', border: '1px solid rgba(255, 193, 7, 0.3)' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                                    <span style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>⚠️</span>
+                                                                    <strong style={{ color: '#ffc107' }}>Nicht zugeordnete Zolllager (POCOs) gefunden</strong>
+                                                                </div>
+                                                                <p style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--theme-text-muted)', lineHeight: '1.4' }}>
+                                                                    Es wurden PI-Materialien in Zolllagern (POCOs) gefunden, die nicht automatisch einem Planeten zugeordnet sind. 
+                                                                    Bitte bearbeite den Namen der Struktur in deiner <a href="/profile/assets" style={{ textDecoration: 'underline', color: 'var(--theme-primary)' }}>Assets-Übersicht</a> (Stift-Symbol ✏️) 
+                                                                    und füge den Planetennamen in Klammern hinzu (z. B. <code>Zollamt ({charData.planets[0]?.name || 'PlanetName'})</code>), damit sie hier korrekt zugewiesen werden.
+                                                                </p>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                                    {unassignedPocos.map((poco) => (
+                                                                        <div key={poco.location_id} style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                                                                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                                                <span>📍 {poco.name} <span style={{ color: 'var(--theme-text-muted)', fontWeight: 'normal', fontSize: '0.8rem' }}>(ID: {poco.location_id})</span></span>
+                                                                                <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.8rem' }}>System: {poco.solar_system_name}</span>
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                                                {poco.contents.map((item) => (
+                                                                                    <span key={item.type_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', padding: '0.1rem 0.4rem', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                                                                                        <img src={getTypeIconUrl(item.type_id)} alt={item.name} style={{ width: '16px', height: '16px' }} />
+                                                                                        {item.quantity.toLocaleString()}x {item.name}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {stationsAndHubs.length > 0 && (
+                                                            <div className="char-stations-buffers-info" style={{ margin: '1rem', padding: '1rem', borderRadius: '4px', backgroundColor: 'rgba(0, 240, 255, 0.05)', border: '1px solid rgba(0, 240, 255, 0.2)' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                                    <span style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>ℹ️</span>
+                                                                    <strong style={{ color: 'var(--theme-primary)' }}>Lagerbestände in Stationen & Hubs (Puffer)</strong>
+                                                                </div>
+                                                                <p style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--theme-text-muted)', lineHeight: '1.4' }}>
+                                                                    Hier werden PI-Materialien gelistet, die in Handelsstationen (z. B. Jita) oder Corp-Hauptquartieren lagern. Diese dienen als Puffer oder für den Verkauf und müssen nicht manuell zugeordnet werden.
+                                                                </p>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                                    {stationsAndHubs.map((poco) => (
+                                                                        <div key={poco.location_id} style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                                                                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                                                <span>📍 {poco.name} <span style={{ color: 'var(--theme-text-muted)', fontWeight: 'normal', fontSize: '0.8rem' }}>(ID: {poco.location_id})</span></span>
+                                                                                <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.8rem' }}>System: {poco.solar_system_name}</span>
+                                                                            </div>
+                                                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                                                                {poco.contents.map((item) => (
+                                                                                    <span key={item.type_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', padding: '0.1rem 0.4rem', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                                                                                        <img src={getTypeIconUrl(item.type_id)} alt={item.name} style={{ width: '16px', height: '16px' }} />
+                                                                                        {item.quantity.toLocaleString()}x {item.name}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                            <div className="character-planets-grid">
+                                                {charData.planets.map((planet) => {
                                                 const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
                                                 
                                                 // Group pins by category
@@ -815,7 +916,8 @@ export default function PIOverview({
                                                     </div>
                                                 );
                                             })}
-                                        </div>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             ))
