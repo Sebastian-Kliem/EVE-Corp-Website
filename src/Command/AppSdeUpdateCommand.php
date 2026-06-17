@@ -18,7 +18,7 @@ use Symfony\Component\Process\Process;
 )]
 class AppSdeUpdateCommand extends Command
 {
-    private const DEFAULT_URL = 'https://www.fuzzwork.co.uk/dump/sqlite-latest.sqlite.bz2';
+    private const DEFAULT_URL = 'https://www.fuzzwork.co.uk/dump/latest-sqlite.db.gz';
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -31,7 +31,7 @@ class AppSdeUpdateCommand extends Command
     {
         $this
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Force update and ignore cached checksums.')
-            ->addOption('url', 'u', InputOption::VALUE_REQUIRED, 'Custom URL for the EVE SDE sqlite.bz2 file.', self::DEFAULT_URL)
+            ->addOption('url', 'u', InputOption::VALUE_REQUIRED, 'Custom URL for the EVE SDE sqlite.gz file.', self::DEFAULT_URL)
         ;
     }
 
@@ -103,7 +103,7 @@ class AppSdeUpdateCommand extends Command
         $io->section('Downloading and updating EVE Online SDE');
 
         // Create temporary paths
-        $tempCompressed = $varDir . '/sde_download.sqlite.bz2';
+        $tempCompressed = $varDir . '/sde_download.sqlite.gz';
         $tempUncompressed = $varDir . '/sde_download.sqlite';
 
         // Clean up any remaining temp files
@@ -150,42 +150,42 @@ class AppSdeUpdateCommand extends Command
             return Command::FAILURE;
         }
 
-        $io->text('Decompressing downloaded bzip2 archive...');
+        $io->text('Decompressing downloaded gzip archive...');
         try {
-            if (extension_loaded('bz2')) {
-                $bz = bzopen($tempCompressed, 'r');
-                if ($bz === false) {
-                    throw new \RuntimeException('Failed to open bzip2 source file.');
+            if (extension_loaded('zlib')) {
+                $gz = gzopen($tempCompressed, 'rb');
+                if ($gz === false) {
+                    throw new \RuntimeException('Failed to open gzip source file.');
                 }
-                $out = fopen($tempUncompressed, 'w');
+                $out = fopen($tempUncompressed, 'wb');
                 if ($out === false) {
-                    bzclose($bz);
+                    gzclose($gz);
                     throw new \RuntimeException('Failed to open destination uncompressed file.');
                 }
-                while (!feof($bz)) {
-                    $buffer = bzread($bz, 1024 * 64); // Read in 64kb chunks
+                while (!gzeof($gz)) {
+                    $buffer = gzread($gz, 1024 * 64); // Read in 64kb chunks
                     if ($buffer === false) {
-                        throw new \RuntimeException('Error occurred during bzip2 decompression.');
+                        throw new \RuntimeException('Error occurred during gzip decompression.');
                     }
                     fwrite($out, $buffer);
                 }
-                bzclose($bz);
+                gzclose($gz);
                 fclose($out);
             } else {
-                // Fallback using bunzip2 command
-                $io->comment('PHP bz2 extension not loaded. Falling back to system "bunzip2"...');
-                $process = new Process(['bunzip2', '-k', '-c', $tempCompressed]);
+                // Fallback using gunzip command
+                $io->comment('PHP zlib extension not loaded. Falling back to system "gunzip"...');
+                $process = new Process(['gunzip', '-k', '-c', $tempCompressed]);
                 $process->setTimeout(300);
                 
                 // Write uncompressed output directly to target file
-                $out = fopen($tempUncompressed, 'w');
+                $out = fopen($tempUncompressed, 'wb');
                 $process->run(function ($type, $buffer) use ($out) {
                     fwrite($out, $buffer);
                 });
                 fclose($out);
 
                 if (!$process->isSuccessful()) {
-                    throw new \RuntimeException('Failed to decompress using bunzip2: ' . $process->getErrorOutput());
+                    throw new \RuntimeException('Failed to decompress using gunzip: ' . $process->getErrorOutput());
                 }
             }
         } catch (\Exception $e) {
