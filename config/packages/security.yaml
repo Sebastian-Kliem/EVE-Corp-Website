@@ -56,6 +56,7 @@ security:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_MEMBER }
         - { path: ^/link, roles: ROLE_MEMBER }
+        - { path: ^/dashboard, roles: ROLE_MEMBER }
         - { path: ^/profile, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/order, roles: ROLE_MEMBER }
         - { path: ^/admin, roles: ROLE_CEO }

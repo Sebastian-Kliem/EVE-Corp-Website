@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('IS_AUTHENTICATED_FULLY')]
+#[IsGranted('ROLE_MEMBER')]
 class EveAccountController extends AbstractController
 {
     public function __construct(
@@ -154,7 +154,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile');
     }
 
-    #[Route('/profile/eve-character/{id}/assets', name: 'app_eve_character_assets', methods: ['GET'])]
+    #[Route('/dashboard/eve-character/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]
     public function showAssets(int $id, SdeService $sdeService, LocationService $locationService): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
@@ -221,7 +221,7 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    #[Route('/profile/assets', name: 'app_profile_assets_overview', methods: ['GET'])]
+    #[Route('/dashboard/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
     public function assetsOverview(LocationService $locationService, SdeService $sdeService): Response
     {
         $currentUser = $this->getUser();
@@ -344,7 +344,7 @@ class EveAccountController extends AbstractController
         ];
     }
 
-    #[Route('/corp/assets', name: 'app_corp_assets_overview', methods: ['GET'])]
+    #[Route('/dashboard/corp-assets', name: 'app_dashboard_corp_assets_overview', methods: ['GET'])]
     public function corpAssetsOverview(LocationService $locationService, SdeService $sdeService, \App\Service\Esi\EsiClient $esiClient): Response
     {
         $currentUser = $this->getUser();

@@ -18,8 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile/pi')]
-#[IsGranted('IS_AUTHENTICATED_FULLY')]
+#[Route('/dashboard/pi')]
+#[IsGranted('ROLE_MEMBER')]
 class ProfilePiController extends AbstractController
 {
     private Connection $sdeConnection;
@@ -35,7 +35,7 @@ class ProfilePiController extends AbstractController
         $this->sdeConnection = $doctrine->getConnection('sde');
     }
 
-    #[Route('', name: 'app_profile_pi_overview', methods: ['GET'])]
+    #[Route('', name: 'app_dashboard_pi_overview', methods: ['GET'])]
     public function index(): Response
     {
         $currentUser = $this->getUser();
@@ -106,7 +106,7 @@ class ProfilePiController extends AbstractController
         ]);
     }
 
-    #[Route('/data', name: 'app_profile_pi_data', methods: ['GET'])]
+    #[Route('/data', name: 'app_dashboard_pi_data', methods: ['GET'])]
     public function getPiData(): JsonResponse
     {
         $currentUser = $this->getUser();

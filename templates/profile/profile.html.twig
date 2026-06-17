@@ -102,7 +102,7 @@
                                 </div>
 
                                 <div class="profile-char-actions">
-                                    <a href="{{ path('app_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
+                                    <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                         🎒 Inventar
                                     </a>
                                     <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
@@ -229,7 +229,7 @@
                                             </div>
 
                                             <div class="profile-char-actions">
-                                                <a href="{{ path('app_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
+                                                <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                                     🎒 Inventar
                                                 </a>
                                                 <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">

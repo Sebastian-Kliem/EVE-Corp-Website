@@ -14,8 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile/mining')]
-#[IsGranted('IS_AUTHENTICATED_FULLY')]
+#[Route('/dashboard/mining')]
+#[IsGranted('ROLE_MEMBER')]
 class ProfileMiningLedgerController extends AbstractController
 {
     public function __construct(
@@ -25,7 +25,7 @@ class ProfileMiningLedgerController extends AbstractController
         private readonly JitaPriceService $jitaPriceService
     ) {}
 
-    #[Route('', name: 'app_profile_mining_ledger', methods: ['GET'])]
+    #[Route('', name: 'app_dashboard_mining_ledger', methods: ['GET'])]
     public function index(): Response
     {
         $currentUser = $this->getUser();
@@ -49,7 +49,7 @@ class ProfileMiningLedgerController extends AbstractController
         ]);
     }
 
-    #[Route('/data', name: 'app_profile_mining_data', methods: ['GET'])]
+    #[Route('/data', name: 'app_dashboard_mining_data', methods: ['GET'])]
     public function getMiningData(): JsonResponse
     {
         $currentUser = $this->getUser();
