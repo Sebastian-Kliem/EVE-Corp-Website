@@ -178,6 +178,56 @@ class TrackingListController extends AbstractController
         return new JsonResponse(['success' => true, 'id' => $item->getId()]);
     }
 
+    #[Route('/api/lists/{id}/items/bulk', name: 'app_tracking_api_lists_add_items_bulk', methods: ['POST'])]
+    public function addItemsBulk(int $id, Request $request): JsonResponse
+    {
+        $list = $this->entityManager->getRepository(TrackingList::class)->find($id);
+        if (!$list) {
+            return new JsonResponse(['error' => 'Liste nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Do not allow editing templates or other users' lists
+        if ($list->getUser() !== $this->getUser()) {
+            return new JsonResponse(['error' => 'Du kannst keine Items zu Vorlagen oder fremden Listen hinzufügen.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $typeIds = $data['typeIds'] ?? [];
+
+        if (!is_array($typeIds) || empty($typeIds)) {
+            return new JsonResponse(['error' => 'Keine gültigen Type-IDs übergeben.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $itemRepository = $this->entityManager->getRepository(TrackingListItem::class);
+        $addedCount = 0;
+
+        foreach ($typeIds as $typeId) {
+            $typeId = (int)$typeId;
+            if ($typeId <= 0) {
+                continue;
+            }
+
+            // Check if already in list
+            $existing = $itemRepository->findOneBy(['trackingList' => $list, 'typeId' => $typeId]);
+            if ($existing) {
+                continue;
+            }
+
+            $item = new TrackingListItem();
+            $item->setTrackingList($list);
+            $item->setTypeId($typeId);
+            $this->entityManager->persist($item);
+            $addedCount++;
+        }
+
+        if ($addedCount > 0) {
+            $this->entityManager->flush();
+        }
+
+        return new JsonResponse(['success' => true, 'addedCount' => $addedCount]);
+    }
+
+
     #[Route('/api/lists/items/{itemId}', name: 'app_tracking_api_lists_remove_item', methods: ['DELETE'])]
     public function removeItem(int $itemId): JsonResponse
     {

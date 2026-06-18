@@ -80,6 +80,144 @@ class ApiController extends AbstractController
         return new JsonResponse($items);
     }
 
+    #[Route('/sde/parse-items', name: 'api_sde_parse_items', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
+    public function parseItems(Request $request, SdeService $sdeService): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $text = $data['text'] ?? '';
+
+        if (empty(trim($text))) {
+            return new JsonResponse([
+                'items' => [],
+                'unresolved' => []
+            ]);
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $parsedLines = [];
+        $namesToLookup = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) {
+                continue;
+            }
+
+            // 1. Check for tab separation (standard EVE hangar copy)
+            if (strpos($line, "\t") !== false) {
+                $parts = explode("\t", $line);
+                $name = trim($parts[0]);
+                $qtyStr = isset($parts[1]) ? trim($parts[1]) : '';
+                
+                $quantity = 1;
+                if (!empty($qtyStr)) {
+                    $qtyStrClean = preg_replace('/[^\d]/', '', $qtyStr);
+                    if (is_numeric($qtyStrClean)) {
+                        $quantity = (int)$qtyStrClean;
+                    }
+                }
+                
+                if (!empty($name)) {
+                    $parsedLines[] = [
+                        'raw' => $line,
+                        'name' => $name,
+                        'quantity' => $quantity,
+                    ];
+                    $namesToLookup[] = $name;
+                }
+                continue;
+            }
+
+            // 2. Regex checks for quantities (e.g., "123 x Tritanium", "Tritanium x123", "5 Veldspar")
+            $name = $line;
+            $quantity = 1;
+
+            if (preg_match('/^(\d+)\s*x\s+(.+)$/i', $line, $matches)) {
+                $quantity = (int)$matches[1];
+                $name = trim($matches[2]);
+            } elseif (preg_match('/^(.+?)\s*x\s*(\d+)$/i', $line, $matches)) {
+                $name = trim($matches[1]);
+                $quantity = (int)$matches[2];
+            }
+
+            if (!empty($name)) {
+                $parsedLines[] = [
+                    'raw' => $line,
+                    'name' => $name,
+                    'quantity' => $quantity,
+                ];
+                $namesToLookup[] = $name;
+            }
+        }
+
+        if (empty($namesToLookup)) {
+            return new JsonResponse([
+                'items' => [],
+                'unresolved' => []
+            ]);
+        }
+
+        $resolvedMap = $sdeService->resolveItemNames($namesToLookup);
+        $items = [];
+        $unresolved = [];
+
+        foreach ($parsedLines as $parsedLine) {
+            $nameLower = strtolower($parsedLine['name']);
+            if (isset($resolvedMap[$nameLower])) {
+                $resolved = $resolvedMap[$nameLower];
+                $typeId = $resolved['id'];
+                if (isset($items[$typeId])) {
+                    $items[$typeId]['quantity'] += $parsedLine['quantity'];
+                } else {
+                    $items[$typeId] = [
+                        'typeId' => $typeId,
+                        'name' => $resolved['name'],
+                        'quantity' => $parsedLine['quantity'],
+                        'variation' => $resolved['variation'],
+                    ];
+                }
+            } else {
+                // Try to strip leading number if not handled by regex: e.g. "5 Veldspar" -> "Veldspar"
+                $name = $parsedLine['name'];
+                $matched = false;
+
+                if (preg_match('/^(\d+)\s+(.+)$/', $name, $matches)) {
+                    $strippedQty = (int)$matches[1];
+                    $strippedName = trim($matches[2]);
+                    $strippedNameLower = strtolower($strippedName);
+
+                    $resolvedStripped = $sdeService->resolveItemNames([$strippedName]);
+                    if (isset($resolvedStripped[$strippedNameLower])) {
+                        $resolved = $resolvedStripped[$strippedNameLower];
+                        $typeId = $resolved['id'];
+                        if (isset($items[$typeId])) {
+                            $items[$typeId]['quantity'] += $strippedQty;
+                        } else {
+                            $items[$typeId] = [
+                                'typeId' => $typeId,
+                                'name' => $resolved['name'],
+                                'quantity' => $strippedQty,
+                                'variation' => $resolved['variation'],
+                            ];
+                        }
+                        $matched = true;
+                    }
+                }
+
+                if (!$matched) {
+                    $unresolved[] = $parsedLine['raw'];
+                }
+            }
+        }
+
+        return new JsonResponse([
+            'items' => array_values($items),
+            'unresolved' => $unresolved
+        ]);
+    }
+
+
     #[Route('/structures/{id}', name: 'api_update_structure', methods: ['POST'])]
     #[IsGranted('ROLE_USER')]
     public function updateStructure(

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ItemPasteInput from '../Form/ItemPasteInput';
 
 interface TrackingListItem {
     id: number;
@@ -196,6 +197,29 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                     fetchLists(selectedListId); // Reload items
                 } else {
                     alert(data.error || 'Fehler beim Hinzufügen des Items.');
+                }
+            })
+            .catch(err => console.error(err));
+    };
+
+    const handleItemsParsed = (parsedItems: { typeId: number }[]) => {
+        if (selectedListId === null) return;
+        const typeIds = parsedItems.map(item => item.typeId);
+
+        fetch(`/dashboard/tracking/api/lists/${selectedListId}/items/bulk`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwtToken}`
+            },
+            body: JSON.stringify({ typeIds })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    fetchLists(selectedListId); // Reload items
+                } else {
+                    alert(data.error || 'Fehler beim Hinzufügen der Items.');
                 }
             })
             .catch(err => console.error(err));
@@ -441,41 +465,54 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                                         Vorlagen können nicht direkt bearbeitet werden. Kopiere sie zuerst!
                                     </div>
                                 ) : (
-                                    <div ref={containerRef} style={{ position: 'relative', marginBottom: '1rem' }}>
-                                        <input 
-                                            type="text" 
-                                            className="input is-small input-dark-prof"
-                                            placeholder="Item suchen und hinzufügen..."
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                            onFocus={() => {
-                                                if (suggestions.length > 0) setShowSuggestions(true);
-                                            }}
-                                            autoComplete="off"
-                                        />
-                                        {searchingItems && (
-                                            <span style={{ position: 'absolute', right: '8px', top: '8px', fontSize: '0.75rem', color: '#888' }}>...</span>
-                                        )}
+                                    <>
+                                        <div ref={containerRef} style={{ position: 'relative', marginBottom: '1rem' }}>
+                                            <input 
+                                                type="text" 
+                                                className="input is-small input-dark-prof"
+                                                placeholder="Item suchen und hinzufügen..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onFocus={() => {
+                                                    if (suggestions.length > 0) setShowSuggestions(true);
+                                                }}
+                                                autoComplete="off"
+                                            />
+                                            {searchingItems && (
+                                                <span style={{ position: 'absolute', right: '8px', top: '8px', fontSize: '0.75rem', color: '#888' }}>...</span>
+                                            )}
 
-                                        {showSuggestions && suggestions.length > 0 && (
-                                            <div className="suggestions-dropdown-prof">
-                                                {suggestions.map(item => (
-                                                    <div 
-                                                        key={item.id} 
-                                                        className="suggestion-entry-prof"
-                                                        onClick={() => handleAddItem(item.id)}
-                                                    >
-                                                        <img 
-                                                            src={`https://images.evetech.net/types/${item.id}/${item.variation || 'icon'}?size=32`} 
-                                                            alt="" 
-                                                            style={{ width: '18px', height: '18px', borderRadius: '3px' }}
-                                                        />
-                                                        <span>{item.name}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                            {showSuggestions && suggestions.length > 0 && (
+                                                <div className="suggestions-dropdown-prof">
+                                                    {suggestions.map(item => (
+                                                        <div 
+                                                            key={item.id} 
+                                                            className="suggestion-entry-prof"
+                                                            onClick={() => handleAddItem(item.id)}
+                                                        >
+                                                            <img 
+                                                                src={`https://images.evetech.net/types/${item.id}/${item.variation || 'icon'}?size=32`} 
+                                                                alt="" 
+                                                                style={{ width: '18px', height: '18px', borderRadius: '3px' }}
+                                                            />
+                                                            <span>{item.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '1rem 0', color: 'var(--theme-text-muted, #888)', fontSize: '0.75rem' }}>
+                                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+                                            <span>ODER</span>
+                                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+                                        </div>
+
+                                        <ItemPasteInput 
+                                            jwtToken={jwtToken} 
+                                            onItemsParsed={handleItemsParsed} 
+                                        />
+                                    </>
                                 )}
                             </div>
 

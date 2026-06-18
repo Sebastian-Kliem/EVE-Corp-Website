@@ -207,6 +207,49 @@ class SdeService
     }
 
     /**
+     * Resolves a list of item names to their typeIDs.
+     * @param string[] $names
+     * @return array Map of lowercase item name => SDE data
+     */
+    public function resolveItemNames(array $names): array
+    {
+        if (empty($names)) {
+            return [];
+        }
+
+        // Clean names
+        $names = array_unique(array_filter(array_map('trim', $names)));
+        if (empty($names)) {
+            return [];
+        }
+
+        try {
+            $placeholders = implode(',', array_fill(0, count($names), '?'));
+            $stmt = $this->connection->prepare(
+                "SELECT t.typeID as id, t.typeName as name, g.groupName 
+                 FROM invTypes t 
+                 JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE t.published = 1 AND t.typeName IN ($placeholders)"
+            );
+            $result = $stmt->executeQuery(array_values($names));
+            $rows = $result->fetchAllAssociative();
+
+            $resolved = [];
+            foreach ($rows as $row) {
+                $isBlueprint = (bool)preg_match('/blueprint/i', $row['groupName'] ?? '');
+                $resolved[strtolower($row['name'])] = [
+                    'id' => (int)$row['id'],
+                    'name' => $row['name'],
+                    'variation' => $isBlueprint ? 'bp' : 'icon',
+                ];
+            }
+            return $resolved;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Checks if a typeID is a valid item ID in the SDE database.
      */
     public function isValidItem(mixed $itemId): bool

@@ -101,6 +101,18 @@ class AppInstallCommand extends Command
             $io->note('Non-interactive mode: Skipping admin user creation.');
         }
 
+        // 5. Seed Tracking Templates
+        $io->section('Step 5: Seeding Tracking Templates');
+        try {
+            $seedCommand = $application->find('app:seed:tracking-templates');
+            $seedInput = new ArrayInput([]);
+            $seedInput->setInteractive(false);
+            $seedCommand->run($seedInput, $output);
+        } catch (\Exception $e) {
+            $io->error('Template seeding failed: ' . $e->getMessage());
+            return Command::FAILURE;
+        }
+
         $io->newLine();
         $io->success('WH-Toolbox has been installed successfully!');
         
