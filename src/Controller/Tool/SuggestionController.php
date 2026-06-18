@@ -77,7 +77,7 @@ class SuggestionController extends AbstractController
             }
         }
 
-        return $this->render('suggestion/index.html.twig', [
+        return $this->render('tool/suggestion/index.html.twig', [
             'suggestions' => $suggestions,
             'editing_suggestion' => $editingSuggestion,
             'isAdmin' => $isAdmin

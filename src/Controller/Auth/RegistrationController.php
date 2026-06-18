@@ -78,7 +78,7 @@ class RegistrationController extends AbstractController
             $response->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return $this->render('registration/register.html.twig', [
+        return $this->render('auth/registration/register.html.twig', [
             'errors' => $errors,
             'last_username' => $username,
             'success' => $success,

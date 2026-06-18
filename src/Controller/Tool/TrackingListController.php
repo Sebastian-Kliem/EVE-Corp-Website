@@ -27,7 +27,7 @@ class TrackingListController extends AbstractController
     #[Route('', name: 'app_tracking_index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('tool/tracking.html.twig');
+        return $this->render('tool/tracking_list/tracking.html.twig');
     }
 
     #[Route('/api/lists', name: 'app_tracking_api_lists_get', methods: ['GET'])]

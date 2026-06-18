@@ -77,7 +77,7 @@ final class OrderListController extends AbstractController
             }
         }
 
-        return $this->render('order_list/orderList.html.twig', [
+        return $this->render('tool/order_list/orderList.html.twig', [
             'buy_orders' => $orders,
             'sell_orders' => $sell,
             'editing_buy_order' => $editingBuyOrder,

@@ -196,7 +196,7 @@ class AdminCorpAssetsController extends AbstractController
             'CorpSAG7' => 7
         ];
 
-        return $this->render('admin/corp_assets_visibility.html.twig', [
+        return $this->render('admin/admin_corp_assets/corp_assets_visibility.html.twig', [
             'locations' => $resolvedLocations,
             'flagsToMap' => $flagsToMap,
             'corpDivisions' => $corpDivisions,

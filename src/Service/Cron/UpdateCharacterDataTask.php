@@ -6,12 +6,14 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterAssetChange;
 use App\Entity\EveCharacterAssetSnapshot;
+use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCorporationAsset;
 use App\Entity\TrackingListItem;
 use App\Repository\EveCharacterAssetRepository;
 use App\Repository\EveCorporationAssetRepository;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
+use App\Service\JitaPriceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -23,7 +25,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
         private readonly EveCharacterAssetRepository $assetRepository,
         private readonly EveCorporationAssetRepository $corpAssetRepository,
         private readonly SdeService $sdeService,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly JitaPriceService $jitaPriceService
     ) {}
 
     public function getCommandName(): string
@@ -346,9 +349,54 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $character->getName(),
                 count($snapshotData)
             ));
+
+            // Calculate total asset value using global prices
+            $prices = $this->jitaPriceService->getGlobalPrices();
+            $totalAssetVal = 0.0;
+            foreach ($allAssets as $assetData) {
+                $typeId = (int)$assetData['type_id'];
+                $qty = (int)$assetData['quantity'];
+                
+                $isBpc = false;
+                if (isset($blueprintsMap[(int)$assetData['item_id']])) {
+                    $isBpc = $blueprintsMap[(int)$assetData['item_id']]['runs'] > 0;
+                }
+                
+                if (!$isBpc) {
+                    $price = $prices[$typeId] ?? 0.0;
+                    $totalAssetVal += ($price * $qty);
+                }
+            }
+
+            // Save character value snapshot
+            $walletBalance = (float)($character->getWalletBalance() ?? 0.0);
+            
+            $valSnapshotRepository = $this->entityManager->getRepository(EveCharacterValueSnapshot::class);
+            $valSnapshot = $valSnapshotRepository->findOneBy([
+                'character' => $character,
+                'snapshotDate' => $today,
+            ]);
+            
+            if (!$valSnapshot) {
+                $valSnapshot = new EveCharacterValueSnapshot();
+                $valSnapshot->setCharacter($character);
+                $valSnapshot->setSnapshotDate($today);
+            }
+            $valSnapshot->setWalletBalance(number_format($walletBalance, 2, '.', ''));
+            $valSnapshot->setAssetsValue(number_format($totalAssetVal, 2, '.', ''));
+            
+            $this->entityManager->persist($valSnapshot);
+            $this->entityManager->flush();
+            
+            $this->logger->info(sprintf(
+                '[Cron] Successfully saved value snapshot for character %s. Wallet: %f, Assets: %f',
+                $character->getName(),
+                $walletBalance,
+                $totalAssetVal
+            ));
         } catch (\Exception $e) {
             $this->logger->error(sprintf(
-                '[Cron] Failed to save asset snapshot for character %s: %s',
+                '[Cron] Failed to save asset or value snapshot for character %s: %s',
                 $character->getName(),
                 $e->getMessage()
             ));

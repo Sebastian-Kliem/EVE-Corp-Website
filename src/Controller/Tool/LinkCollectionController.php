@@ -28,7 +28,7 @@ final class LinkCollectionController extends AbstractController
             $groupedLinks[$link->getCategory()->getName()][] = $link;
         }
 
-        return $this->render('link_collection/linkCollection.html.twig', [
+        return $this->render('tool/link_collection/linkCollection.html.twig', [
             'groupedLinks' => $groupedLinks,
             'categories' => $categories,
         ]);

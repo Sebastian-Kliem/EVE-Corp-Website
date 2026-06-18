@@ -101,7 +101,7 @@ class ProfilePiController extends AbstractController
             return strcasecmp($a['name'], $b['name']);
         });
 
-        return $this->render('profile/pi_overview.html.twig', [
+        return $this->render('profile/profile_pi/pi_overview.html.twig', [
             'charactersList' => $charactersList,
         ]);
     }

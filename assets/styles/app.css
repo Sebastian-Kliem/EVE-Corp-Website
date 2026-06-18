@@ -207,6 +207,14 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
+    text-decoration: none;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.brand-title:hover {
+    transform: scale(1.02);
+    opacity: 0.95;
+    text-decoration: none;
 }
 
 /* ==========================================================================

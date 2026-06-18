@@ -5,6 +5,7 @@ namespace App\Controller\Profile;
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
+use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\LocationService;
@@ -215,7 +216,7 @@ class EveAccountController extends AbstractController
             return strcasecmp($a['name'], $b['name']);
         });
 
-        return $this->render('profile/character_assets.html.twig', [
+        return $this->render('profile/eve_account/character_assets.html.twig', [
             'character' => $character,
             'groupedAssets' => $groupedAssets,
         ]);
@@ -307,9 +308,85 @@ class EveAccountController extends AbstractController
             return strcasecmp($a['character']->getName(), $b['character']->getName());
         });
 
-        return $this->render('profile/assets_overview.html.twig', [
+        return $this->render('profile/eve_account/assets_overview.html.twig', [
             'totalWallet' => $totalWallet,
             'characterData' => $characterData,
+        ]);
+    }
+
+    #[Route('/dashboard/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]
+    public function valueHistory(): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+            'user' => $currentUser
+        ]);
+
+        $characterIds = array_map(fn($c) => $c->getId(), $characters);
+
+        // Fetch snapshots
+        $snapshots = [];
+        if (!empty($characterIds)) {
+            $snapshots = $this->entityManager->getRepository(EveCharacterValueSnapshot::class)->createQueryBuilder('s')
+                ->where('s.character IN (:characterIds)')
+                ->setParameter('characterIds', $characterIds)
+                ->orderBy('s.snapshotDate', 'ASC')
+                ->getQuery()
+                ->getResult();
+        }
+
+        $prices = $this->jitaPriceService->getGlobalPrices();
+
+        $currentValues = [];
+        foreach ($characters as $character) {
+            $walletBalance = (float)($character->getWalletBalance() ?? 0.0);
+            
+            // Calculate asset value for this character
+            $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy(['character' => $character]);
+            $totalAssetVal = 0.0;
+            foreach ($assets as $asset) {
+                if ($asset->isBlueprintCopy()) {
+                    continue;
+                }
+                $price = $prices[$asset->getTypeId()] ?? 0.0;
+                $totalAssetVal += ($price * $asset->getQuantity());
+            }
+
+            $currentValues[] = [
+                'characterId' => $character->getId(),
+                'wallet' => $walletBalance,
+                'assets' => $totalAssetVal,
+                'total' => $walletBalance + $totalAssetVal,
+            ];
+        }
+
+        $snapshotsData = [];
+        foreach ($snapshots as $snapshot) {
+            $snapshotsData[] = [
+                'characterId' => $snapshot->getCharacter()->getId(),
+                'date' => $snapshot->getSnapshotDate()->format('Y-m-d'),
+                'wallet' => (float)$snapshot->getWalletBalance(),
+                'assets' => (float)$snapshot->getAssetsValue(),
+                'total' => $snapshot->getTotalValue(),
+            ];
+        }
+
+        $charactersData = [];
+        foreach ($characters as $character) {
+            $charactersData[] = [
+                'id' => $character->getId(),
+                'name' => $character->getName(),
+            ];
+        }
+
+        return $this->render('profile/eve_account/value_history.html.twig', [
+            'charactersData' => $charactersData,
+            'snapshotsData' => $snapshotsData,
+            'currentValues' => $currentValues,
         ]);
     }
 
@@ -573,7 +650,7 @@ class EveAccountController extends AbstractController
             return strcasecmp($a['corporation']['name'], $b['corporation']['name']);
         });
 
-        return $this->render('profile/corp_assets_overview.html.twig', [
+        return $this->render('profile/eve_account/corp_assets_overview.html.twig', [
             'corpData' => $corpData,
         ]);
     }

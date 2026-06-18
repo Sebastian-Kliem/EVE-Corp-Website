@@ -28,7 +28,7 @@ class AdminCronController extends AbstractController
     {
         $cronJobs = $this->entityManager->getRepository(CronJob::class)->findAll();
 
-        return $this->render('admin/cron_list.html.twig', [
+        return $this->render('admin/admin_cron/cron_list.html.twig', [
             'cronJobs' => $cronJobs,
         ]);
     }
