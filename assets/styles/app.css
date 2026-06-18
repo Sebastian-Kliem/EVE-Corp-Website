@@ -557,7 +557,7 @@ details.box .details-content {
 
 /* --- UTILITIES & LAYOUT HELPERS --- */
 .container-narrow {
-    max-width: 600px !important;
+    max-width: 90%;
 }
 .container-medium {
     max-width: 800px !important;
@@ -932,11 +932,11 @@ details.box .details-content {
         z-index: 100;
         display: none;
     }
-    
+
     .navbar-menu.is-active {
         display: block;
     }
-    
+
     .navbar-start, .navbar-end {
         display: flex;
         flex-direction: column;
@@ -949,7 +949,7 @@ details.box .details-content {
         padding: 0.75rem 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
-    
+
     .navbar-item.has-dropdown {
         border-bottom: none;
     }
@@ -1202,16 +1202,16 @@ input[type="number"] {
         border: none !important;
         display: block !important;
     }
-    
+
     .table-responsive-cards thead {
         display: none !important; /* Hide headers */
     }
-    
+
     .table-responsive-cards tbody {
         display: block !important;
         width: 100% !important;
     }
-    
+
     .table-responsive-cards tr {
         display: block !important;
         margin-bottom: 1.5rem;
@@ -1221,12 +1221,12 @@ input[type="number"] {
         padding: 1rem !important;
         box-shadow: var(--theme-shadow) !important;
     }
-    
+
     .table-responsive-cards tr.is-selected {
         border-color: var(--theme-primary) !important;
         background-color: rgba(0, 240, 255, 0.03) !important;
     }
-    
+
     .table-responsive-cards td {
         display: flex !important;
         justify-content: space-between !important;
@@ -1236,11 +1236,11 @@ input[type="number"] {
         text-align: right !important;
         width: 100% !important;
     }
-    
+
     .table-responsive-cards td:last-child {
         border-bottom: none !important;
     }
-    
+
     .table-responsive-cards td[data-label]::before {
         content: attr(data-label) !important;
         font-weight: 600 !important;
@@ -1249,12 +1249,12 @@ input[type="number"] {
         margin-right: 1rem !important;
         font-size: 0.9rem !important;
     }
-    
+
     /* Align action cells nicely on mobile */
     .table-responsive-cards td:not([data-label]) {
         justify-content: center !important;
     }
-    
+
     /* Make inputs and autocomplete expand nicely on mobile edit mode */
     .table-responsive-cards td .control,
     .table-responsive-cards td input {

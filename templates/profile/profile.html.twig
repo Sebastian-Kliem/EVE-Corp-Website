@@ -272,6 +272,15 @@
         {% endif %}
     </div>
 
+    <!-- Custom Tracking Lists Box -->
+    <div class="box mt-5" id="tracking-manager">
+        <h2 class="title is-4 title-bordered">📋 Custom Tracking-Listen</h2>
+        <p class="subtitle is-6 has-text-grey-light mt-1">Erstelle persönliche Listen, verwalte Gegenstände oder kopiere System-Vorlagen. Die Einnahmen-Auswertung findest du unter "Persönlich -> Asset-Tracking".</p>
+        
+        {# React Island mount point #}
+        <div data-react-component="TrackingListManager" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>
+    </div>
+
     <!-- Password Change Form Box -->
     <details class="box mt-5" {% if errors is not empty %}open{% endif %}>
         <summary>🔑 Passwort ändern</summary>

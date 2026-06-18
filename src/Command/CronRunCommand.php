@@ -137,6 +137,11 @@ class CronRunCommand extends Command
                 'name' => 'Charakter-Daten synchronisieren (Wallet & Inventar)',
                 'command' => 'character:sync-wallet-assets',
                 'expression' => '*/10 * * * *', // every 10 minutes
+            ],
+            [
+                'name' => 'Charakter-Bergbaudaten synchronisieren (Mining Ledger)',
+                'command' => 'character:sync-mining-ledger',
+                'expression' => '30 * * * *', // every hour at minute 30
             ]
         ];
 

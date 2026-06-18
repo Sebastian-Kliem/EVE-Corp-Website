@@ -4,6 +4,7 @@ namespace App\Controller\Profile;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
+use App\Entity\EveCharacterMiningRecord;
 use App\Service\Esi\EsiClient;
 use App\Service\JitaPriceService;
 use App\Service\SdeService;
@@ -74,51 +75,33 @@ class ProfileMiningLedgerController extends AbstractController
             }
 
             try {
-                $allRecords = [];
-                $page = 1;
-
-                while (true) {
-                    $records = $this->esiClient->request('GET', sprintf('characters/%d/mining/', $character->getId()), [
-                        'query' => ['page' => $page]
-                    ], $character);
-
-                    if (empty($records) || !is_array($records)) {
-                        break;
-                    }
-
-                    $allRecords = array_merge($allRecords, $records);
-                    if (count($records) < 1000) {
-                        break;
-                    }
-                    $page++;
-                }
+                $dbRecords = $this->entityManager->getRepository(EveCharacterMiningRecord::class)->findBy(
+                    ['character' => $character],
+                    ['date' => 'DESC']
+                );
 
                 // Map raw records to UI-friendly records
                 $mappedRecords = [];
-                foreach ($allRecords as $record) {
-                    $typeId = (int)$record['type_id'];
-                    $solarSystemId = (int)$record['solar_system_id'];
+                foreach ($dbRecords as $record) {
+                    $typeId = $record->getTypeId();
+                    $solarSystemId = $record->getSolarSystemId();
                     
                     $typeName = $this->sdeService->getItemName($typeId);
                     $solarSystemName = $this->sdeService->getLocationName($solarSystemId);
                     $price = $prices[$typeId] ?? 0.0;
+                    $quantity = (int)$record->getQuantity();
 
                     $mappedRecords[] = [
-                        'date' => $record['date'],
+                        'date' => $record->getDate()->format('Y-m-d'),
                         'solarSystemId' => $solarSystemId,
                         'solarSystemName' => $solarSystemName,
                         'typeId' => $typeId,
                         'typeName' => $typeName,
-                        'quantity' => (int)$record['quantity'],
+                        'quantity' => $quantity,
                         'price' => $price,
-                        'value' => (int)$record['quantity'] * $price,
+                        'value' => $quantity * $price,
                     ];
                 }
-
-                // Sort records descending by date
-                usort($mappedRecords, function ($a, $b) {
-                    return strcmp($b['date'], $a['date']);
-                });
 
                 $result[] = [
                     'id' => $character->getId(),
@@ -132,7 +115,7 @@ class ProfileMiningLedgerController extends AbstractController
                     'id' => $character->getId(),
                     'name' => $character->getName(),
                     'records' => [],
-                    'error' => 'ESI-Fehler beim Abrufen der Bergbaudaten: ' . $e->getMessage(),
+                    'error' => 'Fehler beim Abrufen der Bergbaudaten: ' . $e->getMessage(),
                 ];
             }
         }

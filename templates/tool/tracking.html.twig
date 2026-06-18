@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Asset-Verlauf & Custom Tracking{% endblock %}
+
+{% block body %}
+<section class="section">
+    <div class="container">
+        <h1 class="title">Asset-Tracking</h1>
+        <p class="subtitle">Verwalte eigene Tracking-Listen (z. B. für Abyss-Loot) und verfolge die Zuwächse deiner Charaktere.</p>
+
+        {# React Island mount point #}
+        <div data-react-component="TrackingViewer" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>
+    </div>
+</section>
+{% endblock %}

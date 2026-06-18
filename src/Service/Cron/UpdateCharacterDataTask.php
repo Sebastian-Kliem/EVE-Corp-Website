@@ -4,7 +4,10 @@ namespace App\Service\Cron;
 
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
+use App\Entity\EveCharacterAssetChange;
+use App\Entity\EveCharacterAssetSnapshot;
 use App\Entity\EveCorporationAsset;
+use App\Entity\TrackingListItem;
 use App\Repository\EveCharacterAssetRepository;
 use App\Repository\EveCorporationAssetRepository;
 use App\Service\Esi\EsiClient;
@@ -205,6 +208,55 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         // Perform asset database update in a transaction
         $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap, $blueprintsMap) {
+            // A. Calculate asset changes (increases) for tracked items
+            try {
+                $trackingItemRepository = $this->entityManager->getRepository(TrackingListItem::class);
+                $listItems = $trackingItemRepository->findAll();
+                $trackedTypeIds = [];
+                foreach ($listItems as $item) {
+                    $trackedTypeIds[] = $item->getTypeId();
+                }
+                $trackedTypeIds = array_unique($trackedTypeIds);
+
+                if (!empty($trackedTypeIds)) {
+                    $oldAssets = $this->assetRepository->findBy(['character' => $character]);
+                    $oldQuantities = [];
+                    foreach ($oldAssets as $oldAsset) {
+                        $tid = $oldAsset->getTypeId();
+                        if (in_array($tid, $trackedTypeIds, true)) {
+                            $oldQuantities[$tid] = ($oldQuantities[$tid] ?? 0) + $oldAsset->getQuantity();
+                        }
+                    }
+
+                    $newQuantities = [];
+                    foreach ($allAssets as $assetData) {
+                        $tid = (int) $assetData['type_id'];
+                        if (in_array($tid, $trackedTypeIds, true)) {
+                            $newQuantities[$tid] = ($newQuantities[$tid] ?? 0) + (int) $assetData['quantity'];
+                        }
+                    }
+
+                    $now = new \DateTimeImmutable();
+                    foreach ($newQuantities as $tid => $newQty) {
+                        $oldQty = $oldQuantities[$tid] ?? 0;
+                        if ($newQty > $oldQty) {
+                            $changeQty = $newQty - $oldQty;
+
+                            $change = new EveCharacterAssetChange();
+                            $change->setCharacter($character);
+                            $change->setTypeId($tid);
+                            $change->setQuantity((string) $changeQty);
+                            $change->setLoggedAt($now);
+
+                            $this->entityManager->persist($change);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // Log and continue, do not block the main asset sync
+                $this->logger->error(sprintf('[Cron] Failed to calculate asset changes for character %s: %s', $character->getName(), $e->getMessage()));
+            }
+
             // 1. Clear existing assets
             $this->assetRepository->clearAssetsForCharacter($character->getId());
 
@@ -248,6 +300,59 @@ class UpdateCharacterDataTask implements CronTaskInterface
             $character->setLastAssetsUpdate(new \DateTimeImmutable());
             $this->entityManager->flush();
         });
+
+        // 3. Save daily JSON snapshot
+        try {
+            $snapshotData = [];
+            foreach ($allAssets as $assetData) {
+                $itemData = [
+                    'type_id' => (int) $assetData['type_id'],
+                    'qty' => (int) $assetData['quantity'],
+                    'loc_id' => (int) $assetData['location_id'],
+                    'loc_flag' => $assetData['location_flag'] ?? 'Hangar',
+                    'singleton' => (bool) $assetData['is_singleton'],
+                ];
+                
+                $customName = $namesMap[$assetData['item_id']] ?? null;
+                if ($customName !== null) {
+                    $itemData['name'] = $customName;
+                }
+                
+                if (isset($blueprintsMap[$assetData['item_id']])) {
+                    $itemData['bp'] = $blueprintsMap[$assetData['item_id']];
+                }
+
+                $snapshotData[] = $itemData;
+            }
+
+            $today = new \DateTimeImmutable('today');
+            $snapshotRepository = $this->entityManager->getRepository(EveCharacterAssetSnapshot::class);
+            $snapshot = $snapshotRepository->findOneBy([
+                'character' => $character,
+                'snapshotDate' => $today,
+            ]);
+
+            if (!$snapshot) {
+                $snapshot = new EveCharacterAssetSnapshot();
+                $snapshot->setCharacter($character);
+                $snapshot->setSnapshotDate($today);
+            }
+            $snapshot->setAssetsData($snapshotData);
+            $this->entityManager->persist($snapshot);
+            $this->entityManager->flush();
+            
+            $this->logger->info(sprintf(
+                '[Cron] Successfully saved asset snapshot for character %s with %d entries.',
+                $character->getName(),
+                count($snapshotData)
+            ));
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf(
+                '[Cron] Failed to save asset snapshot for character %s: %s',
+                $character->getName(),
+                $e->getMessage()
+            ));
+        }
 
         $this->logger->info(sprintf(
             '[Cron] Successfully updated %d assets for character %s.',

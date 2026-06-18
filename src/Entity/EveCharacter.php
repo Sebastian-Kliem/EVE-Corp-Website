@@ -53,6 +53,9 @@ class EveCharacter
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastCorpAssetsUpdate = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastMiningUpdate = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -217,6 +220,18 @@ class EveCharacter
     public function setLastCorpAssetsUpdate(?\DateTimeImmutable $lastCorpAssetsUpdate): static
     {
         $this->lastCorpAssetsUpdate = $lastCorpAssetsUpdate;
+
+        return $this;
+    }
+
+    public function getLastMiningUpdate(): ?\DateTimeImmutable
+    {
+        return $this->lastMiningUpdate;
+    }
+
+    public function setLastMiningUpdate(?\DateTimeImmutable $lastMiningUpdate): static
+    {
+        $this->lastMiningUpdate = $lastMiningUpdate;
 
         return $this;
     }
