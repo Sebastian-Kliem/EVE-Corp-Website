@@ -383,10 +383,16 @@ class EveAccountController extends AbstractController
             ];
         }
 
+        $omegaAccountCount = $this->entityManager->getRepository(EveAccount::class)->count([
+            'user' => $currentUser,
+            'isOmega' => true,
+        ]);
+
         return $this->render('profile/eve_account/value_history.html.twig', [
             'charactersData' => $charactersData,
             'snapshotsData' => $snapshotsData,
             'currentValues' => $currentValues,
+            'omegaAccountCount' => $omegaAccountCount,
         ]);
     }
 

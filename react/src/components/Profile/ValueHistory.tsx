@@ -24,14 +24,21 @@ interface ValueHistoryProps {
     characters: Character[];
     snapshots: Snapshot[];
     currentValues: CurrentValue[];
+    omegaAccountCount: number;
 }
 
 const OMEGA_COST_ISK = 2500000000; // 2.5 Billion ISK
 
-export default function ValueHistory({ characters, snapshots, currentValues }: ValueHistoryProps) {
+export default function ValueHistory({ characters, snapshots, currentValues, omegaAccountCount }: ValueHistoryProps) {
     const [selectedCharacterId, setSelectedCharacterId] = useState<number | 'all'>('all');
     const [activeTab, setActiveTab] = useState<'daily' | 'monthly'>('daily');
     const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; total: number } | null>(null);
+
+    // Calculate dynamic Omega goal based on manually set Omega accounts
+    const omegaGoal = useMemo(() => {
+        const count = omegaAccountCount > 0 ? omegaAccountCount : 1;
+        return count * OMEGA_COST_ISK;
+    }, [omegaAccountCount]);
 
     // Get current date string in local timezone (YYYY-MM-DD)
     const todayStr = useMemo(() => {
@@ -519,13 +526,17 @@ export default function ValueHistory({ characters, snapshots, currentValues }: V
                                 <h3 className="title is-6 mb-3" style={{ color: 'var(--theme-primary)' }}>🤖 Omega-Ziel Tracker</h3>
                                 <p className="is-size-7 has-text-grey-light mb-4">
                                     Eine Omega-Monatslizenz kostet auf dem Markt ca. <strong>2,5 Mrd. ISK</strong> (PLEX). 
-                                    Hier siehst du, ob dein Verdienst des aktuellen Monats bereits dafür ausreicht!
+                                    {omegaAccountCount > 0 ? (
+                                        <span> Du hast aktuell <strong>{omegaAccountCount} Omega-Accounts</strong> hinterlegt. Dein monatliches Gesamtziel beträgt daher <strong>{formatIskShort(omegaGoal)}</strong>.</span>
+                                    ) : (
+                                        <span> Hier siehst du, ob dein Verdienst des aktuellen Monats bereits für einen Account ausreicht.</span>
+                                    )}
                                 </p>
                                 
                                 {processedData.monthlyList.length > 0 ? (
                                     (() => {
                                         const currentMonth = processedData.monthlyList[0];
-                                        const percent = Math.min(100, Math.max(0, (currentMonth.change / OMEGA_COST_ISK) * 100));
+                                        const percent = Math.min(100, Math.max(0, (currentMonth.change / omegaGoal) * 100));
                                         const isNegative = currentMonth.change < 0;
 
                                         return (
@@ -581,7 +592,7 @@ export default function ValueHistory({ characters, snapshots, currentValues }: V
                                                     </div>
                                                 ) : (
                                                     <div className="p-3 mt-3 has-text-centered" style={{ border: '1px solid rgba(0, 240, 255, 0.1)', backgroundColor: 'rgba(0, 240, 255, 0.02)', borderRadius: '4px' }}>
-                                                        <span>⏳</span> <strong>Noch {(OMEGA_COST_ISK - currentMonth.change).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK benötigt</strong>
+                                                        <span>⏳</span> <strong>Noch {(omegaGoal - currentMonth.change).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK benötigt</strong>
                                                         <p className="is-size-7 has-text-grey-light mt-1">Weiter so! Du bist auf dem besten Weg zu deiner ISK-finanzierten Monatslizenz.</p>
                                                     </div>
                                                 )}
@@ -610,7 +621,7 @@ export default function ValueHistory({ characters, snapshots, currentValues }: V
                                             </thead>
                                             <tbody>
                                                 {processedData.monthlyList.map((month, index) => {
-                                                    const omegaPercent = (month.change / OMEGA_COST_ISK) * 100;
+                                                    const omegaPercent = (month.change / omegaGoal) * 100;
                                                     return (
                                                         <tr key={index} style={{ borderBottom: '1px solid rgba(0, 240, 255, 0.05)' }}>
                                                             <td style={{ fontWeight: 500 }}>{month.name}</td>
@@ -622,7 +633,7 @@ export default function ValueHistory({ characters, snapshots, currentValues }: V
                                                                 {month.change > 0 ? '+' : ''}{formatIsk(month.change)}
                                                             </td>
                                                             <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                                                                {month.change >= OMEGA_COST_ISK ? (
+                                                                {month.change >= omegaGoal ? (
                                                                     <span className="tag is-success" style={{ backgroundColor: 'rgba(0, 255, 170, 0.15)', color: '#00ffaa', border: '1px solid rgba(0, 255, 170, 0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>
                                                                         ✔️ Omega gedeckt
                                                                     </span>

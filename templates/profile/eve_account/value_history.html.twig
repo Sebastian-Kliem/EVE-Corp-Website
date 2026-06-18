@@ -7,7 +7,8 @@
     {% set reactProps = {
         characters: charactersData,
         snapshots: snapshotsData,
-        currentValues: currentValues
+        currentValues: currentValues,
+        omegaAccountCount: omegaAccountCount
     } %}
     <div data-react-component="ValueHistory" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
 </div>
