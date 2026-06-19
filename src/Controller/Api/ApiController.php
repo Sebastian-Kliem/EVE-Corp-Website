@@ -107,7 +107,7 @@ class ApiController extends AbstractController
             // 1. Check for tab separation (standard EVE hangar copy)
             if (strpos($line, "\t") !== false) {
                 $parts = explode("\t", $line);
-                $name = trim($parts[0]);
+                $name = trim(rtrim(trim($parts[0]), '*'));
                 $qtyStr = isset($parts[1]) ? trim($parts[1]) : '';
                 
                 $quantity = 1;
@@ -135,10 +135,12 @@ class ApiController extends AbstractController
 
             if (preg_match('/^(\d+)\s*x\s+(.+)$/i', $line, $matches)) {
                 $quantity = (int)$matches[1];
-                $name = trim($matches[2]);
+                $name = trim(rtrim(trim($matches[2]), '*'));
             } elseif (preg_match('/^(.+?)\s*x\s*(\d+)$/i', $line, $matches)) {
-                $name = trim($matches[1]);
+                $name = trim(rtrim(trim($matches[1]), '*'));
                 $quantity = (int)$matches[2];
+            } else {
+                $name = trim(rtrim($name, '*'));
             }
 
             if (!empty($name)) {
