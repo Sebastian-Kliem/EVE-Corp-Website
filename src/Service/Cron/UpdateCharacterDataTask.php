@@ -5,7 +5,6 @@ namespace App\Service\Cron;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterAssetChange;
-use App\Entity\EveCharacterAssetSnapshot;
 use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCorporationAsset;
 use App\Entity\TrackingListItem;
@@ -304,51 +303,9 @@ class UpdateCharacterDataTask implements CronTaskInterface
             $this->entityManager->flush();
         });
 
-        // 3. Save daily JSON snapshot
+        // 3. Save daily value snapshot
         try {
-            $snapshotData = [];
-            foreach ($allAssets as $assetData) {
-                $itemData = [
-                    'type_id' => (int) $assetData['type_id'],
-                    'qty' => (int) $assetData['quantity'],
-                    'loc_id' => (int) $assetData['location_id'],
-                    'loc_flag' => $assetData['location_flag'] ?? 'Hangar',
-                    'singleton' => (bool) $assetData['is_singleton'],
-                ];
-                
-                $customName = $namesMap[$assetData['item_id']] ?? null;
-                if ($customName !== null) {
-                    $itemData['name'] = $customName;
-                }
-                
-                if (isset($blueprintsMap[$assetData['item_id']])) {
-                    $itemData['bp'] = $blueprintsMap[$assetData['item_id']];
-                }
-
-                $snapshotData[] = $itemData;
-            }
-
             $today = new \DateTimeImmutable('today');
-            $snapshotRepository = $this->entityManager->getRepository(EveCharacterAssetSnapshot::class);
-            $snapshot = $snapshotRepository->findOneBy([
-                'character' => $character,
-                'snapshotDate' => $today,
-            ]);
-
-            if (!$snapshot) {
-                $snapshot = new EveCharacterAssetSnapshot();
-                $snapshot->setCharacter($character);
-                $snapshot->setSnapshotDate($today);
-            }
-            $snapshot->setAssetsData($snapshotData);
-            $this->entityManager->persist($snapshot);
-            $this->entityManager->flush();
-            
-            $this->logger->info(sprintf(
-                '[Cron] Successfully saved asset snapshot for character %s with %d entries.',
-                $character->getName(),
-                count($snapshotData)
-            ));
 
             // Calculate total asset value using global prices
             $prices = $this->jitaPriceService->getGlobalPrices();
@@ -396,7 +353,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
             ));
         } catch (\Exception $e) {
             $this->logger->error(sprintf(
-                '[Cron] Failed to save asset or value snapshot for character %s: %s',
+                '[Cron] Failed to save value snapshot for character %s: %s',
                 $character->getName(),
                 $e->getMessage()
             ));
