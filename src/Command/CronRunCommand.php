@@ -84,6 +84,10 @@ class CronRunCommand extends Command
                     continue;
                 }
 
+                // Update nextRunAt immediately to prevent concurrent runs
+                $this->updateNextRunAt($job, $now);
+                $this->entityManager->flush();
+
                 $task = $this->taskRegistry[$commandName];
                 
                 $startTime = microtime(true);
@@ -108,7 +112,6 @@ class CronRunCommand extends Command
                 }
 
                 $job->setLastRunAt($now);
-                $this->updateNextRunAt($job, $now);
                 $this->entityManager->flush();
             }
         }

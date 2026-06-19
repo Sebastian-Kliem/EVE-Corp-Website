@@ -221,7 +221,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 }
                 $trackedTypeIds = array_unique($trackedTypeIds);
 
-                if (!empty($trackedTypeIds)) {
+                if ($character->getLastAssetsUpdate() !== null && !empty($trackedTypeIds)) {
                     $oldAssets = $this->assetRepository->findBy(['character' => $character]);
                     $oldQuantities = [];
                     foreach ($oldAssets as $oldAsset) {
