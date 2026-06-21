@@ -137,6 +137,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $data;
     }
 
+    public function __unserialize(array $data): void
+    {
+        $this->id = $data["\0".self::class."\0id"] ?? null;
+        $this->username = $data["\0".self::class."\0username"] ?? null;
+        $this->roles = $data["\0".self::class."\0roles"] ?? [];
+        $this->password = $data["\0".self::class."\0password"] ?? null;
+        $this->personalCorpHangars = $data["\0".self::class."\0personalCorpHangars"] ?? [];
+        $this->personalCorpContainers = $data["\0".self::class."\0personalCorpContainers"] ?? [];
+
+        if (isset($data["\0".self::class."\0eveAccounts"])) {
+            $this->eveAccounts = $data["\0".self::class."\0eveAccounts"];
+        } else {
+            $this->eveAccounts = new ArrayCollection();
+        }
+    }
+
     #[\Deprecated]
     public function eraseCredentials(): void
     {
@@ -175,7 +191,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getPersonalCorpHangars(): array
     {
-        return $this->personalCorpHangars;
+        return $this->personalCorpHangars ?? [];
     }
 
     public function setPersonalCorpHangars(array $personalCorpHangars): static
@@ -186,7 +202,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getPersonalCorpContainers(): array
     {
-        return $this->personalCorpContainers;
+        return $this->personalCorpContainers ?? [];
     }
 
     public function setPersonalCorpContainers(array $personalCorpContainers): static

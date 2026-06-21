@@ -111,3 +111,23 @@ Alle React-Komponenten, die in Twig-Templates nutzbar sein sollen, müssen in [r
   - Eine konsolidierte Übersicht der Charaktere, Planeten und der installierten Fabriken/Lager.
   - Warnungen, wenn Extraktorköpfe inaktiv sind (Idle-Warnungen) oder die Route/Produktion unterbrochen ist.
   - Verbleibende Zyklenzeiten der Extraktionsprogramme.
+
+---
+
+## Best Practices & Robustheit bei Schema-Updates
+
+### 1. JSON-Spalten in Migrationen (MariaDB/MySQL)
+Beim Hinzufügen von `JSON NOT NULL`-Spalten zu bestehenden Tabellen befüllt die Datenbank bereits vorhandene Zeilen ohne expliziten Standardwert oft mit einem leeren String (`""`). Da `""` kein gültiges JSON ist, stürzt Doctrine beim Deserialisieren ab.
+* **Richtlinie:** Jede Migration, die ein `JSON NOT NULL`-Feld hinzufügt, muss dieses entweder mit `DEFAULT '[]'` deklarieren (falls von der DB-Version unterstützt) oder direkt im Anschluss ein `UPDATE table SET column = '[]' WHERE column = '' OR column IS NULL` ausführen.
+* **Beispiel:**
+  ```php
+  $this->addSql('ALTER TABLE user ADD new_json_col JSON NOT NULL');
+  $this->addSql('UPDATE user SET new_json_col = \'[]\'');
+  ```
+
+### 2. Robustheit bei Session-Deserialisierung (Entity Properties)
+Wenn Benutzer bereits eingeloggt sind und neue Spalten/Properties in einer Entität (wie `User`) eingeführt werden, enthalten alte PHP-Sessions diese Felder nicht. PHP wirft dann beim Zugriff einen fatalen Fehler: `Typed property ... must not be accessed before initialization`.
+* **Richtlinie:** 
+  1. Getter-Methoden für optionale/neue Arrays immer mit dem Null-Coalescing-Operator absichern (z.B. `return $this->property ?? [];`).
+  2. Implementiere immer `__unserialize(array $data): void` passend zu `__serialize(): array` auf Entitäten, die im Session-Speicher landen, und initialisiere dort neue Properties mit Standardwerten (z.B. `[]`), falls diese im serialisierten Array fehlen.
+
