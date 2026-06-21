@@ -78,6 +78,8 @@ Ebenfalls in thematische Ordner strukturiert:
 - **React für dynamische Oberflächen:** Für komplexe, interaktive oder hochdynamische Komponenten (z. B. verschachtelte Bäume mit Filterung, Echtzeit-Kalkulatoren, etc.) sind React-TypeScript Komponenten ("Insellösungen") zu implementieren. Reine Twig-Templates sollten für statisches/semistatisches HTML genutzt und nicht mit komplexem Vanilla-JavaScript überladen werden.
 - **Natives CSS (kein Bootstrap/Tailwind/Bulma):** Dieses Projekt nutzt kein Bootstrap, Bulma oder TailwindCSS. Das gesamte Design basiert auf einem maßgeschneiderten, nativen CSS-System in `assets/styles/app.css`. Altlasten mit Bulma-Klassen in Legacy-Templates müssen bei der Bearbeitung durch natives CSS ersetzt werden.
 - **Datenschutz & DSGVO:** Externe Ressourcen (Bilder, Schriften, Skripte) dürfen nicht direkt über CDNs oder Drittseiten eingebunden werden. Sie müssen stattdessen heruntergeladen und lokal aus dem Projekt ausgeliefert werden, um DSGVO-Konformität zu gewährleisten (keine IP-Weitergabe an Dritte).
+- **Feingranulare React-Islands:** Widgets sollten im Idealfall als feingranulare, separate React-Komponenten (Islands) implementiert werden, anstatt sie in eine riesige, monolithische React-Komponente zu stecken.
+- **Native Twig/HTML-Strukturen für Widgets:** Wrapper wie ausklappbare Karten (Collapsible Cards) oder Layouts für die Widgets sollten nativ im Twig-Template (z.B. mittels `<details>`- und `<summary>`-Tags für kollabierbare Bereiche) deklariert werden. So bleibt die Struktur in Twig klar lesbar und die React-Komponenten bleiben fokussiert und wiederverwendbar.
 
 ---
 

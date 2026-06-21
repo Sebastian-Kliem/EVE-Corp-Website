@@ -126,8 +126,8 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             }
         }
 
-        // Average daily profit (based on changes)
-        const validChanges = historyList.filter(h => h.hasPrev).map(h => h.change);
+        // Average daily profit (based on changes, excluding current day)
+        const validChanges = historyList.filter(h => h.hasPrev && h.date !== todayStr).map(h => h.change);
         const totalProfit = validChanges.reduce((a, b) => a + b, 0);
         const avgDailyProfit = validChanges.length > 0 ? totalProfit / validChanges.length : 0;
 
@@ -329,7 +329,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                             {processedData.avgDailyProfit > 0 ? '+' : ''}{formatIsk(processedData.avgDailyProfit)}
                         </p>
                         <p className="is-size-7 has-text-grey-light">
-                            Berechnet aus {processedData.historyList.filter(h => h.hasPrev).length} Tagen
+                            Berechnet aus {processedData.historyList.filter(h => h.hasPrev && h.date !== todayStr).length} Tagen (ohne heute)
                         </p>
                     </div>
                 </div>

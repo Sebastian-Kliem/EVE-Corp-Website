@@ -35,6 +35,14 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
     public function execute(): void
     {
+        // Skip execution during EVE Online downtime window (10:50 - 11:30 UTC / Eve Time)
+        $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $timeStr = $nowUtc->format('H:i');
+        if ($timeStr >= '10:50' && $timeStr <= '11:30') {
+            $this->logger->info(sprintf('[Cron] Skipping sync-wallet-assets: Current EVE time %s is within downtime window (10:50 - 11:30 UTC).', $timeStr));
+            return;
+        }
+
         $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
         /** @var EveCharacter[] $characters */
         $characters = $characterRepository->findAll();
@@ -49,12 +57,13 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 continue;
             }
 
-            // Sync Wallet
+            // Sync Wallet & Journal
             try {
                 $this->syncWallet($character);
+                $this->syncWalletJournal($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
-                    '[Cron] Failed to sync wallet for character %s (%d): %s',
+                    '[Cron] Failed to sync wallet/journal for character %s (%d): %s',
                     $character->getName(),
                     $character->getId(),
                     $e->getMessage()
@@ -117,6 +126,103 @@ class UpdateCharacterDataTask implements CronTaskInterface
             $character->getName(),
             $character->getWalletBalance()
         ));
+    }
+
+    private function syncWalletJournal(EveCharacter $character): void
+    {
+        $this->logger->debug(sprintf('[Cron] Syncing wallet journal for character %s...', $character->getName()));
+        
+        $page = 1;
+        $insertedCount = 0;
+        $repo = $this->entityManager->getRepository(\App\Entity\EveCharacterWalletJournalEntry::class);
+
+        while (true) {
+            try {
+                $journalData = $this->esiClient->request(
+                    'GET',
+                    sprintf('characters/%d/wallet/journal/', $character->getId()),
+                    [
+                        'query' => ['page' => $page]
+                    ],
+                    $character
+                );
+
+                if (empty($journalData)) {
+                    break;
+                }
+
+                $hasExisting = false;
+                foreach ($journalData as $entryData) {
+                    $refId = (string) $entryData['id'];
+                    
+                    // Check if entry already exists in DB
+                    $existing = $repo->findOneBy([
+                        'character' => $character,
+                        'refId' => $refId
+                    ]);
+
+                    if ($existing) {
+                        $hasExisting = true;
+                        continue;
+                    }
+
+                    $entry = new \App\Entity\EveCharacterWalletJournalEntry();
+                    $entry->setCharacter($character);
+                    $entry->setRefId($refId);
+                    $entry->setDate(new \DateTimeImmutable($entryData['date']));
+                    $entry->setRefType($entryData['ref_type']);
+                    $entry->setAmount(number_format((float) ($entryData['amount'] ?? 0.0), 2, '.', ''));
+                    $entry->setBalance(number_format((float) ($entryData['balance'] ?? 0.0), 2, '.', ''));
+                    $entry->setDescription($entryData['description'] ?? null);
+                    $entry->setFirstPartyId($entryData['first_party_id'] ?? null);
+                    $entry->setSecondPartyId($entryData['second_party_id'] ?? null);
+                    
+                    if (isset($entryData['context_id'])) {
+                        $entry->setContextId((string) $entryData['context_id']);
+                    }
+                    $entry->setContextIdType($entryData['context_id_type'] ?? null);
+                    $entry->setReason($entryData['reason'] ?? null);
+                    
+                    if (isset($entryData['tax'])) {
+                        $entry->setTax(number_format((float) $entryData['tax'], 2, '.', ''));
+                    }
+                    $entry->setTaxReceiverId($entryData['tax_receiver_id'] ?? null);
+
+                    $this->entityManager->persist($entry);
+                    $insertedCount++;
+                }
+
+                $this->entityManager->flush();
+
+                // ESI returns descending chronological order.
+                // If we hit any existing transaction, or count is less than full page, stop fetching.
+                if ($hasExisting || count($journalData) < 2500) {
+                    break;
+                }
+
+                $page++;
+                if ($page > 10) {
+                    break;
+                }
+
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf(
+                    '[Cron] Failed to fetch wallet journal page %d for character %s: %s',
+                    $page,
+                    $character->getName(),
+                    $e->getMessage()
+                ));
+                break;
+            }
+        }
+
+        if ($insertedCount > 0) {
+            $this->logger->info(sprintf(
+                '[Cron] Successfully synchronized %d new wallet journal entries for character %s.',
+                $insertedCount,
+                $character->getName()
+            ));
+        }
     }
 
     private function syncAssets(EveCharacter $character): void

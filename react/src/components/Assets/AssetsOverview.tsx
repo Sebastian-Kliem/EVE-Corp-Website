@@ -66,6 +66,7 @@ export default function AssetsOverview({
     jwtToken,
 }: AssetsOverviewProps) {
     const [searchQuery, setSearchQuery] = useState('');
+
     // Tracks which character panels are expanded. Initially all character panels are expanded.
     const [expandedCharacters, setExpandedCharacters] = useState<Record<number, boolean>>(() => {
         const initial: Record<number, boolean> = {};
@@ -75,7 +76,7 @@ export default function AssetsOverview({
         return initial;
     });
 
-    // Tracks which locations are expanded. Initially all locations are collapsed (matching Twig display: none).
+    // Tracks which locations are expanded.
     const [expandedLocations, setExpandedLocations] = useState<Record<string, boolean>>({});
 
     // Tracks which asset nodes (containers/ships) are expanded.
@@ -181,7 +182,6 @@ export default function AssetsOverview({
     };
 
     // Recursive function to filter asset nodes based on search query and active filter
-    // Returns the filtered node (with matching children) and a boolean indicating if there's any match in this branch
     const filterAssetNode = (node: AssetNode, query: string, filter: string): { node: AssetNode | null; hasMatch: boolean } => {
         const matchesQuery = query === '' ||
             node.name.toLowerCase().includes(query) ||
@@ -193,6 +193,7 @@ export default function AssetsOverview({
                 const itemValue = node.typeId === 0 ? 0 : (node.price || 0) * node.quantity;
                 matchesFilter = itemValue >= 10000000; // >= 10M ISK
             } else {
+                // @ts-ignore
                 matchesFilter = node.category === filter;
             }
         }
@@ -263,7 +264,6 @@ export default function AssetsOverview({
     // Helper component to render nested assets recursively
     const RenderAssetNode = ({ item }: { item: AssetNode }) => {
         const hasChildren = item.children && item.children.length > 0;
-        // Nodes are expanded if clicked by user, or automatically expanded if searching or filtering
         const isNodeExpanded = isSearching || isFiltering || !!expandedNodes[item.itemId];
 
         return (
@@ -290,17 +290,19 @@ export default function AssetsOverview({
                     )}
 
                     <div className="asset-item-details">
-                        <div className="asset-item-name-row">
-                            {item.customName ? (
-                                <div className="assets-item-name-wrapper">
-                                    <span className="assets-item-custom-name">{item.customName}</span>
-                                    <span className="assets-item-type-name">({item.name})</span>
-                                </div>
-                            ) : (
-                                <span className="asset-item-name">{item.name}</span>
-                            )}
+                        <div className="asset-item-name-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span className="asset-item-name">
+                                {item.customName ? (
+                                    <>
+                                        <strong>{item.customName}</strong>{' '}
+                                        <span className="has-text-grey">({item.name})</span>
+                                    </>
+                                ) : (
+                                    item.name
+                                )}
+                            </span>
                             {item.isBlueprint ? (
-                                <span style={{ display: 'flex', gap: '4px', alignItems: 'center', marginLeft: '4px' }}>
+                                <span className="tags mb-0" style={{ display: 'inline-flex', gap: '4px' }}>
                                     {item.isBlueprintCopy ? (
                                         <>
                                             <span className="asset-blueprint-tag bpc">Kopie</span>
@@ -363,64 +365,28 @@ export default function AssetsOverview({
     };
 
     return (
-        <div className="container mt-5 mb-6">
-
-            {/* Header & Combined Wallet Balance */}
-            <div className="box p-5 mb-5 assets-header-gradient" style={{ position: 'relative', overflow: 'hidden' }}>
-                <div className="assets-header-bg-text">ISK</div>
-                {(() => {
-                    const totalAssetVal = characterData.reduce((charSum, char) => {
-                        return charSum + char.locations.reduce((locSum, loc) => {
-                            return locSum + loc.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
-                        }, 0);
-                    }, 0);
-                    const netWorth = totalWallet + totalAssetVal;
-
-                    return (
-                        <div className="columns is-vcentered">
-                            <div className="column">
-                                <span className="has-text-grey-light is-size-6 uppercase-tracking" style={{ letterSpacing: '1px' }}>
-                                    GESAMTVERMÖGEN (Wallet + Assets)
-                                </span>
-                                <h1 className="title is-1 mt-1 mb-3 assets-header-title" style={{ fontSize: '2.5rem', fontWeight: 700 }}>
-                                    {netWorth.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
-                                    <span className="is-size-3">ISK</span>
-                                </h1>
-                                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
-                                    <div>
-                                        <span className="has-text-grey-light is-size-7 uppercase-tracking">Wallet</span>
-                                        <p style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--theme-text)' }}>
-                                            {totalWallet.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="has-text-grey-light is-size-7 uppercase-tracking">Assets</span>
-                                        <p style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--theme-primary)' }}>
-                                            {totalAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
-                                        </p>
-                                    </div>
-                                </div>
+        <div>
+            <div className="columns is-vcentered mb-4">
+                <div className="column">
+                    <p className="is-size-7 has-text-grey-light">Filtere und durchsuche das Inventar all deiner Charaktere.</p>
+                </div>
+                {hasCharacters && (
+                    <div className="column is-narrow">
+                        <div className="field mb-0">
+                            <div className="control has-icons-left">
+                                <input
+                                    id="global-asset-search"
+                                    className="input is-small assets-search-input assets-overview-search-input"
+                                    type="text"
+                                    placeholder="Gegenstände suchen..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                <span className="icon is-small is-left">🔍</span>
                             </div>
-                            {hasCharacters && (
-                                <div className="column is-narrow">
-                                    <div className="field">
-                                        <div className="control has-icons-left">
-                                            <input
-                                                id="global-asset-search"
-                                                className="input assets-search-input assets-overview-search-input"
-                                                type="text"
-                                                placeholder="Gegenstände suchen..."
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                            <span className="icon is-small is-left">🔍</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
-                    );
-                })()}
+                    </div>
+                )}
             </div>
 
             {/* Filter bar */}
@@ -496,11 +462,13 @@ export default function AssetsOverview({
                         <div
                             key={charId}
                             className="box mb-5 character-panel-box assets-character-panel"
+                            style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}
                         >
                             {/* Panel Header */}
                             <div
                                 className="p-4 character-panel-header assets-character-header"
                                 onClick={() => toggleCharacter(charId)}
+                                style={{ cursor: 'pointer' }}
                             >
                                 <div className="assets-character-header-left">
                                     <figure className="image is-24x24 m-0">
@@ -562,7 +530,6 @@ export default function AssetsOverview({
                                 ) : (
                                     data.locations.map((location) => {
                                         const locKey = `${charId}-${location.id}`;
-                                        // Locations are expanded if search is active or if user clicked to expand
                                         const isLocExpanded = isSearching || !!expandedLocations[locKey];
                                         const displayName = localLocations[location.id]?.name || location.name;
 
@@ -574,7 +541,7 @@ export default function AssetsOverview({
                                             >
                                                 <h3
                                                     className="title is-6 location-header"
-                                                    onClick={() => toggleLocation(locKey)}
+                                                    onClick={(e) => { e.stopPropagation(); toggleLocation(locKey); }}
                                                 >
                                                     <span className="location-header-title" style={{ flexGrow: 1, marginRight: '1rem' }}>
                                                         {editingStructureId === location.id ? (

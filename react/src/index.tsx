@@ -11,6 +11,7 @@ import MiningLedger from './components/Profile/MiningLedger';
 import TrackingListManager from './components/Tool/TrackingListManager';
 import TrackingViewer from './components/Tool/TrackingViewer';
 import ValueHistory from './components/Profile/ValueHistory';
+import WalletJournal from './components/Assets/WalletJournal';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
@@ -25,6 +26,7 @@ const components: Record<string, React.ComponentType<any>> = {
     TrackingListManager,
     TrackingViewer,
     ValueHistory,
+    WalletJournal,
 };
 
 function mountReactComponents() {

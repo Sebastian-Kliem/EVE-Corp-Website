@@ -6,6 +6,7 @@ use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterValueSnapshot;
+use App\Entity\EveCharacterWalletJournalEntry;
 use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\LocationService;
@@ -238,6 +239,7 @@ class EveAccountController extends AbstractController
 
         $totalWallet = 0.0;
         $characterData = [];
+        $currentValues = [];
 
         foreach ($characters as $character) {
             $walletBalance = (float) ($character->getWalletBalance() ?? 0.0);
@@ -267,6 +269,7 @@ class EveAccountController extends AbstractController
             }
 
             $locations = [];
+            $totalAssetVal = 0.0;
             foreach ($topLevelAssetsByLocation as $locationId => $topAssets) {
                 $resolved = $locationService->resolveLocation($locationId, $character);
                 $locationName = $resolved['name'];
@@ -286,6 +289,21 @@ class EveAccountController extends AbstractController
                     'items' => $items,
                 ];
             }
+
+            foreach ($assets as $asset) {
+                if ($asset->isBlueprintCopy()) {
+                    continue;
+                }
+                $price = $prices[$asset->getTypeId()] ?? 0.0;
+                $totalAssetVal += ($price * $asset->getQuantity());
+            }
+
+            $currentValues[] = [
+                'characterId' => $character->getId(),
+                'wallet' => $walletBalance,
+                'assets' => $totalAssetVal,
+                'total' => $walletBalance + $totalAssetVal,
+            ];
 
             // Sort locations primarily by system name, then by location name
             usort($locations, function ($a, $b) {
@@ -308,24 +326,6 @@ class EveAccountController extends AbstractController
             return strcasecmp($a['character']->getName(), $b['character']->getName());
         });
 
-        return $this->render('profile/eve_account/assets_overview.html.twig', [
-            'totalWallet' => $totalWallet,
-            'characterData' => $characterData,
-        ]);
-    }
-
-    #[Route('/dashboard/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]
-    public function valueHistory(): Response
-    {
-        $currentUser = $this->getUser();
-        if (!$currentUser instanceof User) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
-            'user' => $currentUser
-        ]);
-
         $characterIds = array_map(fn($c) => $c->getId(), $characters);
 
         // Fetch snapshots
@@ -339,31 +339,6 @@ class EveAccountController extends AbstractController
                 ->getResult();
         }
 
-        $prices = $this->jitaPriceService->getGlobalPrices();
-
-        $currentValues = [];
-        foreach ($characters as $character) {
-            $walletBalance = (float)($character->getWalletBalance() ?? 0.0);
-            
-            // Calculate asset value for this character
-            $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy(['character' => $character]);
-            $totalAssetVal = 0.0;
-            foreach ($assets as $asset) {
-                if ($asset->isBlueprintCopy()) {
-                    continue;
-                }
-                $price = $prices[$asset->getTypeId()] ?? 0.0;
-                $totalAssetVal += ($price * $asset->getQuantity());
-            }
-
-            $currentValues[] = [
-                'characterId' => $character->getId(),
-                'wallet' => $walletBalance,
-                'assets' => $totalAssetVal,
-                'total' => $walletBalance + $totalAssetVal,
-            ];
-        }
-
         $snapshotsData = [];
         foreach ($snapshots as $snapshot) {
             $snapshotsData[] = [
@@ -375,6 +350,38 @@ class EveAccountController extends AbstractController
             ];
         }
 
+        $omegaAccountCount = $this->entityManager->getRepository(EveAccount::class)->count([
+            'user' => $currentUser,
+            'isOmega' => true,
+        ]);
+
+        // Fetch wallet journal entries
+        $journalEntries = [];
+        if (!empty($characterIds)) {
+            $journalEntries = $this->entityManager->getRepository(EveCharacterWalletJournalEntry::class)->createQueryBuilder('j')
+                ->where('j.character IN (:characterIds)')
+                ->setParameter('characterIds', $characterIds)
+                ->orderBy('j.date', 'DESC')
+                ->setMaxResults(500)
+                ->getQuery()
+                ->getResult();
+        }
+
+        $journalEntriesData = [];
+        foreach ($journalEntries as $entry) {
+            $journalEntriesData[] = [
+                'characterId' => $entry->getCharacter()->getId(),
+                'characterName' => $entry->getCharacter()->getName(),
+                'refId' => $entry->getRefId(),
+                'date' => $entry->getDate()->format('d.m.Y H:i:s'),
+                'refType' => $entry->getRefType(),
+                'amount' => (float)$entry->getAmount(),
+                'balance' => (float)$entry->getBalance(),
+                'description' => $entry->getDescription(),
+                'reason' => $entry->getReason(),
+            ];
+        }
+
         $charactersData = [];
         foreach ($characters as $character) {
             $charactersData[] = [
@@ -383,17 +390,29 @@ class EveAccountController extends AbstractController
             ];
         }
 
-        $omegaAccountCount = $this->entityManager->getRepository(EveAccount::class)->count([
-            'user' => $currentUser,
-            'isOmega' => true,
-        ]);
+        $globalTotalAssetVal = 0.0;
+        foreach ($currentValues as $cv) {
+            $globalTotalAssetVal += $cv['assets'];
+        }
+        $netWorth = $totalWallet + $globalTotalAssetVal;
 
-        return $this->render('profile/eve_account/value_history.html.twig', [
-            'charactersData' => $charactersData,
+        return $this->render('profile/eve_account/assets_overview.html.twig', [
+            'totalWallet' => $totalWallet,
+            'totalAssetVal' => $globalTotalAssetVal,
+            'netWorth' => $netWorth,
+            'characterData' => $characterData,
             'snapshotsData' => $snapshotsData,
             'currentValues' => $currentValues,
             'omegaAccountCount' => $omegaAccountCount,
+            'journalEntriesData' => $journalEntriesData,
+            'charactersData' => $charactersData,
         ]);
+    }
+
+    #[Route('/dashboard/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]
+    public function valueHistory(): Response
+    {
+        return $this->redirectToRoute('app_dashboard_assets_overview');
     }
 
     private function buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
