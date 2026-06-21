@@ -4,6 +4,10 @@ namespace App\Controller\Profile;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
+use App\Entity\EveCorporationAsset;
+use App\Service\SdeService;
+use App\Service\LocationService;
+use App\Service\Esi\EsiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,8 +26,12 @@ class ProfileController extends AbstractController
     ) {}
 
     #[Route('', name: 'app_profile', methods: ['GET', 'POST'])]
-    public function index(Request $request): Response
-    {
+    public function index(
+        Request $request,
+        SdeService $sdeService,
+        LocationService $locationService,
+        EsiClient $esiClient
+    ): Response {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
@@ -91,6 +99,155 @@ class ProfileController extends AbstractController
             $groupedAccounts['Ungruppiert'] = $uncategorized;
         }
 
+        // Fetch personal corp asset choices
+        $userCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]);
+        $corpIds = [];
+        $charByCorp = [];
+        foreach ($userCharacters as $char) {
+            if ($char->getCorporationId()) {
+                $corpIds[] = $char->getCorporationId();
+                if (!isset($charByCorp[$char->getCorporationId()])) {
+                    $charByCorp[$char->getCorporationId()] = $char;
+                }
+            }
+        }
+        $corpIds = array_unique($corpIds);
+
+        $availableHangars = [];
+        $availableContainers = [];
+
+        if (!empty($corpIds)) {
+            // Fetch distinct hangar locations
+            $hangarRows = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('a')
+                ->select('DISTINCT a.locationId, a.locationFlag, a.corporationId')
+                ->where('a.corporationId IN (:corpIds)')
+                ->andWhere('a.locationFlag IN (:flags)')
+                ->setParameter('corpIds', $corpIds)
+                ->setParameter('flags', ['CorpSAG1', 'CorpSAG2', 'CorpSAG3', 'CorpSAG4', 'CorpSAG5', 'CorpSAG6', 'CorpSAG7', 'CorpDeliveries', 'Hangar'])
+                ->getQuery()
+                ->getResult();
+
+            // Fetch division names for the corporations
+            $divisionNamesMap = [];
+            foreach ($corpIds as $corpId) {
+                $syncChar = $charByCorp[$corpId] ?? null;
+                if ($syncChar) {
+                    try {
+                        $divData = $esiClient->request('GET', sprintf('corporations/%d/divisions/', $corpId), [], $syncChar);
+                        if (isset($divData['hangar']) && is_array($divData['hangar'])) {
+                            foreach ($divData['hangar'] as $div) {
+                                $divisionNamesMap[$corpId][(int) $div['division']] = $div['name'];
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Ignore
+                    }
+                }
+            }
+
+            $getDivisionName = function (int $corpId, string $flag) use ($divisionNamesMap) {
+                if (preg_match('/^CorpSAG(\d)$/', $flag, $matches)) {
+                    $divIndex = (int) $matches[1];
+                    return $divisionNamesMap[$corpId][$divIndex] ?? 'Hangar ' . $divIndex;
+                }
+                if ($flag === 'CorpDeliveries') {
+                    return 'Lieferungen (Deliveries)';
+                }
+                if ($flag === 'Hangar' || $flag === 'HangarAll') {
+                    return 'Hangar';
+                }
+                return $flag;
+            };
+
+            $resolvedLocations = [];
+            foreach ($hangarRows as $row) {
+                $locId = (int)$row['locationId'];
+                $corpId = (int)$row['corporationId'];
+                $flag = $row['locationFlag'];
+                $char = $charByCorp[$corpId] ?? null;
+
+                if (!isset($resolvedLocations[$locId])) {
+                    $resolved = $locationService->resolveLocation($locId, $char);
+                    $resolvedLocations[$locId] = $resolved['name'];
+                }
+
+                $locName = $resolvedLocations[$locId];
+                $divName = $getDivisionName($corpId, $flag);
+
+                $availableHangars[] = [
+                    'id' => sprintf('%d_%d_%s', $corpId, $locId, $flag),
+                    'corpId' => $corpId,
+                    'locationId' => $locId,
+                    'locationFlag' => $flag,
+                    'locationName' => $locName,
+                    'divisionName' => $divName,
+                ];
+            }
+
+            // Fetch container type IDs
+            $uniqueTypes = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('a')
+                ->select('DISTINCT a.typeId')
+                ->where('a.corporationId IN (:corpIds)')
+                ->setParameter('corpIds', $corpIds)
+                ->getQuery()
+                ->getResult();
+
+            $containerTypeIds = [];
+            foreach ($uniqueTypes as $row) {
+                $tId = (int)$row['typeId'];
+                if ($sdeService->isContainer($tId)) {
+                    $containerTypeIds[] = $tId;
+                }
+            }
+
+            if (!empty($containerTypeIds)) {
+                $containerAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('a')
+                    ->where('a.corporationId IN (:corpIds)')
+                    ->andWhere('a.typeId IN (:containerTypeIds)')
+                    ->setParameter('corpIds', $corpIds)
+                    ->setParameter('containerTypeIds', $containerTypeIds)
+                    ->getQuery()
+                    ->getResult();
+
+                foreach ($containerAssets as $asset) {
+                    $locId = $asset->getLocationId();
+                    $corpId = $asset->getCorporationId();
+                    $char = $charByCorp[$corpId] ?? null;
+
+                    if (!isset($resolvedLocations[$locId])) {
+                        $resolved = $locationService->resolveLocation($locId, $char);
+                        $resolvedLocations[$locId] = $resolved['name'];
+                    }
+
+                    $locName = $resolvedLocations[$locId];
+                    $typeName = $sdeService->getItemName($asset->getTypeId());
+                    $containerName = $asset->getCustomName() ?? ($typeName . ' (#' . $asset->getItemId() . ')');
+
+                    $availableContainers[] = [
+                        'id' => sprintf('%d_%d', $corpId, $asset->getItemId()),
+                        'corpId' => $corpId,
+                        'itemId' => $asset->getItemId(),
+                        'name' => $containerName,
+                        'locationName' => $locName,
+                        'locationFlag' => $getDivisionName($corpId, $asset->getLocationFlag()),
+                    ];
+                }
+            }
+        }
+
+        // Sort choices alphabetically
+        usort($availableHangars, function($a, $b) {
+            $cmp = strcasecmp($a['locationName'], $b['locationName']);
+            if ($cmp !== 0) return $cmp;
+            return strcasecmp($a['divisionName'], $b['divisionName']);
+        });
+
+        usort($availableContainers, function($a, $b) {
+            $cmp = strcasecmp($a['locationName'], $b['locationName']);
+            if ($cmp !== 0) return $cmp;
+            return strcasecmp($a['name'], $b['name']);
+        });
+
         $response = new Response();
         if (!empty($errors) && $request->isMethod('POST')) {
             $response->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -102,6 +259,56 @@ class ProfileController extends AbstractController
             'success' => $success,
             'unassignedCharacters' => $unassignedCharacters,
             'groupedAccounts' => $groupedAccounts,
+            'availableHangars' => $availableHangars,
+            'availableContainers' => $availableContainers,
         ], $response);
+    }
+
+    #[Route('/personal-assets', name: 'app_profile_personal_assets', methods: ['POST'])]
+    public function updatePersonalAssets(Request $request): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        if (!$this->isCsrfTokenValid('update_personal_assets', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token. Bitte versuche es erneut.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $selectedHangars = $request->request->all('hangars'); // Array of strings like "corpId_locationId_flag"
+        $selectedContainers = $request->request->all('containers'); // Array of strings like "corpId_itemId"
+
+        $hangarsConfig = [];
+        foreach ($selectedHangars as $hangarStr) {
+            $parts = explode('_', $hangarStr, 3);
+            if (count($parts) === 3) {
+                $hangarsConfig[] = [
+                    'corporationId' => (int)$parts[0],
+                    'locationId' => (int)$parts[1],
+                    'locationFlag' => $parts[2],
+                ];
+            }
+        }
+
+        $containersConfig = [];
+        foreach ($selectedContainers as $containerStr) {
+            $parts = explode('_', $containerStr, 2);
+            if (count($parts) === 2) {
+                $containersConfig[] = [
+                    'corporationId' => (int)$parts[0],
+                    'itemId' => (int)$parts[1],
+                ];
+            }
+        }
+
+        $currentUser->setPersonalCorpHangars($hangarsConfig);
+        $currentUser->setPersonalCorpContainers($containersConfig);
+
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Deine persönlichen Corp-Asset-Einstellungen wurden erfolgreich gespeichert!');
+        return $this->redirectToRoute('app_profile');
     }
 }

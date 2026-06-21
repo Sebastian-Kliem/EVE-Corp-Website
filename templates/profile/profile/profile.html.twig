@@ -81,6 +81,75 @@
         </div>
     </details>
 
+    <!-- Persönliche Corp-Assets Einstellungen -->
+    <details class="box mt-5">
+        <summary>💼 Persönliche Corp-Assets (Hangare & Container)</summary>
+        <div class="details-content">
+            <p class="is-size-7 has-text-grey-light mb-4">
+                Hier kannst du Corp-Hangare oder darin liegende Container markieren, damit deren Inhalt zu deinem persönlichen Vermögen und deinen Assets hinzugerechnet wird. 
+                Es stehen nur Hangare und Container zur Auswahl, für deren Corporationen du mindestens einen verknüpften Charakter besitzt.
+            </p>
+
+            <form action="{{ path('app_profile_personal_assets') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('update_personal_assets') }}">
+
+                <!-- Corp Hangars Section -->
+                <h3 class="title is-6 mb-2 text-gradient">🏢 Corporation Hangare</h3>
+                {% if availableHangars is not empty %}
+                    <div class="field mb-5" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; border: 1px solid var(--theme-card-border);">
+                        {% for hangar in availableHangars %}
+                            {% set isChecked = false %}
+                            {% for config in user.personalCorpHangars %}
+                                {% if config.corporationId == hangar.corpId and config.locationId == hangar.locationId and config.locationFlag == hangar.locationFlag %}
+                                    {% set isChecked = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="control mb-2">
+                                <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="hangars[]" value="{{ hangar.id }}" {% if isChecked %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                                    <span>
+                                        <strong>{{ hangar.locationName }}</strong> - <span class="has-text-info">{{ hangar.divisionName }}</span>
+                                    </span>
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="is-size-7 has-text-grey mb-4">Keine verfügbaren Corporation-Hangare gefunden.</p>
+                {% endif %}
+
+                <!-- Corp Containers Section -->
+                <h3 class="title is-6 mb-2 text-gradient">📦 Container in Corp-Hangaren</h3>
+                {% if availableContainers is not empty %}
+                    <div class="field mb-5" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; border: 1px solid var(--theme-card-border);">
+                        {% for container in availableContainers %}
+                            {% set isChecked = false %}
+                            {% for config in user.personalCorpContainers %}
+                                {% if config.corporationId == container.corpId and config.itemId == container.itemId %}
+                                    {% set isChecked = true %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="control mb-2">
+                                <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" name="containers[]" value="{{ container.id }}" {% if isChecked %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                                    <span>
+                                        <strong>{{ container.name }}</strong> (in {{ container.locationName }} - <span class="has-text-info">{{ container.locationFlag }}</span>)
+                                    </span>
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="is-size-7 has-text-grey mb-4">Keine verfügbaren Container in Corporation-Hangaren gefunden.</p>
+                {% endif %}
+
+                <button type="submit" class="button is-primary is-fullwidth mt-4">
+                    Einstellungen speichern
+                </button>
+            </form>
+        </div>
+    </details>
+
     <!-- EVE Online Accounts & Characters Box -->
     <details class="box mt-5">
         <summary>🚀 EVE Online Accounts & Charaktere</summary>

@@ -224,8 +224,11 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/dashboard/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
-    public function assetsOverview(LocationService $locationService, SdeService $sdeService): Response
-    {
+    public function assetsOverview(
+        LocationService $locationService,
+        SdeService $sdeService,
+        \App\Service\Esi\EsiClient $esiClient
+    ): Response {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
@@ -236,6 +239,18 @@ class EveAccountController extends AbstractController
         $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
             'user' => $currentUser
         ]);
+
+        // Group characters by corporation to determine a primary character per corporation
+        $charactersByCorp = [];
+        foreach ($characters as $char) {
+            if ($char->getCorporationId()) {
+                $charactersByCorp[$char->getCorporationId()][] = $char;
+            }
+        }
+        foreach ($charactersByCorp as $corpId => &$corpChars) {
+            usort($corpChars, fn($a, $b) => $a->getId() <=> $b->getId());
+        }
+        unset($corpChars);
 
         $totalWallet = 0.0;
         $characterData = [];
@@ -296,6 +311,114 @@ class EveAccountController extends AbstractController
                 }
                 $price = $prices[$asset->getTypeId()] ?? 0.0;
                 $totalAssetVal += ($price * $asset->getQuantity());
+            }
+
+            // Merge Personal Corporation Assets if this is the primary character for the corporation
+            $corpId = $character->getCorporationId();
+            $isPrimaryForCorp = false;
+            if ($corpId && isset($charactersByCorp[$corpId]) && $charactersByCorp[$corpId][0]->getId() === $character->getId()) {
+                $isPrimaryForCorp = true;
+            }
+
+            if ($isPrimaryForCorp) {
+                $personalHangars = $currentUser->getPersonalCorpHangars();
+                $personalContainers = $currentUser->getPersonalCorpContainers();
+
+                if (!empty($personalHangars) || !empty($personalContainers)) {
+                    $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy([
+                        'corporationId' => $corpId
+                    ]);
+
+                    $corpAssetsByItemId = [];
+                    foreach ($corpAssets as $asset) {
+                        $corpAssetsByItemId[$asset->getItemId()] = $asset;
+                    }
+
+                    $corpNestedAssets = [];
+                    foreach ($corpAssets as $asset) {
+                        $parentId = $asset->getLocationId();
+                        if (isset($corpAssetsByItemId[$parentId])) {
+                            $corpNestedAssets[$parentId][] = $asset;
+                        }
+                    }
+
+                    $personalRoots = [];
+                    // Hangars
+                    foreach ($personalHangars as $h) {
+                        if ((int)$h['corporationId'] === $corpId) {
+                            $locId = (int)$h['locationId'];
+                            $flag = $h['locationFlag'];
+                            foreach ($corpAssets as $asset) {
+                                if ($asset->getLocationId() === $locId && $asset->getLocationFlag() === $flag) {
+                                    $personalRoots[] = $asset;
+                                }
+                            }
+                        }
+                    }
+
+                    // Containers
+                    foreach ($personalContainers as $c) {
+                        if ((int)$c['corporationId'] === $corpId) {
+                            $itemId = (int)$c['itemId'];
+                            if (isset($corpAssetsByItemId[$itemId])) {
+                                $personalRoots[] = $corpAssetsByItemId[$itemId];
+                            }
+                        }
+                    }
+
+                    // Try to find the sync character for this corp to resolve structure locations
+                    $syncCharacter = $this->entityManager->getRepository(EveCharacter::class)->createQueryBuilder('c')
+                        ->where('c.corporationId = :corpId')
+                        ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
+                        ->setParameter('corpId', $corpId)
+                        ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+                        ->setMaxResults(1)
+                        ->getQuery()
+                        ->getOneOrNullResult();
+
+                    // Group personal roots by location
+                    $personalRootsByLocation = [];
+                    foreach ($personalRoots as $root) {
+                        $personalRootsByLocation[$root->getLocationId()][] = $root;
+                    }
+
+                    foreach ($personalRootsByLocation as $locationId => $roots) {
+                        $locIndex = -1;
+                        foreach ($locations as $idx => $loc) {
+                            if ($loc['id'] === $locationId) {
+                                $locIndex = $idx;
+                                break;
+                            }
+                        }
+
+                        $resolved = $locationService->resolveLocation($locationId, $syncCharacter ?? $character);
+                        $locationName = $resolved['name'];
+                        $systemName = $resolved['systemName'];
+
+                        $items = [];
+                        foreach ($roots as $root) {
+                            $items[] = $this->buildAssetTreeNodeFromCorpAsset($root, $corpNestedAssets, $sdeService, $prices);
+                        }
+
+                        $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
+
+                        if ($locIndex >= 0) {
+                            $locations[$locIndex]['items'] = array_merge($locations[$locIndex]['items'], $items);
+                            $locations[$locIndex]['items'] = $this->groupAndSortNodes($locations[$locIndex]['items'], $sdeService, $locationId);
+                        } else {
+                            $locations[] = [
+                                'id' => $locationId,
+                                'name' => $locationName,
+                                'systemName' => $systemName,
+                                'items' => $items,
+                            ];
+                        }
+
+                        foreach ($items as $item) {
+                            $totalAssetVal += $this->calculateNodeValue($item);
+                        }
+                    }
+                }
             }
 
             $currentValues[] = [
@@ -444,6 +567,48 @@ class EveAccountController extends AbstractController
             'runs' => $asset->getRuns(),
             'children' => $children,
         ];
+    }
+
+    private function buildAssetTreeNodeFromCorpAsset(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
+    {
+        $itemId = $asset->getItemId();
+        $typeId = $asset->getTypeId();
+        $children = [];
+        if (isset($nestedAssets[$itemId])) {
+            foreach ($nestedAssets[$itemId] as $childAsset) {
+                $children[] = $this->buildAssetTreeNodeFromCorpAsset($childAsset, $nestedAssets, $sdeService, $prices);
+            }
+            $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
+        }
+
+        return [
+            'itemId' => $itemId,
+            'typeId' => $typeId,
+            'name' => $sdeService->getItemName($typeId),
+            'customName' => $asset->getCustomName(),
+            'quantity' => $asset->getQuantity(),
+            'locationFlag' => $asset->getLocationFlag(),
+            'isBlueprintCopy' => $asset->isBlueprintCopy() ?? false,
+            'isBlueprint' => $sdeService->isBlueprint($typeId),
+            'isSingleton' => $asset->isSingleton(),
+            'price' => ($asset->isBlueprintCopy() ?? false) ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'category' => $sdeService->getItemCategory($typeId),
+            'materialEfficiency' => $asset->getMaterialEfficiency(),
+            'timeEfficiency' => $asset->getTimeEfficiency(),
+            'runs' => $asset->getRuns(),
+            'children' => $children,
+        ];
+    }
+
+    private function calculateNodeValue(array $node): float
+    {
+        $val = ($node['price'] ?? 0.0) * ($node['quantity'] ?? 1);
+        if (!empty($node['children'])) {
+            foreach ($node['children'] as $child) {
+                $val += $this->calculateNodeValue($child);
+            }
+        }
+        return $val;
     }
 
     #[Route('/dashboard/corp-assets', name: 'app_dashboard_corp_assets_overview', methods: ['GET'])]

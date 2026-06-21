@@ -34,9 +34,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: EveAccount::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $eveAccounts;
 
+    #[ORM\Column(type: 'json')]
+    private array $personalCorpHangars = [];
+
+    #[ORM\Column(type: 'json')]
+    private array $personalCorpContainers = [];
+
     public function __construct()
     {
         $this->eveAccounts = new ArrayCollection();
+        $this->personalCorpHangars = [];
+        $this->personalCorpContainers = [];
     }
 
 
@@ -162,6 +170,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             }
         }
 
+        return $this;
+    }
+
+    public function getPersonalCorpHangars(): array
+    {
+        return $this->personalCorpHangars;
+    }
+
+    public function setPersonalCorpHangars(array $personalCorpHangars): static
+    {
+        $this->personalCorpHangars = $personalCorpHangars;
+        return $this;
+    }
+
+    public function getPersonalCorpContainers(): array
+    {
+        return $this->personalCorpContainers;
+    }
+
+    public function setPersonalCorpContainers(array $personalCorpContainers): static
+    {
+        $this->personalCorpContainers = $personalCorpContainers;
         return $this;
     }
 }

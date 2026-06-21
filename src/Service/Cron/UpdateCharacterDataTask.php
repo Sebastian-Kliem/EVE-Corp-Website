@@ -431,6 +431,89 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 }
             }
 
+            // Merge Personal Corporation Assets if this is the primary character for the corporation
+            $user = $character->getUser();
+            if ($user && $character->getCorporationId()) {
+                $allUserChars = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+                    'user' => $user
+                ]);
+                $corpChars = [];
+                foreach ($allUserChars as $uc) {
+                    if ($uc->getCorporationId() === $character->getCorporationId()) {
+                        $corpChars[] = $uc;
+                    }
+                }
+                usort($corpChars, fn($a, $b) => $a->getId() <=> $b->getId());
+                
+                if (!empty($corpChars) && $corpChars[0]->getId() === $character->getId()) {
+                    $personalHangars = $user->getPersonalCorpHangars();
+                    $personalContainers = $user->getPersonalCorpContainers();
+
+                    if (!empty($personalHangars) || !empty($personalContainers)) {
+                        $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy([
+                            'corporationId' => $character->getCorporationId()
+                        ]);
+
+                        $corpAssetsByItemId = [];
+                        foreach ($corpAssets as $ca) {
+                            $corpAssetsByItemId[$ca->getItemId()] = $ca;
+                        }
+
+                        $corpNestedAssets = [];
+                        foreach ($corpAssets as $ca) {
+                            $parentId = $ca->getLocationId();
+                            if (isset($corpAssetsByItemId[$parentId])) {
+                                $corpNestedAssets[$parentId][] = $ca;
+                            }
+                        }
+
+                        $personalRoots = [];
+                        foreach ($personalHangars as $h) {
+                            if ((int)$h['corporationId'] === $character->getCorporationId()) {
+                                $locId = (int)$h['locationId'];
+                                $flag = $h['locationFlag'];
+                                foreach ($corpAssets as $ca) {
+                                    if ($ca->getLocationId() === $locId && $ca->getLocationFlag() === $flag) {
+                                        $personalRoots[] = $ca;
+                                    }
+                                }
+                            }
+                        }
+
+                        foreach ($personalContainers as $c) {
+                            if ((int)$c['corporationId'] === $character->getCorporationId()) {
+                                $itemId = (int)$c['itemId'];
+                                if (isset($corpAssetsByItemId[$itemId])) {
+                                    $personalRoots[] = $corpAssetsByItemId[$itemId];
+                                }
+                            }
+                        }
+
+                        $calcVal = null;
+                        $calcVal = function($ca, $nested) use (&$calcVal, $prices) {
+                            $val = 0.0;
+                            if (!($ca->isBlueprintCopy() ?? false)) {
+                                $price = $prices[$ca->getTypeId()] ?? 0.0;
+                                $val += ($price * $ca->getQuantity());
+                            }
+                            if (isset($nested[$ca->getItemId()])) {
+                                foreach ($nested[$ca->getItemId()] as $child) {
+                                    $val += $calcVal($child, $nested);
+                                }
+                            }
+                            return $val;
+                        };
+
+                        $personalAssetVal = 0.0;
+                        foreach ($personalRoots as $root) {
+                            $personalAssetVal += $calcVal($root, $corpNestedAssets);
+                        }
+
+                        $totalAssetVal += $personalAssetVal;
+                    }
+                }
+            }
+
             // Save character value snapshot
             $walletBalance = (float)($character->getWalletBalance() ?? 0.0);
             
