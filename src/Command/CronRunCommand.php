@@ -145,6 +145,11 @@ class CronRunCommand extends Command
                 'name' => 'Charakter-Bergbaudaten synchronisieren (Mining Ledger)',
                 'command' => 'character:sync-mining-ledger',
                 'expression' => '30 * * * *', // every hour at minute 30
+            ],
+            [
+                'name' => 'Charakter-Industrieaufträge synchronisieren (Industry Jobs)',
+                'command' => 'character:sync-industry-jobs',
+                'expression' => '*/15 * * * *', // every 15 minutes
             ]
         ];
 
