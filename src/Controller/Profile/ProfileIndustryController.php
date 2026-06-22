@@ -11,8 +11,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+
+use App\Service\JitaPriceService;
 
 #[Route('/dashboard/industry')]
 #[IsGranted('ROLE_MEMBER')]
@@ -21,7 +24,8 @@ class ProfileIndustryController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly SdeService $sdeService,
-        private readonly LocationService $locationService
+        private readonly LocationService $locationService,
+        private readonly JitaPriceService $jitaPriceService
     ) {}
 
     #[Route('', name: 'app_dashboard_industry_overview', methods: ['GET'])]
@@ -59,6 +63,9 @@ class ProfileIndustryController extends AbstractController
         $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]);
         $result = [];
         $locationCache = [];
+        
+        $blueprintDetails = [];
+        $uniqueTypeIds = [];
 
         foreach ($characters as $character) {
             if (empty($character->getRefreshToken())) {
@@ -143,6 +150,48 @@ class ProfileIndustryController extends AbstractController
 
         return new JsonResponse([
             'characters' => $result
+        ]);
+    }
+
+    #[Route('/blueprint-finances', name: 'app_dashboard_industry_blueprint_finances', methods: ['GET'])]
+    public function getBlueprintFinances(Request $request): JsonResponse
+    {
+        $blueprintTypeId = (int)$request->query->get('blueprintTypeId');
+        $activityId = (int)$request->query->get('activityId');
+        $productTypeId = $request->query->get('productTypeId') ? (int)$request->query->get('productTypeId') : null;
+
+        if ($blueprintTypeId <= 0 || $activityId <= 0) {
+            return new JsonResponse(['error' => 'Invalid parameters'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $details = $this->sdeService->getBlueprintDetails($blueprintTypeId, $activityId);
+        
+        $uniqueTypeIds = [];
+        foreach ($details['materials'] as $m) {
+            $uniqueTypeIds[] = (int)$m['typeId'];
+        }
+        foreach ($details['products'] as $p) {
+            $uniqueTypeIds[] = (int)$p['typeId'];
+        }
+        if ($productTypeId) {
+            $uniqueTypeIds[] = $productTypeId;
+        }
+        $uniqueTypeIds[] = $blueprintTypeId;
+        $uniqueTypeIds = array_values(array_unique($uniqueTypeIds));
+
+        $marketPrices = [];
+        foreach ($uniqueTypeIds as $typeId) {
+            $buyInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
+            $sellInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, false);
+            $marketPrices[$typeId] = [
+                'buy' => $buyInfo['price'],
+                'sell' => $sellInfo['price']
+            ];
+        }
+
+        return new JsonResponse([
+            'blueprintDetails' => $details,
+            'marketPrices' => $marketPrices
         ]);
     }
 }

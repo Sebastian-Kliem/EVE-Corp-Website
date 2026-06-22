@@ -295,6 +295,81 @@ class SdeService
         }
     }
 
+    public function getBlueprintDetails(int $blueprintTypeId, int $activityId): array
+    {
+        // Map ESI activity ID to SDE activity ID
+        $sdeActivityId = $activityId;
+        if ($activityId === 9) {
+            $sdeActivityId = 11; // Reactions
+        } elseif ($activityId === 7 || $activityId === 8) {
+            $sdeActivityId = 8; // Invention / Reverse Engineering
+        }
+
+        try {
+            $materials = $this->connection->fetchAllAssociative(
+                'SELECT materialTypeID as typeId, quantity FROM industryActivityMaterials WHERE typeID = :bpId AND activityID = :actId',
+                ['bpId' => $blueprintTypeId, 'actId' => $sdeActivityId]
+            );
+            
+            $products = $this->connection->fetchAllAssociative(
+                'SELECT productTypeID as typeId, quantity FROM industryActivityProducts WHERE typeID = :bpId AND activityID = :actId',
+                ['bpId' => $blueprintTypeId, 'actId' => $sdeActivityId]
+            );
+
+            // Fetch names for all types in one go to be fast
+            $typeIds = [];
+            foreach ($materials as $m) {
+                $typeIds[] = (int)$m['typeId'];
+            }
+            foreach ($products as $p) {
+                $typeIds[] = (int)$p['typeId'];
+            }
+            $typeIds = array_unique($typeIds);
+            
+            $names = [];
+            if (!empty($typeIds)) {
+                $placeholders = implode(',', array_fill(0, count($typeIds), '?'));
+                $stmt = $this->connection->prepare(
+                    "SELECT typeID, typeName FROM invTypes WHERE typeID IN ($placeholders)"
+                );
+                $result = $stmt->executeQuery($typeIds);
+                foreach ($result->fetchAllAssociative() as $row) {
+                    $names[(int)$row['typeID']] = $row['typeName'];
+                }
+            }
+
+            $mappedMaterials = [];
+            foreach ($materials as $m) {
+                $tId = (int)$m['typeId'];
+                $mappedMaterials[] = [
+                    'typeId' => $tId,
+                    'name' => $names[$tId] ?? ('Item #' . $tId),
+                    'quantity' => (int)$m['quantity']
+                ];
+            }
+
+            $mappedProducts = [];
+            foreach ($products as $p) {
+                $tId = (int)$p['typeId'];
+                $mappedProducts[] = [
+                    'typeId' => $tId,
+                    'name' => $names[$tId] ?? ('Item #' . $tId),
+                    'quantity' => (int)$p['quantity']
+                ];
+            }
+
+            return [
+                'materials' => $mappedMaterials,
+                'products' => $mappedProducts
+            ];
+        } catch (\Exception $e) {
+            return [
+                'materials' => [],
+                'products' => []
+            ];
+        }
+    }
+
     public function getSchematicDetails(int $schematicId): ?array
     {
         try {

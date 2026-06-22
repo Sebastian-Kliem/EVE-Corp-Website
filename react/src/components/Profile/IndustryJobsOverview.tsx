@@ -38,6 +38,28 @@ interface CharacterData {
     error: string | null;
 }
 
+interface MaterialDetail {
+    typeId: number;
+    name: string;
+    quantity: number;
+}
+
+interface ProductDetail {
+    typeId: number;
+    name: string;
+    quantity: number;
+}
+
+interface BlueprintInfo {
+    materials: MaterialDetail[];
+    products: ProductDetail[];
+}
+
+interface MarketPrice {
+    buy: number | null;
+    sell: number | null;
+}
+
 interface IndustryJobsOverviewProps {
     charactersList: CharacterListEntry[];
     apiDataUrl: string;
@@ -75,6 +97,11 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
     // Filters
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [filterActivity, setFilterActivity] = useState<string>('all');
+    const [hideEmptyCharacters, setHideEmptyCharacters] = useState<boolean>(true);
+    const [blueprintDetails, setBlueprintDetails] = useState<Record<string, BlueprintInfo>>({});
+    const [marketPrices, setMarketPrices] = useState<Record<number, MarketPrice>>({});
+    const [loadingBlueprints, setLoadingBlueprints] = useState<Record<string, boolean>>({});
+    const [inputCostMode, setInputCostMode] = useState<'buy' | 'sell'>('buy');
     
     // Refresh tick for countdowns
     const [nowTime, setNowTime] = useState<number>(Date.now());
@@ -105,6 +132,31 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                 setLoading(false);
             });
     }, [apiDataUrl]);
+
+    // Load finances for all jobs in the background as soon as charactersData is loaded
+    useEffect(() => {
+        if (charactersData.length === 0) return;
+        
+        const uniqueBlueprints = new Map<string, { blueprintTypeId: number; activityId: number; productTypeId: number | null }>();
+        charactersData.forEach(char => {
+            if (char.jobs) {
+                char.jobs.forEach(job => {
+                    const bpKey = `${job.blueprintTypeId}_${job.activityId}`;
+                    if (!uniqueBlueprints.has(bpKey)) {
+                        uniqueBlueprints.set(bpKey, {
+                            blueprintTypeId: job.blueprintTypeId,
+                            activityId: job.activityId,
+                            productTypeId: job.productTypeId
+                        });
+                    }
+                });
+            }
+        });
+
+        uniqueBlueprints.forEach((info) => {
+            loadBlueprintFinances(info.blueprintTypeId, info.activityId, info.productTypeId);
+        });
+    }, [charactersData]);
 
     // Helpers
     const getCharacterPortraitUrl = (charId: number) => {
@@ -140,6 +192,94 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
             return `${minutes}m ${seconds % 60}s`;
         }
         return `${seconds}s`;
+    };
+
+    const loadBlueprintFinances = (blueprintTypeId: number, activityId: number, productTypeId: number | null) => {
+        const bpKey = `${blueprintTypeId}_${activityId}`;
+        if (blueprintDetails[bpKey] || loadingBlueprints[bpKey]) {
+            return;
+        }
+
+        setLoadingBlueprints(prev => ({ ...prev, [bpKey]: true }));
+
+        const url = new URL(apiDataUrl.replace('/data', '/blueprint-finances'), window.location.origin);
+        url.searchParams.append('blueprintTypeId', blueprintTypeId.toString());
+        url.searchParams.append('activityId', activityId.toString());
+        if (productTypeId) {
+            url.searchParams.append('productTypeId', productTypeId.toString());
+        }
+
+        fetch(url.toString())
+            .then(res => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then((data: { blueprintDetails: BlueprintInfo; marketPrices: Record<number, MarketPrice> }) => {
+                setBlueprintDetails(prev => ({
+                    ...prev,
+                    [bpKey]: data.blueprintDetails
+                }));
+                setMarketPrices(prev => ({
+                    ...prev,
+                    ...data.marketPrices
+                }));
+                setLoadingBlueprints(prev => ({ ...prev, [bpKey]: false }));
+            })
+            .catch(() => {
+                setLoadingBlueprints(prev => ({ ...prev, [bpKey]: false }));
+            });
+    };
+
+    const calculateJobFinances = (job: IndustryJob) => {
+        const bpKey = `${job.blueprintTypeId}_${job.activityId}`;
+        const details = blueprintDetails[bpKey];
+        const isLoading = loadingBlueprints[bpKey];
+
+        const jobCost = parseFloat(job.cost || '0');
+
+        if (isLoading) {
+            return { materials: [], products: [], totalMaterialCost: 0, totalProductValue: 0, jobCost, totalCosts: 0, profit: 0, profitPercent: 0, hasData: false, loading: true };
+        }
+        if (!details) {
+            return { materials: [], products: [], totalMaterialCost: 0, totalProductValue: 0, jobCost, totalCosts: 0, profit: 0, profitPercent: 0, hasData: false, loading: false };
+        }
+
+        const materials = details.materials || [];
+        const products = details.products || [];
+
+        let totalMaterialCost = 0;
+        materials.forEach(m => {
+            const price = marketPrices[m.typeId]?.[inputCostMode] ?? 0;
+            totalMaterialCost += price * m.quantity * job.runs;
+        });
+
+        let totalProductValue = 0;
+        products.forEach(p => {
+            const price = marketPrices[p.typeId]?.buy ?? 0;
+            totalProductValue += price * p.quantity * job.runs;
+        });
+
+        if (products.length === 0 && job.productTypeId) {
+            const price = marketPrices[job.productTypeId]?.buy ?? 0;
+            totalProductValue = price * job.runs;
+        }
+
+        const totalCosts = totalMaterialCost + jobCost;
+        const profit = totalProductValue - totalCosts;
+        const profitPercent = totalCosts > 0 ? (profit / totalCosts) * 100 : 0;
+
+        return {
+            materials,
+            products,
+            totalMaterialCost,
+            totalProductValue,
+            jobCost,
+            totalCosts,
+            profit,
+            profitPercent,
+            hasData: materials.length > 0 || totalProductValue > 0,
+            loading: false
+        };
     };
 
     // Activity Priority mapping
@@ -438,7 +578,7 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
 
             {/* Global Search & Filters */}
             <div className="box mb-4">
-                <div className="columns">
+                <div className="columns is-multiline">
                     <div className="column is-8">
                         <input 
                             type="text"
@@ -467,11 +607,67 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                             </select>
                         </div>
                     </div>
+                    <div className="column is-12 mt-1" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
+                        <label className="checkbox" style={{ color: 'var(--theme-text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: 0 }}>
+                            <input 
+                                type="checkbox"
+                                checked={hideEmptyCharacters}
+                                onChange={(e) => setHideEmptyCharacters(e.target.checked)}
+                                style={{ accentColor: 'var(--theme-primary)' }}
+                            />
+                            <span>Charaktere ohne aktive Industrie-Jobs ausblenden</span>
+                        </label>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--theme-text-muted)', fontSize: '0.9rem' }}>
+                            <span>Materialberechnung nach:</span>
+                            <div className="buttons has-addons mb-0" style={{ display: 'flex' }}>
+                                <button 
+                                    className="button is-small"
+                                    onClick={() => setInputCostMode('buy')}
+                                    style={{
+                                        background: inputCostMode === 'buy' ? 'var(--theme-primary)' : '#101525',
+                                        color: inputCostMode === 'buy' ? '#000' : '#ccc',
+                                        border: '1px solid var(--theme-card-border)',
+                                        borderRight: 'none',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        padding: '0.25rem 0.6rem',
+                                        borderRadius: '4px 0 0 4px'
+                                    }}
+                                >
+                                    Jita Buy (Gefarmt)
+                                </button>
+                                <button 
+                                    className="button is-small"
+                                    onClick={() => setInputCostMode('sell')}
+                                    style={{
+                                        background: inputCostMode === 'sell' ? 'var(--theme-primary)' : '#101525',
+                                        color: inputCostMode === 'sell' ? '#000' : '#ccc',
+                                        border: '1px solid var(--theme-card-border)',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        padding: '0.25rem 0.6rem',
+                                        borderRadius: '0 4px 4px 0'
+                                    }}
+                                >
+                                    Jita Sell (Sofortkauf)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Characters list */}
-            {charactersData.map((char) => {
+            {charactersData
+                .filter((char) => {
+                    if (hideEmptyCharacters) {
+                        const activeJobsCount = (char.jobs || []).filter(j => j.status === 'active').length;
+                        return activeJobsCount > 0;
+                    }
+                    return true;
+                })
+                .map((char) => {
                 const lastSync = char.lastUpdate ? new Date(char.lastUpdate).toLocaleString('de-DE') : 'Nie';
 
                 // Process character jobs
@@ -503,8 +699,21 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                 const sortedGroups = Object.entries(groupedMap)
                     .map(([activityIdStr, jobs]) => {
                         const activityId = parseInt(activityIdStr);
-                        // Sort jobs in group by end date
-                        const sortedJobs = jobs.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+                        // Sort jobs in group by end date, putting ready/finished jobs at the top
+                        const sortedJobs = jobs.sort((a, b) => {
+                            const endA = new Date(a.endDate).getTime();
+                            const endB = new Date(b.endDate).getTime();
+                            const readyA = endA <= nowTime;
+                            const readyB = endB <= nowTime;
+
+                            if (readyA && !readyB) {
+                                return -1;
+                            }
+                            if (!readyA && readyB) {
+                                return 1;
+                            }
+                            return endA - endB;
+                        });
                         return { activityId, jobs: sortedJobs };
                     })
                     .sort((a, b) => {
@@ -559,7 +768,18 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
 
                                         // Render collapse/details for this group
                                         return (
-                                            <details key={activityId} className="collapsible-activity-group">
+                                            <details 
+                                                key={activityId} 
+                                                className="collapsible-activity-group"
+                                                onToggle={(e) => {
+                                                    const target = e.target as HTMLDetailsElement;
+                                                    if (target.open) {
+                                                        jobs.forEach(job => {
+                                                            loadBlueprintFinances(job.blueprintTypeId, job.activityId, job.productTypeId);
+                                                        });
+                                                    }
+                                                }}
+                                            >
                                                 <summary>
                                                     <div className="group-title-side">
                                                         <span>{groupName}</span>
@@ -585,6 +805,7 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                                                         const isResearch = [3, 4, 5, 7, 8].includes(job.activityId);
                                                         const iconTypeId = isResearch ? job.blueprintTypeId : (job.productTypeId || job.blueprintTypeId);
                                                         const iconName = isResearch ? job.blueprintName : (job.productName || job.blueprintName);
+                                                        const finances = calculateJobFinances(job);
 
                                                         return (
                                                             <div key={job.jobId} className="job-item-row">
@@ -614,11 +835,108 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                                                                         <span className="meta-label">Standort:</span>
                                                                         <span className="meta-value" title={job.blueprintLocationName}>{job.blueprintLocationName}</span>
                                                                     </div>
-                                                                    <div className="meta-item">
-                                                                        <span className="meta-label">Kosten:</span>
-                                                                        <span className="meta-value">{formatISK(parseFloat(job.cost || '0'))}</span>
-                                                                    </div>
                                                                 </div>
+
+                                                                {finances.loading ? (
+                                                                    <div className="job-calculation-line" style={{ 
+                                                                        display: 'flex', 
+                                                                        justifyContent: 'center', 
+                                                                        alignItems: 'center',
+                                                                        fontSize: '0.8rem', 
+                                                                        padding: '0.5rem 0.75rem', 
+                                                                        background: 'rgba(0,0,0,0.15)', 
+                                                                        borderRadius: '4px', 
+                                                                        border: '1px solid rgba(255,255,255,0.03)',
+                                                                        color: 'var(--theme-text-muted)'
+                                                                    }}>
+                                                                        <span className="loader" style={{ display: 'inline-block', width: '1rem', height: '1rem', border: '2px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite', marginRight: '0.5rem' }}></span>
+                                                                        Kalkulation wird berechnet...
+                                                                    </div>
+                                                                ) : finances.hasData ? (
+                                                                    <div className="job-calculation-line" style={{ 
+                                                                        display: 'flex', 
+                                                                        justifyContent: 'space-between', 
+                                                                        fontSize: '0.8rem', 
+                                                                        padding: '0.5rem 0.75rem', 
+                                                                        background: 'rgba(0,0,0,0.15)', 
+                                                                        borderRadius: '4px', 
+                                                                        border: '1px solid rgba(255,255,255,0.03)',
+                                                                        flexWrap: 'wrap',
+                                                                        gap: '0.5rem'
+                                                                    }}>
+                                                                        <div>
+                                                                            <span style={{ color: 'var(--theme-text-muted)' }}>Materialien ({inputCostMode === 'buy' ? 'Jita Buy' : 'Jita Sell'}): </span>
+                                                                            <span style={{ fontWeight: 'bold', color: '#eee' }}>{formatISK(finances.totalMaterialCost)}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span style={{ color: 'var(--theme-text-muted)' }}>Job-Kosten: </span>
+                                                                            <span style={{ fontWeight: 'bold', color: '#eee' }}>{formatISK(finances.jobCost)}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span style={{ color: 'var(--theme-text-muted)' }}>Ergebnis (Jita Buy): </span>
+                                                                            <span style={{ fontWeight: 'bold', color: finances.totalProductValue > 0 ? '#00f0ff' : '#eee' }}>{formatISK(finances.totalProductValue)}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span style={{ color: 'var(--theme-text-muted)' }}>Gewinn: </span>
+                                                                            <span style={{ fontWeight: 'bold', color: finances.profit >= 0 ? '#00ffaa' : '#ff4444' }}>
+                                                                                {finances.profit >= 0 ? '+' : ''}{formatISK(finances.profit)} ({finances.profit >= 0 ? '+' : ''}{finances.profitPercent.toFixed(1)}%)
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="job-calculation-line" style={{ 
+                                                                        display: 'flex', 
+                                                                        justifyContent: 'center', 
+                                                                        fontSize: '0.8rem', 
+                                                                        padding: '0.5rem 0.75rem', 
+                                                                        background: 'rgba(0,0,0,0.15)', 
+                                                                        borderRadius: '4px', 
+                                                                        border: '1px solid rgba(255,255,255,0.03)',
+                                                                        color: 'var(--theme-text-muted)'
+                                                                    }}>
+                                                                        <a 
+                                                                            href="#" 
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                loadBlueprintFinances(job.blueprintTypeId, job.activityId, job.productTypeId);
+                                                                            }}
+                                                                            style={{ color: 'var(--theme-primary)', textDecoration: 'underline' }}
+                                                                        >
+                                                                            Gewinn & Materialwerte laden
+                                                                        </a>
+                                                                    </div>
+                                                                )}
+
+                                                                {finances.materials.length > 0 && (
+                                                                    <details style={{ marginTop: '0.1rem' }}>
+                                                                        <summary style={{ fontSize: '0.75rem', color: 'var(--theme-primary)', cursor: 'pointer', userSelect: 'none', outline: 'none' }}>
+                                                                            Material-Details anzeigen
+                                                                        </summary>
+                                                                        <div style={{ 
+                                                                            marginTop: '0.4rem', 
+                                                                            background: 'rgba(0,0,0,0.2)', 
+                                                                            padding: '0.6rem', 
+                                                                            borderRadius: '4px', 
+                                                                            maxHeight: '150px', 
+                                                                            overflowY: 'auto', 
+                                                                            display: 'flex', 
+                                                                            flexDirection: 'column', 
+                                                                            gap: '0.35rem',
+                                                                            border: '1px solid rgba(255,255,255,0.03)'
+                                                                        }}>
+                                                                            {finances.materials.map(m => {
+                                                                                const price = marketPrices[m.typeId]?.[inputCostMode] ?? 0;
+                                                                                const totalVal = price * m.quantity * job.runs;
+                                                                                return (
+                                                                                    <div key={m.typeId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#ccc' }}>
+                                                                                        <span>{m.quantity * job.runs}x {m.name}</span>
+                                                                                        <span style={{ fontFamily: 'monospace' }}>{formatISK(totalVal)}</span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </details>
+                                                                )}
 
                                                                 <div className="progress-container">
                                                                     <div className="progress-bar-wrapper">
