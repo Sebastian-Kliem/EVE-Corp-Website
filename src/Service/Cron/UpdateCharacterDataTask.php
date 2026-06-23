@@ -57,10 +57,11 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 continue;
             }
 
-            // Sync Wallet & Journal
+            // Sync Wallet, Journal & Market Transactions
             try {
                 $this->syncWallet($character);
                 $this->syncWalletJournal($character);
+                $this->syncMarketTransactions($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync wallet/journal for character %s (%d): %s',
@@ -225,6 +226,94 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
     }
 
+    private function syncMarketTransactions(EveCharacter $character): void
+    {
+        $this->logger->debug(sprintf('[Cron] Syncing market transactions for character %s...', $character->getName()));
+
+        $fromId = null;
+        $insertedCount = 0;
+        $repo = $this->entityManager->getRepository(\App\Entity\EveCharacterMarketTransaction::class);
+
+        while (true) {
+            try {
+                $query = [];
+                if ($fromId !== null) {
+                    $query['from_id'] = $fromId;
+                }
+
+                $transData = $this->esiClient->request(
+                    'GET',
+                    sprintf('characters/%d/wallet/transactions/', $character->getId()),
+                    [
+                        'query' => $query
+                    ],
+                    $character
+                );
+
+                if (empty($transData) || !is_array($transData)) {
+                    break;
+                }
+
+                $hasExisting = false;
+                $lastTransId = null;
+
+                foreach ($transData as $tData) {
+                    $transId = (string) $tData['transaction_id'];
+                    $lastTransId = $transId;
+
+                    $existing = $repo->findOneBy([
+                        'character' => $character,
+                        'transactionId' => $transId
+                    ]);
+
+                    if ($existing) {
+                        $hasExisting = true;
+                        continue;
+                    }
+
+                    $transaction = new \App\Entity\EveCharacterMarketTransaction();
+                    $transaction->setCharacter($character);
+                    $transaction->setTransactionId($transId);
+                    $transaction->setDate(new \DateTimeImmutable($tData['date']));
+                    $transaction->setTypeId((int) $tData['type_id']);
+                    $transaction->setQuantity((string) $tData['quantity']);
+                    $transaction->setUnitPrice(number_format((float) $tData['unit_price'], 2, '.', ''));
+                    $transaction->setIsBuy((bool) $tData['is_buy']);
+                    $transaction->setClientId((int) $tData['client_id']);
+                    $transaction->setLocationId((string) $tData['location_id']);
+                    $transaction->setJournalRefId((string) $tData['journal_ref_id']);
+
+                    $this->entityManager->persist($transaction);
+                    $insertedCount++;
+                }
+
+                $this->entityManager->flush();
+
+                if ($hasExisting || count($transData) < 2500 || $lastTransId === null) {
+                    break;
+                }
+
+                $fromId = (string) $lastTransId;
+
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf(
+                    '[Cron] Failed to fetch market transactions for character %s: %s',
+                    $character->getName(),
+                    $e->getMessage()
+                ));
+                break;
+            }
+        }
+
+        if ($insertedCount > 0) {
+            $this->logger->info(sprintf(
+                '[Cron] Successfully synchronized %d new market transactions for character %s.',
+                $insertedCount,
+                $character->getName()
+            ));
+        }
+    }
+
     private function syncAssets(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing assets for character %s...', $character->getName()));
@@ -318,13 +407,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap, $blueprintsMap) {
             // A. Calculate asset changes (increases) for tracked items
             try {
-                $trackingItemRepository = $this->entityManager->getRepository(TrackingListItem::class);
-                $listItems = $trackingItemRepository->findAll();
-                $trackedTypeIds = [];
-                foreach ($listItems as $item) {
-                    $trackedTypeIds[] = $item->getTypeId();
-                }
-                $trackedTypeIds = array_unique($trackedTypeIds);
+                $trackedTypeIds = $this->getTrackedTypeIds();
 
                 if ($character->getLastAssetsUpdate() !== null && !empty($trackedTypeIds)) {
                     $oldAssets = $this->assetRepository->findBy(['character' => $character]);
@@ -347,7 +430,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     $now = new \DateTimeImmutable();
                     foreach ($newQuantities as $tid => $newQty) {
                         $oldQty = $oldQuantities[$tid] ?? 0;
-                        if ($newQty > $oldQty) {
+                        if ($newQty !== $oldQty) {
                             $changeQty = $newQty - $oldQty;
 
                             $change = new EveCharacterAssetChange();
@@ -784,5 +867,19 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         return $namesMap;
+    }
+
+    private function getTrackedTypeIds(): array
+    {
+        $listItems = $this->entityManager->getRepository(TrackingListItem::class)->findAll();
+        $trackedTypeIds = [];
+        foreach ($listItems as $item) {
+            $trackedTypeIds[] = $item->getTypeId();
+        }
+
+        $sdeTypeIds = $this->sdeService->getPerformanceTypeIds();
+        $trackedTypeIds = array_merge($trackedTypeIds, $sdeTypeIds);
+
+        return array_values(array_unique(array_filter($trackedTypeIds)));
     }
 }

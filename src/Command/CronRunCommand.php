@@ -152,6 +152,11 @@ class CronRunCommand extends Command
                 'expression' => '*/15 * * * *', // every 15 minutes
             ],
             [
+                'name' => 'Charakter-Verträge synchronisieren (Contracts)',
+                'command' => 'character:sync-contracts',
+                'expression' => '*/20 * * * *', // every 20 minutes
+            ],
+            [
                 'name' => 'Struktur-Cache aktualisieren (Spieler-Strukturen)',
                 'command' => 'structure:update-cache',
                 'expression' => '0 */6 * * *', // every 6 hours

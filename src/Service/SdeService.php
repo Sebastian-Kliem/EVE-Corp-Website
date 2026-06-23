@@ -416,5 +416,23 @@ class SdeService
             return null;
         }
     }
+
+    /**
+     * Returns all type IDs belonging to Gas, Ore/Ice, Blue Loot, Hacking & Salvaging categories.
+     * @return int[]
+     */
+    public function getPerformanceTypeIds(): array
+    {
+        try {
+            return array_map('intval', $this->connection->fetchFirstColumn(
+                "SELECT t.typeID FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE g.categoryID = 25 
+                    OR g.groupID IN (711, 4168, 880, 754, 966, 333, 728, 729, 730, 731, 732, 733, 734, 735, 979, 1304, 367776) 
+                    OR t.typeID = 34"
+            ));
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
 }
 
