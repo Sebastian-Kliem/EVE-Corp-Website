@@ -87,6 +87,10 @@ class EveSsoController extends AbstractController
                 $character->setId($characterId);
             }
 
+            if ($character->getPerformanceCutoffDate() === null) {
+                $character->setPerformanceCutoffDate(new \DateTimeImmutable());
+            }
+
             // Update character credentials and metadata
             $character->setName($characterName);
             $character->setUser($currentUser);

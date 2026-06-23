@@ -59,6 +59,9 @@ class EveCharacter
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastIndustryJobsUpdate = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $performanceCutoffDate = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -247,6 +250,18 @@ class EveCharacter
     public function setLastIndustryJobsUpdate(?\DateTimeImmutable $lastIndustryJobsUpdate): static
     {
         $this->lastIndustryJobsUpdate = $lastIndustryJobsUpdate;
+
+        return $this;
+    }
+
+    public function getPerformanceCutoffDate(): ?\DateTimeImmutable
+    {
+        return $this->performanceCutoffDate;
+    }
+
+    public function setPerformanceCutoffDate(?\DateTimeImmutable $performanceCutoffDate): static
+    {
+        $this->performanceCutoffDate = $performanceCutoffDate;
 
         return $this;
     }

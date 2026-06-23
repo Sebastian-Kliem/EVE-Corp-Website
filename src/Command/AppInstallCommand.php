@@ -2,12 +2,16 @@
 
 namespace App\Command;
 
+use App\Entity\EveCharacter;
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:install',
@@ -15,16 +19,25 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class AppInstallCommand extends Command
 {
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly KernelInterface $kernel
+    ) {
+        parent::__construct();
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $io->title('WH-Toolbox Installation');
+        $io->title('WH-Toolbox Installation / Update');
 
         $application = $this->getApplication();
         if (!$application) {
             $io->error('Application instance not found.');
             return Command::FAILURE;
         }
+
+        $projectDir = $this->kernel->getProjectDir();
 
         // 1. Create main database if it does not exist
         $io->section('Step 1: Creating Main Database (if not exists)');
@@ -57,9 +70,18 @@ class AppInstallCommand extends Command
         // 3. Download and import EVE SDE SQLite
         $io->section('Step 3: Initializing EVE Online SDE (Static Data Export)');
         try {
+            $sdeFile = $projectDir . '/var/sde.sqlite';
+            $sdeExists = file_exists($sdeFile);
+            
+            if ($sdeExists) {
+                $io->text('SDE file already exists. Checking for updates...');
+            } else {
+                $io->text('SDE file does not exist. Initiating download...');
+            }
+
             $sdeUpdateCommand = $application->find('app:sde:update');
             $sdeUpdateInput = new ArrayInput([
-                '--force' => true, // Force download during initial install
+                '--force' => !$sdeExists, // Only force download if it does not exist
             ]);
             $sdeUpdateInput->setInteractive(false);
             $sdeUpdateCommand->run($sdeUpdateInput, $output);
@@ -70,35 +92,40 @@ class AppInstallCommand extends Command
 
         // 4. Create Admin User
         $io->section('Step 4: Create Admin User');
-        if ($input->isInteractive()) {
-            $username = $io->ask('Admin Username', 'admin', function ($value) {
-                if (empty($value)) {
-                    throw new \RuntimeException('Username cannot be empty.');
-                }
-                return $value;
-            });
+        try {
+            $userCount = $this->entityManager->getRepository(User::class)->count([]);
+            if ($userCount > 0) {
+                $io->note('Users already exist in the database. Skipping admin user creation.');
+            } else {
+                if ($input->isInteractive()) {
+                    $username = $io->ask('Admin Username', 'admin', function ($value) {
+                        if (empty($value)) {
+                            throw new \RuntimeException('Username cannot be empty.');
+                        }
+                        return $value;
+                    });
 
-            $password = $io->askHidden('Admin Password', function ($value) {
-                if (empty($value)) {
-                    throw new \RuntimeException('Password cannot be empty.');
-                }
-                return $value;
-            });
+                    $password = $io->askHidden('Admin Password', function ($value) {
+                        if (empty($value)) {
+                            throw new \RuntimeException('Password cannot be empty.');
+                        }
+                        return $value;
+                    });
 
-            try {
-                $createUserCommand = $application->find('app:create-user');
-                $createUserInput = new ArrayInput([
-                    'username' => $username,
-                    'password' => $password,
-                    'role' => 'ROLE_ADMIN',
-                ]);
-                $createUserCommand->run($createUserInput, $output);
-            } catch (\Exception $e) {
-                $io->error('Failed to create admin user: ' . $e->getMessage());
-                return Command::FAILURE;
+                    $createUserCommand = $application->find('app:create-user');
+                    $createUserInput = new ArrayInput([
+                        'username' => $username,
+                        'password' => $password,
+                        'role' => 'ROLE_ADMIN',
+                    ]);
+                    $createUserCommand->run($createUserInput, $output);
+                } else {
+                    $io->note('Non-interactive mode: Skipping admin user creation.');
+                }
             }
-        } else {
-            $io->note('Non-interactive mode: Skipping admin user creation.');
+        } catch (\Exception $e) {
+            $io->error('Failed to create admin user: ' . $e->getMessage());
+            return Command::FAILURE;
         }
 
         // 5. Seed Tracking Templates
@@ -113,8 +140,29 @@ class AppInstallCommand extends Command
             return Command::FAILURE;
         }
 
+        // 6. Initialize Performance Cutoff Date for existing characters
+        $io->section('Step 6: Initializing Performance Cutoff Dates');
+        try {
+            $characterRepo = $this->entityManager->getRepository(EveCharacter::class);
+            $charactersWithoutCutoff = $characterRepo->findBy(['performanceCutoffDate' => null]);
+            
+            if (count($charactersWithoutCutoff) > 0) {
+                $now = new \DateTimeImmutable();
+                foreach ($charactersWithoutCutoff as $character) {
+                    $character->setPerformanceCutoffDate($now);
+                }
+                $this->entityManager->flush();
+                $io->success(sprintf('Initialized performance cutoff date to %s for %d characters.', $now->format('Y-m-d H:i:s'), count($charactersWithoutCutoff)));
+            } else {
+                $io->note('All characters already have a performance cutoff date set.');
+            }
+        } catch (\Exception $e) {
+            $io->error('Failed to initialize performance cutoff dates: ' . $e->getMessage());
+            return Command::FAILURE;
+        }
+
         $io->newLine();
-        $io->success('WH-Toolbox has been installed successfully!');
+        $io->success('WH-Toolbox has been installed/updated successfully!');
         
         return Command::SUCCESS;
     }
