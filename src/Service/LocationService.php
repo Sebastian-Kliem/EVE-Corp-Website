@@ -12,6 +12,7 @@ use Doctrine\DBAL\Connection;
 class LocationService
 {
     private Connection $sdeConnection;
+    private array $resolvedLocations = [];
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -31,6 +32,18 @@ class LocationService
      * ]
      */
     public function resolveLocation(int $locationId, ?EveCharacter $character = null): array
+    {
+        if (isset($this->resolvedLocations[$locationId])) {
+            return $this->resolvedLocations[$locationId];
+        }
+
+        $result = $this->doResolveLocation($locationId, $character);
+        $this->resolvedLocations[$locationId] = $result;
+
+        return $result;
+    }
+
+    private function doResolveLocation(int $locationId, ?EveCharacter $character = null): array
     {
         // 1. Check if NPC Station (IDs 60000000 to 64000000)
         if ($locationId >= 60000000 && $locationId < 64000000) {
@@ -115,7 +128,7 @@ class LocationService
         $structure = $structureRepo->find((string)$locationId);
 
         $now = new \DateTimeImmutable();
-        $cacheExpiryDays = 7;
+        $cacheExpiryDays = 1;
 
         // If cached and still valid, return cached info
         // We only use cached info if it is a fully resolved structure name, not our fallback
@@ -202,7 +215,7 @@ class LocationService
                 ) ?: 'Unbekannt';
             }
 
-            // Save to local cache
+            // Save to local cache using standard Doctrine Entity
             if (!$structure) {
                 $structure = new EveStructure();
                 $structure->setId((string)$locationId);
@@ -234,10 +247,46 @@ class LocationService
         $this->entityManager->persist($structure);
         $this->entityManager->flush();
 
-        return [
+            return [
             'name' => $structure->getName(),
             'systemName' => $structure->getSolarSystemName() ?? 'Unbekannt',
             'rawName' => $structure->getName(),
         ];
     }
+
+    /**
+     * Updates expired or fallback structures in the background.
+     */
+    public function updateExpiredStructures(\Psr\Log\LoggerInterface $logger): void
+    {
+        $structureRepo = $this->entityManager->getRepository(EveStructure::class);
+        $now = new \DateTimeImmutable();
+        $cacheExpiryDays = 1;
+        $expiryLimit = $now->modify('-' . $cacheExpiryDays . ' days');
+
+        // Find structures that are older than cache expiry, or have fallback values
+        $queryBuilder = $structureRepo->createQueryBuilder('s');
+        $structures = $queryBuilder->where('s.lastUpdated < :expiryLimit')
+            ->orWhere('s.name = :fallbackName')
+            ->orWhere('s.solarSystemName = :fallbackSystemName')
+            ->setParameter('expiryLimit', $expiryLimit)
+            ->setParameter('fallbackName', 'Spieler-Struktur')
+            ->setParameter('fallbackSystemName', 'Unbekannt')
+            ->getQuery()
+            ->getResult();
+
+        $logger->info(sprintf('[Cron] Found %d structures that need updating.', count($structures)));
+
+        foreach ($structures as $structure) {
+            $locationId = (int)$structure->getId();
+            $logger->info(sprintf('[Cron] Re-resolving structure ID %d (%s)...', $locationId, $structure->getName()));
+            
+            // Bypass in-memory cache to force a fresh check
+            unset($this->resolvedLocations[$locationId]);
+            $this->doResolveLocation($locationId);
+        }
+    }
 }
+
+
+

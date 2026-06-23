@@ -150,6 +150,11 @@ class CronRunCommand extends Command
                 'name' => 'Charakter-Industrieaufträge synchronisieren (Industry Jobs)',
                 'command' => 'character:sync-industry-jobs',
                 'expression' => '*/15 * * * *', // every 15 minutes
+            ],
+            [
+                'name' => 'Struktur-Cache aktualisieren (Spieler-Strukturen)',
+                'command' => 'structure:update-cache',
+                'expression' => '0 */6 * * *', // every 6 hours
             ]
         ];
 
