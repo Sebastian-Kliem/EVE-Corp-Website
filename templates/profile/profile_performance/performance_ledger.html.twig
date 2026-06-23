@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ertragsjournal (Performance){% endblock %}
+
+{% block body %}
+{% set reactProps = {
+    charactersList: charactersList,
+    apiDataUrl: path('app_dashboard_performance_data'),
+    imagePaths: {
+        types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+        characters: path('app_eve_image_proxy', { category: 'characters', id: 12345, action: 'portrait' })
+    }
+} %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-0">Ertragsjournal (Performance)</h1>
+            <p class="text-muted">Gefilterte Übersicht deiner täglichen Netto-Gewinne aus Gas, Erzen, Blues, Relic/Data-Sites und Abyss (ohne Logistik-Verschiebungen und Marktkäufe).</p>
+        </div>
+    </div>
+
+    <div data-react-component="PerformanceLedger" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}

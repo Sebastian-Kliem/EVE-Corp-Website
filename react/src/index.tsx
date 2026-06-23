@@ -8,6 +8,7 @@ import CorpAssetsOverview from './components/Assets/CorpAssetsOverview';
 import CorpAssetsVisibilityManager from './components/Admin/CorpAssetsVisibilityManager';
 import PIOverview from './components/Profile/PIOverview';
 import MiningLedger from './components/Profile/MiningLedger';
+import PerformanceLedger from './components/Profile/PerformanceLedger';
 import TrackingListManager from './components/Tool/TrackingListManager';
 import TrackingViewer from './components/Tool/TrackingViewer';
 import ValueHistory from './components/Profile/ValueHistory';
@@ -24,6 +25,7 @@ const components: Record<string, React.ComponentType<any>> = {
     CorpAssetsVisibilityManager,
     PIOverview,
     MiningLedger,
+    PerformanceLedger,
     TrackingListManager,
     TrackingViewer,
     ValueHistory,
