@@ -219,6 +219,9 @@
                                         <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                             🎒 Inventar
                                         </a>
+                                        <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small profile-char-button-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
+                                            🔑 Re-Auth
+                                        </a>
                                         <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
                                             <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
                                             <button type="submit" class="button is-danger is-small profile-char-button-delete" title="Charakter entfernen">
@@ -226,6 +229,12 @@
                                             </button>
                                         </form>
                                     </div>
+
+                                    {% if not char.tokenValid %}
+                                        <div class="notification is-danger p-2 mt-2 is-size-7" style="border-radius: 4px;">
+                                            ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
+                                        </div>
+                                    {% endif %}
                                     
                                     <!-- Zuweisungs-Formular -->
                                     <details class="profile-char-assign-details">
@@ -346,6 +355,9 @@
                                                     <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                                         🎒 Inventar
                                                     </a>
+                                                    <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small profile-char-button-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
+                                                        🔑 Re-Auth
+                                                    </a>
                                                     <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
                                                         <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
                                                         <button type="submit" class="button is-danger is-small profile-char-button-delete" title="Charakter entfernen">
@@ -353,6 +365,12 @@
                                                         </button>
                                                     </form>
                                                 </div>
+
+                                                {% if not char.tokenValid %}
+                                                    <div class="notification is-danger p-2 mt-2 is-size-7" style="border-radius: 4px;">
+                                                        ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
+                                                    </div>
+                                                {% endif %}
                                                 
                                                 <!-- Zuweisungs-Formular -->
                                                 <details class="profile-char-assign-details">

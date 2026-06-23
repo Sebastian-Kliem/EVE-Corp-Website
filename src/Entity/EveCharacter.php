@@ -62,6 +62,9 @@ class EveCharacter
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $performanceCutoffDate = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => true])]
+    private bool $tokenValid = true;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -262,6 +265,18 @@ class EveCharacter
     public function setPerformanceCutoffDate(?\DateTimeImmutable $performanceCutoffDate): static
     {
         $this->performanceCutoffDate = $performanceCutoffDate;
+
+        return $this;
+    }
+
+    public function isTokenValid(): bool
+    {
+        return $this->tokenValid;
+    }
+
+    public function setTokenValid(bool $tokenValid): static
+    {
+        $this->tokenValid = $tokenValid;
 
         return $this;
     }

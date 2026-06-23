@@ -21,6 +21,32 @@
             {% include 'navigation.html.twig' %}
         </header>
 
+        {% if app.user %}
+            {% set invalid_chars = get_sso_warnings() %}
+            {% if invalid_chars is not empty %}
+                <div class="container mt-4">
+                    <div class="notification is-danger">
+                        <button class="delete" onclick="this.parentElement.style.display='none'"></button>
+                        <span class="icon-text">
+                            <span class="icon">⚠️</span>
+                            <span>
+                                <strong>SSO-Authentifizierung erforderlich:</strong> Die folgenden Charaktere haben keinen gültigen Zugriff mehr (z. B. durch Passwortänderung). Bitte führe ein Re-Auth im Profil durch:
+                                <ul>
+                                    {% for char in invalid_chars %}
+                                        <li>
+                                            <strong>{{ char.name }}</strong> 
+                                            (<a href="{{ path('app_profile') }}" class="has-text-weight-bold" style="text-decoration: underline;">Zum Profil</a> / 
+                                            <a href="{{ path('app_eve_sso_login') }}" class="has-text-weight-bold" style="text-decoration: underline;">Direkt Re-Auth</a>)
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+
         {% set flash_classes = {
             'error': 'is-danger',
             'danger': 'is-danger',

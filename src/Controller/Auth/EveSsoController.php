@@ -98,6 +98,7 @@ class EveSsoController extends AbstractController
             $character->setRefreshToken($refreshToken);
             $character->setTokenExpiresAt((new \DateTimeImmutable())->modify('+' . $expiresIn . ' seconds'));
             $character->setOwnerHash($ownerHash);
+            $character->setTokenValid(true);
 
             // Fetch public character info from ESI to get Corporation ID and Alliance ID
             try {

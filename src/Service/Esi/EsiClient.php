@@ -126,6 +126,7 @@ class EsiClient
             
             $expiresIn = (int) ($data['expires_in'] ?? 1200);
             $character->setTokenExpiresAt((new \DateTimeImmutable())->modify('+' . $expiresIn . ' seconds'));
+            $character->setTokenValid(true);
 
             $this->entityManager->flush();
 
@@ -133,6 +134,14 @@ class EsiClient
         } catch (\Exception $e) {
             // Log error to system error log for easy developer troubleshooting
             error_log(sprintf('[EsiClient] Failed to refresh token for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+            
+            // If the error indicates that the refresh token is invalid (e.g. invalid_grant or 400 Bad Request)
+            // we mark the character's token as invalid so we can warn the user.
+            if (str_contains(strtolower($e->getMessage()), 'invalid_grant') || str_contains($e->getMessage(), '400') || str_contains($e->getMessage(), '401')) {
+                $character->setTokenValid(false);
+                $this->entityManager->flush();
+            }
+            
             return false;
         }
     }
@@ -190,6 +199,8 @@ class EsiClient
                     $response = $this->httpClient->request($method, $url, $options);
                     $data = json_decode($response->getContent(), true);
                 } else {
+                    $character->setTokenValid(false);
+                    $this->entityManager->flush();
                     throw $e;
                 }
             } else {
