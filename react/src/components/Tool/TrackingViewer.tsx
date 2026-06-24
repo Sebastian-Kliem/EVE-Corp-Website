@@ -215,6 +215,10 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
     const todayStr = new Date().toISOString().substring(0, 10);
     const [singleDate, setSingleDate] = useState<string>(todayStr);
 
+    // Refresh and active expanded item states
+    const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+    const [activeItemTypeId, setActiveItemTypeId] = useState<number | null>(null);
+
     useEffect(() => {
         setLoading(true);
         setError(null);
@@ -245,7 +249,7 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                 setError(err.message);
                 setLoading(false);
             });
-    }, [listId, timeSelect, singleDate]);
+    }, [listId, timeSelect, singleDate, refreshTrigger]);
 
     const formatISK = (val: number): string => {
         return new Intl.NumberFormat('de-DE', {
@@ -346,6 +350,9 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                     display: flex;
                     align-items: center;
                     gap: 6px;
+                }
+                .item-row-hover:hover {
+                    background: rgba(255, 255, 255, 0.04) !important;
                 }
             `}</style>
 
@@ -460,6 +467,7 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                         <table className="table is-striped is-fullwidth" style={{ background: 'transparent' }}>
                             <thead>
                                 <tr>
+                                    <th className="is-size-7" style={{ width: '40px' }}></th>
                                     <th className="is-size-7">Gegenstand</th>
                                     <th className="has-text-right is-size-7">Menge</th>
                                     <th className="has-text-right is-size-7">Gesamtwert</th>
@@ -468,37 +476,185 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                             <tbody>
                                 {analytics.itemBreakdown.map(item => {
                                     const percent = totalCalculatedValue > 0 ? (item.value / totalCalculatedValue) * 100 : 0;
+                                    const isExpanded = activeItemTypeId === item.typeId;
                                     return (
-                                        <tr key={item.typeId} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <img 
-                                                        src={`https://images.evetech.net/types/${item.typeId}/icon?size=32`} 
-                                                        alt="" 
-                                                        style={{ width: '20px', height: '20px', borderRadius: '4px' }}
-                                                        loading="lazy"
-                                                    />
-                                                    <div>
-                                                        <span className="has-text-weight-semibold" style={{ fontSize: '0.85rem' }}>{item.typeName}</span>
-                                                        <div className="viewer-progress-bar" style={{ width: '80px' }}>
-                                                            <div className="viewer-progress-fill" style={{ width: `${percent}%` }}></div>
+                                        <React.Fragment key={item.typeId}>
+                                            <tr 
+                                                style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' }}
+                                                onClick={() => setActiveItemTypeId(isExpanded ? null : item.typeId)}
+                                                className="item-row-hover"
+                                            >
+                                                <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d' }}>
+                                                    {isExpanded ? '▼' : '▶'}
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <img 
+                                                            src={`https://images.evetech.net/types/${item.typeId}/icon?size=32`} 
+                                                            alt="" 
+                                                            style={{ width: '20px', height: '20px', borderRadius: '4px' }}
+                                                            loading="lazy"
+                                                        />
+                                                        <div>
+                                                            <span className="has-text-weight-semibold" style={{ fontSize: '0.85rem' }}>{item.typeName}</span>
+                                                            <div className="viewer-progress-bar" style={{ width: '80px' }}>
+                                                                <div className="viewer-progress-fill" style={{ width: `${percent}%` }}></div>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="has-text-right has-text-weight-semibold is-size-7" style={{ verticalAlign: 'middle' }}>
-                                                {formatNumber(item.quantity)}
-                                            </td>
-                                            <td className="has-text-right has-text-weight-bold is-size-7" style={{ color: 'var(--theme-primary, #00f0ff)', verticalAlign: 'middle' }}>
-                                                {formatISK(item.value)}
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="has-text-right has-text-weight-semibold is-size-7" style={{ verticalAlign: 'middle' }}>
+                                                    {formatNumber(item.quantity)}
+                                                </td>
+                                                <td className="has-text-right has-text-weight-bold is-size-7" style={{ color: 'var(--theme-primary, #00f0ff)', verticalAlign: 'middle' }}>
+                                                    {formatISK(item.value)}
+                                                </td>
+                                            </tr>
+                                            {isExpanded && (
+                                                <tr>
+                                                    <td colSpan={4} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
+                                                        <ItemChangesDetails 
+                                                            listId={listId}
+                                                            typeId={item.typeId}
+                                                            timeSelect={timeSelect}
+                                                            singleDate={singleDate}
+                                                            formatNumber={formatNumber}
+                                                            onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
                         </table>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+interface ChangeEntry {
+    id: number;
+    characterName: string;
+    quantity: number;
+    loggedAt: string;
+}
+
+interface ItemChangesDetailsProps {
+    listId: number;
+    typeId: number;
+    timeSelect: TimeSelection;
+    singleDate: string;
+    formatNumber: (val: number) => string;
+    onDeleteSuccess: () => void;
+}
+
+function ItemChangesDetails({ listId, typeId, timeSelect, singleDate, formatNumber, onDeleteSuccess }: ItemChangesDetailsProps) {
+    const [changes, setChanges] = React.useState<ChangeEntry[]>([]);
+    const [loading, setLoading] = React.useState<boolean>(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [deletingId, setDeletingId] = React.useState<number | null>(null);
+
+    const loadChanges = () => {
+        setLoading(true);
+        let url = `/dashboard/tracking/api/changes?listId=${listId}&typeId=${typeId}`;
+        if (timeSelect.endsWith('h')) {
+            url += `&rangeType=hours&hours=${parseInt(timeSelect)}`;
+        } else if (timeSelect.endsWith('d')) {
+            url += `&rangeType=days&days=${parseInt(timeSelect)}`;
+        } else if (timeSelect === 'single') {
+            url += `&rangeType=single_date&date=${singleDate}`;
+        }
+
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('Fehler beim Laden der Buchungen.');
+                return res.json();
+            })
+            .then((data: ChangeEntry[]) => {
+                setChanges(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setLoading(false);
+            });
+    };
+
+    React.useEffect(() => {
+        loadChanges();
+    }, [listId, typeId, timeSelect, singleDate]);
+
+    const handleDelete = (id: number, characterName: string, quantity: number, loggedAt: string) => {
+        if (!confirm(`Möchtest du die Zuwachs-Buchung über ${formatNumber(quantity)} Einheiten von ${characterName} am ${loggedAt} wirklich löschen?\nDies korrigiert die Statistik dauerhaft.`)) {
+            return;
+        }
+
+        setDeletingId(id);
+        fetch(`/dashboard/tracking/api/changes/${id}`, {
+            method: 'DELETE'
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Fehler beim Löschen des Eintrags.');
+            return res.json();
+        })
+        .then(() => {
+            setChanges(prev => prev.filter(c => c.id !== id));
+            setDeletingId(null);
+            onDeleteSuccess();
+        })
+        .catch(err => {
+            alert(err.message);
+            setDeletingId(null);
+        });
+    };
+
+    if (loading) {
+        return <div className="is-size-7 text-muted">Lade Einzelbuchungen...</div>;
+    }
+
+    if (error) {
+        return <div className="is-size-7 has-text-danger">{error}</div>;
+    }
+
+    if (changes.length === 0) {
+        return <div className="is-size-7 text-muted">Keine Einzelbuchungen (Zuwächse) in diesem Zeitraum vorhanden.</div>;
+    }
+
+    return (
+        <div>
+            <h5 className="is-size-7 has-text-weight-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse):</h5>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                {changes.map(c => (
+                    <div 
+                        key={c.id} 
+                        style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            background: 'rgba(255, 255, 255, 0.02)', 
+                            padding: '6px 10px', 
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                        }}
+                    >
+                        <span className="is-size-7" style={{ color: '#ccc' }}>
+                            <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk. 
+                            <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
+                        </span>
+                        <button 
+                            className="button is-danger is-small p-1" 
+                            style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
+                            disabled={deletingId === c.id}
+                        >
+                            {deletingId === c.id ? '...' : '❌ Löschen'}
+                        </button>
+                    </div>
+                ))}
             </div>
         </div>
     );

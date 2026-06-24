@@ -121,16 +121,5 @@ details[open] .details-arrow {
         </div>
     </details>
 
-    {# CARD 4: CUSTOM ASSET-TRACKING #}
-    <details class="box mb-4">
-        <summary>
-            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-                🎯 Custom Asset-Tracking
-            </h3>
-        </summary>
-        <div class="details-content">
-            <div data-react-component="TrackingViewer" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>
-        </div>
-    </details>
 </div>
 {% endblock %}

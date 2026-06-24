@@ -423,4 +423,85 @@ class TrackingListController extends AbstractController
             'totalValue' => $totalValue
         ]);
     }
+
+    #[Route('/api/changes', name: 'app_tracking_api_changes_get', methods: ['GET'])]
+    public function getChanges(Request $request): JsonResponse
+    {
+        $listId = $request->query->get('listId');
+        $typeId = $request->query->getInt('typeId');
+        $rangeType = $request->query->get('rangeType', 'days');
+        
+        if ($listId !== null && $listId !== '') {
+            $list = $this->entityManager->getRepository(TrackingList::class)->find((int)$listId);
+            if (!$list) {
+                return new JsonResponse(['error' => 'Liste nicht gefunden.'], Response::HTTP_NOT_FOUND);
+            }
+        }
+
+        $now = new \DateTimeImmutable();
+        if ($rangeType === 'hours') {
+            $hours = $request->query->getInt('hours', 24);
+            $cutoffDate = $now->modify(sprintf('-%d hours', $hours))->setTime((int)$now->format('H'), 0, 0);
+            $endDate = $now;
+        } elseif ($rangeType === 'single_date') {
+            $dateStr = $request->query->get('date');
+            try {
+                $selectedDate = new \DateTimeImmutable($dateStr);
+            } catch (\Exception $e) {
+                $selectedDate = new \DateTimeImmutable('today');
+            }
+            $cutoffDate = $selectedDate->setTime(0, 0, 0);
+            $endDate = $selectedDate->setTime(23, 59, 59);
+        } else {
+            $days = $request->query->getInt('days', 30);
+            $cutoffDate = $now->modify(sprintf('-%d days', $days))->setTime(0, 0, 0);
+            $endDate = $now;
+        }
+
+        $changes = $this->entityManager->getRepository(EveCharacterAssetChange::class)->createQueryBuilder('c')
+            ->select('c', 'char')
+            ->join('c.character', 'char')
+            ->where('c.typeId = :typeId')
+            ->andWhere('c.loggedAt >= :cutoff')
+            ->andWhere('c.loggedAt <= :endDate')
+            ->andWhere('char.user = :currentUser')
+            ->setParameter('typeId', $typeId)
+            ->setParameter('cutoff', $cutoffDate)
+            ->setParameter('endDate', $endDate)
+            ->setParameter('currentUser', $this->getUser())
+            ->orderBy('c.loggedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        /** @var EveCharacterAssetChange $change */
+        foreach ($changes as $change) {
+            $result[] = [
+                'id' => $change->getId(),
+                'characterName' => $change->getCharacter()->getName(),
+                'quantity' => (int) $change->getQuantity(),
+                'loggedAt' => $change->getLoggedAt()->format('Y-m-d H:i:s')
+            ];
+        }
+
+        return new JsonResponse($result);
+    }
+
+    #[Route('/api/changes/{id}', name: 'app_tracking_api_changes_delete', methods: ['DELETE'])]
+    public function deleteChange(int $id): JsonResponse
+    {
+        $change = $this->entityManager->getRepository(EveCharacterAssetChange::class)->find($id);
+        if (!$change) {
+            return new JsonResponse(['error' => 'Eintrag nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($change->getCharacter()->getUser() !== $this->getUser()) {
+            return new JsonResponse(['error' => 'Zugriff verweigert.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $this->entityManager->remove($change);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
+    }
 }

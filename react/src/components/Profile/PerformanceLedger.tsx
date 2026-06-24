@@ -78,6 +78,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
 
+    // Ertragsjournal refresh & detail states
+    const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+    const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
+
     // Fetch data
     useEffect(() => {
         setLoading(true);
@@ -112,7 +116,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 setError(err.message || 'Ein unbekannter Fehler ist aufgetreten.');
                 setLoading(false);
             });
-    }, [apiDataUrl]);
+    }, [apiDataUrl, refreshTrigger]);
 
     // Available characters in current data
     const availableCharacters = useMemo(() => {
@@ -495,6 +499,9 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 .text-right {
                     text-align: right;
                 }
+                .item-row-hover:hover {
+                    background: rgba(255, 255, 255, 0.04) !important;
+                }
             `}</style>
 
             <div className="stats-panel">
@@ -627,72 +634,91 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                 })}
                                             </div>
 
-                                            {/* Details Table */}
-                                            <div style={{ overflowX: 'auto' }}>
-                                                <table className="item-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th style={{ width: '40px' }}></th>
-                                                            <th>Gegenstand / Aktivität</th>
-                                                            <th>Kategorie</th>
-                                                            <th>Charakter</th>
-                                                            <th className="text-right">Menge</th>
-                                                            <th className="text-right">Jita-Preis</th>
-                                                            <th className="text-right">Gesamtwert</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {day.details.map((item, idx) => {
-                                                            // ESI image proxy handles type icon
-                                                            // Replacement of 12345 in paths
-                                                            const iconUrl = imagePaths.types.replace('12345', '12345'); // fallback
-                                                            const typeIdFallback = 0;
-
-                                                            return (
-                                                                <tr key={idx}>
-                                                                    <td>
-                                                                        {!item.isWallet && (
-                                                                            <div className="item-icon-wrapper">
-                                                                                <img 
-                                                                                    src={imagePaths.types.replace('12345', item.typeId.toString())} // will be resolved dynamically or handled by proxy
-                                                                                    onError={(e) => {
-                                                                                        // Fallback if proxy has issue
-                                                                                        (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
-                                                                                    }}
-                                                                                    alt=""
-                                                                                />
-                                                                            </div>
-                                                                        )}
-                                                                    </td>
-                                                                    <td style={{ fontWeight: 600 }}>{item.typeName}</td>
-                                                                    <td>
-                                                                        <span 
-                                                                            className="badge-cat" 
-                                                                            style={{ 
-                                                                                backgroundColor: `${CATEGORY_COLORS[item.category]}20`, 
-                                                                                color: CATEGORY_COLORS[item.category],
-                                                                                border: `1px solid ${CATEGORY_COLORS[item.category]}40`
-                                                                            }}
-                                                                        >
-                                                                            {CATEGORY_NAMES[item.category] || item.category}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td>{item.character}</td>
-                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                        {formatNumber(item.quantity)}
-                                                                    </td>
-                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                        {item.price > 0 ? formatISK(item.price) : '-'}
-                                                                    </td>
-                                                                    <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
-                                                                        {formatISK(item.totalValue)}
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                             {/* Details Table */}
+                                             <div style={{ overflowX: 'auto' }}>
+                                                 <table className="item-table">
+                                                     <thead>
+                                                         <tr>
+                                                             <th style={{ width: '30px' }}></th>
+                                                             <th style={{ width: '40px' }}></th>
+                                                             <th>Gegenstand / Aktivität</th>
+                                                             <th>Kategorie</th>
+                                                             <th>Charakter</th>
+                                                             <th className="text-right">Menge</th>
+                                                             <th className="text-right">Jita-Preis</th>
+                                                             <th className="text-right">Gesamtwert</th>
+                                                         </tr>
+                                                     </thead>
+                                                     <tbody>
+                                                         {day.details.map((item, idx) => {
+                                                             const itemKey = `${day.date}_${item.typeId}`;
+                                                             const isExpanded = expandedItemKey === itemKey;
+ 
+                                                             return (
+                                                                 <React.Fragment key={idx}>
+                                                                     <tr 
+                                                                         onClick={() => !item.isWallet && setExpandedItemKey(isExpanded ? null : itemKey)}
+                                                                         style={{ cursor: !item.isWallet ? 'pointer' : 'default' }}
+                                                                         className={!item.isWallet ? 'item-row-hover' : ''}
+                                                                     >
+                                                                         <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
+                                                                             {!item.isWallet ? (isExpanded ? '▼' : '▶') : ''}
+                                                                         </td>
+                                                                         <td>
+                                                                             {!item.isWallet && (
+                                                                                 <div className="item-icon-wrapper">
+                                                                                     <img 
+                                                                                         src={imagePaths.types.replace('12345', item.typeId.toString())}
+                                                                                         onError={(e) => {
+                                                                                             (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
+                                                                                         }}
+                                                                                         alt=""
+                                                                                     />
+                                                                                 </div>
+                                                                             )}
+                                                                         </td>
+                                                                         <td style={{ fontWeight: 600 }}>{item.typeName}</td>
+                                                                         <td>
+                                                                             <span 
+                                                                                 className="badge-cat" 
+                                                                                 style={{ 
+                                                                                     backgroundColor: `${CATEGORY_COLORS[item.category]}20`, 
+                                                                                     color: CATEGORY_COLORS[item.category],
+                                                                                     border: `1px solid ${CATEGORY_COLORS[item.category]}40`
+                                                                                 }}
+                                                                             >
+                                                                                 {CATEGORY_NAMES[item.category] || item.category}
+                                                                             </span>
+                                                                         </td>
+                                                                         <td>{item.character}</td>
+                                                                         <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                             {formatNumber(item.quantity)}
+                                                                         </td>
+                                                                         <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                             {item.price > 0 ? formatISK(item.price) : '-'}
+                                                                         </td>
+                                                                         <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
+                                                                             {formatISK(item.totalValue)}
+                                                                         </td>
+                                                                     </tr>
+                                                                     {isExpanded && !item.isWallet && (
+                                                                         <tr>
+                                                                             <td colSpan={8} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
+                                                                                 <ItemChangesDetails 
+                                                                                     dateStr={day.date}
+                                                                                     typeId={item.typeId}
+                                                                                     formatNumber={formatNumber}
+                                                                                     onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                                                                                 />
+                                                                             </td>
+                                                                         </tr>
+                                                                     )}
+                                                                 </React.Fragment>
+                                                             );
+                                                         })}
+                                                     </tbody>
+                                                 </table>
+                                             </div>
                                         </div>
                                     )}
                                 </div>
@@ -700,6 +726,121 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         })
                     )}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+interface ChangeEntry {
+    id: number;
+    characterName: string;
+    quantity: number;
+    loggedAt: string;
+}
+
+interface ItemChangesDetailsProps {
+    dateStr: string;
+    typeId: number;
+    formatNumber: (val: number) => string;
+    onDeleteSuccess: () => void;
+}
+
+function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: ItemChangesDetailsProps) {
+    const [changes, setChanges] = React.useState<ChangeEntry[]>([]);
+    const [loading, setLoading] = React.useState<boolean>(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [deletingId, setDeletingId] = React.useState<number | null>(null);
+
+    const loadChanges = () => {
+        setLoading(true);
+        const url = `/dashboard/tracking/api/changes?typeId=${typeId}&rangeType=single_date&date=${dateStr}`;
+
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('Fehler beim Laden der Buchungen.');
+                return res.json();
+            })
+            .then((data: ChangeEntry[]) => {
+                setChanges(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setLoading(false);
+            });
+    };
+
+    React.useEffect(() => {
+        loadChanges();
+    }, [dateStr, typeId]);
+
+    const handleDelete = (id: number, characterName: string, quantity: number, loggedAt: string) => {
+        if (!confirm(`Möchtest du die Zuwachs-Buchung über ${formatNumber(quantity)} Einheiten von ${characterName} am ${loggedAt} wirklich löschen?\nDies korrigiert das Ertragsjournal dauerhaft.`)) {
+            return;
+        }
+
+        setDeletingId(id);
+        fetch(`/dashboard/tracking/api/changes/${id}`, {
+            method: 'DELETE'
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Fehler beim Löschen des Eintrags.');
+            return res.json();
+        })
+        .then(() => {
+            setChanges(prev => prev.filter(c => c.id !== id));
+            setDeletingId(null);
+            onDeleteSuccess();
+        })
+        .catch(err => {
+            alert(err.message);
+            setDeletingId(null);
+        });
+    };
+
+    if (loading) {
+        return <div className="is-size-7 text-muted">Lade Einzelbuchungen...</div>;
+    }
+
+    if (error) {
+        return <div className="is-size-7 has-text-danger">{error}</div>;
+    }
+
+    if (changes.length === 0) {
+        return <div className="is-size-7 text-muted">Keine Einzelbuchungen (Zuwächse) für diesen Tag vorhanden.</div>;
+    }
+
+    return (
+        <div>
+            <h5 className="is-size-7 has-text-weight-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse) für diesen Tag:</h5>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                {changes.map(c => (
+                    <div 
+                        key={c.id} 
+                        style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            background: 'rgba(255, 255, 255, 0.02)', 
+                            padding: '6px 10px', 
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                        }}
+                    >
+                        <span className="is-size-7" style={{ color: '#ccc' }}>
+                            <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk. 
+                            <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
+                        </span>
+                        <button 
+                            className="button is-danger is-small p-1" 
+                            style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
+                            disabled={deletingId === c.id}
+                        >
+                            {deletingId === c.id ? '...' : '❌ Löschen'}
+                        </button>
+                    </div>
+                ))}
             </div>
         </div>
     );
