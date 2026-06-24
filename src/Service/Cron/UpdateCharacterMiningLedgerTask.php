@@ -70,6 +70,11 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
                     $character
                 );
 
+                if ($page === 1 && ($response['fromCache'] ?? false)) {
+                    $this->logger->info(sprintf('[Cron] Mining ledger for character %s is still cached. Skipping update.', $character->getName()));
+                    return;
+                }
+
                 $records = $response['data'];
                 $headers = $response['headers'];
 

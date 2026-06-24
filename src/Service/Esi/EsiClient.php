@@ -5,6 +5,7 @@ namespace App\Service\Esi;
 use App\Entity\EveCharacter;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
@@ -18,6 +19,7 @@ class EsiClient
         private readonly HttpClientInterface $httpClient,
         private readonly EntityManagerInterface $entityManager,
         private readonly CacheItemPoolInterface $cachePool,
+        private readonly LoggerInterface $logger,
         private readonly string $eveSsoClientId,
         private readonly string $eveSsoSecretKey,
         private readonly string $eveSsoCallbackUrl,
@@ -164,12 +166,16 @@ class EsiClient
         $cacheKey = null;
         $cacheItem = null;
 
+        $queryString = !empty($options['query']) ? '?' . http_build_query($options['query']) : '';
+        $fullPathLog = $path . $queryString;
+
         if ($useCache) {
             // Generate a secure, unique cache key based on path, options, and character ownership
             $cacheKey = 'esi_wh_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
             $cacheItem = $this->cachePool->getItem($cacheKey);
             if ($cacheItem->isHit()) {
                 $cachedVal = $cacheItem->get();
+                $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'info');
                 if (is_array($cachedVal) && isset($cachedVal['data']) && array_key_exists('headers', $cachedVal)) {
                     return $cachedVal;
                 }
@@ -202,9 +208,16 @@ class EsiClient
                 $options['headers'] = $headers;
                 $url = self::BASE_URL . ltrim($path, '/');
 
+                $this->logCron(sprintf('[EsiClient] Sending actual API request: %s %s (attempt %d)', $method, $fullPathLog, $attempt), 'debug');
+
                 $response = $this->httpClient->request($method, $url, $options);
                 $data = json_decode($response->getContent(), true);
                 $responseHeaders = $response->getHeaders(false);
+
+                // Log page count info if X-Pages header is present
+                if (isset($responseHeaders['x-pages'][0])) {
+                    $this->logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'info');
+                }
 
                 // Handle error limit remainder if present
                 $remain = isset($responseHeaders['x-esi-error-limit-remain'][0]) ? (int)$responseHeaders['x-esi-error-limit-remain'][0] : null;
@@ -212,7 +225,7 @@ class EsiClient
 
                 if ($remain !== null && $remain < 10) {
                     $sleepTime = $reset !== null ? min($reset, 5) : 2;
-                    error_log(sprintf('[EsiClient] ESI Error limit low (%d remaining). Throttling for %d seconds...', $remain, $sleepTime));
+                    $this->logCron(sprintf('[EsiClient] ESI Error limit low (%d remaining). Throttling for %d seconds...', $remain, $sleepTime), 'warning');
                     sleep($sleepTime);
                 }
 
@@ -251,7 +264,7 @@ class EsiClient
 
                     // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
                     if ($character && $statusCode === 401 && $attempt === 1) {
-                        error_log(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()));
+                        $this->logCron(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()), 'notice');
                         if ($this->refreshToken($character)) {
                             $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
                             continue; // Retry immediately
@@ -267,7 +280,7 @@ class EsiClient
                         $is420 = true;
                         $responseHeaders = $e->getResponse()->getHeaders(false);
                         $retryAfter = isset($responseHeaders['retry-after'][0]) ? (int)$responseHeaders['retry-after'][0] : 10;
-                        error_log(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm). Must sleep for %d seconds...', $retryAfter));
+                        $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Sleeping for %d seconds...', $fullPathLog, $retryAfter), 'error');
                     }
                 }
 
@@ -275,12 +288,33 @@ class EsiClient
                 $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420);
 
                 if ($isClientError || $attempt >= $maxRetries) {
+                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s', $fullPathLog, $attempt, $e->getMessage()), 'error');
                     throw $e;
                 }
 
-                error_log(sprintf('[EsiClient] Request to %s failed (attempt %d/%d): %s. Retrying in %d seconds...', $path, $attempt, $maxRetries, $e->getMessage(), $retryAfter));
+                $this->logCron(sprintf('[EsiClient] Request to %s fehlgeschlagen (Versuch %d/%d): %s. Erneuter Versuch in %d Sekunden...', $fullPathLog, $attempt, $maxRetries, $e->getMessage(), $retryAfter), 'warning');
                 sleep($retryAfter);
             }
+        }
+    }
+
+    /**
+     * Helper to log both to standard logger and directly to the dedicated var/log/cron.log file.
+     */
+    private function logCron(string $message, string $level = 'info'): void
+    {
+        $this->logger->log($level, $message);
+        
+        try {
+            $logFile = dirname(__FILE__, 4) . '/var/log/cron.log';
+            $logDir = dirname($logFile);
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0777, true);
+            }
+            $formatted = sprintf("[%s] [%s] %s\n", (new \DateTimeImmutable())->format('Y-m-d H:i:s'), strtoupper($level), $message);
+            file_put_contents($logFile, $formatted, FILE_APPEND);
+        } catch (\Exception $e) {
+            // Ignore write errors to prevent breaking the ESI client
         }
     }
 }

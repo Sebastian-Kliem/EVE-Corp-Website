@@ -334,6 +334,11 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     $character
                 );
 
+                if ($page === 1 && ($response['fromCache'] ?? false)) {
+                    $this->logger->info(sprintf('[Cron] Assets for character %s are still cached. Skipping update.', $character->getName()));
+                    return;
+                }
+
                 $assets = $response['data'];
                 $headers = $response['headers'];
 
@@ -675,6 +680,11 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     ],
                     $character
                 );
+
+                if ($page === 1 && ($response['fromCache'] ?? false)) {
+                    $this->logger->info(sprintf('[Cron] Corporation assets for corp %d are still cached. Skipping update.', $corpId));
+                    return;
+                }
 
                 $assets = $response['data'];
                 $headers = $response['headers'];

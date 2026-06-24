@@ -68,6 +68,11 @@ class UpdateCharacterContractsTask implements CronTaskInterface
                     $character
                 );
 
+                if ($page === 1 && ($response['fromCache'] ?? false)) {
+                    $this->logger->info(sprintf('[Cron] Contracts for character %s are still cached. Skipping update.', $character->getName()));
+                    return;
+                }
+
                 $contracts = $response['data'];
                 $headers = $response['headers'];
 
