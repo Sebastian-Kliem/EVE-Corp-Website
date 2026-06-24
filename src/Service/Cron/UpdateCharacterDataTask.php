@@ -320,11 +320,12 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $page = 1;
         $allAssets = [];
+        $totalPages = 1;
 
-        // Paginate character assets
-        while (true) {
+        // Paginate character assets using X-Pages header and retry logic
+        while ($page <= $totalPages) {
             try {
-                $assets = $this->esiClient->request(
+                $response = $this->esiClient->requestWithHeaders(
                     'GET',
                     sprintf('characters/%d/assets/', $character->getId()),
                     [
@@ -333,18 +334,25 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     $character
                 );
 
+                $assets = $response['data'];
+                $headers = $response['headers'];
+
                 if (empty($assets)) {
                     break;
                 }
 
                 $allAssets = array_merge($allAssets, $assets);
-                $page++;
-            } catch (\Exception $e) {
-                // If page > 1 fails, it likely means we hit the end of pages (e.g. ESI returning 404 or bad page)
-                if ($page === 1) {
-                    throw $e; // Throw if first page fails, meaning permission/scope issues or API error
+
+                if ($page === 1 && isset($headers['x-pages'][0])) {
+                    $totalPages = (int)$headers['x-pages'][0];
                 }
-                break;
+
+                $page++;
+            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+                if ($e->getResponse()->getStatusCode() === 404) {
+                    break;
+                }
+                throw $e;
             }
         }
 
@@ -427,9 +435,15 @@ class UpdateCharacterDataTask implements CronTaskInterface
                         }
                     }
 
+                    $allTids = array_unique(array_merge(
+                        array_keys($newQuantities),
+                        array_keys($oldQuantities)
+                    ));
+
                     $now = new \DateTimeImmutable();
-                    foreach ($newQuantities as $tid => $newQty) {
+                    foreach ($allTids as $tid) {
                         $oldQty = $oldQuantities[$tid] ?? 0;
+                        $newQty = $newQuantities[$tid] ?? 0;
                         if ($newQty !== $oldQty) {
                             $changeQty = $newQty - $oldQty;
 
@@ -649,10 +663,11 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $page = 1;
         $allAssets = [];
+        $totalPages = 1;
 
-        while (true) {
+        while ($page <= $totalPages) {
             try {
-                $assets = $this->esiClient->request(
+                $response = $this->esiClient->requestWithHeaders(
                     'GET',
                     sprintf('corporations/%d/assets/', $corpId),
                     [
@@ -661,17 +676,25 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     $character
                 );
 
+                $assets = $response['data'];
+                $headers = $response['headers'];
+
                 if (empty($assets)) {
                     break;
                 }
 
                 $allAssets = array_merge($allAssets, $assets);
-                $page++;
-            } catch (\Exception $e) {
-                if ($page === 1) {
-                    throw $e; // Throw if first page fails, meaning missing permissions/roles/etc.
+
+                if ($page === 1 && isset($headers['x-pages'][0])) {
+                    $totalPages = (int)$headers['x-pages'][0];
                 }
-                break;
+
+                $page++;
+            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+                if ($e->getResponse()->getStatusCode() === 404) {
+                    break;
+                }
+                throw $e;
             }
         }
 

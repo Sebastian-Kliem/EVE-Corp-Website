@@ -57,10 +57,11 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
 
         $page = 1;
         $allRecords = [];
+        $totalPages = 1;
 
-        while (true) {
+        while ($page <= $totalPages) {
             try {
-                $records = $this->esiClient->request(
+                $response = $this->esiClient->requestWithHeaders(
                     'GET',
                     sprintf('characters/%d/mining/', $character->getId()),
                     [
@@ -69,21 +70,25 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
                     $character
                 );
 
+                $records = $response['data'];
+                $headers = $response['headers'];
+
                 if (empty($records) || !is_array($records)) {
                     break;
                 }
 
                 $allRecords = array_merge($allRecords, $records);
-                
-                if (count($records) < 1000) {
+
+                if ($page === 1 && isset($headers['x-pages'][0])) {
+                    $totalPages = (int)$headers['x-pages'][0];
+                }
+
+                $page++;
+            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+                if ($e->getResponse()->getStatusCode() === 404) {
                     break;
                 }
-                $page++;
-            } catch (\Exception $e) {
-                if ($page === 1) {
-                    throw $e;
-                }
-                break;
+                throw $e;
             }
         }
 

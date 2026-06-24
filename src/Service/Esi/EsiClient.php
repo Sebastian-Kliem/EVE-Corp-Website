@@ -151,6 +151,12 @@ class EsiClient
      */
     public function request(string $method, string $path, array $options = [], ?EveCharacter $character = null): mixed
     {
+        $result = $this->requestWithHeaders($method, $path, $options, $character);
+        return $result['data'];
+    }
+
+    public function requestWithHeaders(string $method, string $path, array $options = [], ?EveCharacter $character = null, int $maxRetries = 3): array
+    {
         $method = strtoupper($method);
         
         // Cache only GET requests
@@ -160,73 +166,121 @@ class EsiClient
 
         if ($useCache) {
             // Generate a secure, unique cache key based on path, options, and character ownership
-            $cacheKey = 'esi_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
+            $cacheKey = 'esi_wh_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
             $cacheItem = $this->cachePool->getItem($cacheKey);
             if ($cacheItem->isHit()) {
-                return $cacheItem->get();
+                $cachedVal = $cacheItem->get();
+                if (is_array($cachedVal) && isset($cachedVal['data']) && array_key_exists('headers', $cachedVal)) {
+                    return $cachedVal;
+                }
+                return [
+                    'data' => $cachedVal,
+                    'headers' => []
+                ];
             }
         }
 
         $headers = $options['headers'] ?? [];
         $headers['User-Agent'] = 'WH-Toolbox/1.0 (Contact: Sebastian Kliem)';
 
-        if ($character) {
-            $expiresAt = $character->getTokenExpiresAt();
-            // If token is expired or expires in less than 30 seconds, refresh it first
-            if (!$expiresAt || $expiresAt->getTimestamp() - time() < 30) {
-                if (!$this->refreshToken($character)) {
-                    throw new \RuntimeException('Failed to refresh ESI access token for character ' . $character->getName());
-                }
-            }
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            try {
+                if ($character) {
+                    $expiresAt = $character->getTokenExpiresAt();
+                    // If token is expired or expires in less than 30 seconds, refresh it first
+                    if (!$expiresAt || $expiresAt->getTimestamp() - time() < 30) {
+                        if (!$this->refreshToken($character)) {
+                            throw new \RuntimeException('Failed to refresh ESI access token for character ' . $character->getName());
+                        }
+                    }
 
-            $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
-        }
-
-        $options['headers'] = $headers;
-        $url = self::BASE_URL . ltrim($path, '/');
-
-        try {
-            $response = $this->httpClient->request($method, $url, $options);
-            $data = json_decode($response->getContent(), true);
-        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-            // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
-            if ($character && $e->getResponse()->getStatusCode() === 401) {
-                error_log(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()));
-                if ($this->refreshToken($character)) {
                     $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
-                    $options['headers'] = $headers;
-                    
-                    $response = $this->httpClient->request($method, $url, $options);
-                    $data = json_decode($response->getContent(), true);
-                } else {
-                    $character->setTokenValid(false);
-                    $this->entityManager->flush();
+                }
+
+                $options['headers'] = $headers;
+                $url = self::BASE_URL . ltrim($path, '/');
+
+                $response = $this->httpClient->request($method, $url, $options);
+                $data = json_decode($response->getContent(), true);
+                $responseHeaders = $response->getHeaders(false);
+
+                // Handle error limit remainder if present
+                $remain = isset($responseHeaders['x-esi-error-limit-remain'][0]) ? (int)$responseHeaders['x-esi-error-limit-remain'][0] : null;
+                $reset = isset($responseHeaders['x-esi-error-limit-reset'][0]) ? (int)$responseHeaders['x-esi-error-limit-reset'][0] : null;
+
+                if ($remain !== null && $remain < 10) {
+                    $sleepTime = $reset !== null ? min($reset, 5) : 2;
+                    error_log(sprintf('[EsiClient] ESI Error limit low (%d remaining). Throttling for %d seconds...', $remain, $sleepTime));
+                    sleep($sleepTime);
+                }
+
+                $result = [
+                    'data' => $data,
+                    'headers' => $responseHeaders
+                ];
+
+                // Cache the response if it was a successful GET request and contains Expires header
+                if ($useCache && $cacheItem !== null) {
+                    $expires = $responseHeaders['expires'][0] ?? null;
+                    if ($expires) {
+                        try {
+                            $expiryTime = new \DateTimeImmutable($expires);
+                            $ttl = $expiryTime->getTimestamp() - time();
+                            if ($ttl > 0) {
+                                $cacheItem->set($result);
+                                $cacheItem->expiresAfter($ttl);
+                                $this->cachePool->save($cacheItem);
+                            }
+                        } catch (\Exception $e) {
+                            // Fallback: If date parsing fails, do not cache
+                        }
+                    }
+                }
+
+                return $result;
+
+            } catch (\Exception $e) {
+                $statusCode = 0;
+                $is420 = false;
+                $retryAfter = 2;
+
+                if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
+                    $statusCode = $e->getResponse()->getStatusCode();
+
+                    // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
+                    if ($character && $statusCode === 401 && $attempt === 1) {
+                        error_log(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()));
+                        if ($this->refreshToken($character)) {
+                            $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
+                            continue; // Retry immediately
+                        } else {
+                            $character->setTokenValid(false);
+                            $this->entityManager->flush();
+                            throw $e;
+                        }
+                    }
+
+                    // HTTP 420: Enhance Your Calm
+                    if ($statusCode === 420) {
+                        $is420 = true;
+                        $responseHeaders = $e->getResponse()->getHeaders(false);
+                        $retryAfter = isset($responseHeaders['retry-after'][0]) ? (int)$responseHeaders['retry-after'][0] : 10;
+                        error_log(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm). Must sleep for %d seconds...', $retryAfter));
+                    }
+                }
+
+                // Client error (4xx) except HTTP 420 should fail immediately without retry
+                $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420);
+
+                if ($isClientError || $attempt >= $maxRetries) {
                     throw $e;
                 }
-            } else {
-                throw $e;
+
+                error_log(sprintf('[EsiClient] Request to %s failed (attempt %d/%d): %s. Retrying in %d seconds...', $path, $attempt, $maxRetries, $e->getMessage(), $retryAfter));
+                sleep($retryAfter);
             }
         }
-
-        // Cache the response if it was a successful GET request and contains Expires header
-        if ($useCache && $cacheItem !== null) {
-            $responseHeaders = $response->getHeaders(false);
-            $expires = $responseHeaders['expires'][0] ?? null;
-            if ($expires) {
-                try {
-                    $expiryTime = new \DateTimeImmutable($expires);
-                    $ttl = $expiryTime->getTimestamp() - time();
-                    if ($ttl > 0) {
-                        $cacheItem->set($data);
-                        $cacheItem->expiresAfter($ttl);
-                        $this->cachePool->save($cacheItem);
-                    }
-                } catch (\Exception $e) {
-                    // Fallback: If date parsing fails, do not cache
-                }
-            }
-        }
-
-        return $data;
     }
 }

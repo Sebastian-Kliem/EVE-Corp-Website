@@ -55,10 +55,11 @@ class UpdateCharacterContractsTask implements CronTaskInterface
 
         $page = 1;
         $allContracts = [];
+        $totalPages = 1;
 
-        while (true) {
+        while ($page <= $totalPages) {
             try {
-                $contracts = $this->esiClient->request(
+                $response = $this->esiClient->requestWithHeaders(
                     'GET',
                     sprintf('characters/%d/contracts/', $character->getId()),
                     [
@@ -67,27 +68,30 @@ class UpdateCharacterContractsTask implements CronTaskInterface
                     $character
                 );
 
+                $contracts = $response['data'];
+                $headers = $response['headers'];
+
                 if (empty($contracts) || !is_array($contracts)) {
                     break;
                 }
 
                 $allContracts = array_merge($allContracts, $contracts);
-                
-                if (count($contracts) < 1000) {
-                    break;
+
+                if ($page === 1 && isset($headers['x-pages'][0])) {
+                    $totalPages = (int)$headers['x-pages'][0];
                 }
+
                 $page++;
             } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-                if ($e->getResponse()->getStatusCode() === 403) {
+                $statusCode = $e->getResponse()->getStatusCode();
+                if ($statusCode === 403) {
                     $this->logger->warning(sprintf('[Cron] Character %s lacks scope or permission for contracts.', $character->getName()));
                     return;
                 }
-                throw $e;
-            } catch (\Exception $e) {
-                if ($page === 1) {
-                    throw $e;
+                if ($statusCode === 404) {
+                    break;
                 }
-                break;
+                throw $e;
             }
         }
 
