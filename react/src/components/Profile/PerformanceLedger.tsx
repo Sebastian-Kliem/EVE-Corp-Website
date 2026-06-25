@@ -16,6 +16,7 @@ interface PerformanceDetail {
     totalValue: number;
     isWallet: boolean;
     typeId: number;
+    manualEntryId?: number;
 }
 
 interface DailySummary {
@@ -44,6 +45,7 @@ interface PerformanceLedgerProps {
         types: string;
         characters: string;
     };
+    omegaAccountCount: number;
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -66,10 +68,46 @@ const CATEGORY_COLORS: Record<string, string> = {
     other: '#888888'
 };
 
-export default function PerformanceLedger({ charactersList, apiDataUrl, imagePaths }: PerformanceLedgerProps) {
+const OMEGA_COST_ISK = 2500000000; // 2.5 Billion ISK
+
+export default function PerformanceLedger({ charactersList, apiDataUrl, imagePaths, omegaAccountCount }: PerformanceLedgerProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, DailyPerformance>>({});
+
+    // Calculate dynamic Omega goal based on manually set Omega accounts
+    const omegaGoal = useMemo(() => {
+        const count = omegaAccountCount > 0 ? omegaAccountCount : 1;
+        return count * OMEGA_COST_ISK;
+    }, [omegaAccountCount]);
+
+    // Calculate sum of earnings in current calendar month from ledgerData
+    const currentMonthEarnings = useMemo(() => {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth() + 1; // 1-12
+        
+        let total = 0;
+        Object.entries(ledgerData).forEach(([dateStr, day]) => {
+            const [yearStr, monthStr] = dateStr.split('-');
+            const year = parseInt(yearStr, 10);
+            const month = parseInt(monthStr, 10);
+            
+            if (year === currentYear && month === currentMonth) {
+                total += day.summary.totalValue;
+            }
+        });
+        return total;
+    }, [ledgerData]);
+
+    const currentMonthName = useMemo(() => {
+        const monthNames = [
+            'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+            'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+        ];
+        const today = new Date();
+        return `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+    }, []);
 
     // Filters state
     const [selectedDateRange, setSelectedDateRange] = useState<string>('today'); // 'today', 'yesterday', '7', '30', '90'
@@ -81,6 +119,92 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     // Ertragsjournal refresh & detail states
     const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
     const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null);
+
+    // Manual entry states
+    const [manualDate, setManualDate] = useState<string>(() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    });
+    const [manualCharId, setManualCharId] = useState<string>('');
+    const [manualCategory, setManualCategory] = useState<string>('other');
+    const [manualDescription, setManualDescription] = useState<string>('');
+    const [manualAmount, setManualAmount] = useState<string>('');
+    const [manualLoading, setManualLoading] = useState<boolean>(false);
+    const [manualError, setManualError] = useState<string | null>(null);
+
+    const handleAddManualEntry = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualDescription.trim()) {
+            setManualError('Beschreibung fehlt.');
+            return;
+        }
+        const amt = parseFloat(manualAmount);
+        if (isNaN(amt) || amt <= 0) {
+            setManualError('Betrag muss größer als 0 sein.');
+            return;
+        }
+        setManualLoading(true);
+        setManualError(null);
+
+        fetch('/dashboard/performance/manual', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                date: manualDate,
+                category: manualCategory,
+                description: manualDescription,
+                amount: amt,
+                characterId: manualCharId ? parseInt(manualCharId, 10) : null
+            })
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.error || 'Fehler beim Speichern.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            setManualDescription('');
+            setManualAmount('');
+            setManualLoading(false);
+            setRefreshTrigger(prev => prev + 1);
+        })
+        .catch(err => {
+            setManualError(err.message);
+            setManualLoading(false);
+        });
+    };
+
+    const handleDeleteManualEntry = (id: number, description: string, amount: number) => {
+        if (!confirm(`Möchtest du die manuelle Buchung "${description}" über ${formatISK(amount)} wirklich löschen?`)) {
+            return;
+        }
+
+        fetch(`/dashboard/performance/manual/${id}`, {
+            method: 'DELETE'
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.error || 'Fehler beim Löschen.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            setRefreshTrigger(prev => prev + 1);
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    };
 
     // Fetch data
     useEffect(() => {
@@ -313,6 +437,86 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 })}
             </div>
 
+            {/* Omega Target Widget */}
+            {(() => {
+                const percent = Math.min(100, Math.max(0, (currentMonthEarnings / omegaGoal) * 100));
+                const isNegative = currentMonthEarnings < 0;
+
+                return (
+                    <div className="box omega-tracker-box mb-4" style={{
+                        background: 'rgba(13, 19, 32, 0.7)',
+                        border: '1px solid var(--theme-card-border)',
+                        borderRadius: '8px',
+                        padding: '1.25rem',
+                        marginBottom: '1.5rem'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                            <div style={{ flex: '1 1 300px' }}>
+                                <h3 className="title is-6 mb-2" style={{ color: 'var(--theme-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                                    🎯 Omega-Ziel Tracker ({currentMonthName})
+                                </h3>
+                                <p className="is-size-7 has-text-grey-light mb-0">
+                                    {omegaAccountCount > 0 ? (
+                                        <span>Fortschritt für deine <strong>{omegaAccountCount} Omega-Accounts</strong> (Ziel: <strong>{formatISK(omegaGoal)}</strong>).</span>
+                                    ) : (
+                                        <span>Vergleiche deine Erträge dieses Monats mit den Kosten für einen Omega-Account (<strong>{formatISK(OMEGA_COST_ISK)}</strong>).</span>
+                                    )}
+                                </p>
+                            </div>
+                            
+                            <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span className="is-size-7" style={{ color: '#ccc' }}>
+                                        Erwirtschaftet: <strong style={{ color: isNegative ? '#f14668' : '#fff' }}>{formatISK(currentMonthEarnings)}</strong>
+                                    </span>
+                                    <span className={`is-size-7`} style={{ fontWeight: 'bold', color: isNegative ? '#f14668' : percent >= 100 ? '#00ffaa' : 'var(--theme-primary)' }}>
+                                        {isNegative ? '0%' : `${percent.toFixed(1)}%`}
+                                    </span>
+                                </div>
+                                
+                                {/* Progress Bar Container */}
+                                <div style={{
+                                    width: '100%', 
+                                    height: '14px', 
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)', 
+                                    borderRadius: '7px', 
+                                    overflow: 'hidden',
+                                    border: '1px solid var(--theme-card-border)',
+                                    position: 'relative'
+                                }}>
+                                    <div style={{
+                                        width: `${isNegative ? 0 : percent}%`,
+                                        height: '100%',
+                                        background: percent >= 100 
+                                            ? 'linear-gradient(90deg, #00b37a 0%, #00ffaa 100%)' 
+                                            : 'linear-gradient(90deg, #0284c7 0%, var(--theme-primary) 100%)',
+                                        borderRadius: '7px',
+                                        transition: 'width 0.5s ease-out',
+                                        boxShadow: percent >= 100 ? '0 0 8px rgba(0, 255, 170, 0.4)' : '0 0 8px rgba(0, 240, 255, 0.3)'
+                                    }}></div>
+                                </div>
+                            </div>
+                            
+                            <div style={{ flex: '1 1 100%', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', marginTop: '5px' }}>
+                                {percent >= 100 ? (
+                                    <div className="is-size-7" style={{ color: '#00ffaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span>🎉</span> <strong>Omega gesichert!</strong> Du hast diesen Monat genug erwirtschaftet, um dein Omega-Abonnement zu decken.
+                                    </div>
+                                ) : isNegative ? (
+                                    <div className="is-size-7" style={{ color: '#f14668', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <span>⚠️</span> <strong>Verlustmonat!</strong> Du bist diesen Monat im Minus.
+                                    </div>
+                                ) : (
+                                    <div className="is-size-7" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--theme-text-muted)' }}>
+                                        <span>⏳</span> Noch <strong>{formatISK(omegaGoal - currentMonthEarnings)}</strong> benötigt, um das Omega-Ziel zu erreichen.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="perf-grid">
                 {/* Left filter panel */}
                 <div className="filter-panel">
@@ -371,6 +575,77 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                 <span>{name}</span>
                             </label>
                         ))}
+                    </div>
+
+                    <div className="filter-section" style={{ borderTop: '1px solid var(--theme-card-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+                        <div className="filter-title">Manuelle Buchung</div>
+                        <form onSubmit={handleAddManualEntry}>
+                            <div className="manual-form-group">
+                                <label className="manual-form-label">Datum</label>
+                                <input 
+                                    type="date" 
+                                    className="search-input" 
+                                    value={manualDate} 
+                                    onChange={(e) => setManualDate(e.target.value)}
+                                    required 
+                                />
+                            </div>
+                            <div className="manual-form-group">
+                                <label className="manual-form-label">Charakter</label>
+                                <select 
+                                    className="select-input" 
+                                    value={manualCharId} 
+                                    onChange={(e) => setManualCharId(e.target.value)}
+                                >
+                                    <option value="" style={{ background: '#101525' }}>Keiner / Allgemein</option>
+                                    {charactersList.map(char => (
+                                        <option key={char.id} value={char.id} style={{ background: '#101525' }}>{char.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="manual-form-group">
+                                <label className="manual-form-label">Kategorie</label>
+                                <select 
+                                    className="select-input" 
+                                    value={manualCategory} 
+                                    onChange={(e) => setManualCategory(e.target.value)}
+                                >
+                                    {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
+                                        <option key={cat} value={cat} style={{ background: '#101525' }}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="manual-form-group">
+                                <label className="manual-form-label">Beschreibung</label>
+                                <input 
+                                    type="text" 
+                                    className="search-input" 
+                                    placeholder="z.B. Skill-Injektor..." 
+                                    value={manualDescription}
+                                    onChange={(e) => setManualDescription(e.target.value)}
+                                    required 
+                                />
+                            </div>
+                            <div className="manual-form-group">
+                                <label className="manual-form-label">Betrag (ISK)</label>
+                                <input 
+                                    type="number" 
+                                    className="search-input" 
+                                    placeholder="Betrag in ISK" 
+                                    value={manualAmount}
+                                    onChange={(e) => setManualAmount(e.target.value)}
+                                    required 
+                                />
+                            </div>
+                            {manualError && <div className="manual-error-msg">{manualError}</div>}
+                            <button 
+                                type="submit" 
+                                className="manual-submit-btn"
+                                disabled={manualLoading}
+                            >
+                                {manualLoading ? 'Speichert...' : 'Eintragen'}
+                            </button>
+                        </form>
                     </div>
                 </div>
 
@@ -435,21 +710,41 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                      </thead>
                                                      <tbody>
                                                          {day.details.map((item, idx) => {
-                                                             const itemKey = `${day.date}_${item.typeId}`;
+                                                             const itemKey = item.manualEntryId ? `manual_${item.manualEntryId}` : `${day.date}_${item.typeId}_${idx}`;
                                                              const isExpanded = expandedItemKey === itemKey;
 
                                                              return (
                                                                  <React.Fragment key={idx}>
                                                                      <tr
-                                                                         onClick={() => !item.isWallet && setExpandedItemKey(isExpanded ? null : itemKey)}
-                                                                         style={{ cursor: !item.isWallet ? 'pointer' : 'default' }}
-                                                                         className={!item.isWallet ? 'item-row-hover' : ''}
+                                                                         onClick={() => !item.isWallet && !item.manualEntryId && setExpandedItemKey(isExpanded ? null : itemKey)}
+                                                                         style={{ cursor: (!item.isWallet && !item.manualEntryId) ? 'pointer' : 'default' }}
+                                                                         className={(!item.isWallet && !item.manualEntryId) ? 'item-row-hover' : ''}
                                                                      >
                                                                          <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
-                                                                             {!item.isWallet ? (isExpanded ? '▼' : '▶') : ''}
+                                                                             {item.manualEntryId ? (
+                                                                                 <button 
+                                                                                     onClick={(e) => {
+                                                                                         e.stopPropagation();
+                                                                                         handleDeleteManualEntry(item.manualEntryId!, item.typeName, item.totalValue);
+                                                                                     }}
+                                                                                     style={{
+                                                                                         background: 'none',
+                                                                                         border: 'none',
+                                                                                         color: '#ff4444',
+                                                                                         cursor: 'pointer',
+                                                                                         padding: 0,
+                                                                                         fontSize: '0.9rem'
+                                                                                     }}
+                                                                                     title="Manuelle Buchung löschen"
+                                                                                 >
+                                                                                     🗑️
+                                                                                 </button>
+                                                                             ) : (
+                                                                                 !item.isWallet ? (isExpanded ? '▼' : '▶') : ''
+                                                                             )}
                                                                          </td>
                                                                          <td>
-                                                                             {!item.isWallet && (
+                                                                             {!item.isWallet && !item.manualEntryId && (
                                                                                  <div className="item-icon-wrapper">
                                                                                      <img
                                                                                          src={imagePaths.types.replace('12345', item.typeId.toString())}
@@ -458,6 +753,11 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                                          }}
                                                                                          alt=""
                                                                                      />
+                                                                                 </div>
+                                                                             )}
+                                                                             {item.manualEntryId && (
+                                                                                 <div className="item-icon-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
+                                                                                     ✍️
                                                                                  </div>
                                                                              )}
                                                                          </td>
@@ -476,10 +776,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                          </td>
                                                                          <td>{item.character}</td>
                                                                          <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                             {formatNumber(item.quantity)}
+                                                                             {item.manualEntryId ? '-' : formatNumber(item.quantity)}
                                                                          </td>
                                                                          <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                             {item.price > 0 ? formatISK(item.price) : '-'}
+                                                                             {item.price > 0 && !item.manualEntryId ? formatISK(item.price) : '-'}
                                                                          </td>
                                                                          <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
                                                                              {formatISK(item.totalValue)}

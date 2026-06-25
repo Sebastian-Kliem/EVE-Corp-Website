@@ -519,6 +519,35 @@ class EveAccountController extends AbstractController
         }
         $netWorth = $totalWallet + $globalTotalAssetVal;
 
+        // Build characters list for the Performance Ledger React component
+        $charactersList = [];
+        foreach ($currentUser->getEveAccounts() as $account) {
+            foreach ($account->getCharacters() as $char) {
+                $charactersList[] = [
+                    'id' => $char->getId(),
+                    'name' => $char->getName(),
+                    'accountGroup' => $account->getGroupName() ?: 'Ungruppiert',
+                    'accountName' => $account->getName(),
+                ];
+            }
+        }
+        foreach ($characters as $char) {
+            if ($char->getAccount() === null) {
+                $charactersList[] = [
+                    'id' => $char->getId(),
+                    'name' => $char->getName(),
+                    'accountGroup' => 'Ungruppiert',
+                    'accountName' => 'Ungruppiert',
+                ];
+            }
+        }
+        $uniqueCharacters = [];
+        foreach ($charactersList as $char) {
+            $uniqueCharacters[$char['id']] = $char;
+        }
+        $charactersList = array_values($uniqueCharacters);
+        usort($charactersList, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
         return $this->render('profile/eve_account/assets_overview.html.twig', [
             'totalWallet' => $totalWallet,
             'totalAssetVal' => $globalTotalAssetVal,
@@ -529,6 +558,7 @@ class EveAccountController extends AbstractController
             'omegaAccountCount' => $omegaAccountCount,
             'journalEntriesData' => $journalEntriesData,
             'charactersData' => $charactersData,
+            'charactersList' => $charactersList,
         ]);
     }
 

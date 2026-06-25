@@ -48,6 +48,28 @@ details[open] .details-arrow {
         </div>
     </div>
 
+    {# CARD 0: ERTRAGSJOURNAL (PERFORMANCE) #}
+    {% set perfProps = {
+        charactersList: charactersList,
+        apiDataUrl: path('app_dashboard_performance_data'),
+        omegaAccountCount: omegaAccountCount,
+        imagePaths: {
+            types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+            characters: path('app_eve_image_proxy', { category: 'characters', id: 12345, action: 'portrait' })
+        }
+    } %}
+
+    <details class="box mb-4" open>
+        <summary>
+            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                📊 Ertragsjournal (Performance)
+            </h3>
+        </summary>
+        <div class="details-content">
+            <div data-react-component="PerformanceLedger" data-react-props="{{ perfProps|json_encode|e('html_attr') }}"></div>
+        </div>
+    </details>
+
     {# CARD 1: GESAMT-INVENTAR (ASSETS) #}
     {% set characterDataProps = [] %}
     {% for data in characterData %}
