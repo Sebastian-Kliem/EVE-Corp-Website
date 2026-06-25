@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:install',
-    description: 'Runs initial installation tasks including database creation, migrations, and SDE download.',
+    description: 'Runs initial installation tasks including database creation, migrations, and SDE download. It is save repeatable for updates.',
 )]
 class AppInstallCommand extends Command
 {
@@ -72,7 +72,7 @@ class AppInstallCommand extends Command
         try {
             $sdeFile = $projectDir . '/var/sde.sqlite';
             $sdeExists = file_exists($sdeFile);
-            
+
             if ($sdeExists) {
                 $io->text('SDE file already exists. Checking for updates...');
             } else {
@@ -145,7 +145,7 @@ class AppInstallCommand extends Command
         try {
             $characterRepo = $this->entityManager->getRepository(EveCharacter::class);
             $charactersWithoutCutoff = $characterRepo->findBy(['performanceCutoffDate' => null]);
-            
+
             if (count($charactersWithoutCutoff) > 0) {
                 $now = new \DateTimeImmutable();
                 foreach ($charactersWithoutCutoff as $character) {
@@ -163,7 +163,7 @@ class AppInstallCommand extends Command
 
         $io->newLine();
         $io->success('WH-Toolbox has been installed/updated successfully!');
-        
+
         return Command::SUCCESS;
     }
 }

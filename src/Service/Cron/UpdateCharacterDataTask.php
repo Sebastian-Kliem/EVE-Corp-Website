@@ -59,6 +59,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
             // Sync Wallet, Journal & Market Transactions
             try {
+                $this->syncRoles($character);
                 $this->syncWallet($character);
                 $this->syncWalletJournal($character);
                 $this->syncMarketTransactions($character);
@@ -101,6 +102,36 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         $this->logger->info('[Cron] Finished sync-wallet-assets execution.');
+    }
+
+    private function syncRoles(EveCharacter $character): void
+    {
+        $this->logger->debug(sprintf('[Cron] Syncing roles for character %s...', $character->getName()));
+        
+        try {
+            $rolesData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/roles/', $character->getId()),
+                [],
+                $character
+            );
+            $roles = $rolesData['roles'] ?? [];
+            $character->setRoles($roles);
+            $this->entityManager->flush();
+            
+            $this->logger->info(sprintf(
+                '[Cron] Successfully updated roles for character %s: %s',
+                $character->getName(),
+                implode(', ', $roles)
+            ));
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf(
+                '[Cron] Failed to sync roles for character %s (%d): %s',
+                $character->getName(),
+                $character->getId(),
+                $e->getMessage()
+            ));
+        }
     }
 
     private function syncWallet(EveCharacter $character): void

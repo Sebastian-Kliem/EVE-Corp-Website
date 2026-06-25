@@ -15,6 +15,8 @@ class EsiClient
     private const SSO_AUTH_URL = 'https://login.eveonline.com/v2/oauth/authorize';
     private const SSO_TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token';
 
+    private static bool $esiOffline = false;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly EntityManagerInterface $entityManager,
@@ -161,6 +163,10 @@ class EsiClient
     {
         $method = strtoupper($method);
         
+        if (self::$esiOffline) {
+            throw new \RuntimeException('ESI is offline (circuit breaker active)');
+        }
+        
         // Cache only GET requests
         $useCache = ($method === 'GET');
         $cacheKey = null;
@@ -282,6 +288,14 @@ class EsiClient
                         $retryAfter = isset($responseHeaders['retry-after'][0]) ? (int)$responseHeaders['retry-after'][0] : 10;
                         $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Sleeping for %d seconds...', $fullPathLog, $retryAfter), 'error');
                     }
+                }
+
+                // Activate circuit breaker on server error (5xx) or transport exception (connection issues)
+                $isServerError = ($statusCode >= 500 && $statusCode < 600);
+                $isTransportError = ($e instanceof \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface);
+                if ($isServerError || $isTransportError) {
+                    self::$esiOffline = true;
+                    $this->logger->error(sprintf('[EsiClient] ESI is down or unreachable. Activating circuit breaker. Error: %s', $e->getMessage()));
                 }
 
                 // Client error (4xx) except HTTP 420 should fail immediately without retry

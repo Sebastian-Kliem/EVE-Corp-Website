@@ -65,6 +65,9 @@ class EveCharacter
     #[ORM\Column(type: 'boolean', options: ['default' => true])]
     private bool $tokenValid = true;
 
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $roles = [];
+
     public function getId(): ?int
     {
         return $this->id;
@@ -279,5 +282,22 @@ class EveCharacter
         $this->tokenValid = $tokenValid;
 
         return $this;
+    }
+
+    public function getRoles(): array
+    {
+        return $this->roles ?? [];
+    }
+
+    public function setRoles(array $roles): static
+    {
+        $this->roles = $roles;
+
+        return $this;
+    }
+
+    public function isDirector(): bool
+    {
+        return in_array('Director', $this->getRoles(), true);
     }
 }

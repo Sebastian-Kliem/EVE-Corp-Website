@@ -109,6 +109,14 @@ class EveSsoController extends AbstractController
                 // Keep going if public ESI call fails, we can update it later
             }
 
+            // Fetch character roles from ESI
+            try {
+                $rolesData = $this->esiClient->request('GET', 'characters/' . $characterId . '/roles/', [], $character);
+                $character->setRoles($rolesData['roles'] ?? []);
+            } catch (\Exception $e) {
+                $character->setRoles([]);
+            }
+
             // If the character was previously linked to another user's account, clear the assignment
             if ($character->getAccount() !== null && $character->getAccount()->getUser() !== $currentUser) {
                 $character->setAccount(null);

@@ -21,6 +21,12 @@ class EveStructure
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $solarSystemName = null;
 
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    private ?string $ownerId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $ownerName = null;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $lastUpdated = null;
 
@@ -76,6 +82,28 @@ class EveStructure
     public function setLastUpdated(\DateTimeImmutable $lastUpdated): static
     {
         $this->lastUpdated = $lastUpdated;
+        return $this;
+    }
+
+    public function getOwnerId(): ?string
+    {
+        return $this->ownerId;
+    }
+
+    public function setOwnerId(?string $ownerId): static
+    {
+        $this->ownerId = $ownerId;
+        return $this;
+    }
+
+    public function getOwnerName(): ?string
+    {
+        return $this->ownerName;
+    }
+
+    public function setOwnerName(?string $ownerName): static
+    {
+        $this->ownerName = $ownerName;
         return $this;
     }
 }

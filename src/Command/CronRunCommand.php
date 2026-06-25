@@ -190,6 +190,11 @@ class CronRunCommand extends Command
                 'name' => 'Struktur-Cache aktualisieren (Spieler-Strukturen)',
                 'command' => 'structure:update-cache',
                 'expression' => '0 */6 * * *', // every 6 hours
+            ],
+            [
+                'name' => 'Charakter-PI-Daten synchronisieren (Planetary Industry)',
+                'command' => 'character:sync-pi',
+                'expression' => '0 */2 * * *', // every 2 hours
             ]
         ];
 
