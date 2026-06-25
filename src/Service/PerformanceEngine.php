@@ -118,6 +118,17 @@ class PerformanceEngine
             ->getQuery()
             ->getResult();
 
+        // 5b. Fetch manual performance entries in the range
+        $manualEntries = $this->entityManager->getRepository(\App\Entity\PerformanceManualEntry::class)->createQueryBuilder('m')
+            ->where('m.user = :user')
+            ->andWhere('m.date >= :start')
+            ->andWhere('m.date <= :end')
+            ->setParameter('user', $user)
+            ->setParameter('start', $startDate)
+            ->setParameter('end', $endDate)
+            ->getQuery()
+            ->getResult();
+
         // 6. Gather all unique type IDs to resolve names and metadata in bulk
         $typeIds = [];
         /** @var EveCharacterAssetChange $change */
@@ -272,11 +283,20 @@ class PerformanceEngine
             }
         }
 
+        // Aggregate manual entries: [date][] => entry
+        $manualEntryAgg = [];
+        /** @var \App\Entity\PerformanceManualEntry $entry */
+        foreach ($manualEntries as $entry) {
+            $dateStr = $entry->getDate()->format('Y-m-d');
+            $manualEntryAgg[$dateStr][] = $entry;
+        }
+
         // 11. Combine and calculate net items gained
         $dates = array_unique(array_merge(
             array_keys($assetChangeAgg),
             array_keys($marketBuyAgg),
-            array_keys($contractRecAgg)
+            array_keys($contractRecAgg),
+            array_keys($manualEntryAgg)
         ));
         sort($dates);
 
@@ -339,6 +359,35 @@ class PerformanceEngine
                     'isWallet' => true,
                     'typeId' => 0
                 ];
+            }
+
+            // B. Process manual entries
+            if (isset($manualEntryAgg[$dateStr])) {
+                /** @var \App\Entity\PerformanceManualEntry $entry */
+                foreach ($manualEntryAgg[$dateStr] as $entry) {
+                    $amount = (float)$entry->getAmount();
+                    $cat = $entry->getCategory();
+                    $charName = $entry->getCharacter() ? $entry->getCharacter()->getName() : 'Manuelle Buchung';
+
+                    if (isset($dayData['summary']['byCategory'][$cat])) {
+                        $dayData['summary']['byCategory'][$cat] += $amount;
+                    } else {
+                        $dayData['summary']['byCategory']['other'] += $amount;
+                    }
+                    $dayData['summary']['totalValue'] += $amount;
+
+                    $dayData['details'][] = [
+                        'character' => $charName,
+                        'category' => $cat,
+                        'typeName' => $entry->getDescription(),
+                        'quantity' => 1,
+                        'price' => $amount,
+                        'totalValue' => $amount,
+                        'isWallet' => false,
+                        'typeId' => 0,
+                        'manualEntryId' => $entry->getId()
+                    ];
+                }
             }
 
             // B. Process net item changes (user-level)

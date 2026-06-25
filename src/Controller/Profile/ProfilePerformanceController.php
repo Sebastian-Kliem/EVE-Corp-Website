@@ -3,6 +3,7 @@
 namespace App\Controller\Profile;
 
 use App\Entity\User;
+use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Service\PerformanceEngine;
 use Doctrine\ORM\EntityManagerInterface;
@@ -11,6 +12,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use App\Entity\PerformanceManualEntry;
+use Symfony\Component\HttpFoundation\Request;
 
 #[Route('/dashboard/performance')]
 #[IsGranted('ROLE_MEMBER')]
@@ -64,8 +67,14 @@ class ProfilePerformanceController extends AbstractController
         // Sort by character name
         usort($charactersList, fn($a, $b) => strcasecmp($a['name'], $b['name']));
 
+        $omegaAccountCount = $this->entityManager->getRepository(EveAccount::class)->count([
+            'user' => $currentUser,
+            'isOmega' => true,
+        ]);
+
         return $this->render('profile/profile_performance/performance_ledger.html.twig', [
             'charactersList' => $charactersList,
+            'omegaAccountCount' => $omegaAccountCount,
         ]);
     }
 
@@ -85,5 +94,87 @@ class ProfilePerformanceController extends AbstractController
                 'error' => 'Failed to calculate performance data: ' . $e->getMessage()
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    #[Route('/manual', name: 'app_dashboard_performance_add_manual', methods: ['POST'])]
+    public function addManualEntry(Request $request): JsonResponse
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        $dateStr = $data['date'] ?? null;
+        $category = $data['category'] ?? 'other';
+        $description = trim($data['description'] ?? '');
+        $amount = (float)($data['amount'] ?? 0);
+        $characterId = isset($data['characterId']) ? (int)$data['characterId'] : null;
+
+        if (!$dateStr) {
+            return new JsonResponse(['error' => 'Datum fehlt.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $date = new \DateTimeImmutable($dateStr);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Ungültiges Datum.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (empty($description)) {
+            return new JsonResponse(['error' => 'Beschreibung fehlt.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($amount <= 0) {
+            return new JsonResponse(['error' => 'Betrag muss größer als 0 sein.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $character = null;
+        if ($characterId) {
+            $character = $this->entityManager->getRepository(EveCharacter::class)->findOneBy([
+                'id' => $characterId,
+                'user' => $currentUser
+            ]);
+            if (!$character) {
+                return new JsonResponse(['error' => 'Charakter nicht gefunden oder nicht zugeordnet.'], Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        $entry = new PerformanceManualEntry();
+        $entry->setUser($currentUser);
+        $entry->setCharacter($character);
+        $entry->setDate($date);
+        $entry->setCategory($category);
+        $entry->setDescription($description);
+        $entry->setAmount((string)$amount);
+
+        $this->entityManager->persist($entry);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
+    }
+
+    #[Route('/manual/{id}', name: 'app_dashboard_performance_delete_manual', methods: ['DELETE'])]
+    public function deleteManualEntry(int $id): JsonResponse
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $entry = $this->entityManager->getRepository(PerformanceManualEntry::class)->findOneBy([
+            'id' => $id,
+            'user' => $currentUser
+        ]);
+
+        if (!$entry) {
+            return new JsonResponse(['error' => 'Eintrag nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->entityManager->remove($entry);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
     }
 }

@@ -3033,4 +3033,41 @@ input[type="number"] {
     background: rgba(255, 255, 255, 0.04) !important;
 }
 
+/* Manual Entry Form */
+.manual-form-group {
+    margin-bottom: 0.75rem;
+}
+.manual-form-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--theme-text-muted);
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+.manual-submit-btn {
+    width: 100%;
+    background: var(--theme-primary);
+    color: #000;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-size: 0.85rem;
+    text-align: center;
+}
+.manual-submit-btn:hover:not(:disabled) {
+    opacity: 0.9;
+}
+.manual-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.manual-error-msg {
+    color: #ff4444;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
 
