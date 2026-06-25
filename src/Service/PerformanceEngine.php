@@ -226,8 +226,9 @@ class PerformanceEngine
             }
         }
 
-        // Process asset changes (net change per user): [date][rawTypeId] => quantity (summed across characters)
-        $assetChangeAgg = [];
+        // Process asset changes (net change per user aggregated by sync runs): [date][rawTypeId] => quantity
+        // Group changes by 15-minute run windows to cancel out inter-character transfers
+        $runAgg = [];
         /** @var EveCharacterAssetChange $change */
         foreach ($assetChanges as $change) {
             $charId = $change->getCharacter()->getId();
@@ -237,7 +238,12 @@ class PerformanceEngine
                 continue;
             }
 
-            $dateStr = $change->getLoggedAt()->format('Y-m-d');
+            $loggedAt = $change->getLoggedAt();
+            $dateStr = $loggedAt->format('Y-m-d');
+            $timestamp = $loggedAt->getTimestamp();
+            // Round to 15 minutes (900 seconds)
+            $roundedTime = floor($timestamp / 900) * 900;
+            
             $tid = $change->getTypeId();
             $qty = (int)$change->getQuantity();
 
@@ -245,10 +251,25 @@ class PerformanceEngine
             $rawTid = $comp['typeId'];
             $ratio = $comp['ratio'];
 
-            if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
-                $assetChangeAgg[$dateStr][$rawTid] = 0;
+            $groupKey = $dateStr . '_' . $roundedTime;
+            if (!isset($runAgg[$groupKey][$rawTid])) {
+                $runAgg[$groupKey][$rawTid] = 0;
             }
-            $assetChangeAgg[$dateStr][$rawTid] += ($qty * $ratio);
+            $runAgg[$groupKey][$rawTid] += ($qty * $ratio);
+        }
+
+        // Only sum positive net changes per day to capture actual earnings/gains
+        $assetChangeAgg = [];
+        foreach ($runAgg as $groupKey => $items) {
+            $dateStr = explode('_', $groupKey)[0];
+            foreach ($items as $rawTid => $netQty) {
+                if ($netQty > 0) {
+                    if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
+                        $assetChangeAgg[$dateStr][$rawTid] = 0;
+                    }
+                    $assetChangeAgg[$dateStr][$rawTid] += $netQty;
+                }
+            }
         }
 
         // 11. Combine and calculate net items gained

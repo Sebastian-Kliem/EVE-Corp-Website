@@ -70,9 +70,9 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, DailyPerformance>>({});
-    
+
     // Filters state
-    const [selectedDateRange, setSelectedDateRange] = useState<string>('30'); // 'today', 'yesterday', '7', '30', '90'
+    const [selectedDateRange, setSelectedDateRange] = useState<string>('today'); // 'today', 'yesterday', '7', '30', '90'
     const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['gas', 'ore_ice', 'blue_loot', 'abyss_loot', 'hacking_salvage', 'wallet_rewards', 'other']);
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -94,7 +94,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             })
             .then((data: Record<string, DailyPerformance>) => {
                 setLedgerData(data);
-                
+
                 // Expand the first date by default
                 const dates = Object.keys(data);
                 if (dates.length > 0) {
@@ -149,13 +149,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     };
 
     const toggleCharacterFilter = (char: string) => {
-        setSelectedCharacters(prev => 
+        setSelectedCharacters(prev =>
             prev.includes(char) ? prev.filter(c => c !== char) : [...prev, char]
         );
     };
 
     const toggleCategoryFilter = (cat: string) => {
-        setSelectedCategories(prev => 
+        setSelectedCategories(prev =>
             prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
         );
     };
@@ -171,7 +171,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         };
 
         const todayStr = formatDateStr(today);
-        
+
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = formatDateStr(yesterday);
@@ -282,12 +282,6 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             <div className="box has-text-centered p-5">
                 <span className="loader" style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}></span>
                 <p className="mt-3">Performance-Daten werden berechnet...</p>
-                <style>{`
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}</style>
             </div>
         );
     }
@@ -303,232 +297,6 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
     return (
         <div className="perf-ledger-container">
-            <style>{`
-                .perf-ledger-container {
-                    color: var(--theme-text);
-                    font-family: inherit;
-                }
-                .perf-grid {
-                    display: grid;
-                    grid-template-columns: 300px 1fr;
-                    gap: 1.5rem;
-                }
-                @media (max-width: 1024px) {
-                    .perf-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
-                .filter-panel {
-                    background: rgba(13, 19, 32, 0.7);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    padding: 1.25rem;
-                    align-self: start;
-                }
-                .filter-section {
-                    margin-bottom: 1.5rem;
-                }
-                .filter-title {
-                    font-size: 0.85rem;
-                    text-transform: uppercase;
-                    color: var(--theme-text-muted);
-                    font-weight: 700;
-                    margin-bottom: 0.75rem;
-                    letter-spacing: 0.05em;
-                }
-                .filter-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin-bottom: 0.5rem;
-                    font-size: 0.9rem;
-                    cursor: pointer;
-                }
-                .filter-row input {
-                    cursor: pointer;
-                }
-                .btn-group {
-                    display: flex;
-                    border-radius: 4px;
-                    overflow: hidden;
-                    border: 1px solid var(--theme-card-border);
-                }
-                .btn-group-btn {
-                    flex: 1;
-                    background: rgba(20, 27, 43, 0.6);
-                    border: none;
-                    color: var(--theme-text);
-                    padding: 0.5rem 0.25rem;
-                    font-size: 0.8rem;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                    text-align: center;
-                    white-space: nowrap;
-                }
-                .btn-group-btn:not(:last-child) {
-                    border-right: 1px solid var(--theme-card-border);
-                }
-                .btn-group-btn.is-active {
-                    background: var(--theme-primary);
-                    color: #000;
-                    font-weight: 600;
-                }
-                .search-input {
-                    width: 100%;
-                    background: rgba(10, 15, 25, 0.9);
-                    border: 1px solid var(--theme-card-border);
-                    color: var(--theme-text);
-                    padding: 0.5rem 0.75rem;
-                    border-radius: 4px;
-                    font-size: 0.9rem;
-                }
-                .search-input:focus {
-                    border-color: var(--theme-primary);
-                    outline: none;
-                }
-                .stats-panel {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                    gap: 1rem;
-                    margin-bottom: 1.5rem;
-                }
-                .stat-box {
-                    background: rgba(13, 19, 32, 0.6);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    padding: 1rem;
-                    text-align: left;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                }
-                .stat-label {
-                    font-size: 0.8rem;
-                    color: var(--theme-text-muted);
-                    margin-bottom: 0.25rem;
-                }
-                .stat-val {
-                    font-size: 1.15rem;
-                    font-weight: 700;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                .category-indicator {
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 50%;
-                    display: inline-block;
-                    margin-right: 0.5rem;
-                }
-                .day-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 1rem;
-                }
-                .day-card {
-                    background: rgba(13, 19, 32, 0.5);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    overflow: hidden;
-                    transition: border-color 0.2s;
-                }
-                .day-card:hover {
-                    border-color: rgba(0, 240, 255, 0.4);
-                }
-                .day-header {
-                    padding: 1rem 1.25rem;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    cursor: pointer;
-                    background: rgba(20, 27, 43, 0.4);
-                    user-select: none;
-                }
-                .day-title {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                }
-                .day-date {
-                    font-size: 1.1rem;
-                    font-weight: 700;
-                }
-                .day-total {
-                    font-size: 1.1rem;
-                    font-weight: 700;
-                    color: var(--theme-primary);
-                }
-                .day-body {
-                    padding: 1.25rem;
-                    border-top: 1px solid var(--theme-card-border);
-                    background: rgba(10, 15, 25, 0.2);
-                }
-                .day-breakdown {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 0.75rem;
-                    margin-bottom: 1.25rem;
-                    padding-bottom: 1rem;
-                    border-bottom: 1px dashed var(--theme-card-border);
-                }
-                .breakdown-badge {
-                    background: rgba(20, 27, 43, 0.8);
-                    border: 1px solid var(--theme-card-border);
-                    padding: 0.35rem 0.65rem;
-                    border-radius: 4px;
-                    font-size: 0.8rem;
-                    display: flex;
-                    align-items: center;
-                }
-                .item-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 0.9rem;
-                }
-                .item-table th {
-                    text-align: left;
-                    color: var(--theme-text-muted);
-                    font-weight: 600;
-                    padding: 0.5rem 0.75rem;
-                    border-bottom: 1px solid var(--theme-card-border);
-                }
-                .item-table td {
-                    padding: 0.65rem 0.75rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                    vertical-align: middle;
-                }
-                .item-icon-wrapper {
-                    width: 32px;
-                    height: 32px;
-                    border-radius: 4px;
-                    overflow: hidden;
-                    background: #111;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                }
-                .item-icon-wrapper img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                .badge-cat {
-                    font-size: 0.75rem;
-                    padding: 0.15rem 0.4rem;
-                    border-radius: 3px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                }
-                .text-right {
-                    text-align: right;
-                }
-                .item-row-hover:hover {
-                    background: rgba(255, 255, 255, 0.04) !important;
-                }
-            `}</style>
-
             <div className="stats-panel">
                 <div className="stat-box" style={{ borderLeft: '4px solid var(--theme-primary)' }}>
                     <span className="stat-label">Gesamtertrag (Netto)</span>
@@ -550,46 +318,25 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 <div className="filter-panel">
                     <div className="filter-section">
                         <div className="filter-title">Zeitraum</div>
-                        <div className="btn-group">
-                            <button 
-                                className={`btn-group-btn ${selectedDateRange === 'today' ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange('today')}
-                            >
-                                Heute
-                            </button>
-                            <button 
-                                className={`btn-group-btn ${selectedDateRange === 'yesterday' ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange('yesterday')}
-                            >
-                                Gestern
-                            </button>
-                            <button 
-                                className={`btn-group-btn ${selectedDateRange === '7' ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange('7')}
-                            >
-                                7 Tage
-                            </button>
-                            <button 
-                                className={`btn-group-btn ${selectedDateRange === '30' ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange('30')}
-                            >
-                                30 Tage
-                            </button>
-                            <button 
-                                className={`btn-group-btn ${selectedDateRange === '90' ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange('90')}
-                            >
-                                90 Tage
-                            </button>
-                        </div>
+                        <select
+                            className="select-input"
+                            value={selectedDateRange}
+                            onChange={(e) => setSelectedDateRange(e.target.value)}
+                        >
+                            <option value="today" style={{ background: '#101525' }}>Heute</option>
+                            <option value="yesterday" style={{ background: '#101525' }}>Gestern</option>
+                            <option value="7" style={{ background: '#101525' }}>7 Tage</option>
+                            <option value="30" style={{ background: '#101525' }}>30 Tage</option>
+                            <option value="90" style={{ background: '#101525' }}>90 Tage</option>
+                        </select>
                     </div>
 
                     <div className="filter-section">
                         <div className="filter-title">Suche Gegenstand</div>
-                        <input 
-                            type="text" 
-                            className="search-input" 
-                            placeholder="z.B. Fullerite..." 
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="z.B. Fullerite..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -600,8 +347,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             <div className="filter-title">Charaktere</div>
                             {availableCharacters.map(char => (
                                 <label key={char} className="filter-row">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         checked={selectedCharacters.includes(char)}
                                         onChange={() => toggleCharacterFilter(char)}
                                     />
@@ -615,8 +362,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         <div className="filter-title">Kategorien</div>
                         {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
                             <label key={cat} className="filter-row">
-                                <input 
-                                    type="checkbox" 
+                                <input
+                                    type="checkbox"
                                     checked={selectedCategories.includes(cat)}
                                     onChange={() => toggleCategoryFilter(cat)}
                                 />
@@ -690,10 +437,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                          {day.details.map((item, idx) => {
                                                              const itemKey = `${day.date}_${item.typeId}`;
                                                              const isExpanded = expandedItemKey === itemKey;
- 
+
                                                              return (
                                                                  <React.Fragment key={idx}>
-                                                                     <tr 
+                                                                     <tr
                                                                          onClick={() => !item.isWallet && setExpandedItemKey(isExpanded ? null : itemKey)}
                                                                          style={{ cursor: !item.isWallet ? 'pointer' : 'default' }}
                                                                          className={!item.isWallet ? 'item-row-hover' : ''}
@@ -704,7 +451,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                          <td>
                                                                              {!item.isWallet && (
                                                                                  <div className="item-icon-wrapper">
-                                                                                     <img 
+                                                                                     <img
                                                                                          src={imagePaths.types.replace('12345', item.typeId.toString())}
                                                                                          onError={(e) => {
                                                                                              (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
@@ -716,10 +463,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                          </td>
                                                                          <td style={{ fontWeight: 600 }}>{item.typeName}</td>
                                                                          <td>
-                                                                             <span 
-                                                                                 className="badge-cat" 
-                                                                                 style={{ 
-                                                                                     backgroundColor: `${CATEGORY_COLORS[item.category]}20`, 
+                                                                             <span
+                                                                                 className="badge-cat"
+                                                                                 style={{
+                                                                                     backgroundColor: `${CATEGORY_COLORS[item.category]}20`,
                                                                                      color: CATEGORY_COLORS[item.category],
                                                                                      border: `1px solid ${CATEGORY_COLORS[item.category]}40`
                                                                                  }}
@@ -741,7 +488,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                      {isExpanded && !item.isWallet && (
                                                                          <tr>
                                                                              <td colSpan={8} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
-                                                                                 <ItemChangesDetails 
+                                                                                 <ItemChangesDetails
                                                                                      dateStr={day.date}
                                                                                      typeId={item.typeId}
                                                                                      formatNumber={formatNumber}
@@ -852,24 +599,24 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
             <h5 className="is-size-7 has-text-weight-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse) für diesen Tag:</h5>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
                 {changes.map(c => (
-                    <div 
-                        key={c.id} 
-                        style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center', 
-                            background: 'rgba(255, 255, 255, 0.02)', 
-                            padding: '6px 10px', 
+                    <div
+                        key={c.id}
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            padding: '6px 10px',
                             borderRadius: '4px',
                             border: '1px solid rgba(255,255,255,0.05)'
                         }}
                     >
                         <span className="is-size-7" style={{ color: '#ccc' }}>
-                            <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk. 
+                            <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk.
                             <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
                         </span>
-                        <button 
-                            className="button is-danger is-small p-1" 
+                        <button
+                            className="button is-danger is-small p-1"
                             style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
                             disabled={deletingId === c.id}
