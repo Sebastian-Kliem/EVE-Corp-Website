@@ -72,7 +72,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [ledgerData, setLedgerData] = useState<Record<string, DailyPerformance>>({});
     
     // Filters state
-    const [selectedDateRange, setSelectedDateRange] = useState<number>(30); // 7, 30, 90 days
+    const [selectedDateRange, setSelectedDateRange] = useState<string>('30'); // 'today', 'yesterday', '7', '30', '90'
     const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['gas', 'ore_ice', 'blue_loot', 'abyss_loot', 'hacking_salvage', 'wallet_rewards', 'other']);
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -162,16 +162,40 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
     // Filter and reconstruct daily records based on active filters
     const filteredLedger = useMemo(() => {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - selectedDateRange);
-        const cutoffStr = cutoffDate.toISOString().substring(0, 10);
+        const today = new Date();
+        const formatDateStr = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const todayStr = formatDateStr(today);
+        
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = formatDateStr(yesterday);
 
         const result: DailyPerformance[] = [];
 
         Object.entries(ledgerData).forEach(([dateStr, day]) => {
             // Apply Date Range filter
-            if (selectedDateRange > 0 && dateStr < cutoffStr) {
-                return;
+            if (selectedDateRange === 'today') {
+                if (dateStr !== todayStr) {
+                    return;
+                }
+            } else if (selectedDateRange === 'yesterday') {
+                if (dateStr !== yesterdayStr) {
+                    return;
+                }
+            } else {
+                const daysLimit = parseInt(selectedDateRange, 10);
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - daysLimit);
+                const cutoffStr = formatDateStr(cutoffDate);
+                if (dateStr < cutoffStr) {
+                    return;
+                }
             }
 
             // Filter details
@@ -334,11 +358,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     background: rgba(20, 27, 43, 0.6);
                     border: none;
                     color: var(--theme-text);
-                    padding: 0.5rem;
-                    font-size: 0.85rem;
+                    padding: 0.5rem 0.25rem;
+                    font-size: 0.8rem;
                     cursor: pointer;
                     transition: background 0.2s;
                     text-align: center;
+                    white-space: nowrap;
                 }
                 .btn-group-btn:not(:last-child) {
                     border-right: 1px solid var(--theme-card-border);
@@ -527,20 +552,32 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         <div className="filter-title">Zeitraum</div>
                         <div className="btn-group">
                             <button 
-                                className={`btn-group-btn ${selectedDateRange === 7 ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange(7)}
+                                className={`btn-group-btn ${selectedDateRange === 'today' ? 'is-active' : ''}`}
+                                onClick={() => setSelectedDateRange('today')}
+                            >
+                                Heute
+                            </button>
+                            <button 
+                                className={`btn-group-btn ${selectedDateRange === 'yesterday' ? 'is-active' : ''}`}
+                                onClick={() => setSelectedDateRange('yesterday')}
+                            >
+                                Gestern
+                            </button>
+                            <button 
+                                className={`btn-group-btn ${selectedDateRange === '7' ? 'is-active' : ''}`}
+                                onClick={() => setSelectedDateRange('7')}
                             >
                                 7 Tage
                             </button>
                             <button 
-                                className={`btn-group-btn ${selectedDateRange === 30 ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange(30)}
+                                className={`btn-group-btn ${selectedDateRange === '30' ? 'is-active' : ''}`}
+                                onClick={() => setSelectedDateRange('30')}
                             >
                                 30 Tage
                             </button>
                             <button 
-                                className={`btn-group-btn ${selectedDateRange === 90 ? 'is-active' : ''}`}
-                                onClick={() => setSelectedDateRange(90)}
+                                className={`btn-group-btn ${selectedDateRange === '90' ? 'is-active' : ''}`}
+                                onClick={() => setSelectedDateRange('90')}
                             >
                                 90 Tage
                             </button>

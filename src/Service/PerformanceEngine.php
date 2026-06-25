@@ -36,7 +36,7 @@ class PerformanceEngine
     public function calculateDailyPerformance(User $user, ?\DateTimeImmutable $startDate = null, ?\DateTimeImmutable $endDate = null): array
     {
         if ($startDate === null) {
-            $startDate = (new \DateTimeImmutable('-30 days'))->setTime(0, 0, 0);
+            $startDate = (new \DateTimeImmutable('-90 days'))->setTime(0, 0, 0);
         }
         if ($endDate === null) {
             $endDate = (new \DateTimeImmutable())->setTime(23, 59, 59);
