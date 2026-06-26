@@ -538,7 +538,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         <div className="filter-title">Suche Gegenstand</div>
                         <input
                             type="text"
-                            className="search-input"
+                            className="ledger-input"
                             placeholder="z.B. Fullerite..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -753,18 +753,22 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 <form onSubmit={handleAddManualEntry}>
                     <div className="manual-form-grid">
                         <div className="manual-form-group">
-                            <label className="manual-form-label">Datum</label>
+                            <label htmlFor="manual-date" className="manual-form-label">Datum</label>
                             <input 
+                                id="manual-date"
+                                name="date"
                                 type="date" 
-                                className="search-input" 
+                                className="ledger-input" 
                                 value={manualDate} 
                                 onChange={(e) => setManualDate(e.target.value)}
                                 required 
                             />
                         </div>
                         <div className="manual-form-group">
-                            <label className="manual-form-label">Charakter</label>
+                            <label htmlFor="manual-character" className="manual-form-label">Charakter</label>
                             <select 
+                                id="manual-character"
+                                name="characterId"
                                 className="select-input" 
                                 value={manualCharId} 
                                 onChange={(e) => setManualCharId(e.target.value)}
@@ -776,8 +780,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             </select>
                         </div>
                         <div className="manual-form-group">
-                            <label className="manual-form-label">Kategorie</label>
+                            <label htmlFor="manual-category" className="manual-form-label">Kategorie</label>
                             <select 
+                                id="manual-category"
+                                name="category"
                                 className="select-input" 
                                 value={manualCategory} 
                                 onChange={(e) => setManualCategory(e.target.value)}
@@ -788,10 +794,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             </select>
                         </div>
                         <div className="manual-form-group">
-                            <label className="manual-form-label">Beschreibung</label>
+                            <label htmlFor="manual-description" className="manual-form-label">Beschreibung</label>
                             <input 
+                                id="manual-description"
+                                name="description"
                                 type="text" 
-                                className="search-input" 
+                                className="ledger-input" 
                                 placeholder="z.B. Skill-Injektor..." 
                                 value={manualDescription}
                                 onChange={(e) => setManualDescription(e.target.value)}
@@ -799,10 +807,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             />
                         </div>
                         <div className="manual-form-group">
-                            <label className="manual-form-label">Betrag (ISK)</label>
+                            <label htmlFor="manual-amount" className="manual-form-label">Betrag (ISK)</label>
                             <input 
+                                id="manual-amount"
+                                name="amount"
                                 type="number" 
-                                className="search-input" 
+                                className="ledger-input" 
                                 placeholder="Betrag in ISK" 
                                 value={manualAmount}
                                 onChange={(e) => setManualAmount(e.target.value)}

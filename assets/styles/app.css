@@ -2898,7 +2898,7 @@ input[type="number"] {
     border-color: var(--theme-primary);
     outline: none;
 }
-.search-input {
+.ledger-input {
     width: 100%;
     background: rgba(10, 15, 25, 0.9);
     border: 1px solid var(--theme-card-border);
@@ -2907,7 +2907,7 @@ input[type="number"] {
     border-radius: 4px;
     font-size: 0.9rem;
 }
-.search-input:focus {
+.ledger-input:focus {
     border-color: var(--theme-primary);
     outline: none;
 }
