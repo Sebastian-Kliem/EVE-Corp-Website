@@ -79,26 +79,6 @@ class ProfileController extends AbstractController
             }
         }
 
-        $unassignedCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
-            'user' => $currentUser,
-            'account' => null,
-        ]);
-
-        $groupedAccounts = [];
-        $uncategorized = [];
-        foreach ($currentUser->getEveAccounts() as $account) {
-            $groupName = $account->getGroupName();
-            if ($groupName) {
-                $groupedAccounts[$groupName][] = $account;
-            } else {
-                $uncategorized[] = $account;
-            }
-        }
-        ksort($groupedAccounts);
-        if (!empty($uncategorized)) {
-            $groupedAccounts['Ungruppiert'] = $uncategorized;
-        }
-
         // Fetch personal corp asset choices
         $userCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]);
         $corpIds = [];
@@ -257,12 +237,36 @@ class ProfileController extends AbstractController
             'user' => $currentUser,
             'errors' => $errors,
             'success' => $success,
-            'unassignedCharacters' => $unassignedCharacters,
-            'groupedAccounts' => $groupedAccounts,
             'availableHangars' => $availableHangars,
             'availableContainers' => $availableContainers,
         ], $response);
     }
+
+    #[Route('/characters', name: 'app_profile_characters', methods: ['GET'])]
+    public function characters(): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        $unassignedCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+            'user' => $currentUser,
+            'account' => null,
+        ]);
+
+        $accounts = iterator_to_array($currentUser->getEveAccounts());
+        usort($accounts, function($a, $b) {
+            return strcasecmp($a->getName(), $b->getName());
+        });
+
+        return $this->render('profile/eve_account/characters.html.twig', [
+            'user' => $currentUser,
+            'unassignedCharacters' => $unassignedCharacters,
+            'accounts' => $accounts,
+        ]);
+    }
+
 
     #[Route('/personal-assets', name: 'app_profile_personal_assets', methods: ['POST'])]
     public function updatePersonalAssets(Request $request): Response

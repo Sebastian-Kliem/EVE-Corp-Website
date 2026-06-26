@@ -33,13 +33,13 @@ class EveAccountController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('eve_account_create', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $name = trim((string) $request->request->get('name'));
         if (empty($name)) {
             $this->addFlash('error', 'Account-Name darf nicht leer sein.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $currentUser = $this->getUser();
@@ -56,7 +56,7 @@ class EveAccountController extends AbstractController
 
         $this->addFlash('success', sprintf('EVE Account "%s" erfolgreich erstellt.', $name));
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 
     #[Route('/profile/eve-account/{id}/update', name: 'app_eve_account_update', methods: ['POST'])]
@@ -71,27 +71,25 @@ class EveAccountController extends AbstractController
 
         if (!$this->isCsrfTokenValid('eve_account_update_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $name = trim((string) $request->request->get('name'));
-        $groupName = trim((string) $request->request->get('groupName'));
         $isOmega = (bool) $request->request->get('isOmega');
 
         if (empty($name)) {
             $this->addFlash('error', 'Account-Name darf nicht leer sein.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $account->setName($name);
-        $account->setGroupName(!empty($groupName) ? $groupName : null);
         $account->setIsOmega($isOmega);
 
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Account "%s" erfolgreich aktualisiert.', $name));
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 
     #[Route('/profile/eve-account/{id}/delete', name: 'app_eve_account_delete', methods: ['POST'])]
@@ -106,7 +104,7 @@ class EveAccountController extends AbstractController
 
         if (!$this->isCsrfTokenValid('eve_account_delete_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         // Reassign characters to null
@@ -121,7 +119,7 @@ class EveAccountController extends AbstractController
 
         $this->addFlash('success', sprintf('Account "%s" wurde gelöscht. Zuvor verknüpfte Charaktere sind nun nicht zugewiesen.', $accountName));
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 
     #[Route('/profile/eve-character/{id}/assign', name: 'app_eve_character_assign', methods: ['POST'])]
@@ -136,7 +134,7 @@ class EveAccountController extends AbstractController
 
         if (!$this->isCsrfTokenValid('eve_character_assign_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $accountId = $request->request->get('accountId');
@@ -148,7 +146,7 @@ class EveAccountController extends AbstractController
             $account = $this->entityManager->getRepository(EveAccount::class)->find((int) $accountId);
             if (!$account || $account->getUser() !== $this->getUser()) {
                 $this->addFlash('error', 'Ausgewählter Account ist ungültig.');
-                return $this->redirectToRoute('app_profile');
+                return $this->redirectToRoute('app_profile_characters');
             }
 
             $character->setAccount($account);
@@ -157,7 +155,7 @@ class EveAccountController extends AbstractController
 
         $this->entityManager->flush();
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 
     #[Route('/dashboard/eve-character/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]
@@ -1110,7 +1108,7 @@ class EveAccountController extends AbstractController
 
         if (!$this->isCsrfTokenValid('eve_character_delete_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $charName = $character->getName();
@@ -1120,7 +1118,7 @@ class EveAccountController extends AbstractController
 
         $this->addFlash('success', sprintf('Charakter "%s" wurde erfolgreich entfernt.', $charName));
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 
     #[Route('/profile/eve-character/{id}/tags', name: 'app_eve_character_tags', methods: ['POST'])]
@@ -1134,7 +1132,7 @@ class EveAccountController extends AbstractController
 
         if (!$this->isCsrfTokenValid('eve_character_tags_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('app_profile_characters');
         }
 
         $submittedTags = $request->request->all('tags'); // Checkbox values
@@ -1164,6 +1162,6 @@ class EveAccountController extends AbstractController
 
         $this->addFlash('success', sprintf('Tags für Charakter "%s" wurden erfolgreich aktualisiert.', $character->getName()));
 
-        return $this->redirectToRoute('app_profile');
+        return $this->redirectToRoute('app_profile_characters');
     }
 }

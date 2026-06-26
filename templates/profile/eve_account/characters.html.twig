@@ -1,0 +1,351 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Charakterübersicht{% endblock %}
+
+{% block body %}
+<div class="container container-narrow mt-5 mb-6">
+    <!-- Headline -->
+    <h1 class="title is-2 text-gradient">
+        Charakterübersicht
+    </h1>
+
+    <!-- Flash Messages -->
+    {% for message in app.flashes('success') %}
+        <div class="notification is-success">
+            ✔️ {{ message }}
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="notification is-danger">
+            ❌ {{ message }}
+        </div>
+    {% endfor %}
+
+    <!-- EVE Online Accounts & Characters Box -->
+    <div class="box mt-5">
+        <div class="is-flex is-justify-content-between is-align-items-center mb-4 profile-eve-heading" style="border-bottom: 1px solid var(--theme-card-border); padding-bottom: 15px;">
+            <h2 class="title is-4 mb-0 text-gradient" style="display: flex; align-items: center; gap: 8px;">
+                🚀 EVE Online Accounts & Charaktere
+            </h2>
+        </div>
+
+        <!-- Gruppe: Nicht zugewiesene Charaktere -->
+        {% if unassignedCharacters is not empty %}
+            <div class="box p-4 mb-4 profile-unassigned-box">
+                <div class="mb-3">
+                    <span class="has-text-weight-bold is-size-5 profile-unassigned-title">
+                        ⚠️ Nicht zugewiesene Charaktere
+                    </span>
+                    <p class="is-size-7 has-text-grey mt-1">Hier landen frisch hinzugefügte Charaktere. Weise sie unten einem Account zu.</p>
+                </div>
+
+                <div class="columns is-multiline">
+                    {% for char in unassignedCharacters %}
+                        <div class="column is-4">
+                            <div class="p-3 profile-char-card">
+                                <div class="is-flex is-align-items-center mb-3">
+                                    <figure class="image is-32x32 mr-3 profile-char-figure">
+                                        <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="is-rounded profile-char-avatar">
+                                    </figure>
+                                    <div>
+                                        <div class="has-text-weight-semibold is-size-6 profile-char-name">{{ char.name }}</div>
+                                        <div class="is-size-7 has-text-grey mb-1">ID: {{ char.id }}</div>
+                                        {% if char.tags is not empty %}
+                                            <div class="tags">
+                                                {% for tag in char.tags %}
+                                                    <span class="tag is-info">{{ tag }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Wallet Balance & Sync Status -->
+                                <div class="is-size-7 mt-2 mb-2 profile-char-wallet-row">
+                                    <div class="profile-char-wallet-flex">
+                                        <span class="profile-char-wallet-label">Wallet:</span>
+                                        <span class="has-text-weight-semibold profile-char-wallet-value">
+                                            {% if char.walletBalance is not null %}
+                                                {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+                                            {% else %}
+                                                <span class="profile-char-wallet-none">Keine Daten</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="profile-char-actions">
+                                    <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
+                                        🎒 Inventar
+                                    </a>
+                                    <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small profile-char-button-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
+                                        🔑 Re-Auth
+                                    </a>
+                                    <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
+                                        <button type="submit" class="button is-danger is-small profile-char-button-delete" title="Charakter entfernen">
+                                            ❌
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {% if not char.tokenValid %}
+                                    <div class="notification is-danger p-2 mt-2 is-size-7" style="border-radius: 4px;">
+                                        ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
+                                    </div>
+                                {% endif %}
+                                
+                                <!-- Zuweisungs-Formular -->
+                                <details class="profile-char-assign-details" id="assign-char-{{ char.id }}">
+                                    <summary class="profile-char-assign-summary">🔄 Account zuweisen</summary>
+                                    <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
+                                        <div class="select is-small is-fullwidth">
+                                            <select name="accountId" onchange="this.form.submit()" class="profile-char-assign-select">
+                                                <option value="unassigned" selected>-- Account auswählen --</option>
+                                                {% for account in user.eveAccounts %}
+                                                    <option value="{{ account.id }}">{{ account.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </form>
+                                </details>
+
+                                <!-- Tags-Formular -->
+                                <details class="profile-char-assign-details mt-2" id="tags-char-{{ char.id }}">
+                                    <summary class="profile-char-assign-summary">🏷️ Tags verwalten</summary>
+                                    <form action="{{ path('app_eve_character_tags', { id: char.id }) }}" method="POST" class="mt-2 p-3" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_tags_' ~ char.id) }}">
+                                        
+                                        <!-- Predefined tags checkboxes -->
+                                        <div class="mb-2">
+                                            <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 6px;">Feste Tags:</label>
+                                            {% for predefinedTag in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                                    <input type="checkbox" name="tags[]" value="{{ predefinedTag }}" id="tag_u_{{ char.id }}_{{ loop.index }}" {% if predefinedTag in char.tags %}checked{% endif %}>
+                                                    <label for="tag_u_{{ char.id }}_{{ loop.index }}" class="is-size-7" style="color: #ccc; cursor: pointer;">{{ predefinedTag }}</label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        <!-- Custom tags input -->
+                                        <div class="mb-3">
+                                            <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 4px;">Eigene Tags (mit Komma trennen):</label>
+                                            {% set customTags = [] %}
+                                            {% for tag in char.tags %}
+                                                {% if tag not in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                    {% set customTags = customTags|merge([tag]) %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            <input type="text" name="custom_tags" value="{{ customTags|join(', ') }}" placeholder="z.B. miner, industrie-alt" class="profile-input-small" style="width: 100%;">
+                                        </div>
+
+                                        <button type="submit" class="button is-link is-small" style="width: 100%; height: 26px;">Speichern</button>
+                                    </form>
+                                </details>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Liste der Accounts -->
+        {% if accounts is empty and unassignedCharacters is empty %}
+            <div class="notification is-info mt-3">
+                Bisher sind keine EVE Online Charaktere mit diesem Account verknüpft. Klicke auf "EVE Charakter hinzufügen", um einen EVE Charakter über EVE SSO zu verbinden.
+            </div>
+        {% else %}
+            {% for account in accounts %}
+                <div class="box p-4 mb-4 profile-account-box">
+                    
+                    <!-- Account Kopfzeile mit Einstellungen -->
+                    <div class="profile-account-header">
+                        <div>
+                            <span class="has-text-weight-bold is-size-5 profile-account-title">
+                                📂 {{ account.name }}
+                                {% if account.isOmega %}
+                                    <span class="tag is-warning">Omega</span>
+                                {% else %}
+                                    <span class="tag is-dark">Alpha</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Account bearbeiten dropdown/toggle -->
+                        <details class="profile-account-details">
+                            <summary class="profile-account-summary">⚙️ Einstellungen</summary>
+                            <div class="mt-3 cron-edit-form-container">
+                                <form action="{{ path('app_eve_account_update', { id: account.id }) }}" method="POST" class="mb-3">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('eve_account_update_' ~ account.id) }}">
+                                    
+                                    <div class="field mb-2 profile-form-field">
+                                        <label class="label is-small profile-form-label">Name</label>
+                                        <input class="input is-small profile-form-input" type="text" name="name" value="{{ account.name }}" required>
+                                    </div>
+                                    
+                                    <div class="field mb-3 profile-form-checkbox-group">
+                                        <input type="checkbox" id="isOmega_{{ account.id }}" name="isOmega" value="1" {% if account.isOmega %}checked{% endif %}>
+                                        <label for="isOmega_{{ account.id }}" class="profile-form-checkbox-label">Omega Account</label>
+                                    </div>
+                                    
+                                    <button type="submit" class="button is-success is-small is-fullwidth profile-form-button-full">Speichern</button>
+                                </form>
+                                
+                                <form action="{{ path('app_eve_account_delete', { id: account.id }) }}" method="POST" onsubmit="return confirm('Diesen Account wirklich löschen? Zugeordnete Charaktere werden dadurch nicht gelöscht, sondern werden unassigned.')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('eve_account_delete_' ~ account.id) }}">
+                                    <button type="submit" class="button is-danger is-small is-fullwidth profile-form-button-full">❌ Account löschen</button>
+                                </form>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Charaktere in diesem Account -->
+                    <div class="columns is-multiline">
+                        {% for char in account.characters %}
+                            <div class="column is-4">
+                                <div class="p-3 profile-char-card">
+                                    <div class="is-flex is-align-items-center mb-3">
+                                        <figure class="image is-32x32 mr-3 profile-char-figure">
+                                            <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="is-rounded profile-char-avatar">
+                                        </figure>
+                                        <div>
+                                            <div class="has-text-weight-semibold is-size-6 profile-char-name">{{ char.name }}</div>
+                                            <div class="is-size-7 has-text-grey mb-1">ID: {{ char.id }}</div>
+                                            {% if char.tags is not empty %}
+                                                <div class="tags">
+                                                    {% for tag in char.tags %}
+                                                        <span class="tag is-info">{{ tag }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- Wallet Balance & Sync Status -->
+                                    <div class="is-size-7 mt-2 mb-2 profile-char-wallet-row">
+                                        <div class="profile-char-wallet-flex">
+                                            <span class="profile-char-wallet-label">Wallet:</span>
+                                            <span class="has-text-weight-semibold profile-char-wallet-value">
+                                                {% if char.walletBalance is not null %}
+                                                    {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+                                                {% else %}
+                                                    <span class="profile-char-wallet-none">Keine Daten</span>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="profile-char-actions">
+                                        <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
+                                            🎒 Inventar
+                                        </a>
+                                        <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small profile-char-button-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
+                                            🔑 Re-Auth
+                                        </a>
+                                        <form action="{{ path('app_eve_character_delete', { id: char.id }) }}" method="POST" class="cron-inline-form" onsubmit="return confirm('Möchtest du den Charakter \'{{ char.name|e('js') }}\' wirklich vollständig aus der Anwendung entfernen?')">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ char.id) }}">
+                                            <button type="submit" class="button is-danger is-small profile-char-button-delete" title="Charakter entfernen">
+                                                ❌
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    {% if not char.tokenValid %}
+                                        <div class="notification is-danger p-2 mt-2 is-size-7" style="border-radius: 4px;">
+                                            ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Zuweisungs-Formular -->
+                                    <details class="profile-char-assign-details" id="assign-char-{{ char.id }}">
+                                        <summary class="profile-char-assign-summary">🔄 Account verschieben</summary>
+                                        <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
+                                            <div class="select is-small is-fullwidth">
+                                                <select name="accountId" onchange="this.form.submit()" class="profile-char-assign-select">
+                                                    {% for acc in user.eveAccounts %}
+                                                        <option value="{{ acc.id }}" {% if acc.id == account.id %}selected{% endif %}>{{ acc.name }}</option>
+                                                    {% endfor %}
+                                                    <option value="unassigned">-- Nicht zugewiesen --</option>
+                                                </select>
+                                            </div>
+                                        </form>
+                                    </details>
+
+                                    <!-- Tags-Formular -->
+                                    <details class="profile-char-assign-details mt-2" id="tags-char-{{ char.id }}">
+                                        <summary class="profile-char-assign-summary">🏷️ Tags verwalten</summary>
+                                        <form action="{{ path('app_eve_character_tags', { id: char.id }) }}" method="POST" class="mt-2 p-3" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_character_tags_' ~ char.id) }}">
+                                            
+                                            <!-- Predefined tags checkboxes -->
+                                            <div class="mb-2">
+                                                <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 6px;">Feste Tags:</label>
+                                                {% for predefinedTag in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                                        <input type="checkbox" name="tags[]" value="{{ predefinedTag }}" id="tag_a_{{ char.id }}_{{ loop.index }}" {% if predefinedTag in char.tags %}checked{% endif %}>
+                                                        <label for="tag_a_{{ char.id }}_{{ loop.index }}" class="is-size-7" style="color: #ccc; cursor: pointer;">{{ predefinedTag }}</label>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                            <!-- Custom tags input -->
+                                            <div class="mb-3">
+                                                <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 4px;">Eigene Tags (mit Komma trennen):</label>
+                                                {% set customTags = [] %}
+                                                {% for tag in char.tags %}
+                                                    {% if tag not in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                        {% set customTags = customTags|merge([tag]) %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <input type="text" name="custom_tags" value="{{ customTags|join(', ') }}" placeholder="z.B. miner, industrie-alt" class="profile-input-small" style="width: 100%;">
+                                            </div>
+
+                                            <button type="submit" class="button is-link is-small" style="width: 100%; height: 26px;">Speichern</button>
+                                        </form>
+                                    </details>
+                                </div>
+                            </div>
+                         {% endfor %}
+                        
+                        {% if account.characters is empty %}
+                            <div class="column is-12">
+                                <p class="is-size-7 has-text-grey has-text-centered">Keine Charaktere in diesem Account. Weise einen unassigned Charakter oben diesem Account zu.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Aktionen / Actions am Seitenende -->
+        <div class="mt-6 pt-5" style="border-top: 1px solid var(--theme-card-border);">
+            <div class="columns">
+                <div class="column is-6">
+                    <h3 class="title is-5 mb-3 text-gradient">➕ Charakter verknüpfen</h3>
+                    <p class="is-size-7 has-text-grey-light mb-4">
+                        Füge weitere EVE Online Charaktere über EVE SSO hinzu, um deren Assets, Wallet und Industrie-Aktivitäten einzusehen.
+                    </p>
+                    <a href="{{ path('app_eve_sso_login') }}" class="button is-primary is-small">
+                        ➕ EVE Charakter hinzufügen
+                    </a>
+                </div>
+                <div class="column is-6" style="border-left: 1px solid var(--theme-card-border); padding-left: 24px;">
+                    <h3 class="title is-5 mb-3 text-gradient">📂 Neuen Account-Ordner anlegen</h3>
+                    <p class="is-size-7 has-text-grey-light mb-3">
+                        Erstelle einen neuen Account-Ordner, um deine Charaktere thematisch zu sortieren (z. B. Cynos, PI, Main...).
+                    </p>
+                    <form action="{{ path('app_eve_account_create') }}" method="POST" class="profile-form-horizontal mt-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('eve_account_create') }}">
+                        <div class="profile-form-flex-grow mr-2">
+                            <input type="text" name="name" required placeholder="z. B. Main Account, Cyno Alts..." class="profile-input-small" style="width: 100%;">
+                        </div>
+                        <button type="submit" class="button is-link is-small" style="height: 30px;">Erstellen</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
