@@ -349,45 +349,23 @@ class UpdateCharacterDataTask implements CronTaskInterface
     {
         $this->logger->debug(sprintf('[Cron] Syncing assets for character %s...', $character->getName()));
 
-        $page = 1;
-        $allAssets = [];
-        $totalPages = 1;
+        try {
+            $response = $this->esiClient->requestAllPages(
+                sprintf('characters/%d/assets/', $character->getId()),
+                [],
+                $character
+            );
 
-        // Paginate character assets using X-Pages header and retry logic
-        while ($page <= $totalPages) {
-            try {
-                $response = $this->esiClient->requestWithHeaders(
-                    'GET',
-                    sprintf('characters/%d/assets/', $character->getId()),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
+            if ($response['fromCache']) {
+                $this->logger->info(sprintf('[Cron] Assets for character %s are still cached. Skipping update.', $character->getName()));
+                return;
+            }
 
-                if ($page === 1 && ($response['fromCache'] ?? false)) {
-                    $this->logger->info(sprintf('[Cron] Assets for character %s are still cached. Skipping update.', $character->getName()));
-                    return;
-                }
-
-                $assets = $response['data'];
-                $headers = $response['headers'];
-
-                if (empty($assets)) {
-                    break;
-                }
-
-                $allAssets = array_merge($allAssets, $assets);
-
-                if ($page === 1 && isset($headers['x-pages'][0])) {
-                    $totalPages = (int)$headers['x-pages'][0];
-                }
-
-                $page++;
-            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-                if ($e->getResponse()->getStatusCode() === 404) {
-                    break;
-                }
+            $allAssets = $response['data'];
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                $allAssets = [];
+            } else {
                 throw $e;
             }
         }
@@ -455,41 +433,45 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
                 if ($character->getLastAssetsUpdate() !== null && !empty($trackedTypeIds)) {
                     $oldAssets = $this->assetRepository->findBy(['character' => $character]);
-                    $oldQuantities = [];
-                    foreach ($oldAssets as $oldAsset) {
-                        $tid = $oldAsset->getTypeId();
-                        if (in_array($tid, $trackedTypeIds, true)) {
-                            $oldQuantities[$tid] = ($oldQuantities[$tid] ?? 0) + $oldAsset->getQuantity();
+                    
+                    // Safety check: If we have no old assets in the database, do not log any changes (treat as first sync/reset)
+                    if (!empty($oldAssets)) {
+                        $oldQuantities = [];
+                        foreach ($oldAssets as $oldAsset) {
+                            $tid = $oldAsset->getTypeId();
+                            if (in_array($tid, $trackedTypeIds, true)) {
+                                $oldQuantities[$tid] = ($oldQuantities[$tid] ?? 0) + $oldAsset->getQuantity();
+                            }
                         }
-                    }
 
-                    $newQuantities = [];
-                    foreach ($allAssets as $assetData) {
-                        $tid = (int) $assetData['type_id'];
-                        if (in_array($tid, $trackedTypeIds, true)) {
-                            $newQuantities[$tid] = ($newQuantities[$tid] ?? 0) + (int) $assetData['quantity'];
+                        $newQuantities = [];
+                        foreach ($allAssets as $assetData) {
+                            $tid = (int) $assetData['type_id'];
+                            if (in_array($tid, $trackedTypeIds, true)) {
+                                $newQuantities[$tid] = ($newQuantities[$tid] ?? 0) + (int) $assetData['quantity'];
+                            }
                         }
-                    }
 
-                    $allTids = array_unique(array_merge(
-                        array_keys($newQuantities),
-                        array_keys($oldQuantities)
-                    ));
+                        $allTids = array_unique(array_merge(
+                            array_keys($newQuantities),
+                            array_keys($oldQuantities)
+                        ));
 
-                    $now = new \DateTimeImmutable();
-                    foreach ($allTids as $tid) {
-                        $oldQty = $oldQuantities[$tid] ?? 0;
-                        $newQty = $newQuantities[$tid] ?? 0;
-                        if ($newQty !== $oldQty) {
-                            $changeQty = $newQty - $oldQty;
+                        $now = new \DateTimeImmutable();
+                        foreach ($allTids as $tid) {
+                            $oldQty = $oldQuantities[$tid] ?? 0;
+                            $newQty = $newQuantities[$tid] ?? 0;
+                            if ($newQty !== $oldQty) {
+                                $changeQty = $newQty - $oldQty;
 
-                            $change = new EveCharacterAssetChange();
-                            $change->setCharacter($character);
-                            $change->setTypeId($tid);
-                            $change->setQuantity((string) $changeQty);
-                            $change->setLoggedAt($now);
+                                $change = new EveCharacterAssetChange();
+                                $change->setCharacter($character);
+                                $change->setTypeId($tid);
+                                $change->setQuantity((string) $changeQty);
+                                $change->setLoggedAt($now);
 
-                            $this->entityManager->persist($change);
+                                $this->entityManager->persist($change);
+                            }
                         }
                     }
                 }
@@ -697,44 +679,23 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $this->logger->info(sprintf('[Cron] Syncing corporation assets for corp %d using character %s...', $corpId, $character->getName()));
 
-        $page = 1;
-        $allAssets = [];
-        $totalPages = 1;
+        try {
+            $response = $this->esiClient->requestAllPages(
+                sprintf('corporations/%d/assets/', $corpId),
+                [],
+                $character
+            );
 
-        while ($page <= $totalPages) {
-            try {
-                $response = $this->esiClient->requestWithHeaders(
-                    'GET',
-                    sprintf('corporations/%d/assets/', $corpId),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
+            if ($response['fromCache']) {
+                $this->logger->info(sprintf('[Cron] Corporation assets for corp %d are still cached. Skipping update.', $corpId));
+                return;
+            }
 
-                if ($page === 1 && ($response['fromCache'] ?? false)) {
-                    $this->logger->info(sprintf('[Cron] Corporation assets for corp %d are still cached. Skipping update.', $corpId));
-                    return;
-                }
-
-                $assets = $response['data'];
-                $headers = $response['headers'];
-
-                if (empty($assets)) {
-                    break;
-                }
-
-                $allAssets = array_merge($allAssets, $assets);
-
-                if ($page === 1 && isset($headers['x-pages'][0])) {
-                    $totalPages = (int)$headers['x-pages'][0];
-                }
-
-                $page++;
-            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-                if ($e->getResponse()->getStatusCode() === 404) {
-                    break;
-                }
+            $allAssets = $response['data'];
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                $allAssets = [];
+            } else {
                 throw $e;
             }
         }

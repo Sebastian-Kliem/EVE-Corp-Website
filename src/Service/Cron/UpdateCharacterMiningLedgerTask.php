@@ -55,44 +55,23 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
     {
         $this->logger->debug(sprintf('[Cron] Syncing mining ledger for character %s...', $character->getName()));
 
-        $page = 1;
-        $allRecords = [];
-        $totalPages = 1;
+        try {
+            $response = $this->esiClient->requestAllPages(
+                sprintf('characters/%d/mining/', $character->getId()),
+                [],
+                $character
+            );
 
-        while ($page <= $totalPages) {
-            try {
-                $response = $this->esiClient->requestWithHeaders(
-                    'GET',
-                    sprintf('characters/%d/mining/', $character->getId()),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
+            if ($response['fromCache']) {
+                $this->logger->info(sprintf('[Cron] Mining ledger for character %s is still cached. Skipping update.', $character->getName()));
+                return;
+            }
 
-                if ($page === 1 && ($response['fromCache'] ?? false)) {
-                    $this->logger->info(sprintf('[Cron] Mining ledger for character %s is still cached. Skipping update.', $character->getName()));
-                    return;
-                }
-
-                $records = $response['data'];
-                $headers = $response['headers'];
-
-                if (empty($records) || !is_array($records)) {
-                    break;
-                }
-
-                $allRecords = array_merge($allRecords, $records);
-
-                if ($page === 1 && isset($headers['x-pages'][0])) {
-                    $totalPages = (int)$headers['x-pages'][0];
-                }
-
-                $page++;
-            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-                if ($e->getResponse()->getStatusCode() === 404) {
-                    break;
-                }
+            $allRecords = $response['data'];
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                $allRecords = [];
+            } else {
                 throw $e;
             }
         }

@@ -183,11 +183,13 @@ class EsiClient
                 $cachedVal = $cacheItem->get();
                 $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'info');
                 if (is_array($cachedVal) && isset($cachedVal['data']) && array_key_exists('headers', $cachedVal)) {
+                    $cachedVal['fromCache'] = true;
                     return $cachedVal;
                 }
                 return [
                     'data' => $cachedVal,
-                    'headers' => []
+                    'headers' => [],
+                    'fromCache' => true
                 ];
             }
         }
@@ -237,7 +239,8 @@ class EsiClient
 
                 $result = [
                     'data' => $data,
-                    'headers' => $responseHeaders
+                    'headers' => $responseHeaders,
+                    'fromCache' => false
                 ];
 
                 // Cache the response if it was a successful GET request and contains Expires header
@@ -310,6 +313,55 @@ class EsiClient
                 sleep($retryAfter);
             }
         }
+    }
+
+    /**
+     * Requests all pages for a paginated GET endpoint using X-Pages header.
+     * If the first page is from cache, returns immediately with fromCache => true.
+     * Throws an exception if any page > 1 is empty or if request fails.
+     */
+    public function requestAllPages(string $path, array $options = [], ?EveCharacter $character = null): array
+    {
+        $page = 1;
+        $totalPages = 1;
+        $mergedData = [];
+
+        while ($page <= $totalPages) {
+            $pageOptions = $options;
+            $pageOptions['query'] = array_merge($pageOptions['query'] ?? [], ['page' => $page]);
+
+            $response = $this->requestWithHeaders('GET', $path, $pageOptions, $character);
+
+            if ($page === 1 && ($response['fromCache'] ?? false)) {
+                return [
+                    'data' => $response['data'],
+                    'fromCache' => true
+                ];
+            }
+
+            $data = $response['data'];
+            $headers = $response['headers'];
+
+            if (empty($data) || !is_array($data)) {
+                if ($page > 1) {
+                    throw new \RuntimeException(sprintf('ESI returned empty data for page %d of %d on path %s.', $page, $totalPages, $path));
+                }
+                break;
+            }
+
+            $mergedData = array_merge($mergedData, $data);
+
+            if ($page === 1 && isset($headers['x-pages'][0])) {
+                $totalPages = (int)$headers['x-pages'][0];
+            }
+
+            $page++;
+        }
+
+        return [
+            'data' => $mergedData,
+            'fromCache' => false
+        ];
     }
 
     /**

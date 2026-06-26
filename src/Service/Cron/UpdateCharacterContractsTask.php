@@ -53,49 +53,28 @@ class UpdateCharacterContractsTask implements CronTaskInterface
     {
         $this->logger->debug(sprintf('[Cron] Syncing contracts for character %s...', $character->getName()));
 
-        $page = 1;
-        $allContracts = [];
-        $totalPages = 1;
+        try {
+            $response = $this->esiClient->requestAllPages(
+                sprintf('characters/%d/contracts/', $character->getId()),
+                [],
+                $character
+            );
 
-        while ($page <= $totalPages) {
-            try {
-                $response = $this->esiClient->requestWithHeaders(
-                    'GET',
-                    sprintf('characters/%d/contracts/', $character->getId()),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
+            if ($response['fromCache']) {
+                $this->logger->info(sprintf('[Cron] Contracts for character %s are still cached. Skipping update.', $character->getName()));
+                return;
+            }
 
-                if ($page === 1 && ($response['fromCache'] ?? false)) {
-                    $this->logger->info(sprintf('[Cron] Contracts for character %s are still cached. Skipping update.', $character->getName()));
-                    return;
-                }
-
-                $contracts = $response['data'];
-                $headers = $response['headers'];
-
-                if (empty($contracts) || !is_array($contracts)) {
-                    break;
-                }
-
-                $allContracts = array_merge($allContracts, $contracts);
-
-                if ($page === 1 && isset($headers['x-pages'][0])) {
-                    $totalPages = (int)$headers['x-pages'][0];
-                }
-
-                $page++;
-            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
-                $statusCode = $e->getResponse()->getStatusCode();
-                if ($statusCode === 403) {
-                    $this->logger->warning(sprintf('[Cron] Character %s lacks scope or permission for contracts.', $character->getName()));
-                    return;
-                }
-                if ($statusCode === 404) {
-                    break;
-                }
+            $allContracts = $response['data'];
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 403) {
+                $this->logger->warning(sprintf('[Cron] Character %s lacks scope or permission for contracts.', $character->getName()));
+                return;
+            }
+            if ($statusCode === 404) {
+                $allContracts = [];
+            } else {
                 throw $e;
             }
         }

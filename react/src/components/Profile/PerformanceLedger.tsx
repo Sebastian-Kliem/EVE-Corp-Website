@@ -84,8 +84,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     // Calculate sum of earnings in current calendar month from ledgerData
     const currentMonthEarnings = useMemo(() => {
         const today = new Date();
-        const currentYear = today.getFullYear();
-        const currentMonth = today.getMonth() + 1; // 1-12
+        const currentYear = today.getUTCFullYear();
+        const currentMonth = today.getUTCMonth() + 1; // 1-12
         
         let total = 0;
         Object.entries(ledgerData).forEach(([dateStr, day]) => {
@@ -106,7 +106,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
         ];
         const today = new Date();
-        return `${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+        return `${monthNames[today.getUTCMonth()]} ${today.getUTCFullYear()}`;
     }, []);
 
     // Filters state
@@ -123,9 +123,9 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     // Manual entry states
     const [manualDate, setManualDate] = useState<string>(() => {
         const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
+        const year = today.getUTCFullYear();
+        const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(today.getUTCDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     });
     const [manualCharId, setManualCharId] = useState<string>('');
@@ -288,16 +288,15 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const filteredLedger = useMemo(() => {
         const today = new Date();
         const formatDateStr = (d: Date) => {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
 
         const todayStr = formatDateStr(today);
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
         const yesterdayStr = formatDateStr(yesterday);
 
         const result: DailyPerformance[] = [];
@@ -315,7 +314,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             } else {
                 const daysLimit = parseInt(selectedDateRange, 10);
                 const cutoffDate = new Date();
-                cutoffDate.setDate(cutoffDate.getDate() - daysLimit);
+                cutoffDate.setUTCDate(cutoffDate.getUTCDate() - daysLimit);
                 const cutoffStr = formatDateStr(cutoffDate);
                 if (dateStr < cutoffStr) {
                     return;
@@ -663,7 +662,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                 weekday: 'long',
                                 year: 'numeric',
                                 month: 'long',
-                                day: 'numeric'
+                                day: 'numeric',
+                                timeZone: 'UTC'
                             });
 
                             return (
