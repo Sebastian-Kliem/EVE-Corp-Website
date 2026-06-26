@@ -395,34 +395,21 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
         $blueprintsMap = [];
-        $page = 1;
-        while (true) {
-            try {
-                $blueprints = $this->esiClient->request(
-                    'GET',
-                    sprintf('characters/%d/blueprints/', $character->getId()),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
-                if (empty($blueprints)) {
-                    break;
-                }
-                foreach ($blueprints as $bp) {
-                    $blueprintsMap[(int)$bp['item_id']] = [
-                        'me' => (int)($bp['material_efficiency'] ?? 0),
-                        'te' => (int)($bp['time_efficiency'] ?? 0),
-                        'runs' => (int)($bp['runs'] ?? -1),
-                    ];
-                }
-                $page++;
-            } catch (\Exception $e) {
-                if ($page === 1) {
-                    error_log(sprintf('[UpdateCharacterDataTask] Failed to fetch blueprints for character %d: %s', $character->getId(), $e->getMessage()));
-                }
-                break;
+        try {
+            $bpResponse = $this->esiClient->requestAllPages(
+                sprintf('characters/%d/blueprints/', $character->getId()),
+                [],
+                $character
+            );
+            foreach ($bpResponse['data'] as $bp) {
+                $blueprintsMap[(int)$bp['item_id']] = [
+                    'me' => (int)($bp['material_efficiency'] ?? 0),
+                    'te' => (int)($bp['time_efficiency'] ?? 0),
+                    'runs' => (int)($bp['runs'] ?? -1),
+                ];
             }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[UpdateCharacterDataTask] Failed to fetch blueprints for character %d: %s', $character->getId(), $e->getMessage()));
         }
 
         // Perform asset database update in a transaction
@@ -725,34 +712,21 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
         $blueprintsMap = [];
-        $page = 1;
-        while (true) {
-            try {
-                $blueprints = $this->esiClient->request(
-                    'GET',
-                    sprintf('corporations/%d/blueprints/', $corpId),
-                    [
-                        'query' => ['page' => $page]
-                    ],
-                    $character
-                );
-                if (empty($blueprints)) {
-                    break;
-                }
-                foreach ($blueprints as $bp) {
-                    $blueprintsMap[(int)$bp['item_id']] = [
-                        'me' => (int)($bp['material_efficiency'] ?? 0),
-                        'te' => (int)($bp['time_efficiency'] ?? 0),
-                        'runs' => (int)($bp['runs'] ?? -1),
-                    ];
-                }
-                $page++;
-            } catch (\Exception $e) {
-                if ($page === 1) {
-                    error_log(sprintf('[UpdateCharacterDataTask] Failed to fetch corporation blueprints for corp %d: %s', $corpId, $e->getMessage()));
-                }
-                break;
+        try {
+            $bpResponse = $this->esiClient->requestAllPages(
+                sprintf('corporations/%d/blueprints/', $corpId),
+                [],
+                $character
+            );
+            foreach ($bpResponse['data'] as $bp) {
+                $blueprintsMap[(int)$bp['item_id']] = [
+                    'me' => (int)($bp['material_efficiency'] ?? 0),
+                    'te' => (int)($bp['time_efficiency'] ?? 0),
+                    'runs' => (int)($bp['runs'] ?? -1),
+                ];
             }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[UpdateCharacterDataTask] Failed to fetch corporation blueprints for corp %d: %s', $corpId, $e->getMessage()));
         }
 
         // Perform asset database update in a transaction
