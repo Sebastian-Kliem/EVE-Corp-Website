@@ -4,6 +4,7 @@ interface CharacterListEntry {
     id: number;
     name: string;
     hasToken: boolean;
+    tags?: string[];
 }
 
 interface IndustryJob {
@@ -98,6 +99,18 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [filterActivity, setFilterActivity] = useState<string>('all');
     const [hideEmptyCharacters, setHideEmptyCharacters] = useState<boolean>(true);
+    const [selectedTag, setSelectedTag] = useState<string>('all');
+
+    // Collect unique tags
+    const allTags = useMemo(() => {
+        const tags = new Set<string>();
+        charactersList.forEach(c => {
+            if (c.tags) {
+                c.tags.forEach(t => tags.add(t));
+            }
+        });
+        return Array.from(tags).sort();
+    }, [charactersList]);
     const [blueprintDetails, setBlueprintDetails] = useState<Record<string, BlueprintInfo>>({});
     const [marketPrices, setMarketPrices] = useState<Record<number, MarketPrice>>({});
     const [loadingBlueprints, setLoadingBlueprints] = useState<Record<string, boolean>>({});
@@ -579,7 +592,7 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
             {/* Global Search & Filters */}
             <div className="box mb-4">
                 <div className="columns is-multiline">
-                    <div className="column is-8">
+                    <div className={allTags.length > 0 ? "column is-5" : "column is-8"}>
                         <input 
                             type="text"
                             className="input input-dark"
@@ -588,6 +601,23 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    {allTags.length > 0 && (
+                        <div className="column is-3">
+                            <div className="select is-fullwidth">
+                                <select
+                                    value={selectedTag}
+                                    onChange={(e) => setSelectedTag(e.target.value)}
+                                    className="input-dark"
+                                    style={{ background: '#101525', color: '#fff', border: '1px solid var(--theme-card-border)' }}
+                                >
+                                    <option value="all">Alle Tags</option>
+                                    {allTags.map(tag => (
+                                        <option key={tag} value={tag}>{tag}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <div className="column is-4">
                         <div className="select is-fullwidth">
                             <select 
@@ -658,9 +688,15 @@ export default function IndustryJobsOverview({ charactersList, apiDataUrl, image
                 </div>
             </div>
 
-            {/* Characters list */}
             {charactersData
                 .filter((char) => {
+                    // Tag check
+                    if (selectedTag !== 'all') {
+                        const charObj = charactersList.find(c => c.id === char.id);
+                        if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
+                            return false;
+                        }
+                    }
                     if (hideEmptyCharacters) {
                         const activeJobsCount = (char.jobs || []).filter(j => j.status === 'active').length;
                         return activeJobsCount > 0;

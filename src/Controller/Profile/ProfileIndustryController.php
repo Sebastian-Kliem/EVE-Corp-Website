@@ -44,6 +44,7 @@ class ProfileIndustryController extends AbstractController
                 'id' => $char->getId(),
                 'name' => $char->getName(),
                 'hasToken' => !empty($char->getRefreshToken()),
+                'tags' => $char->getTags(),
             ];
         }
 

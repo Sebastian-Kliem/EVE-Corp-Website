@@ -80,6 +80,9 @@ class EveCharacter
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $implants = [];
 
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $tags = [];
+
     public function getId(): ?int
     {
         return $this->id;
@@ -354,6 +357,25 @@ class EveCharacter
         $this->implants = $implants;
 
         return $this;
+    }
+
+    public const PREDEFINED_TAGS = ['Skill-Extractor-Farm', 'PI', 'Industrie', 'Mining', 'Combat', 'Trading'];
+
+    public function getTags(): array
+    {
+        return $this->tags ?? [];
+    }
+
+    public function setTags(array $tags): static
+    {
+        $this->tags = $tags;
+
+        return $this;
+    }
+
+    public static function getPredefinedTags(): array
+    {
+        return self::PREDEFINED_TAGS;
     }
 
     public function isDirector(): bool

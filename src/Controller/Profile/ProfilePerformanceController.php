@@ -41,6 +41,7 @@ class ProfilePerformanceController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => $account->getGroupName() ?: 'Ungruppiert',
                     'accountName' => $account->getName(),
+                    'tags' => $char->getTags(),
                 ];
             }
         }
@@ -53,6 +54,7 @@ class ProfilePerformanceController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => 'Ungruppiert',
                     'accountName' => 'Ungruppiert',
+                    'tags' => $char->getTags(),
                 ];
             }
         }

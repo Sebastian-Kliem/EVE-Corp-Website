@@ -53,6 +53,7 @@ class ProfilePiController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => $account->getGroupName() ?: 'Ungruppiert',
                     'accountName' => $account->getName(),
+                    'tags' => $char->getTags(),
                 ];
             }
         }
@@ -66,6 +67,7 @@ class ProfilePiController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => 'Ungruppiert',
                     'accountName' => 'Ungruppiert',
+                    'tags' => $char->getTags(),
                 ];
             }
         }

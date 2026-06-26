@@ -74,3 +74,36 @@ function fallbackCopy(text, callback) {
     document.body.removeChild(textArea);
 }
 
+// Persist <details> open/closed state in localStorage
+document.addEventListener('toggle', function(event) {
+    if (event.target.tagName === 'DETAILS' && event.target.id) {
+        localStorage.setItem('details-open-' + event.target.id, event.target.open ? 'true' : 'false');
+    }
+}, true);
+
+// Save scroll position on form submissions
+document.addEventListener('submit', function() {
+    sessionStorage.setItem('scroll-position', window.scrollY);
+});
+
+// Restore open state of <details> elements and window scroll position
+function restoreDetailsAndScroll() {
+    document.querySelectorAll('details[id]').forEach(function(details) {
+        const saved = localStorage.getItem('details-open-' + details.id);
+        if (saved === 'true') {
+            details.open = true;
+        } else if (saved === 'false') {
+            details.open = false;
+        }
+    });
+
+    const scrollPos = sessionStorage.getItem('scroll-position');
+    if (scrollPos !== null) {
+        window.scrollTo(0, parseInt(scrollPos, 10));
+        sessionStorage.removeItem('scroll-position');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', restoreDetailsAndScroll);
+document.addEventListener('turbo:load', restoreDetailsAndScroll);
+

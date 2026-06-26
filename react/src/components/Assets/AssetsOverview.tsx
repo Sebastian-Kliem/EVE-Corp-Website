@@ -39,6 +39,7 @@ interface Character {
     id: number;
     name: string;
     lastAssetsUpdate: string | null;
+    tags?: string[];
 }
 
 interface CharacterData {
@@ -84,6 +85,23 @@ export default function AssetsOverview({
 
     // Active category filter
     const [activeFilter, setActiveFilter] = useState<string>('all');
+    const [selectedTag, setSelectedTag] = useState<string>('all');
+
+    // Collect all unique tags
+    const allTags = React.useMemo(() => {
+        const tags = new Set<string>();
+        characterData.forEach(c => {
+            if (c.character.tags) {
+                c.character.tags.forEach(t => tags.add(t));
+            }
+        });
+        return Array.from(tags).sort();
+    }, [characterData]);
+
+    const filteredCharacterDataByTag = React.useMemo(() => {
+        if (selectedTag === 'all') return characterData;
+        return characterData.filter(c => c.character.tags && c.character.tags.includes(selectedTag));
+    }, [characterData, selectedTag]);
 
     // Structure renaming states
     const [editingStructureId, setEditingStructureId] = useState<number | null>(null);
@@ -232,7 +250,7 @@ export default function AssetsOverview({
     const isSearching = queryNormalized !== '';
     const isFiltering = activeFilter !== 'all';
 
-    const processedCharacterData = characterData.map((data) => {
+    const processedCharacterData = filteredCharacterDataByTag.map((data) => {
         const filteredLocations = data.locations.map((loc) => {
             let filteredItems: AssetNode[] = [];
 
@@ -259,7 +277,7 @@ export default function AssetsOverview({
         };
     }).filter((data) => data.locations.length > 0);
 
-    const hasCharacters = characterData.length > 0;
+    const hasCharacters = filteredCharacterDataByTag.length > 0;
 
     // Helper component to render nested assets recursively
     const RenderAssetNode = ({ item }: { item: AssetNode }) => {
@@ -371,21 +389,41 @@ export default function AssetsOverview({
                     <p className="is-size-7 has-text-grey-light">Filtere und durchsuche das Inventar all deiner Charaktere.</p>
                 </div>
                 {hasCharacters && (
-                    <div className="column is-narrow">
-                        <div className="field mb-0">
-                            <div className="control has-icons-left">
-                                <input
-                                    id="global-asset-search"
-                                    className="input is-small assets-search-input assets-overview-search-input"
-                                    type="text"
-                                    placeholder="Gegenstände suchen..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                                <span className="icon is-small is-left">🔍</span>
+                    <>
+                        {allTags.length > 0 && (
+                            <div className="column is-narrow">
+                                <div className="field mb-0">
+                                    <div className="control select is-small">
+                                        <select
+                                            value={selectedTag}
+                                            onChange={(e) => setSelectedTag(e.target.value)}
+                                            style={{ background: '#101525', color: '#ccc', borderColor: '#444' }}
+                                        >
+                                            <option value="all">Alle Tags</option>
+                                            {allTags.map(tag => (
+                                                <option key={tag} value={tag}>{tag}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div className="column is-narrow">
+                            <div className="field mb-0">
+                                <div className="control has-icons-left">
+                                    <input
+                                        id="global-asset-search"
+                                        className="input is-small assets-search-input assets-overview-search-input"
+                                        type="text"
+                                        placeholder="Gegenstände suchen..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    <span className="icon is-small is-left">🔍</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
 

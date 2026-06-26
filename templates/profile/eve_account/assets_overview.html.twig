@@ -76,7 +76,8 @@ details[open] .details-arrow {
         {% set characterProps = {
             id: data.character.id,
             name: data.character.name,
-            lastAssetsUpdate: data.character.lastAssetsUpdate ? data.character.lastAssetsUpdate|date('d.m.Y H:i') : null
+            lastAssetsUpdate: data.character.lastAssetsUpdate ? data.character.lastAssetsUpdate|date('d.m.Y H:i') : null,
+            tags: data.character.tags
         } %}
         {% set characterDataProps = characterDataProps|merge([{
             character: characterProps,

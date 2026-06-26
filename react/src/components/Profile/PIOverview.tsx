@@ -5,6 +5,7 @@ interface CharacterListItem {
     name: string;
     accountGroup: string;
     accountName: string;
+    tags?: string[];
 }
 
 interface Material {
@@ -290,6 +291,18 @@ export default function PIOverview({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedSystem, setSelectedSystem] = useState('');
     const [selectedMaterial, setSelectedMaterial] = useState('');
+    const [selectedTag, setSelectedTag] = useState<string>('all');
+
+    // Collect all unique tags
+    const allTags = React.useMemo(() => {
+        const tags = new Set<string>();
+        charactersList.forEach(c => {
+            if (c.tags) {
+                c.tags.forEach(t => tags.add(t));
+            }
+        });
+        return Array.from(tags).sort();
+    }, [charactersList]);
 
     // Collapse states
     const [collapsedCharacters, setCollapsedCharacters] = useState<Record<number, boolean>>({});
@@ -376,6 +389,14 @@ export default function PIOverview({
 
     // Filtering logic
     const filteredPiData = piData.map((charData) => {
+        // Tag check
+        if (selectedTag !== 'all') {
+            const charObj = charactersList.find(c => c.id === charData.character_id);
+            if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
+                return null;
+            }
+        }
+
         const filteredPlanets = charData.planets.filter((planet) => {
             // Solar System filter
             if (selectedSystem && planet.solar_system_name !== selectedSystem) {
@@ -428,7 +449,7 @@ export default function PIOverview({
             ...charData,
             planets: filteredPlanets,
         };
-    }).filter(charData => charData.planets.length > 0 || searchQuery === '');
+    }).filter((charData): charData is CharacterPiData => charData !== null && (charData.planets.length > 0 || searchQuery === ''));
 
     // Summary calculation
     let totalPlanetsCount = 0;
@@ -436,7 +457,7 @@ export default function PIOverview({
     let idleExtractors = 0;
     let factoriesCount = 0;
 
-    piData.forEach((c) => {
+    filteredPiData.forEach((c) => {
         c.planets.forEach((p) => {
             totalPlanetsCount++;
             p.pins.forEach((pin) => {
@@ -494,6 +515,21 @@ export default function PIOverview({
                         className="form-control input-dark"
                     />
                 </div>
+
+                {allTags.length > 0 && (
+                    <div className="filter-item">
+                        <select
+                            value={selectedTag}
+                            onChange={(e) => setSelectedTag(e.target.value)}
+                            className="form-control select-dark"
+                        >
+                            <option value="all">-- Alle Tags --</option>
+                            {allTags.map(tag => (
+                                <option key={tag} value={tag}>{tag}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 <div className="filter-item">
                     <select

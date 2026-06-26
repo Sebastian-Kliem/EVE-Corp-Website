@@ -514,6 +514,7 @@ class EveAccountController extends AbstractController
             $charactersData[] = [
                 'id' => $character->getId(),
                 'name' => $character->getName(),
+                'tags' => $character->getTags(),
             ];
         }
 
@@ -532,6 +533,7 @@ class EveAccountController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => $account->getGroupName() ?: 'Ungruppiert',
                     'accountName' => $account->getName(),
+                    'tags' => $char->getTags(),
                 ];
             }
         }
@@ -542,6 +544,7 @@ class EveAccountController extends AbstractController
                     'name' => $char->getName(),
                     'accountGroup' => 'Ungruppiert',
                     'accountName' => 'Ungruppiert',
+                    'tags' => $char->getTags(),
                 ];
             }
         }
@@ -1116,6 +1119,50 @@ class EveAccountController extends AbstractController
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Charakter "%s" wurde erfolgreich entfernt.', $charName));
+
+        return $this->redirectToRoute('app_profile');
+    }
+
+    #[Route('/profile/eve-character/{id}/tags', name: 'app_eve_character_tags', methods: ['POST'])]
+    public function updateTags(int $id, Request $request): Response
+    {
+        $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
+
+        if (!$character || $character->getUser() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('Zugriff verweigert.');
+        }
+
+        if (!$this->isCsrfTokenValid('eve_character_tags_' . $id, $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $submittedTags = $request->request->all('tags'); // Checkbox values
+        $customTagsStr = $request->request->get('custom_tags', ''); // text input string
+
+        $tags = [];
+        foreach ($submittedTags as $tag) {
+            $tag = trim($tag);
+            if ($tag !== '' && !in_array($tag, $tags, true)) {
+                $tags[] = $tag;
+            }
+        }
+
+        if ($customTagsStr) {
+            // Support comma, semicolon, space, or newlines as separators
+            $customTags = preg_split('/[,;\n]+/', $customTagsStr);
+            foreach ($customTags as $tag) {
+                $tag = trim($tag);
+                if ($tag !== '' && !in_array($tag, $tags, true)) {
+                    $tags[] = $tag;
+                }
+            }
+        }
+
+        $character->setTags($tags);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', sprintf('Tags für Charakter "%s" wurden erfolgreich aktualisiert.', $character->getName()));
 
         return $this->redirectToRoute('app_profile');
     }

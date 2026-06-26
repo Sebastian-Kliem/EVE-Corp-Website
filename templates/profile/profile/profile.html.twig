@@ -17,7 +17,7 @@
     {% endfor %}
 
     <!-- Profile Details Box -->
-    <details class="box mt-5" {% if errors is not empty %}open{% endif %}>
+    <details class="box mt-5" id="profile-details" {% if errors is not empty %}open{% endif %}>
         <summary>👤 User-Profil</summary>
         <div class="details-content">
             <div class="form-group">
@@ -35,7 +35,7 @@
             {% endif %}
 
             <!-- Password Change Form Box -->
-            <details class="profile-details-wrapper mt-4" {% if errors is not empty %}open{% endif %}>
+            <details class="profile-details-wrapper mt-4" id="profile-password-edit" {% if errors is not empty %}open{% endif %}>
                 <summary class="profile-details-summary">🔑 Passwort ändern</summary>
                 <div class="mt-3">
                     <!-- Errors -->
@@ -82,7 +82,7 @@
     </details>
 
     <!-- Persönliche Corp-Assets Einstellungen -->
-    <details class="box mt-5">
+    <details class="box mt-5" id="profile-personal-assets">
         <summary>💼 Persönliche Corp-Assets (Hangare & Container)</summary>
         <div class="details-content">
             <p class="is-size-7 has-text-grey-light mb-4">
@@ -151,7 +151,7 @@
     </details>
 
     <!-- EVE Online Accounts & Characters Box -->
-    <details class="box mt-5">
+    <details class="box mt-5" id="profile-eve-accounts">
         <summary>🚀 EVE Online Accounts & Charaktere</summary>
         <div class="details-content">
             <div class="is-flex is-justify-content-end is-align-items-center mb-4 profile-eve-heading">
@@ -163,7 +163,7 @@
             </div>
 
             <!-- Neuen Account anlegen Form -->
-            <details class="mb-5 profile-details-wrapper">
+            <details class="mb-5 profile-details-wrapper" id="profile-new-account-folder">
                 <summary class="profile-details-summary">
                     <span>🛠️</span> Neuen Account-Ordner anlegen
                 </summary>
@@ -197,7 +197,14 @@
                                         </figure>
                                         <div>
                                             <div class="has-text-weight-semibold is-size-6 profile-char-name">{{ char.name }}</div>
-                                            <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
+                                            <div class="is-size-7 has-text-grey mb-1">ID: {{ char.id }}</div>
+                                            {% if char.tags is not empty %}
+                                                <div class="tags">
+                                                    {% for tag in char.tags %}
+                                                        <span class="tag is-info">{{ tag }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
                                         </div>
                                     </div>
 
@@ -237,7 +244,7 @@
                                     {% endif %}
                                     
                                     <!-- Zuweisungs-Formular -->
-                                    <details class="profile-char-assign-details">
+                                    <details class="profile-char-assign-details" id="assign-char-{{ char.id }}">
                                         <summary class="profile-char-assign-summary">🔄 Account zuweisen</summary>
                                         <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
                                             <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
@@ -249,6 +256,39 @@
                                                     {% endfor %}
                                                 </select>
                                             </div>
+                                        </form>
+                                    </details>
+
+                                    <!-- Tags-Formular -->
+                                    <details class="profile-char-assign-details mt-2" id="tags-char-{{ char.id }}">
+                                        <summary class="profile-char-assign-summary">🏷️ Tags verwalten</summary>
+                                        <form action="{{ path('app_eve_character_tags', { id: char.id }) }}" method="POST" class="mt-2 p-3" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('eve_character_tags_' ~ char.id) }}">
+                                            
+                                            <!-- Predefined tags checkboxes -->
+                                            <div class="mb-2">
+                                                <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 6px;">Feste Tags:</label>
+                                                {% for predefinedTag in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                                        <input type="checkbox" name="tags[]" value="{{ predefinedTag }}" id="tag_u_{{ char.id }}_{{ loop.index }}" {% if predefinedTag in char.tags %}checked{% endif %}>
+                                                        <label for="tag_u_{{ char.id }}_{{ loop.index }}" class="is-size-7" style="color: #ccc; cursor: pointer;">{{ predefinedTag }}</label>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+
+                                            <!-- Custom tags input -->
+                                            <div class="mb-3">
+                                                <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 4px;">Eigene Tags (mit Komma trennen):</label>
+                                                {% set customTags = [] %}
+                                                {% for tag in char.tags %}
+                                                    {% if tag not in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                        {% set customTags = customTags|merge([tag]) %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <input type="text" name="custom_tags" value="{{ customTags|join(', ') }}" placeholder="z.B. miner, industrie-alt" class="profile-input-small" style="width: 100%;">
+                                            </div>
+
+                                            <button type="submit" class="button is-link is-small" style="width: 100%; height: 26px;">Speichern</button>
                                         </form>
                                     </details>
                                 </div>
@@ -333,7 +373,14 @@
                                                     </figure>
                                                     <div>
                                                         <div class="has-text-weight-semibold is-size-6 profile-char-name">{{ char.name }}</div>
-                                                        <div class="is-size-7 has-text-grey">ID: {{ char.id }}</div>
+                                                        <div class="is-size-7 has-text-grey mb-1">ID: {{ char.id }}</div>
+                                                        {% if char.tags is not empty %}
+                                                            <div class="tags">
+                                                                {% for tag in char.tags %}
+                                                                    <span class="tag is-info">{{ tag }}</span>
+                                                                {% endfor %}
+                                                            </div>
+                                                        {% endif %}
                                                     </div>
                                                 </div>
 
@@ -373,7 +420,7 @@
                                                 {% endif %}
                                                 
                                                 <!-- Zuweisungs-Formular -->
-                                                <details class="profile-char-assign-details">
+                                                <details class="profile-char-assign-details" id="assign-char-{{ char.id }}">
                                                     <summary class="profile-char-assign-summary">🔄 Account verschieben</summary>
                                                     <form action="{{ path('app_eve_character_assign', { id: char.id }) }}" method="POST" class="mt-2">
                                                         <input type="hidden" name="_token" value="{{ csrf_token('eve_character_assign_' ~ char.id) }}">
@@ -385,6 +432,39 @@
                                                                 <option value="unassigned">-- Nicht zugewiesen --</option>
                                                             </select>
                                                         </div>
+                                                    </form>
+                                                </details>
+
+                                                <!-- Tags-Formular -->
+                                                <details class="profile-char-assign-details mt-2" id="tags-char-{{ char.id }}">
+                                                    <summary class="profile-char-assign-summary">🏷️ Tags verwalten</summary>
+                                                    <form action="{{ path('app_eve_character_tags', { id: char.id }) }}" method="POST" class="mt-2 p-3" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('eve_character_tags_' ~ char.id) }}">
+                                                        
+                                                        <!-- Predefined tags checkboxes -->
+                                                        <div class="mb-2">
+                                                            <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 6px;">Feste Tags:</label>
+                                                            {% for predefinedTag in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                                                    <input type="checkbox" name="tags[]" value="{{ predefinedTag }}" id="tag_a_{{ char.id }}_{{ loop.index }}" {% if predefinedTag in char.tags %}checked{% endif %}>
+                                                                    <label for="tag_a_{{ char.id }}_{{ loop.index }}" class="is-size-7" style="color: #ccc; cursor: pointer;">{{ predefinedTag }}</label>
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+
+                                                        <!-- Custom tags input -->
+                                                        <div class="mb-3">
+                                                            <label class="has-text-grey is-size-7" style="display: block; margin-bottom: 4px;">Eigene Tags (mit Komma trennen):</label>
+                                                            {% set customTags = [] %}
+                                                            {% for tag in char.tags %}
+                                                                {% if tag not in constant('App\\Entity\\EveCharacter::PREDEFINED_TAGS') %}
+                                                                    {% set customTags = customTags|merge([tag]) %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                            <input type="text" name="custom_tags" value="{{ customTags|join(', ') }}" placeholder="z.B. miner, industrie-alt" class="profile-input-small" style="width: 100%;">
+                                                        </div>
+
+                                                        <button type="submit" class="button is-link is-small" style="width: 100%; height: 26px;">Speichern</button>
                                                     </form>
                                                 </details>
                                             </div>

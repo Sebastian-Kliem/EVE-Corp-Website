@@ -5,6 +5,7 @@ interface CharacterListEntry {
     name: string;
     accountGroup: string;
     accountName: string;
+    tags?: string[];
 }
 
 interface PerformanceDetail {
@@ -115,6 +116,18 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['gas', 'ore_ice', 'blue_loot', 'abyss_loot', 'hacking_salvage', 'wallet_rewards', 'other']);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
+    const [selectedTag, setSelectedTag] = useState<string>('all');
+
+    // Collect all unique tags
+    const allTags = useMemo(() => {
+        const tags = new Set<string>();
+        charactersList.forEach(c => {
+            if (c.tags) {
+                c.tags.forEach(t => tags.add(t));
+            }
+        });
+        return Array.from(tags).sort();
+    }, [charactersList]);
 
     // Ertragsjournal refresh & detail states
     const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
@@ -247,11 +260,18 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         const chars = new Set<string>();
         Object.values(ledgerData).forEach(day => {
             day.details.forEach(d => {
-                chars.add(d.character);
+                if (selectedTag === 'all') {
+                    chars.add(d.character);
+                } else {
+                    const charObj = charactersList.find(c => c.name === d.character);
+                    if (charObj && charObj.tags && charObj.tags.includes(selectedTag)) {
+                        chars.add(d.character);
+                    }
+                }
             });
         });
         return Array.from(chars).sort();
-    }, [ledgerData]);
+    }, [ledgerData, selectedTag, charactersList]);
 
     const formatISK = (val: number): string => {
         return new Intl.NumberFormat('de-DE', {
@@ -327,6 +347,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 if (!selectedCharacters.includes(item.character)) {
                     return false;
                 }
+                // Tag check
+                if (selectedTag !== 'all') {
+                    const charObj = charactersList.find(c => c.name === item.character);
+                    if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
+                        return false;
+                    }
+                }
                 // Category check
                 if (!selectedCategories.includes(item.category)) {
                     return false;
@@ -374,7 +401,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         });
 
         return result;
-    }, [ledgerData, selectedDateRange, selectedCharacters, selectedCategories, searchTerm]);
+    }, [ledgerData, selectedDateRange, selectedCharacters, selectedCategories, searchTerm, selectedTag, charactersList]);
 
     // Overall summary across the filtered ledger
     const totalEarnings = useMemo(() => {
@@ -533,6 +560,22 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             <option value="90" style={{ background: '#101525' }}>90 Tage</option>
                         </select>
                     </div>
+
+                    {allTags.length > 0 && (
+                        <div className="filter-column">
+                            <div className="filter-title">Tag-Filter</div>
+                            <select
+                                className="select-input"
+                                value={selectedTag}
+                                onChange={(e) => setSelectedTag(e.target.value)}
+                            >
+                                <option value="all" style={{ background: '#101525' }}>Alle Tags</option>
+                                {allTags.map(tag => (
+                                    <option key={tag} value={tag} style={{ background: '#101525' }}>{tag}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="filter-column">
                         <div className="filter-title">Suche Gegenstand</div>
