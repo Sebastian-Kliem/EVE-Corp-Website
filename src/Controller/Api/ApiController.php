@@ -65,6 +65,66 @@ class ApiController extends AbstractController
         ]);
     }
 
+    #[Route('/characters', name: 'api_characters', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
+    public function getCharacters(EntityManagerInterface $entityManager): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['message' => 'Not authenticated'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $characters = $entityManager->getRepository(\App\Entity\EveCharacter::class)->findBy(['user' => $user]);
+        $data = [];
+
+        foreach ($characters as $char) {
+            $data[] = [
+                'id' => $char->getId(),
+                'name' => $char->getName(),
+                'corporationId' => $char->getCorporationId(),
+                'allianceId' => $char->getAllianceId(),
+                'skills' => $char->getSkills(),
+                'skillQueue' => $char->getSkillQueue(),
+                'attributes' => $char->getAttributes(),
+                'implants' => $char->getImplants(),
+                'walletBalance' => $char->getWalletBalance(),
+            ];
+        }
+
+        return new JsonResponse($data);
+    }
+
+    #[Route('/characters/{id}', name: 'api_character_detail', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
+    public function getCharacterDetail(int $id, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['message' => 'Not authenticated'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $char = $entityManager->getRepository(\App\Entity\EveCharacter::class)->findOneBy([
+            'id' => $id,
+            'user' => $user,
+        ]);
+
+        if (!$char) {
+            return new JsonResponse(['message' => 'Character not found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse([
+            'id' => $char->getId(),
+            'name' => $char->getName(),
+            'corporationId' => $char->getCorporationId(),
+            'allianceId' => $char->getAllianceId(),
+            'skills' => $char->getSkills(),
+            'skillQueue' => $char->getSkillQueue(),
+            'attributes' => $char->getAttributes(),
+            'implants' => $char->getImplants(),
+            'walletBalance' => $char->getWalletBalance(),
+        ]);
+    }
+
     #[Route('/sde/items', name: 'api_sde_items', methods: ['GET'])]
     #[IsGranted('ROLE_MEMBER')]
     public function searchSdeItems(Request $request, SdeService $sdeService): JsonResponse

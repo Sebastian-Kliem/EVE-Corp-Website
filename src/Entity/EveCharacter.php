@@ -68,6 +68,18 @@ class EveCharacter
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $roles = [];
 
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $skills = [];
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $skillQueue = [];
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $attributes = [];
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $implants = [];
+
     public function getId(): ?int
     {
         return $this->id;
@@ -292,6 +304,54 @@ class EveCharacter
     public function setRoles(array $roles): static
     {
         $this->roles = $roles;
+
+        return $this;
+    }
+
+    public function getSkills(): array
+    {
+        return $this->skills ?? [];
+    }
+
+    public function setSkills(array $skills): static
+    {
+        $this->skills = $skills;
+
+        return $this;
+    }
+
+    public function getSkillQueue(): array
+    {
+        return $this->skillQueue ?? [];
+    }
+
+    public function setSkillQueue(array $skillQueue): static
+    {
+        $this->skillQueue = $skillQueue;
+
+        return $this;
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes ?? [];
+    }
+
+    public function setAttributes(array $attributes): static
+    {
+        $this->attributes = $attributes;
+
+        return $this;
+    }
+
+    public function getImplants(): array
+    {
+        return $this->implants ?? [];
+    }
+
+    public function setImplants(array $implants): static
+    {
+        $this->implants = $implants;
 
         return $this;
     }

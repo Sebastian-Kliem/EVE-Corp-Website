@@ -72,6 +72,18 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 ));
             }
 
+            // Sync Skills, Skill Queue, Attributes & Implants
+            try {
+                $this->syncSkillsAttributesImplants($character);
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf(
+                    '[Cron] Failed to sync skills/attributes/implants for character %s (%d): %s',
+                    $character->getName(),
+                    $character->getId(),
+                    $e->getMessage()
+                ));
+            }
+
             // Sync Assets (Inventory)
             try {
                 $this->syncAssets($character);
@@ -866,6 +878,73 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         return $namesMap;
+    }
+
+    private function syncSkillsAttributesImplants(EveCharacter $character): void
+    {
+        $this->logger->debug(sprintf('[Cron] Syncing skills, attributes, and implants for character %s...', $character->getName()));
+
+        // 1. Fetch Skills
+        try {
+            $skillsData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/skills/', $character->getId()),
+                [],
+                $character
+            );
+            if (is_array($skillsData)) {
+                $character->setSkills($skillsData);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch skills for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+        }
+
+        // 2. Fetch Skill Queue
+        try {
+            $queueData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/skillqueue/', $character->getId()),
+                [],
+                $character
+            );
+            if (is_array($queueData)) {
+                $character->setSkillQueue($queueData);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch skill queue for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+        }
+
+        // 3. Fetch Attributes
+        try {
+            $attributesData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/attributes/', $character->getId()),
+                [],
+                $character
+            );
+            if (is_array($attributesData)) {
+                $character->setAttributes($attributesData);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch attributes for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+        }
+
+        // 4. Fetch Implants
+        try {
+            $implantsData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/implants/', $character->getId()),
+                [],
+                $character
+            );
+            if (is_array($implantsData)) {
+                $character->setImplants($implantsData);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch implants for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+        }
+
+        $this->entityManager->flush();
     }
 
     private function getTrackedTypeIds(): array
