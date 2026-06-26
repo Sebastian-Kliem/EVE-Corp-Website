@@ -516,10 +516,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 );
             })()}
 
-            <div className="perf-grid">
-                {/* Left filter panel */}
-                <div className="filter-panel">
-                    <div className="filter-section">
+            {/* Top filter panel */}
+            <div className="filter-panel-top mb-4">
+                <div className="filter-grid-top">
+                    <div className="filter-column">
                         <div className="filter-title">Zeitraum</div>
                         <select
                             className="select-input"
@@ -534,7 +534,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         </select>
                     </div>
 
-                    <div className="filter-section">
+                    <div className="filter-column">
                         <div className="filter-title">Suche Gegenstand</div>
                         <input
                             type="text"
@@ -546,97 +546,270 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     </div>
 
                     {availableCharacters.length > 0 && (
-                        <div className="filter-section">
+                        <div className="filter-column filter-column-wide">
                             <div className="filter-title">Charaktere</div>
-                            {availableCharacters.map(char => (
-                                <label key={char} className="filter-row">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedCharacters.includes(char)}
-                                        onChange={() => toggleCharacterFilter(char)}
-                                    />
-                                    <span>{char}</span>
-                                </label>
-                            ))}
+                            <div className="filter-checkbox-group">
+                                {availableCharacters.map(char => (
+                                    <label key={char} className="filter-row">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedCharacters.includes(char)}
+                                            onChange={() => toggleCharacterFilter(char)}
+                                        />
+                                        <span>{char}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     )}
 
-                    <div className="filter-section">
+                    <div className="filter-column filter-column-wide">
                         <div className="filter-title">Kategorien</div>
-                        {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
-                            <label key={cat} className="filter-row">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedCategories.includes(cat)}
-                                    onChange={() => toggleCategoryFilter(cat)}
-                                />
-                                <span className="category-indicator" style={{ backgroundColor: CATEGORY_COLORS[cat] }}></span>
-                                <span>{name}</span>
-                            </label>
-                        ))}
+                        <div className="filter-checkbox-group">
+                            {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
+                                <label key={cat} className="filter-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedCategories.includes(cat)}
+                                        onChange={() => toggleCategoryFilter(cat)}
+                                    />
+                                    <span className="category-indicator" style={{ backgroundColor: CATEGORY_COLORS[cat] }}></span>
+                                    <span>{name}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
+                </div>
+            </div>
 
-                    <div className="filter-section" style={{ borderTop: '1px solid var(--theme-card-border)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                        <div className="filter-title">Manuelle Buchung</div>
-                        <form onSubmit={handleAddManualEntry}>
-                            <div className="manual-form-group">
-                                <label className="manual-form-label">Datum</label>
-                                <input 
-                                    type="date" 
-                                    className="search-input" 
-                                    value={manualDate} 
-                                    onChange={(e) => setManualDate(e.target.value)}
-                                    required 
-                                />
+            {/* Ledger list */}
+            <div className="day-list">
+                {filteredLedger.length === 0 ? (
+                    <div className="box has-text-centered p-5">
+                        <p className="text-muted">Keine Ertragsdatensätze für die gewählten Filter gefunden.</p>
+                    </div>
+                ) : (
+                    filteredLedger.map(day => {
+                        const isExpanded = !!expandedDates[day.date];
+                        const dateObj = new Date(day.date);
+                        const formattedDate = dateObj.toLocaleDateString('de-DE', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'UTC'
+                        });
+
+                        return (
+                            <div key={day.date} className="day-card">
+                                <div className="day-header" onClick={() => toggleDateExpand(day.date)}>
+                                    <div className="day-title">
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>
+                                            {isExpanded ? '▼' : '▶'}
+                                        </span>
+                                        <span className="day-date">{formattedDate}</span>
+                                    </div>
+                                    <span className="day-total">{formatISK(day.summary.totalValue)}</span>
+                                </div>
+
+                                {isExpanded && (
+                                    <div className="day-body">
+                                        {/* Category breakdown */}
+                                        <div className="day-breakdown">
+                                            {Object.entries(day.summary.byCategory).map(([cat, val]) => {
+                                                if (val === 0) return null;
+                                                return (
+                                                    <div key={cat} className="breakdown-badge">
+                                                        <span className="category-indicator" style={{ backgroundColor: CATEGORY_COLORS[cat] }}></span>
+                                                        <span>{CATEGORY_NAMES[cat]}: <strong>{formatISK(val)}</strong></span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Details Table */}
+                                        <div className="item-table-wrapper">
+                                            <table className="item-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ width: '30px' }}></th>
+                                                        <th style={{ width: '40px' }}></th>
+                                                        <th>Gegenstand / Aktivität</th>
+                                                        <th>Kategorie</th>
+                                                        <th>Charakter</th>
+                                                        <th className="text-right">Menge</th>
+                                                        <th className="text-right">Jita-Preis</th>
+                                                        <th className="text-right">Gesamtwert</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {day.details.map((item, idx) => {
+                                                        const itemKey = item.manualEntryId ? `manual_${item.manualEntryId}` : `${day.date}_${item.typeId}_${idx}`;
+                                                        const isExpanded = expandedItemKey === itemKey;
+
+                                                        return (
+                                                            <React.Fragment key={idx}>
+                                                                <tr
+                                                                    onClick={() => !item.isWallet && !item.manualEntryId && setExpandedItemKey(isExpanded ? null : itemKey)}
+                                                                    style={{ cursor: (!item.isWallet && !item.manualEntryId) ? 'pointer' : 'default' }}
+                                                                    className={(!item.isWallet && !item.manualEntryId) ? 'item-row-hover' : ''}
+                                                                >
+                                                                    <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
+                                                                        {item.manualEntryId ? (
+                                                                            <button 
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    handleDeleteManualEntry(item.manualEntryId!, item.typeName, item.totalValue);
+                                                                                }}
+                                                                                style={{
+                                                                                    background: 'none',
+                                                                                    border: 'none',
+                                                                                    color: '#ff4444',
+                                                                                    cursor: 'pointer',
+                                                                                    padding: 0,
+                                                                                    fontSize: '0.9rem'
+                                                                                }}
+                                                                                title="Manuelle Buchung löschen"
+                                                                            >
+                                                                                🗑️
+                                                                            </button>
+                                                                        ) : (
+                                                                            !item.isWallet ? (isExpanded ? '▼' : '▶') : ''
+                                                                        )}
+                                                                    </td>
+                                                                    <td>
+                                                                        {!item.isWallet && !item.manualEntryId && (
+                                                                            <div className="item-icon-wrapper">
+                                                                                <img
+                                                                                    src={imagePaths.types.replace('12345', item.typeId.toString())}
+                                                                                    onError={(e) => {
+                                                                                        (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
+                                                                                    }}
+                                                                                    alt=""
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                        {item.manualEntryId && (
+                                                                            <div className="item-icon-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
+                                                                                ✍️
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td style={{ fontWeight: 600 }}>{item.typeName}</td>
+                                                                    <td>
+                                                                        <span
+                                                                            className="badge-cat"
+                                                                            style={{
+                                                                                backgroundColor: `${CATEGORY_COLORS[item.category]}20`,
+                                                                                color: CATEGORY_COLORS[item.category],
+                                                                                border: `1px solid ${CATEGORY_COLORS[item.category]}40`
+                                                                            }}
+                                                                        >
+                                                                            {CATEGORY_NAMES[item.category] || item.category}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>{item.character}</td>
+                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                        {item.manualEntryId ? '-' : formatNumber(item.quantity)}
+                                                                    </td>
+                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                        {item.price > 0 && !item.manualEntryId ? formatISK(item.price) : '-'}
+                                                                    </td>
+                                                                    <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
+                                                                        {formatISK(item.totalValue)}
+                                                                    </td>
+                                                                </tr>
+                                                                {isExpanded && !item.isWallet && (
+                                                                    <tr>
+                                                                        <td colSpan={8} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
+                                                                            <ItemChangesDetails
+                                                                                dateStr={day.date}
+                                                                                typeId={item.typeId}
+                                                                                formatNumber={formatNumber}
+                                                                                onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                                                                            />
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="manual-form-group">
-                                <label className="manual-form-label">Charakter</label>
-                                <select 
-                                    className="select-input" 
-                                    value={manualCharId} 
-                                    onChange={(e) => setManualCharId(e.target.value)}
-                                >
-                                    <option value="" style={{ background: '#101525' }}>Keiner / Allgemein</option>
-                                    {charactersList.map(char => (
-                                        <option key={char.id} value={char.id} style={{ background: '#101525' }}>{char.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="manual-form-group">
-                                <label className="manual-form-label">Kategorie</label>
-                                <select 
-                                    className="select-input" 
-                                    value={manualCategory} 
-                                    onChange={(e) => setManualCategory(e.target.value)}
-                                >
-                                    {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
-                                        <option key={cat} value={cat} style={{ background: '#101525' }}>{name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="manual-form-group">
-                                <label className="manual-form-label">Beschreibung</label>
-                                <input 
-                                    type="text" 
-                                    className="search-input" 
-                                    placeholder="z.B. Skill-Injektor..." 
-                                    value={manualDescription}
-                                    onChange={(e) => setManualDescription(e.target.value)}
-                                    required 
-                                />
-                            </div>
-                            <div className="manual-form-group">
-                                <label className="manual-form-label">Betrag (ISK)</label>
-                                <input 
-                                    type="number" 
-                                    className="search-input" 
-                                    placeholder="Betrag in ISK" 
-                                    value={manualAmount}
-                                    onChange={(e) => setManualAmount(e.target.value)}
-                                    required 
-                                />
-                            </div>
-                            {manualError && <div className="manual-error-msg">{manualError}</div>}
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Bottom manual entry card */}
+            <div className="manual-entry-panel">
+                <div className="filter-title" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--theme-card-border)', paddingBottom: '0.5rem' }}>
+                    ✍️ Manuelle Buchung
+                </div>
+                <form onSubmit={handleAddManualEntry}>
+                    <div className="manual-form-grid">
+                        <div className="manual-form-group">
+                            <label className="manual-form-label">Datum</label>
+                            <input 
+                                type="date" 
+                                className="search-input" 
+                                value={manualDate} 
+                                onChange={(e) => setManualDate(e.target.value)}
+                                required 
+                            />
+                        </div>
+                        <div className="manual-form-group">
+                            <label className="manual-form-label">Charakter</label>
+                            <select 
+                                className="select-input" 
+                                value={manualCharId} 
+                                onChange={(e) => setManualCharId(e.target.value)}
+                            >
+                                <option value="" style={{ background: '#101525' }}>Keiner / Allgemein</option>
+                                {charactersList.map(char => (
+                                    <option key={char.id} value={char.id} style={{ background: '#101525' }}>{char.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="manual-form-group">
+                            <label className="manual-form-label">Kategorie</label>
+                            <select 
+                                className="select-input" 
+                                value={manualCategory} 
+                                onChange={(e) => setManualCategory(e.target.value)}
+                            >
+                                {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
+                                    <option key={cat} value={cat} style={{ background: '#101525' }}>{name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="manual-form-group">
+                            <label className="manual-form-label">Beschreibung</label>
+                            <input 
+                                type="text" 
+                                className="search-input" 
+                                placeholder="z.B. Skill-Injektor..." 
+                                value={manualDescription}
+                                onChange={(e) => setManualDescription(e.target.value)}
+                                required 
+                            />
+                        </div>
+                        <div className="manual-form-group">
+                            <label className="manual-form-label">Betrag (ISK)</label>
+                            <input 
+                                type="number" 
+                                className="search-input" 
+                                placeholder="Betrag in ISK" 
+                                value={manualAmount}
+                                onChange={(e) => setManualAmount(e.target.value)}
+                                required 
+                            />
+                        </div>
+                        <div className="manual-form-group manual-action-group">
                             <button 
                                 type="submit" 
                                 className="manual-submit-btn"
@@ -644,172 +817,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             >
                                 {manualLoading ? 'Speichert...' : 'Eintragen'}
                             </button>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Right ledger list */}
-                <div className="day-list">
-                    {filteredLedger.length === 0 ? (
-                        <div className="box has-text-centered p-5">
-                            <p className="text-muted">Keine Ertragsdatensätze für die gewählten Filter gefunden.</p>
                         </div>
-                    ) : (
-                        filteredLedger.map(day => {
-                            const isExpanded = !!expandedDates[day.date];
-                            const dateObj = new Date(day.date);
-                            const formattedDate = dateObj.toLocaleDateString('de-DE', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                timeZone: 'UTC'
-                            });
-
-                            return (
-                                <div key={day.date} className="day-card">
-                                    <div className="day-header" onClick={() => toggleDateExpand(day.date)}>
-                                        <div className="day-title">
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>
-                                                {isExpanded ? '▼' : '▶'}
-                                            </span>
-                                            <span className="day-date">{formattedDate}</span>
-                                        </div>
-                                        <span className="day-total">{formatISK(day.summary.totalValue)}</span>
-                                    </div>
-
-                                    {isExpanded && (
-                                        <div className="day-body">
-                                            {/* Category breakdown */}
-                                            <div className="day-breakdown">
-                                                {Object.entries(day.summary.byCategory).map(([cat, val]) => {
-                                                    if (val === 0) return null;
-                                                    return (
-                                                        <div key={cat} className="breakdown-badge">
-                                                            <span className="category-indicator" style={{ backgroundColor: CATEGORY_COLORS[cat] }}></span>
-                                                            <span>{CATEGORY_NAMES[cat]}: <strong>{formatISK(val)}</strong></span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                             {/* Details Table */}
-                                             <div style={{ overflowX: 'auto' }}>
-                                                 <table className="item-table">
-                                                     <thead>
-                                                         <tr>
-                                                             <th style={{ width: '30px' }}></th>
-                                                             <th style={{ width: '40px' }}></th>
-                                                             <th>Gegenstand / Aktivität</th>
-                                                             <th>Kategorie</th>
-                                                             <th>Charakter</th>
-                                                             <th className="text-right">Menge</th>
-                                                             <th className="text-right">Jita-Preis</th>
-                                                             <th className="text-right">Gesamtwert</th>
-                                                         </tr>
-                                                     </thead>
-                                                     <tbody>
-                                                         {day.details.map((item, idx) => {
-                                                             const itemKey = item.manualEntryId ? `manual_${item.manualEntryId}` : `${day.date}_${item.typeId}_${idx}`;
-                                                             const isExpanded = expandedItemKey === itemKey;
-
-                                                             return (
-                                                                 <React.Fragment key={idx}>
-                                                                     <tr
-                                                                         onClick={() => !item.isWallet && !item.manualEntryId && setExpandedItemKey(isExpanded ? null : itemKey)}
-                                                                         style={{ cursor: (!item.isWallet && !item.manualEntryId) ? 'pointer' : 'default' }}
-                                                                         className={(!item.isWallet && !item.manualEntryId) ? 'item-row-hover' : ''}
-                                                                     >
-                                                                         <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
-                                                                             {item.manualEntryId ? (
-                                                                                 <button 
-                                                                                     onClick={(e) => {
-                                                                                         e.stopPropagation();
-                                                                                         handleDeleteManualEntry(item.manualEntryId!, item.typeName, item.totalValue);
-                                                                                     }}
-                                                                                     style={{
-                                                                                         background: 'none',
-                                                                                         border: 'none',
-                                                                                         color: '#ff4444',
-                                                                                         cursor: 'pointer',
-                                                                                         padding: 0,
-                                                                                         fontSize: '0.9rem'
-                                                                                     }}
-                                                                                     title="Manuelle Buchung löschen"
-                                                                                 >
-                                                                                     🗑️
-                                                                                 </button>
-                                                                             ) : (
-                                                                                 !item.isWallet ? (isExpanded ? '▼' : '▶') : ''
-                                                                             )}
-                                                                         </td>
-                                                                         <td>
-                                                                             {!item.isWallet && !item.manualEntryId && (
-                                                                                 <div className="item-icon-wrapper">
-                                                                                     <img
-                                                                                         src={imagePaths.types.replace('12345', item.typeId.toString())}
-                                                                                         onError={(e) => {
-                                                                                             (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
-                                                                                         }}
-                                                                                         alt=""
-                                                                                     />
-                                                                                 </div>
-                                                                             )}
-                                                                             {item.manualEntryId && (
-                                                                                 <div className="item-icon-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
-                                                                                     ✍️
-                                                                                 </div>
-                                                                             )}
-                                                                         </td>
-                                                                         <td style={{ fontWeight: 600 }}>{item.typeName}</td>
-                                                                         <td>
-                                                                             <span
-                                                                                 className="badge-cat"
-                                                                                 style={{
-                                                                                     backgroundColor: `${CATEGORY_COLORS[item.category]}20`,
-                                                                                     color: CATEGORY_COLORS[item.category],
-                                                                                     border: `1px solid ${CATEGORY_COLORS[item.category]}40`
-                                                                                 }}
-                                                                             >
-                                                                                 {CATEGORY_NAMES[item.category] || item.category}
-                                                                             </span>
-                                                                         </td>
-                                                                         <td>{item.character}</td>
-                                                                         <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                             {item.manualEntryId ? '-' : formatNumber(item.quantity)}
-                                                                         </td>
-                                                                         <td className="text-right" style={{ fontFamily: 'monospace' }}>
-                                                                             {item.price > 0 && !item.manualEntryId ? formatISK(item.price) : '-'}
-                                                                         </td>
-                                                                         <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
-                                                                             {formatISK(item.totalValue)}
-                                                                         </td>
-                                                                     </tr>
-                                                                     {isExpanded && !item.isWallet && (
-                                                                         <tr>
-                                                                             <td colSpan={8} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
-                                                                                 <ItemChangesDetails
-                                                                                     dateStr={day.date}
-                                                                                     typeId={item.typeId}
-                                                                                     formatNumber={formatNumber}
-                                                                                     onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
-                                                                                 />
-                                                                             </td>
-                                                                         </tr>
-                                                                     )}
-                                                                 </React.Fragment>
-                                                             );
-                                                         })}
-                                                     </tbody>
-                                                 </table>
-                                             </div>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
+                    </div>
+                    {manualError && <div className="manual-error-msg mt-2">{manualError}</div>}
+                </form>
             </div>
         </div>
     );

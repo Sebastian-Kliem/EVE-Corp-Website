@@ -2825,22 +2825,42 @@ input[type="number"] {
     color: var(--theme-text);
     font-family: inherit;
 }
-.perf-grid {
-    display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 1.5rem;
-}
-@media (max-width: 1024px) {
-    .perf-grid {
-        grid-template-columns: 1fr;
-    }
-}
-.filter-panel {
+.filter-panel-top {
     background: rgba(13, 19, 32, 0.7);
     border: 1px solid var(--theme-card-border);
     border-radius: 8px;
     padding: 1.25rem;
-    align-self: start;
+    margin-bottom: 1.5rem;
+}
+.filter-grid-top {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+.filter-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.filter-column-wide {
+    grid-column: span 2;
+}
+@media (max-width: 1024px) {
+    .filter-column-wide {
+        grid-column: span 1;
+    }
+}
+.filter-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+}
+.item-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 0.5rem;
+    border-radius: 4px;
 }
 .filter-section {
     margin-bottom: 1.5rem;
@@ -2990,6 +3010,7 @@ input[type="number"] {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    min-width: 750px;
 }
 .item-table th {
     text-align: left;
@@ -3034,8 +3055,25 @@ input[type="number"] {
 }
 
 /* Manual Entry Form */
+.manual-entry-panel {
+    background: rgba(13, 19, 32, 0.7);
+    border: 1px solid var(--theme-card-border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-top: 2rem;
+}
+.manual-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    align-items: flex-end;
+}
 .manual-form-group {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
+}
+.manual-form-group.manual-action-group {
+    display: flex;
+    align-items: flex-end;
 }
 .manual-form-label {
     display: block;
@@ -3049,13 +3087,17 @@ input[type="number"] {
     background: var(--theme-primary);
     color: #000;
     border: none;
-    padding: 0.5rem;
+    padding: 0.55rem;
     border-radius: 4px;
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.2s;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     text-align: center;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .manual-submit-btn:hover:not(:disabled) {
     opacity: 0.9;
@@ -3066,8 +3108,8 @@ input[type="number"] {
 }
 .manual-error-msg {
     color: #ff4444;
-    font-size: 0.8rem;
-    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
 }
 
 
