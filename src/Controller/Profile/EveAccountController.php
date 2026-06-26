@@ -183,7 +183,7 @@ class EveAccountController extends AbstractController
                     'items' => [],
                 ];
             }
-            
+
             $groupedAssets[$locationId]['items'][] = [
                 'typeId' => $asset->getTypeId(),
                 'name' => $sdeService->getItemName($asset->getTypeId()),
@@ -238,6 +238,8 @@ class EveAccountController extends AbstractController
             throw $this->createAccessDeniedException('Zugriff verweigert.');
         }
 
+        //todo save corpname and alliancename to db
+
         // Fetch corporation and alliance names from ESI
         $corporationName = null;
         if ($character->getCorporationId()) {
@@ -260,7 +262,6 @@ class EveAccountController extends AbstractController
         }
 
         // Fetch active ship and current location from ESI if token is valid
-        $activeShip = null;
         $currentLocation = null;
         if ($character->isTokenValid()) {
             try {
@@ -270,17 +271,7 @@ class EveAccountController extends AbstractController
                     $currentLocation = $resolved['name'];
                 }
             } catch (\Exception $e) {
-                // Ignore
-            }
 
-            try {
-                $shipData = $esiClient->request('GET', sprintf('characters/%d/ship/', $character->getId()), [], $character);
-                if (isset($shipData['ship_type_id'])) {
-                    $typeName = $sdeService->getItemName($shipData['ship_type_id']);
-                    $activeShip = $shipData['ship_name'] ? sprintf('%s (%s)', $shipData['ship_name'], $typeName) : $typeName;
-                }
-            } catch (\Exception $e) {
-                // Ignore
             }
         }
 
@@ -302,7 +293,6 @@ class EveAccountController extends AbstractController
             'character' => $character,
             'corporationName' => $corporationName,
             'allianceName' => $allianceName,
-            'activeShip' => $activeShip,
             'currentLocation' => $currentLocation,
             'implantNames' => $implantNames,
             'skillNames' => $skillNames,
@@ -375,7 +365,7 @@ class EveAccountController extends AbstractController
                 $resolved = $locationService->resolveLocation($locationId, $character);
                 $locationName = $resolved['name'];
                 $systemName = $resolved['systemName'];
-                
+
                 $items = [];
                 foreach ($topAssets as $asset) {
                     $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService, $prices);
@@ -855,11 +845,11 @@ class EveAccountController extends AbstractController
                 $resolved = $locationService->resolveLocation($locationId, $syncCharacter);
                 $locationName = $resolved['name'];
                 $systemName = $resolved['systemName'];
-                
+
                 $groupedByDivision = [];
                 foreach ($topAssets as $asset) {
                     $flag = $asset->getLocationFlag();
-                    
+
                     if (!$isCeoOrAdmin) {
                         if (in_array($flag, ['CorpSAG1', 'CorpSAG2', 'CorpSAG3', 'CorpSAG4', 'CorpSAG5', 'CorpSAG6', 'CorpSAG7', 'CorpDeliveries'], true)) {
                             if (!isset($visibilityMap[$locationId][$flag])) {
@@ -870,7 +860,7 @@ class EveAccountController extends AbstractController
 
                     $folderName = $getDivisionName($flag);
                     $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
-                    
+
                     // If this is an Office (typeId 27) and has no visible children (divisions) left after filtering, skip it
                     if ($node['typeId'] === 27 && empty($node['children'])) {
                         continue;
@@ -945,8 +935,8 @@ class EveAccountController extends AbstractController
                 'corporation' => [
                     'id' => $corpId,
                     'name' => $corpName,
-                    'lastAssetsUpdate' => $syncCharacter && $syncCharacter->getLastCorpAssetsUpdate() 
-                        ? $syncCharacter->getLastCorpAssetsUpdate()->format('d.m.Y H:i') 
+                    'lastAssetsUpdate' => $syncCharacter && $syncCharacter->getLastCorpAssetsUpdate()
+                        ? $syncCharacter->getLastCorpAssetsUpdate()->format('d.m.Y H:i')
                         : null,
                     'syncCharacterName' => $syncCharacter ? $syncCharacter->getName() : null
                 ],
@@ -965,9 +955,9 @@ class EveAccountController extends AbstractController
     }
 
     private function buildCorpAssetTreeNode(
-        EveCorporationAsset $asset, 
-        array $nestedAssets, 
-        SdeService $sdeService, 
+        EveCorporationAsset $asset,
+        array $nestedAssets,
+        SdeService $sdeService,
         array $divisionNames = [],
         bool $isCeoOrAdmin = true,
         array $visibilityMap = [],
@@ -975,7 +965,7 @@ class EveAccountController extends AbstractController
     ): array {
         $itemId = $asset->getItemId();
         $typeId = $asset->getTypeId();
-        
+
         $children = [];
         if (isset($nestedAssets[$itemId])) {
             $hasOffice = false;
@@ -1016,7 +1006,7 @@ class EveAccountController extends AbstractController
                     $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                 }
             }
-            
+
             // If this is an Office (typeId 27), group its children by division!
             if ($typeId === 27) {
                 $getDivisionName = function (string $flag) use ($divisionNames) {

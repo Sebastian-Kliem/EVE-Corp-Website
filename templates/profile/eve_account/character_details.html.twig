@@ -4,19 +4,13 @@
 
 {% block body %}
 <div class="container mt-5 mb-6">
-    <!-- Breadcrumb / Back button -->
-    <div class="mb-4">
-        <a href="{{ path('app_profile_characters') }}" class="button is-dark is-small">
-            ⬅️ Zurück zur Charakterübersicht
-        </a>
-    </div>
 
     <!-- Header Box with Portrait and Meta Info -->
     <div class="box p-5 mb-5" style="display: flex; align-items: center; gap: 24px; border: 1px solid var(--theme-card-border);">
         <figure class="image is-128x128" style="flex-shrink: 0; margin: 0;">
             <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: character.id, action: 'portrait' }) }}?size=256" alt="{{ character.name }}" class="is-rounded" style="border: 2px solid var(--theme-card-border); border-radius: 50%;">
         </figure>
-        
+
         <div style="flex-grow: 1;">
             <h1 class="title is-2 mb-2 text-gradient" style="margin-top: 0;">
                 {{ character.name }}
@@ -26,41 +20,45 @@
                     <strong>ID:</strong> <span class="has-text-grey-light">{{ character.id }}</span>
                 </div>
                 <div>
-                    <strong>Corporation:</strong> 
+                    <strong>Corporation:</strong>
                     <span class="has-text-info">{{ corporationName ?: 'Unbekannt (' ~ character.corporationId ~ ')' }}</span>
                 </div>
                 {% if allianceName or character.allianceId %}
                     <div>
-                        <strong>Allianz:</strong> 
+                        <strong>Allianz:</strong>
                         <span class="has-text-warning">{{ allianceName ?: 'Unbekannt (' ~ character.allianceId ~ ')' }}</span>
                     </div>
                 {% endif %}
+
+                {% if not character.account %}
                 <div>
-                    <strong>Account-Status:</strong> 
-                    {% if character.account %}
-                        <span class="tag is-info">{{ character.account.name }}</span>
+                    <strong>Account-Status:</strong>
+                        <span class="tag is-dark">Keinem Account zugewiesen.</span>
+                </div>
+                {% endif %}
+
+                <div>
+                    <strong>Wallet:</strong>
+
+                    {% if character.walletBalance is not null %}
+                        {{ character.walletBalance|number_format(2, ',', '.') }} ISK
                     {% else %}
-                        <span class="tag is-dark">Nicht zugewiesen</span>
+                        <span class="has-text-grey">Keine Daten</span>
                     {% endif %}
+                </div>
+
+                <div>
+                    <strong>Standort:</strong>
+
+                    {{ currentLocation ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
                 </div>
             </div>
         </div>
 
         <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
             <a href="{{ path('app_dashboard_eve_character_assets', { id: character.id }) }}" class="button is-primary is-small">
-                🎒 Inventar ansehen
+                Inventar
             </a>
-            
-            <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
-                🔑 Re-Auth
-            </a>
-
-            <form action="{{ path('app_eve_character_delete', { id: character.id }) }}" method="POST" onsubmit="return confirm('Möchtest du den Charakter wirklich entfernen?')">
-                <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ character.id) }}">
-                <button type="submit" class="button is-danger is-small" style="width: 100%;">
-                    ❌ Charakter entfernen
-                </button>
-            </form>
         </div>
     </div>
 
@@ -77,19 +75,10 @@
             <!-- General details box -->
             <div class="box mb-5">
                 <h3 class="title is-4 mb-4 text-gradient">📊 Status & Daten</h3>
-                
+
                 <table class="table is-fullwidth" style="background: transparent; color: #ccc; margin-bottom: 0;">
                     <tbody>
-                        <tr>
-                            <td style="border-top: none; width: 40%;"><strong>Wallet-Saldo:</strong></td>
-                            <td style="border-top: none;" class="has-text-weight-bold has-text-success">
-                                {% if character.walletBalance is not null %}
-                                    {{ character.walletBalance|number_format(2, ',', '.') }} ISK
-                                {% else %}
-                                    <span class="has-text-grey">Keine Daten</span>
-                                {% endif %}
-                            </td>
-                        </tr>
+
                         <tr>
                             <td><strong>Total Skillpunkte:</strong></td>
                             <td class="has-text-info">
@@ -100,18 +89,7 @@
                                 {% endif %}
                             </td>
                         </tr>
-                        <tr>
-                            <td><strong>Aktuelles Schiff:</strong></td>
-                            <td>
-                                {{ activeShip ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Standort:</strong></td>
-                            <td>
-                                {{ currentLocation ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
-                            </td>
-                        </tr>
+
                         <tr>
                             <td><strong>Tags:</strong></td>
                             <td>
