@@ -1,0 +1,233 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Details von {{ character.name }}{% endblock %}
+
+{% block body %}
+<div class="container mt-5 mb-6">
+    <!-- Breadcrumb / Back button -->
+    <div class="mb-4">
+        <a href="{{ path('app_profile_characters') }}" class="button is-dark is-small">
+            ⬅️ Zurück zur Charakterübersicht
+        </a>
+    </div>
+
+    <!-- Header Box with Portrait and Meta Info -->
+    <div class="box p-5 mb-5" style="display: flex; align-items: center; gap: 24px; border: 1px solid var(--theme-card-border);">
+        <figure class="image is-128x128" style="flex-shrink: 0; margin: 0;">
+            <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: character.id, action: 'portrait' }) }}?size=256" alt="{{ character.name }}" class="is-rounded" style="border: 2px solid var(--theme-card-border); border-radius: 50%;">
+        </figure>
+        
+        <div style="flex-grow: 1;">
+            <h1 class="title is-2 mb-2 text-gradient" style="margin-top: 0;">
+                {{ character.name }}
+            </h1>
+            <div class="is-size-6" style="color: #ccc; display: flex; flex-direction: column; gap: 4px;">
+                <div>
+                    <strong>ID:</strong> <span class="has-text-grey-light">{{ character.id }}</span>
+                </div>
+                <div>
+                    <strong>Corporation:</strong> 
+                    <span class="has-text-info">{{ corporationName ?: 'Unbekannt (' ~ character.corporationId ~ ')' }}</span>
+                </div>
+                {% if allianceName or character.allianceId %}
+                    <div>
+                        <strong>Allianz:</strong> 
+                        <span class="has-text-warning">{{ allianceName ?: 'Unbekannt (' ~ character.allianceId ~ ')' }}</span>
+                    </div>
+                {% endif %}
+                <div>
+                    <strong>Account-Status:</strong> 
+                    {% if character.account %}
+                        <span class="tag is-info">{{ character.account.name }}</span>
+                    {% else %}
+                        <span class="tag is-dark">Nicht zugewiesen</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
+            <a href="{{ path('app_dashboard_eve_character_assets', { id: character.id }) }}" class="button is-primary is-small">
+                🎒 Inventar ansehen
+            </a>
+            
+            <a href="{{ path('app_eve_sso_login') }}" class="button is-warning is-small" title="Erneut bei EVE SSO anmelden / Token aktualisieren">
+                🔑 Re-Auth
+            </a>
+
+            <form action="{{ path('app_eve_character_delete', { id: character.id }) }}" method="POST" onsubmit="return confirm('Möchtest du den Charakter wirklich entfernen?')">
+                <input type="hidden" name="_token" value="{{ csrf_token('eve_character_delete_' ~ character.id) }}">
+                <button type="submit" class="button is-danger is-small" style="width: 100%;">
+                    ❌ Charakter entfernen
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert for invalid token -->
+    {% if not character.tokenValid %}
+        <div class="notification is-danger mb-5">
+            ⚠️ <strong>SSO-Token ungültig!</strong> Das Passwort wurde geändert oder der Zugriff wurde entzogen. Bitte klicke rechts auf "Re-Auth", um die Verknüpfung zu erneuern.
+        </div>
+    {% endif %}
+
+    <div class="columns is-multiline">
+        <!-- Linke Spalte: Status & Daten -->
+        <div class="column is-6">
+            <!-- General details box -->
+            <div class="box mb-5">
+                <h3 class="title is-4 mb-4 text-gradient">📊 Status & Daten</h3>
+                
+                <table class="table is-fullwidth" style="background: transparent; color: #ccc; margin-bottom: 0;">
+                    <tbody>
+                        <tr>
+                            <td style="border-top: none; width: 40%;"><strong>Wallet-Saldo:</strong></td>
+                            <td style="border-top: none;" class="has-text-weight-bold has-text-success">
+                                {% if character.walletBalance is not null %}
+                                    {{ character.walletBalance|number_format(2, ',', '.') }} ISK
+                                {% else %}
+                                    <span class="has-text-grey">Keine Daten</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Skillpunkte:</strong></td>
+                            <td class="has-text-info">
+                                {% if character.skills.total_sp is defined %}
+                                    {{ character.skills.total_sp|number_format(0, ',', '.') }} SP
+                                {% else %}
+                                    <span class="has-text-grey">Keine Daten</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Aktuelles Schiff:</strong></td>
+                            <td>
+                                {{ activeShip ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Standort:</strong></td>
+                            <td>
+                                {{ currentLocation ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tags:</strong></td>
+                            <td>
+                                {% if character.tags is not empty %}
+                                    <div class="tags">
+                                        {% for tag in character.tags %}
+                                            <span class="tag is-info">{{ tag }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="has-text-grey">Keine Tags</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Sync Timestamps Box -->
+            <div class="box">
+                <h3 class="title is-4 mb-4 text-gradient">🕒 Letzte Synchronisierungen</h3>
+                <table class="table is-fullwidth" style="background: transparent; color: #ccc; margin-bottom: 0;">
+                    <tbody>
+                        <tr>
+                            <td style="border-top: none; width: 40%;"><strong>Wallet-Journal:</strong></td>
+                            <td style="border-top: none;" class="has-text-grey-light">
+                                {{ character.lastWalletUpdate ? character.lastWalletUpdate|date('d.m.Y H:i:s') : 'Nie' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Assets (Hangar):</strong></td>
+                            <td class="has-text-grey-light">
+                                {{ character.lastAssetsUpdate ? character.lastAssetsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Mining-Tagebuch:</strong></td>
+                            <td class="has-text-grey-light">
+                                {{ character.lastMiningUpdate ? character.lastMiningUpdate|date('d.m.Y H:i:s') : 'Nie' }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Industrie-Jobs:</strong></td>
+                            <td class="has-text-grey-light">
+                                {{ character.lastIndustryJobsUpdate ? character.lastIndustryJobsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Rechte Spalte: Attribute, Implantate & Skillqueue -->
+        <div class="column is-6">
+            <!-- Attributes box -->
+            {% if character.attributes is not empty %}
+                <div class="box mb-5">
+                    <h3 class="title is-4 mb-4 text-gradient">🧬 Charakter-Attribute</h3>
+                    <div class="columns is-mobile is-multiline">
+                        {% for key, val in character.attributes %}
+                            {% if key in ['intelligence', 'perception', 'willpower', 'charisma', 'memory'] %}
+                                <div class="column is-4 has-text-centered mb-2">
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">
+                                        <div class="is-size-7 has-text-grey mb-1">{{ key|capitalize }}</div>
+                                        <div class="is-size-5 has-text-weight-bold has-text-info">{{ val }}</div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Skill Queue Box -->
+            <div class="box mb-5">
+                <h3 class="title is-4 mb-4 text-gradient">🎓 Skill-Warteschlange</h3>
+                {% if character.skillQueue is not empty %}
+                    <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                        {% for item in character.skillQueue %}
+                            {% set skillName = skillNames[item.skill_id] ?? 'Skill #' ~ item.skill_id %}
+                            <div class="p-2" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div class="has-text-weight-semibold is-size-7">{{ skillName }}</div>
+                                    <div class="is-size-7 has-text-grey">
+                                        {% if item.training_start_date is defined and item.training_end_date is defined %}
+                                            Ende: {{ item.training_end_date|date('d.m.Y H:i') }}
+                                        {% else %}
+                                            In Warteschlange
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <span class="tag is-info is-small">Stufe {{ item.finished_level }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="is-size-7 has-text-grey">Die Warteschlange ist leer oder es wurden keine Daten synchronisiert.</p>
+                {% endif %}
+            </div>
+
+            <!-- Implantate Box -->
+            <div class="box">
+                <h3 class="title is-4 mb-4 text-gradient">🔌 Aktive Implantate</h3>
+                {% if character.implants is not empty %}
+                    <ul style="margin: 0; padding-left: 20px; list-style-type: square; color: #ccc;">
+                        {% for typeId in character.implants %}
+                            <li class="is-size-7 mb-1">
+                                {{ implantNames[typeId] ?? 'Implantat #' ~ typeId }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="is-size-7 has-text-grey">Keine aktiven Implantate verknüpft oder synchronisiert.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

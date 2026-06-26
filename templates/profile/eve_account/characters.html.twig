@@ -75,6 +75,9 @@
                                 </div>
 
                                 <div class="profile-char-actions">
+                                    <a href="{{ path('app_dashboard_eve_character_details', { id: char.id }) }}" class="button is-info is-small profile-char-button-small">
+                                        👤 Details
+                                    </a>
                                     <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                         🎒 Inventar
                                     </a>
@@ -237,6 +240,9 @@
                                     </div>
 
                                     <div class="profile-char-actions">
+                                        <a href="{{ path('app_dashboard_eve_character_details', { id: char.id }) }}" class="button is-info is-small profile-char-button-small">
+                                            👤 Details
+                                        </a>
                                         <a href="{{ path('app_dashboard_eve_character_assets', { id: char.id }) }}" class="button is-dark is-small profile-char-button-small">
                                             🎒 Inventar
                                         </a>

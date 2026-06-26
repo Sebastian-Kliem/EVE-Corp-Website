@@ -225,6 +225,90 @@ class EveAccountController extends AbstractController
         ]);
     }
 
+    #[Route('/dashboard/eve-character/{id}/details', name: 'app_dashboard_eve_character_details', methods: ['GET'])]
+    public function showDetails(
+        int $id,
+        SdeService $sdeService,
+        LocationService $locationService,
+        \App\Service\Esi\EsiClient $esiClient
+    ): Response {
+        $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
+
+        if (!$character || $character->getUser() !== $this->getUser()) {
+            throw $this->createAccessDeniedException('Zugriff verweigert.');
+        }
+
+        // Fetch corporation and alliance names from ESI
+        $corporationName = null;
+        if ($character->getCorporationId()) {
+            try {
+                $corpData = $esiClient->request('GET', sprintf('corporations/%d/', $character->getCorporationId()));
+                $corporationName = $corpData['name'] ?? null;
+            } catch (\Exception $e) {
+                // Keep null
+            }
+        }
+
+        $allianceName = null;
+        if ($character->getAllianceId()) {
+            try {
+                $allianceData = $esiClient->request('GET', sprintf('alliances/%d/', $character->getAllianceId()));
+                $allianceName = $allianceData['name'] ?? null;
+            } catch (\Exception $e) {
+                // Keep null
+            }
+        }
+
+        // Fetch active ship and current location from ESI if token is valid
+        $activeShip = null;
+        $currentLocation = null;
+        if ($character->isTokenValid()) {
+            try {
+                $locData = $esiClient->request('GET', sprintf('characters/%d/location/', $character->getId()), [], $character);
+                if (isset($locData['solar_system_id'])) {
+                    $resolved = $locationService->resolveLocation($locData['solar_system_id'], $character);
+                    $currentLocation = $resolved['name'];
+                }
+            } catch (\Exception $e) {
+                // Ignore
+            }
+
+            try {
+                $shipData = $esiClient->request('GET', sprintf('characters/%d/ship/', $character->getId()), [], $character);
+                if (isset($shipData['ship_type_id'])) {
+                    $typeName = $sdeService->getItemName($shipData['ship_type_id']);
+                    $activeShip = $shipData['ship_name'] ? sprintf('%s (%s)', $shipData['ship_name'], $typeName) : $typeName;
+                }
+            } catch (\Exception $e) {
+                // Ignore
+            }
+        }
+
+        // Resolve implant names
+        $implantNames = [];
+        foreach ($character->getImplants() as $typeId) {
+            $implantNames[$typeId] = $sdeService->getItemName($typeId);
+        }
+
+        // Resolve skill names in queue
+        $skillNames = [];
+        foreach ($character->getSkillQueue() as $item) {
+            if (isset($item['skill_id'])) {
+                $skillNames[$item['skill_id']] = $sdeService->getItemName($item['skill_id']);
+            }
+        }
+
+        return $this->render('profile/eve_account/character_details.html.twig', [
+            'character' => $character,
+            'corporationName' => $corporationName,
+            'allianceName' => $allianceName,
+            'activeShip' => $activeShip,
+            'currentLocation' => $currentLocation,
+            'implantNames' => $implantNames,
+            'skillNames' => $skillNames,
+        ]);
+    }
+
     #[Route('/dashboard/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
     public function assetsOverview(
         LocationService $locationService,
