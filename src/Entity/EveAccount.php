@@ -21,6 +21,9 @@ class EveAccount
     #[ORM\Column]
     private bool $isOmega = false;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $groupName = null;
+
 
 
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'eveAccounts')]
@@ -106,6 +109,18 @@ class EveAccount
                 $character->setAccount(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getGroupName(): ?string
+    {
+        return $this->groupName;
+    }
+
+    public function setGroupName(?string $groupName): static
+    {
+        $this->groupName = $groupName;
 
         return $this;
     }
