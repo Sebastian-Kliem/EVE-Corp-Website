@@ -1,0 +1,321 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Skill-Extraktor-Farmen Übersicht{% endblock %}
+
+{% block body %}
+<div class="container mt-5 mb-6">
+    <div class="level mb-4">
+        <div class="level-left">
+            <h1 class="title is-2 text-gradient">
+                📊 Skill-Extraktor-Farmen
+            </h1>
+        </div>
+        <div class="level-right">
+            <a href="{{ path('app_profile_characters') }}" class="button is-small is-primary">
+                👤 Charakterübersicht
+            </a>
+        </div>
+    </div>
+
+    <!-- Live Market Prices Header Card -->
+    <div class="box mb-5">
+        <h3 class="title is-5 mb-3" style="border-bottom: 1px solid var(--theme-card-border); padding-bottom: 8px;">
+            💰 Aktuelle Jita-Marktpreise (Referenzwerte)
+        </h3>
+        <div class="columns is-multiline">
+            <div class="column is-3">
+                <div class="p-3" style="background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                    <span class="has-text-grey-light is-size-7" style="display:block;">1 PLEX</span>
+                    <span class="has-text-weight-bold is-size-6" style="color: var(--theme-primary);">{{ plexPrice|number_format(0, ',', '.') }} ISK</span>
+                </div>
+            </div>
+            <div class="column is-3">
+                <div class="p-3" style="background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                    <span class="has-text-grey-light is-size-7" style="display:block;">1 MCT Zertifikat (266.67 PLEX)</span>
+                    <span class="has-text-weight-bold is-size-6" style="color: var(--theme-primary);">{{ mctCost|number_format(0, ',', '.') }} ISK</span>
+                </div>
+            </div>
+            <div class="column is-3">
+                <div class="p-3" style="background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                    <span class="has-text-grey-light is-size-7" style="display:block;">1 Skill Extraktor</span>
+                    <span class="has-text-weight-bold is-size-6" style="color: var(--theme-primary);">{{ extractorPrice|number_format(0, ',', '.') }} ISK</span>
+                </div>
+            </div>
+            <div class="column is-3">
+                <div class="p-3" style="background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                    <span class="has-text-grey-light is-size-7" style="display:block;">1 Large Skill Injector</span>
+                    <span class="has-text-weight-bold is-size-6" style="color: #10b981;">{{ injectorPrice|number_format(0, ',', '.') }} ISK</span>
+                </div>
+            </div>
+        </div>
+        <p class="is-size-7 has-text-grey-light mt-2">
+            * Preise werden live aus Jita bezogen. Das Multicharakter-Trainingszertifikat (MCT) wird mit dem anteiligen Paketpreis aus dem NES-Shop berechnet (3er-Paket für 800 PLEX).
+        </p>
+    </div>
+
+    <!-- Collapsible Help / Guide (German) -->
+    <details class="card mb-5" {% if characters is empty %}open{% endif %}>
+        <summary class="p-3 has-text-weight-semibold" style="cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; background: rgba(0, 240, 255, 0.05); border: 1px solid var(--theme-card-border); border-radius: 4px;">
+            <span>ℹ️ Anleitung: Wie richte ich eine Skill-Farm ein? (Klicken zum Ausklappen)</span>
+            <span class="is-size-7">▼</span>
+        </summary>
+        <div class="p-4" style="background: var(--theme-card-bg); border-top: 1px solid var(--theme-card-border);">
+            <h4 class="title is-5 mb-2">Charaktere dieser Übersicht hinzufügen</h4>
+            <p class="is-size-6 mb-3">
+                Damit ein EVE-Charakter hier aufgeführt wird, muss ihm das Tag <strong><code>Skill-Extractor-Farm</code></strong> zugewiesen werden.
+            </p>
+            <ol class="ml-4 mb-4 is-size-6" style="line-height: 1.6;">
+                <li>Gehe zur <a href="{{ path('app_profile_characters') }}">Charakterübersicht</a>.</li>
+                <li>Suche den gewünschten Charakter in deiner Liste.</li>
+                <li>Klicke auf den Bereich <strong>🏷️ Tags verwalten</strong> unter dem Charakter.</li>
+                <li>Setze das Häkchen bei <strong><code>Skill-Extractor-Farm</code></strong> und klicke auf <strong>Speichern</strong>.</li>
+            </ol>
+
+            <h4 class="title is-5 mb-2">Das optimale Setup (Skill Farm Standard)</h4>
+            <p class="is-size-6 mb-2">
+                Eine Skill-Farm erzielt den maximalen Gewinn, wenn die Attribute optimal auf die trainierten Skills verteilt sind und die maximale Skillrate erreicht wird.
+            </p>
+            <ul class="ml-4 mb-4 is-size-6" style="line-height: 1.6;">
+                <li><strong>Attributverteilung (Remap):</strong> Unser Standard-Setup setzt auf <strong>Intelligenz (Intelligence) als Hauptattribut (27 Punkte)</strong> und <strong>Gedächtnis (Memory) als Nebenattribut (21 Punkte)</strong>. Alle anderen Attribute verbleiben auf dem Minimum von 17 Punkten.</li>
+                <li><strong>Implantate:</strong> Installiere mindestens ein <strong>Cybernetic Subprocessor</strong> und ein <strong>Memory Augmentation</strong> Implantat (optimal jeweils +5, z.B. <em>Improved</em> Versionen).</li>
+                <li><strong>Optimaler SP-Zuwachs:</strong> Mit optimalen Base-Attributen (Intelligence 27, Memory 21) und +5 Implantaten (Intelligence 32, Memory 26) trainierst du mit exakt <strong>45 Skillpunkten pro Minute</strong>.</li>
+            </ul>
+
+            <h4 class="title is-5 mb-2">Wann lohnt sich eine Skill-Farm? (Idealbedingungen)</h4>
+            <p class="is-size-6 mb-2">
+                Da die regulären PLEX- und MCT-Preise am Markt im Verhältnis zu den Skill-Injektoren hoch sind, läuft eine Farm unter Normalbedingungen oft mit Verlust. Sie wird jedoch hochrentabel unter folgenden <strong>Idealbedingungen</strong>:
+            </p>
+            <ul class="ml-4 is-size-6" style="line-height: 1.6;">
+                <li><strong>NES-Store Aktionen (MCT-Rabatt):</strong> Nutzen von Sonderaktionen (wie 2-für-1 MCT für 133,33 PLEX pro Charakter statt 266,67 PLEX). Dies senkt die Aktivierungskosten um die Hälfte!</li>
+                <li><strong>Market Optimization (Buy-Orders):</strong> PLEX und Extraktoren werden nicht sofort per Sell-Orders gekauft, sondern geduldig über <strong>Buy-Orders</strong> erworben, um den Spread einzusparen.</li>
+                <li><strong>Maximales Training (45 SP/Min):</strong> Korrektes Remap und +5 Implantate sorgen für 3,888 Injektoren pro Monat.</li>
+            </ul>
+        </div>
+    </details>
+
+    <!-- Empty State -->
+    {% if characters is empty %}
+        <div class="notification is-warning">
+            <h3 class="title is-4 mb-2">Keine Farm-Charaktere gefunden</h3>
+            <p class="is-size-6">
+                Es wurden aktuell keine Charaktere mit dem Tag <code>Skill-Extractor-Farm</code> markiert. Bitte befolge die obige Anleitung, um deine Charaktere hinzuzufügen.
+            </p>
+        </div>
+    {% else %}
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for data in characters %}
+                {% set char = data.character %}
+                
+                <details class="box mb-0" style="padding: 0; overflow: hidden; border-radius: 8px; transition: border-color 0.3s ease;">
+                    <summary class="p-4" style="cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; background: rgba(20, 27, 43, 0.4);">
+                        
+                        <div class="is-flex is-align-items-center" style="flex-grow: 1;">
+                            <figure class="image is-40x40 mr-3">
+                                <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="is-rounded" style="border: 2px solid var(--theme-primary);">
+                            </figure>
+                            <div>
+                                <h2 class="title is-5 mb-0 text-gradient" style="display: inline-block; margin-right: 15px;">{{ char.name }}</h2>
+                                <span class="is-size-7 has-text-grey-light" style="display: inline-block;">
+                                    Rate: <span class="has-text-weight-bold" style="color: var(--theme-primary);">{{ data.currentSpMin|number_format(1, ',', '.') }} SP/Min</span>
+                                    {% if char.skillQueue is not empty %}
+                                        ({{ data.primaryAttr }} / {{ data.secondaryAttr }})
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Badges and Warnings (Quick View) -->
+                        <div class="is-flex is-align-items-center" style="gap: 8px; margin-right: 15px;">
+                            {% if not data.isOptimalAttributes %}
+                                <span class="tag is-warning is-small" style="font-size: 0.75rem;">⚠️ Attribute</span>
+                            {% else %}
+                                <span class="tag is-success is-small" style="font-size: 0.75rem;">✔️ Attribute</span>
+                            {% endif %}
+
+                            {% if not data.hasImplants %}
+                                <span class="tag is-danger" style="font-size: 0.75rem;">❌ Keine Implantate</span>
+                            {% else %}
+                                <span class="tag is-success" style="font-size: 0.75rem;">✔️ Implantate</span>
+                            {% endif %}
+                            
+                            <!-- Monthly Profit/Loss Quick badge -->
+                            <span class="tag {% if data.currentProfit >= 0 %}is-success{% else %}is-danger{% endif %}" style="font-size: 0.8rem; font-weight: bold;">
+                                {% if data.currentProfit >= 0 %}+{% endif %}{{ (data.currentProfit / 1000000)|number_format(0, ',', '.') }}M ISK
+                            </span>
+                        </div>
+                        
+                        <div class="is-size-7" style="color: var(--theme-primary); font-weight: bold; min-width: 100px; text-align: right;">
+                            Details ▼
+                        </div>
+                    </summary>
+
+                    <!-- Collapsible Card Content -->
+                    <div class="p-5" style="border-top: 1px solid rgba(0, 240, 255, 0.15); background: rgba(0, 0, 0, 0.2);">
+                        
+                        <!-- Warnings Details -->
+                        {% if not data.isOptimalAttributes or not data.hasImplants %}
+                            <div class="mb-4 p-3" style="background: rgba(251, 191, 36, 0.08); border-left: 4px solid #fbbf24; border-radius: 4px;">
+                                <h5 class="has-text-weight-bold mb-1" style="color: #fbbf24; font-size: 0.9rem;">⚠️ Optimierungshinweise:</h5>
+                                <ul class="is-size-7 ml-4" style="list-style-type: disc; color: #ccc;">
+                                    {% if not data.isOptimalAttributes %}
+                                        <li>Das Attribut-Mapping weicht vom Standard ab. Um die maximale Rate zu erzielen, führe im Spiel ein Attribut-Remap durch: <strong>Intelligenz auf 27</strong> (Maximum) und <strong>Gedächtnis auf 21</strong> (Rest). Die restlichen Attribute verbleiben auf 17.</li>
+                                    {% endif %}
+                                    {% if not data.hasImplants %}
+                                        <li>Es wurden keine aktiven Implantate erkannt. Für die optimale Skillpunkte-Generierung sollten mindestens +5 Implantate für Intelligenz (<em>Cybernetic Subprocessor - Improved</em>) und Gedächtnis (<em>Memory Augmentation - Improved</em>) eingesetzt werden.</li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Attributes Grid -->
+                        <div class="columns is-multiline">
+                            <!-- Left: Attributes and Implants -->
+                            <div class="column is-12 is-6-desktop">
+                                <h4 class="title is-6 mb-2">Attribute & Implantate</h4>
+                                <table class="table is-fullwidth is-narrow" style="background: transparent; color: inherit;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                            <th style="color: var(--theme-text-muted);">Attribut</th>
+                                            <th class="has-text-centered" style="color: var(--theme-text-muted);">Basis</th>
+                                            <th class="has-text-centered" style="color: var(--theme-text-muted);">Implantat</th>
+                                            <th class="has-text-centered" style="color: var(--theme-text-muted); font-weight: bold;">Effektiv</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for key, val in data.baseAttrs %}
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <td>
+                                                    {% if key == 'intelligence' %}<strong>Intelligenz (Intelligence)</strong>
+                                                    {% elseif key == 'memory' %}<strong>Gedächtnis (Memory)</strong>
+                                                    {% elseif key == 'perception' %}Wahrnehmung (Perception)
+                                                    {% elseif key == 'willpower' %}Willenskraft (Willpower)
+                                                    {% elseif key == 'charisma' %}Charisma
+                                                    {% else %}{{ key }}{% endif %}
+                                                </td>
+                                                <td class="has-text-centered">{{ val }}</td>
+                                                <td class="has-text-centered text-gradient">
+                                                    {% if data.implantBonuses[key] > 0 %}
+                                                        +{{ data.implantBonuses[key] }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td class="has-text-centered has-text-weight-bold" style="color: {% if key == 'intelligence' or key == 'memory' %}var(--theme-primary){% else %}inherit{% endif %};">
+                                                    {{ data.effectiveAttrs[key] }}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+
+                                <div class="mt-2 is-size-7">
+                                    <span class="has-text-grey-light">Aktives Skill-Training:</span>
+                                    <span class="has-text-weight-semibold ml-1" style="color: var(--theme-primary);">{{ data.activeSkillName }}</span>
+                                </div>
+
+                                {% if data.implantsList is not empty %}
+                                    <div class="mt-2">
+                                        <span class="has-text-grey-light is-size-7">Aktive Implantate:</span>
+                                        <div class="tags mt-1">
+                                            {% for imp in data.implantsList %}
+                                                <span class="tag is-dark is-size-7">{{ imp.name }} ({{ imp.attribute }})</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Right: Performance & Profit Comparison -->
+                            <div class="column is-12 is-6-desktop">
+                                <h4 class="title is-6 mb-2">30-Tage Bilanz & Wirtschaftlichkeit</h4>
+                                <div class="table-container">
+                                    <table class="table is-fullwidth" style="background: transparent; color: inherit;">
+                                        <thead>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                                <th style="color: var(--theme-text-muted); font-size: 0.85rem;">Metrik (30 Tage)</th>
+                                                <th class="has-text-right" style="color: var(--theme-text-muted); font-size: 0.85rem;">Jetziges Setup</th>
+                                                <th class="has-text-right" style="color: var(--theme-text-muted); font-size: 0.85rem;">Optimales Setup</th>
+                                                <th class="has-text-right" style="color: var(--theme-primary); font-size: 0.85rem;">Idealbedingungen</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Skillpunktrate</td>
+                                                <td class="has-text-right">{{ data.currentSpMin|number_format(1, ',', '.') }} SP/Min</td>
+                                                <td class="has-text-right">45,0 SP/Min</td>
+                                                <td class="has-text-right" style="color: var(--theme-primary);">45,0 SP/Min</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Generierte SP</td>
+                                                <td class="has-text-right">{{ data.currentSp30|number_format(0, ',', '.') }} SP</td>
+                                                <td class="has-text-right">1.944.000 SP</td>
+                                                <td class="has-text-right" style="color: var(--theme-primary);">1.944.000 SP</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Generierte Injektoren</td>
+                                                <td class="has-text-right">{{ data.currentExtractorsNeeded|number_format(3, ',', '.') }} Stück</td>
+                                                <td class="has-text-right">3,888 Stück</td>
+                                                <td class="has-text-right" style="color: var(--theme-primary);">3,888 Stück</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Umsatz (Verkauf)</td>
+                                                <td class="has-text-right" style="color: #10b981;">+{{ data.currentRevenue|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #10b981;">+{{ data.optimalRevenue|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #10b981;">+{{ data.idealRevenue|number_format(0, ',', '.') }} ISK</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Kosten Extraktoren</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ data.currentExtractorCost|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ data.optimalExtractorCost|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ data.idealExtractorCost|number_format(0, ',', '.') }} ISK</td>
+                                            </tr>
+                                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                                                <td>Kosten MCT (Gebühr)</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ mctCost|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ mctCost|number_format(0, ',', '.') }} ISK</td>
+                                                <td class="has-text-right" style="color: #ef4444;">-{{ mctIdealCost|number_format(0, ',', '.') }} ISK</td>
+                                            </tr>
+                                            <tr style="border-bottom: 2px solid rgba(255,255,255,0.15); font-weight: bold; background: rgba(255,255,255,0.02); font-size: 0.85rem;">
+                                                <td>Reingewinn / Verlust</td>
+                                                <td class="has-text-right" style="color: {% if data.currentProfit >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+                                                    {{ data.currentProfit|number_format(0, ',', '.') }} ISK
+                                                </td>
+                                                <td class="has-text-right" style="color: {% if data.optimalProfit >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+                                                    {{ data.optimalProfit|number_format(0, ',', '.') }} ISK
+                                                </td>
+                                                <td class="has-text-right" style="color: {% if data.idealProfit >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+                                                    {{ data.idealProfit|number_format(0, ',', '.') }} ISK
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-3 is-flex is-justify-content-between is-align-items-center" style="font-size: 0.75rem; flex-wrap: wrap; gap: 8px;">
+                                    {% if data.optimalProfit > data.currentProfit %}
+                                        <div>
+                                            <span class="has-text-grey-light">Verlorenes Opt.-Potenzial:</span>
+                                            <span class="has-text-weight-bold" style="color: #fbbf24; margin-left: 4px;">
+                                                {{ (data.optimalProfit - data.currentProfit)|number_format(0, ',', '.') }} ISK
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                    {% if data.idealProfit > data.currentProfit %}
+                                        <div>
+                                            <span class="has-text-grey-light">Ideal-Potenzial:</span>
+                                            <span class="has-text-weight-bold" style="color: var(--theme-primary); margin-left: 4px;">
+                                                +{{ (data.idealProfit - data.currentProfit)|number_format(0, ',', '.') }} ISK
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </details>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
