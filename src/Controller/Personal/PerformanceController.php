@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Profile;
+namespace App\Controller\Personal;
 
 use App\Entity\User;
 use App\Entity\EveAccount;
@@ -15,9 +15,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use App\Entity\PerformanceManualEntry;
 use Symfony\Component\HttpFoundation\Request;
 
-#[Route('/dashboard/performance')]
+#[Route('/personal/performance')]
 #[IsGranted('ROLE_MEMBER')]
-class ProfilePerformanceController extends AbstractController
+class PerformanceController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Tool;
+namespace App\Controller\General;
 
 use App\Entity\Suggestion;
 use App\Entity\User;
@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/suggestions')]
+#[Route('/general/suggestions')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 class SuggestionController extends AbstractController
 {

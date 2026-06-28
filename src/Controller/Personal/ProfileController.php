@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Profile;
+namespace App\Controller\Personal;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -16,7 +16,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile')]
+#[Route('/personal/profile')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 class ProfileController extends AbstractController
 {

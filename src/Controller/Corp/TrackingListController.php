@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Tool;
+namespace App\Controller\Corp;
 
 use App\Entity\User;
 use App\Entity\TrackingList;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/dashboard/tracking')]
+#[Route('/corp/tracking')]
 #[IsGranted('ROLE_MEMBER')]
 class TrackingListController extends AbstractController
 {

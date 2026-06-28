@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Profile;
+namespace App\Controller\Personal;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -17,9 +17,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 use App\Service\JitaPriceService;
 
-#[Route('/dashboard/industry')]
+#[Route('/personal/industry')]
 #[IsGranted('ROLE_MEMBER')]
-class ProfileIndustryController extends AbstractController
+class IndustryController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

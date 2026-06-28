@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Tool;
+namespace App\Controller\Corp;
 
 use App\Entity\Orders\BuyOrder;
 use App\Entity\Orders\SellOrder;
@@ -16,10 +16,11 @@ use App\Repository\UserRepository;
 use App\Service\SdeService;
 use App\Service\JitaPriceService;
 
+#[Route('/corp')]
 #[IsGranted('ROLE_MEMBER')]
 final class OrderListController extends AbstractController
 {
-    #[Route('/order/list', name: 'app_order_list')]
+    #[Route('/orders', name: 'app_order_list')]
     public function index(
         Request             $request,
         BuyOrderRepository  $orderRepository,
@@ -87,7 +88,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/create_order', name: 'app_order_create_order', methods: ['POST', 'GET'])]
+    #[Route('/orders/create-buy', name: 'app_order_create_order', methods: ['POST', 'GET'])]
     public function create_order(
         EntityManagerInterface $entityManager,
         Request                $request,
@@ -125,7 +126,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/{id}/update_order', name: 'update_order', methods: ['POST', 'GET'])]
+    #[Route('/orders/{id}/update-buy', name: 'update_order', methods: ['POST', 'GET'])]
     public function updateOrderByID(
         BuyOrder               $order,
         EntityManagerInterface $entityManager,
@@ -178,7 +179,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/{id}/set_order_fulfiller', name: 'set_order_fulfiller', methods: ['POST'])]
+    #[Route('/orders/{id}/set-buy-fulfiller', name: 'set_order_fulfiller', methods: ['POST'])]
     public function setOrderFullfiller(
         BuyOrder               $order,
         EntityManagerInterface $entityManager
@@ -190,7 +191,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/order/delete/{id}', name: 'app_order_delete', methods: ['POST', 'DELETE'])]
+    #[Route('/orders/buy/delete/{id}', name: 'app_order_delete', methods: ['POST', 'DELETE'])]
     public function deleteOrder(
         BuyOrder               $order,
         EntityManagerInterface $entityManager
@@ -209,7 +210,7 @@ final class OrderListController extends AbstractController
 
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/create_sell', name: 'app_order_create_sell', methods: ['POST', 'GET'])]
+    #[Route('/orders/create-sell', name: 'app_order_create_sell', methods: ['POST', 'GET'])]
     public function create_sell(
         EntityManagerInterface $entityManager,
         Request                $request,
@@ -247,7 +248,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/{id}/update_sell', name: 'update_sell', methods: ['POST', 'GET'])]
+    #[Route('/orders/{id}/update-sell', name: 'update_sell', methods: ['POST', 'GET'])]
     public function update_sell(
         SellOrder              $sell,
         EntityManagerInterface $entityManager,
@@ -300,7 +301,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/{id}/set_sell_fulfiller', name: 'set_sell_fulfiller', methods: ['POST'])]
+    #[Route('/orders/{id}/set-sell-fulfiller', name: 'set_sell_fulfiller', methods: ['POST'])]
     public function setSellFullfiller(
         SellOrder              $sell,
         EntityManagerInterface $entityManager
@@ -312,7 +313,7 @@ final class OrderListController extends AbstractController
     }
 
     #[IsGranted('ROLE_MEMBER')]
-    #[Route('/order/sell/delete/{id}', name: 'app_sell_delete', methods: ['POST', 'DELETE'])]
+    #[Route('/orders/sell/delete/{id}', name: 'app_sell_delete', methods: ['POST', 'DELETE'])]
     public function deleteSellOrder(
         SellOrder              $sell,
         EntityManagerInterface $entityManager

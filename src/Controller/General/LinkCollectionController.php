@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Tool;
+namespace App\Controller\General;
 
 use App\Entity\LinkCollection\LinkCollectionCategory;
 use App\Entity\LinkCollection\LinkCollectionItem;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/link')]
+#[Route('/general/link')]
 #[IsGranted('ROLE_MEMBER')]
 final class LinkCollectionController extends AbstractController
 {
