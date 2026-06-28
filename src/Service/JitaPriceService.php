@@ -9,6 +9,12 @@ class JitaPriceService
     private const REGION_THE_FORGE = 10000002;
     private const LOCATION_JITA_STATION = 60003760;
 
+    // Maximale Abweichung von der jeweils besten Order (15%)
+    private const BEST_PRICE_TOLERANCE = 0.15;
+
+    // Maximale Abweichung vom globalen 24h-Durchschnittspreis (30%)
+    private const GLOBAL_PRICE_TOLERANCE = 0.30;
+
     public function __construct(
         private readonly EsiClient $esiClient
     ) {}
@@ -46,12 +52,37 @@ class JitaPriceService
                     && $order['is_buy_order'] === $isBuyOrder;
             });
 
+            // Get global average price for sanity check/fallback
+            $globalPrices = $this->getGlobalPrices();
+            $globalPrice = $globalPrices[$typeId] ?? null;
+
+            // 1. Filter by global price tolerance if global price is available
+            if ($globalPrice !== null && !empty($jitaOrders)) {
+                $minAllowed = $globalPrice * (1 - self::GLOBAL_PRICE_TOLERANCE);
+                $maxAllowed = $globalPrice * (1 + self::GLOBAL_PRICE_TOLERANCE);
+
+                $jitaOrders = array_filter($jitaOrders, function ($order) use ($minAllowed, $maxAllowed) {
+                    $price = (float)$order['price'];
+                    return $price >= $minAllowed && $price <= $maxAllowed;
+                });
+            }
+
             if (empty($jitaOrders)) {
+                // Fallback to global price if no valid Jita orders are found but global price exists
+                if ($globalPrice !== null) {
+                    return [
+                        'price' => $globalPrice,
+                        'count' => 0,
+                        'warning' => true,
+                        'message' => 'Keine validen Jita-Preise gefunden. Nutze globalen ESI-Durchschnittspreis.'
+                    ];
+                }
+
                 return [
                     'price' => null,
                     'count' => 0,
                     'warning' => true,
-                    'message' => 'Keine Jita-Preise gefunden.'
+                    'message' => 'Keine Jita-Preise oder globalen ESI-Preise gefunden.'
                 ];
             }
 
@@ -68,6 +99,21 @@ class JitaPriceService
                 }
             });
 
+            // 2. Filter by tolerance from the best order
+            $bestPrice = (float)$jitaOrders[0]['price'];
+            $jitaOrders = array_filter($jitaOrders, function ($order) use ($bestPrice, $isBuyOrder) {
+                $price = (float)$order['price'];
+                if ($isBuyOrder) {
+                    return $price >= ($bestPrice * (1 - self::BEST_PRICE_TOLERANCE));
+                } else {
+                    return $price <= ($bestPrice * (1 + self::BEST_PRICE_TOLERANCE));
+                }
+            });
+
+            // Re-sort because array_filter preserves keys but doesn't break usort ordering, 
+            // though array_slice is safer with re-indexed arrays
+            $jitaOrders = array_values($jitaOrders);
+
             // Take up to 10 best orders
             $topOrders = array_slice($jitaOrders, 0, 10);
             $totalPrice = 0.0;
@@ -76,10 +122,27 @@ class JitaPriceService
             }
             
             $count = count($topOrders);
+            if ($count === 0) {
+                if ($globalPrice !== null) {
+                    return [
+                        'price' => $globalPrice,
+                        'count' => 0,
+                        'warning' => true,
+                        'message' => 'Keine validen Jita-Preise nach Filterung gefunden. Nutze globalen ESI-Durchschnittspreis.'
+                    ];
+                }
+                return [
+                    'price' => null,
+                    'count' => 0,
+                    'warning' => true,
+                    'message' => 'Keine validen Jita-Preise gefunden.'
+                ];
+            }
+
             $average = $totalPrice / $count;
 
             $warning = $count < 10;
-            $message = $warning ? sprintf('Nur %d statt 10 Preise vorhanden.', $count) : null;
+            $message = $warning ? sprintf('Nur %d statt 10 Preise nach Ausreißer-Filterung vorhanden.', $count) : null;
 
             return [
                 'price' => $average,
