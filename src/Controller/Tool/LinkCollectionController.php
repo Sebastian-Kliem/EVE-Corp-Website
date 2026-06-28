@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/link')]
-#[IsGranted('ROLE_USER')]
+#[IsGranted('ROLE_MEMBER')]
 final class LinkCollectionController extends AbstractController
 {
     #[Route('/collection', name: 'link_collection')]

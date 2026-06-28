@@ -49,7 +49,7 @@ class ApiController extends AbstractController
     }
 
     #[Route('/me', name: 'api_me', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function me(): JsonResponse
     {
         $user = $this->getUser();
@@ -66,7 +66,7 @@ class ApiController extends AbstractController
     }
 
     #[Route('/sde/items', name: 'api_sde_items', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function searchSdeItems(Request $request, SdeService $sdeService): JsonResponse
     {
         $query = $request->query->get('q', '');
@@ -81,7 +81,7 @@ class ApiController extends AbstractController
     }
 
     #[Route('/sde/parse-items', name: 'api_sde_parse_items', methods: ['POST'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function parseItems(Request $request, SdeService $sdeService): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -221,7 +221,7 @@ class ApiController extends AbstractController
 
 
     #[Route('/structures/{id}', name: 'api_update_structure', methods: ['POST'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function updateStructure(
         string $id,
         Request $request,

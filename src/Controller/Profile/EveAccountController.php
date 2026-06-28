@@ -28,6 +28,7 @@ class EveAccountController extends AbstractController
     ) {}
 
     #[Route('/profile/eve-account/create', name: 'app_eve_account_create', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function create(Request $request): Response
     {
         if (!$this->isCsrfTokenValid('eve_account_create', $request->request->get('_token'))) {
@@ -59,6 +60,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/profile/eve-account/{id}/update', name: 'app_eve_account_update', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function update(int $id, Request $request): Response
     {
         $account = $this->entityManager->getRepository(EveAccount::class)->find($id);
@@ -93,6 +95,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/profile/eve-account/{id}/delete', name: 'app_eve_account_delete', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function delete(int $id, Request $request): Response
     {
         $account = $this->entityManager->getRepository(EveAccount::class)->find($id);
@@ -122,6 +125,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/profile/eve-character/{id}/assign', name: 'app_eve_character_assign', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function assignCharacter(int $id, Request $request): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
@@ -1092,6 +1096,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/profile/eve-character/{id}/delete', name: 'app_eve_character_delete', methods: ['POST'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function deleteCharacter(int $id, Request $request): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
