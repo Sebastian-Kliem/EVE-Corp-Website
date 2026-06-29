@@ -87,13 +87,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         const today = new Date();
         const currentYear = today.getUTCFullYear();
         const currentMonth = today.getUTCMonth() + 1; // 1-12
-        
+
         let total = 0;
         Object.entries(ledgerData).forEach(([dateStr, day]) => {
             const [yearStr, monthStr] = dateStr.split('-');
             const year = parseInt(yearStr, 10);
             const month = parseInt(monthStr, 10);
-            
+
             if (year === currentYear && month === currentMonth) {
                 total += day.summary.totalValue;
             }
@@ -359,10 +359,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     return false;
                 }
                 // Search term check
-                if (searchTerm && !item.typeName.toLowerCase().includes(searchTerm.toLowerCase())) {
-                    return false;
-                }
-                return true;
+                return !(searchTerm && !item.typeName.toLowerCase().includes(searchTerm.toLowerCase()));
+
             });
 
             if (filteredDetails.length === 0) {
@@ -489,7 +487,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                     )}
                                 </p>
                             </div>
-                            
+
                             <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span className="is-size-7" style={{ color: '#ccc' }}>
@@ -499,13 +497,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                         {isNegative ? '0%' : `${percent.toFixed(1)}%`}
                                     </span>
                                 </div>
-                                
+
                                 {/* Progress Bar Container */}
                                 <div style={{
-                                    width: '100%', 
-                                    height: '14px', 
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)', 
-                                    borderRadius: '7px', 
+                                    width: '100%',
+                                    height: '14px',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                    borderRadius: '7px',
                                     overflow: 'hidden',
                                     border: '1px solid var(--theme-card-border)',
                                     position: 'relative'
@@ -513,8 +511,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                     <div style={{
                                         width: `${isNegative ? 0 : percent}%`,
                                         height: '100%',
-                                        background: percent >= 100 
-                                            ? 'linear-gradient(90deg, #00b37a 0%, #00ffaa 100%)' 
+                                        background: percent >= 100
+                                            ? 'linear-gradient(90deg, #00b37a 0%, #00ffaa 100%)'
                                             : 'linear-gradient(90deg, #0284c7 0%, var(--theme-primary) 100%)',
                                         borderRadius: '7px',
                                         transition: 'width 0.5s ease-out',
@@ -522,7 +520,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                     }}></div>
                                 </div>
                             </div>
-                            
+
                             <div style={{ flex: '1 1 100%', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', marginTop: '5px' }}>
                                 {percent >= 100 ? (
                                     <div className="is-size-7" style={{ color: '#00ffaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -633,7 +631,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     </div>
                 ) : (
                     filteredLedger.map(day => {
-                        const isExpanded = !!expandedDates[day.date];
+                        const isExpanded = expandedDates[day.date];
                         const dateObj = new Date(day.date);
                         const formattedDate = dateObj.toLocaleDateString('de-DE', {
                             weekday: 'long',
@@ -699,7 +697,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                 >
                                                                     <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
                                                                         {item.manualEntryId ? (
-                                                                            <button 
+                                                                            <button
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     handleDeleteManualEntry(item.manualEntryId!, item.typeName, item.totalValue);
@@ -797,23 +795,23 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     <div className="manual-form-grid">
                         <div className="manual-form-group">
                             <label htmlFor="manual-date" className="manual-form-label">Datum</label>
-                            <input 
+                            <input
                                 id="manual-date"
                                 name="date"
-                                type="date" 
-                                className="ledger-input" 
-                                value={manualDate} 
+                                type="date"
+                                className="ledger-input"
+                                value={manualDate}
                                 onChange={(e) => setManualDate(e.target.value)}
-                                required 
+                                required
                             />
                         </div>
                         <div className="manual-form-group">
                             <label htmlFor="manual-character" className="manual-form-label">Charakter</label>
-                            <select 
+                            <select
                                 id="manual-character"
                                 name="characterId"
-                                className="select-input" 
-                                value={manualCharId} 
+                                className="select-input"
+                                value={manualCharId}
                                 onChange={(e) => setManualCharId(e.target.value)}
                             >
                                 <option value="" style={{ background: '#101525' }}>Keiner / Allgemein</option>
@@ -824,11 +822,11 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         </div>
                         <div className="manual-form-group">
                             <label htmlFor="manual-category" className="manual-form-label">Kategorie</label>
-                            <select 
+                            <select
                                 id="manual-category"
                                 name="category"
-                                className="select-input" 
-                                value={manualCategory} 
+                                className="select-input"
+                                value={manualCategory}
                                 onChange={(e) => setManualCategory(e.target.value)}
                             >
                                 {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
@@ -838,33 +836,33 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         </div>
                         <div className="manual-form-group">
                             <label htmlFor="manual-description" className="manual-form-label">Beschreibung</label>
-                            <input 
+                            <input
                                 id="manual-description"
                                 name="description"
-                                type="text" 
-                                className="ledger-input" 
-                                placeholder="z.B. Skill-Injektor..." 
+                                type="text"
+                                className="ledger-input"
+                                placeholder="z.B. Skill-Injektor..."
                                 value={manualDescription}
                                 onChange={(e) => setManualDescription(e.target.value)}
-                                required 
+                                required
                             />
                         </div>
                         <div className="manual-form-group">
                             <label htmlFor="manual-amount" className="manual-form-label">Betrag (ISK)</label>
-                            <input 
+                            <input
                                 id="manual-amount"
                                 name="amount"
-                                type="number" 
-                                className="ledger-input" 
-                                placeholder="Betrag in ISK" 
+                                type="number"
+                                className="ledger-input"
+                                placeholder="Betrag in ISK"
                                 value={manualAmount}
                                 onChange={(e) => setManualAmount(e.target.value)}
-                                required 
+                                required
                             />
                         </div>
                         <div className="manual-form-group manual-action-group">
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 className="manual-submit-btn"
                                 disabled={manualLoading}
                             >
@@ -901,7 +899,7 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
 
     const loadChanges = () => {
         setLoading(true);
-        const url = `/dashboard/tracking/api/changes?typeId=${typeId}&rangeType=single_date&date=${dateStr}`;
+        const url = `/corp/tracking/api/changes?typeId=${typeId}&rangeType=single_date&date=${dateStr}`;
 
         fetch(url)
             .then(res => {
@@ -928,7 +926,7 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
         }
 
         setDeletingId(id);
-        fetch(`/dashboard/tracking/api/changes/${id}`, {
+        fetch(`/corp/tracking/api/changes/${id}`, {
             method: 'DELETE'
         })
         .then(res => {

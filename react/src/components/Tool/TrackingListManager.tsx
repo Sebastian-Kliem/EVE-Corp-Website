@@ -41,7 +41,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     const [suggestions, setSuggestions] = useState<SdeItem[]>([]);
     const [searchingItems, setSearchingItems] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
 
     const [listError, setListError] = useState<string | null>(null);
 
@@ -98,7 +98,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     const fetchLists = (selectIdAfterLoad?: number) => {
         setLoadingLists(true);
         setListError(null);
-        fetch('/dashboard/tracking/api/lists')
+        fetch('/corp/tracking/api/lists')
             .then(res => {
                 if (!res.ok) throw new Error('Fehler beim Laden der Listen.');
                 return res.json();
@@ -123,7 +123,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
         e.preventDefault();
         if (!newListName.trim()) return;
 
-        fetch('/dashboard/tracking/api/lists', {
+        fetch('/corp/tracking/api/lists', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -146,7 +146,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     };
 
     const handleCopyList = (listId: number) => {
-        fetch(`/dashboard/tracking/api/lists/${listId}/copy`, {
+        fetch(`/corp/tracking/api/lists/${listId}/copy`, {
             method: 'POST'
         })
             .then(res => res.json())
@@ -165,7 +165,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
             return;
         }
 
-        fetch(`/dashboard/tracking/api/lists/${listId}`, {
+        fetch(`/corp/tracking/api/lists/${listId}`, {
             method: 'DELETE'
         })
             .then(res => res.json())
@@ -183,7 +183,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     const handleAddItem = (typeId: number) => {
         if (selectedListId === null) return;
 
-        fetch(`/dashboard/tracking/api/lists/${selectedListId}/items`, {
+        fetch(`/corp/tracking/api/lists/${selectedListId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ typeId })
@@ -206,7 +206,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
         if (selectedListId === null) return;
         const typeIds = parsedItems.map(item => item.typeId);
 
-        fetch(`/dashboard/tracking/api/lists/${selectedListId}/items/bulk`, {
+        fetch(`/corp/tracking/api/lists/${selectedListId}/items/bulk`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -226,7 +226,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     };
 
     const handleRemoveItem = (itemId: number) => {
-        fetch(`/dashboard/tracking/api/lists/items/${itemId}`, {
+        fetch(`/corp/tracking/api/lists/items/${itemId}`, {
             method: 'DELETE'
         })
             .then(res => res.json())
@@ -446,7 +446,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                             {activeList.isTemplate ? (
                                 <button 
                                     className="button is-small is-info"
-                                    onClick={() => handleCopyList(activeList.id)}
+                                    onClick={() => activeList && handleCopyList(activeList.id)}
                                 >
                                     📋 Als eigene Liste kopieren
                                 </button>

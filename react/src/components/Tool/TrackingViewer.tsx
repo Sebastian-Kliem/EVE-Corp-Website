@@ -39,7 +39,7 @@ interface TrackingViewerProps {
     jwtToken: string;
 }
 
-export default function TrackingViewer({ jwtToken }: TrackingViewerProps) {
+export default function TrackingViewer(_props: TrackingViewerProps) {
     const [lists, setLists] = useState<TrackingList[]>([]);
     const [loadingLists, setLoadingLists] = useState<boolean>(true);
     const [listError, setListError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export default function TrackingViewer({ jwtToken }: TrackingViewerProps) {
 
     useEffect(() => {
         setLoadingLists(true);
-        fetch('/dashboard/tracking/api/lists')
+        fetch('/corp/tracking/api/lists')
             .then(res => {
                 if (!res.ok) throw new Error('Fehler beim Laden der Listen.');
                 return res.json();
@@ -224,7 +224,7 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
         setError(null);
 
         // Build request URL based on timeSelect
-        let url = `/dashboard/tracking/api/data?listId=${listId}`;
+        let url = `/corp/tracking/api/data?listId=${listId}`;
         
         if (timeSelect.endsWith('h')) {
             const hours = parseInt(timeSelect);
@@ -560,7 +560,7 @@ function ItemChangesDetails({ listId, typeId, timeSelect, singleDate, formatNumb
 
     const loadChanges = () => {
         setLoading(true);
-        let url = `/dashboard/tracking/api/changes?listId=${listId}&typeId=${typeId}`;
+        let url = `/corp/tracking/api/changes?listId=${listId}&typeId=${typeId}`;
         if (timeSelect.endsWith('h')) {
             url += `&rangeType=hours&hours=${parseInt(timeSelect)}`;
         } else if (timeSelect.endsWith('d')) {
@@ -594,7 +594,7 @@ function ItemChangesDetails({ listId, typeId, timeSelect, singleDate, formatNumb
         }
 
         setDeletingId(id);
-        fetch(`/dashboard/tracking/api/changes/${id}`, {
+        fetch(`/corp/tracking/api/changes/${id}`, {
             method: 'DELETE'
         })
         .then(res => {
