@@ -172,6 +172,11 @@ class CronRunCommand extends Command
                 'expression' => '*/5 * * * *', // every 5 minutes
             ],
             [
+                'name' => 'Charakter-Killmails synchronisieren (Killmails)',
+                'command' => 'character:sync-killmails',
+                'expression' => '*/10 * * * *', // every 10 minutes
+            ],
+            [
                 'name' => 'Charakter-Bergbaudaten synchronisieren (Mining Ledger)',
                 'command' => 'character:sync-mining-ledger',
                 'expression' => '*/5 * * * *', // every 5 minutes

@@ -60,6 +60,9 @@ class EveCharacter
     private ?\DateTimeImmutable $lastIndustryJobsUpdate = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastKillmailsUpdate = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $performanceCutoffDate = null;
 
     #[ORM\Column(type: 'boolean', options: ['default' => true])]
@@ -271,6 +274,18 @@ class EveCharacter
     public function setLastIndustryJobsUpdate(?\DateTimeImmutable $lastIndustryJobsUpdate): static
     {
         $this->lastIndustryJobsUpdate = $lastIndustryJobsUpdate;
+
+        return $this;
+    }
+
+    public function getLastKillmailsUpdate(): ?\DateTimeImmutable
+    {
+        return $this->lastKillmailsUpdate;
+    }
+
+    public function setLastKillmailsUpdate(?\DateTimeImmutable $lastKillmailsUpdate): static
+    {
+        $this->lastKillmailsUpdate = $lastKillmailsUpdate;
 
         return $this;
     }
