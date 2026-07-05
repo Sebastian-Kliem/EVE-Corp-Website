@@ -155,14 +155,14 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             return;
         }
         const amt = parseFloat(manualAmount);
-        if (isNaN(amt) || amt <= 0) {
-            setManualError('Betrag muss größer als 0 sein.');
+        if (isNaN(amt) || amt === 0) {
+            setManualError('Betrag darf nicht 0 sein.');
             return;
         }
         setManualLoading(true);
         setManualError(null);
 
-        fetch('/dashboard/performance/manual', {
+        fetch('/personal/performance/manual', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             return;
         }
 
-        fetch(`/dashboard/performance/manual/${id}`, {
+        fetch(`/personal/performance/manual/${id}`, {
             method: 'DELETE'
         })
         .then(res => {
@@ -401,6 +401,70 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         return result;
     }, [ledgerData, selectedDateRange, selectedCharacters, selectedCategories, searchTerm, selectedTag, charactersList]);
 
+    // 30-day average earnings computed over the last 30 calendar days (or less if the ledger is newer than 30 days)
+    const average30Days = useMemo(() => {
+        const today = new Date();
+        const formatDateStr = (d: Date) => {
+            const year = d.getUTCFullYear();
+            const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(d.getUTCDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const cutoffDate = new Date();
+        cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 30);
+        const cutoffStr = formatDateStr(cutoffDate);
+
+        // Find the oldest date in the entire ledgerData to calculate the start point of recordings
+        const allDates = Object.keys(ledgerData).sort();
+        let daysToDivide = 30;
+
+        if (allDates.length > 0) {
+            const oldestDateStr = allDates[0];
+            const oldestDate = new Date(oldestDateStr);
+            const todayReset = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+            const oldestReset = new Date(Date.UTC(oldestDate.getUTCFullYear(), oldestDate.getUTCMonth(), oldestDate.getUTCDate()));
+            
+            const diffTime = Math.abs(todayReset.getTime() - oldestReset.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Include today
+            
+            daysToDivide = Math.min(30, diffDays);
+        }
+
+        // Ensure we divide by at least 1
+        daysToDivide = Math.max(1, daysToDivide);
+
+        let sum = 0.0;
+
+        Object.entries(ledgerData).forEach(([dateStr, day]) => {
+            if (dateStr < cutoffStr) {
+                return;
+            }
+
+            const filteredDetails = day.details.filter(item => {
+                if (!selectedCharacters.includes(item.character)) {
+                    return false;
+                }
+                if (selectedTag !== 'all') {
+                    const charObj = charactersList.find(c => c.name === item.character);
+                    if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
+                        return false;
+                    }
+                }
+                if (!selectedCategories.includes(item.category)) {
+                    return false;
+                }
+                return !(searchTerm && !item.typeName.toLowerCase().includes(searchTerm.toLowerCase()));
+            });
+
+            filteredDetails.forEach(item => {
+                sum += item.totalValue;
+            });
+        });
+
+        return sum / daysToDivide;
+    }, [ledgerData, selectedCharacters, selectedCategories, searchTerm, selectedTag, charactersList]);
+
     // Overall summary across the filtered ledger
     const totalEarnings = useMemo(() => {
         let total = 0.0;
@@ -449,6 +513,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 <div className="stat-box" style={{ borderLeft: '4px solid var(--theme-primary)' }}>
                     <span className="stat-label">Gesamtertrag (Netto)</span>
                     <span className="stat-val" style={{ color: 'var(--theme-primary)' }}>{formatISK(totalEarnings.total)}</span>
+                </div>
+                <div className="stat-box" style={{ borderLeft: '4px solid #3ab0ff' }}>
+                    <span className="stat-label">Ø Tagesgewinn (30 Tage)</span>
+                    <span className="stat-val" style={{ color: '#3ab0ff' }}>{formatISK(average30Days)}</span>
                 </div>
                 {Object.entries(totalEarnings.byCat).map(([cat, val]) => {
                     if (val === 0) return null;
