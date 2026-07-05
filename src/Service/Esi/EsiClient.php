@@ -330,21 +330,46 @@ class EsiClient
             $pageOptions = $options;
             $pageOptions['query'] = array_merge($pageOptions['query'] ?? [], ['page' => $page]);
 
-            $response = $this->requestWithHeaders('GET', $path, $pageOptions, $character);
+            $attempt = 0;
+            $maxPageRetries = 5;
+            $data = null;
+            $headers = [];
 
-            if ($page === 1 && ($response['fromCache'] ?? false)) {
-                return [
-                    'data' => $response['data'],
-                    'fromCache' => true
-                ];
+            while ($attempt < $maxPageRetries) {
+                $attempt++;
+                try {
+                    $response = $this->requestWithHeaders('GET', $path, $pageOptions, $character, 5);
+
+                    if ($page === 1 && ($response['fromCache'] ?? false)) {
+                        return [
+                            'data' => $response['data'],
+                            'fromCache' => true
+                        ];
+                    }
+
+                    $data = $response['data'];
+                    $headers = $response['headers'];
+
+                    // ESI pagination hiccup: sometimes it returns empty page data on HTTP 200 for pages > 1
+                    if ($page > 1 && (empty($data) || !is_array($data))) {
+                        $this->logCron(sprintf('[EsiClient] Page %d of %d on path %s returned empty data (attempt %d/%d). Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries), 'warning');
+                        sleep(2);
+                        continue;
+                    }
+
+                    break; // Success
+                } catch (\Exception $e) {
+                    if ($attempt >= $maxPageRetries) {
+                        throw $e;
+                    }
+                    $this->logCron(sprintf('[EsiClient] Request failed for page %d of %d on path %s (attempt %d/%d): %s. Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries, $e->getMessage()), 'warning');
+                    sleep(2);
+                }
             }
-
-            $data = $response['data'];
-            $headers = $response['headers'];
 
             if (empty($data) || !is_array($data)) {
                 if ($page > 1) {
-                    throw new \RuntimeException(sprintf('ESI returned empty data for page %d of %d on path %s.', $page, $totalPages, $path));
+                    throw new \RuntimeException(sprintf('ESI returned empty data for page %d of %d on path %s after %d retries.', $page, $totalPages, $path, $maxPageRetries));
                 }
                 break;
             }
