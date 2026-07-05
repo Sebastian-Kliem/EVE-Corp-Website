@@ -122,12 +122,12 @@ class EsiClient
             ]);
 
             $data = $response->toArray();
-            
+
             $character->setAccessToken($data['access_token']);
             if (!empty($data['refresh_token'])) {
                 $character->setRefreshToken($data['refresh_token']);
             }
-            
+
             $expiresIn = (int) ($data['expires_in'] ?? 1200);
             $character->setTokenExpiresAt((new \DateTimeImmutable())->modify('+' . $expiresIn . ' seconds'));
             $character->setTokenValid(true);
@@ -138,14 +138,14 @@ class EsiClient
         } catch (\Exception $e) {
             // Log error to system error log for easy developer troubleshooting
             error_log(sprintf('[EsiClient] Failed to refresh token for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
-            
+
             // If the error indicates that the refresh token is invalid (e.g. invalid_grant or 400 Bad Request)
             // we mark the character's token as invalid so we can warn the user.
             if (str_contains(strtolower($e->getMessage()), 'invalid_grant') || str_contains($e->getMessage(), '400') || str_contains($e->getMessage(), '401')) {
                 $character->setTokenValid(false);
                 $this->entityManager->flush();
             }
-            
+
             return false;
         }
     }
@@ -162,11 +162,11 @@ class EsiClient
     public function requestWithHeaders(string $method, string $path, array $options = [], ?EveCharacter $character = null, int $maxRetries = 3): array
     {
         $method = strtoupper($method);
-        
+
         if (self::$esiOffline) {
             throw new \RuntimeException('ESI is offline (circuit breaker active)');
         }
-        
+
         // Cache only GET requests
         $useCache = ($method === 'GET');
         $cacheKey = null;
@@ -331,7 +331,7 @@ class EsiClient
             $pageOptions['query'] = array_merge($pageOptions['query'] ?? [], ['page' => $page]);
 
             $attempt = 0;
-            $maxPageRetries = 5;
+            $maxPageRetries = 10;
             $data = null;
             $headers = [];
 
@@ -395,7 +395,7 @@ class EsiClient
     private function logCron(string $message, string $level = 'info'): void
     {
         $this->logger->log($level, $message);
-        
+
         try {
             $logFile = dirname(__FILE__, 4) . '/var/log/cron.log';
             $logDir = dirname($logFile);
