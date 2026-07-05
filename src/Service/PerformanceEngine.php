@@ -237,9 +237,9 @@ class PerformanceEngine
             }
         }
 
-        // Process asset changes (net change per user aggregated by sync runs): [date][rawTypeId] => quantity
-        // Group changes by 15-minute run windows to cancel out inter-character transfers
-        $runAgg = [];
+        // Process asset changes (net change per user aggregated by day): [date][rawTypeId] => quantity
+        // Sum all changes of the day across all characters of the user to cancel out transfers
+        $dayAgg = [];
         /** @var EveCharacterAssetChange $change */
         foreach ($assetChanges as $change) {
             $charId = $change->getCharacter()->getId();
@@ -251,9 +251,6 @@ class PerformanceEngine
 
             $loggedAt = $change->getLoggedAt();
             $dateStr = $loggedAt->format('Y-m-d');
-            $timestamp = $loggedAt->getTimestamp();
-            // Round to 15 minutes (900 seconds)
-            $roundedTime = floor($timestamp / 900) * 900;
             
             $tid = $change->getTypeId();
             $qty = (int)$change->getQuantity();
@@ -262,17 +259,15 @@ class PerformanceEngine
             $rawTid = $comp['typeId'];
             $ratio = $comp['ratio'];
 
-            $groupKey = $dateStr . '_' . $roundedTime;
-            if (!isset($runAgg[$groupKey][$rawTid])) {
-                $runAgg[$groupKey][$rawTid] = 0;
+            if (!isset($dayAgg[$dateStr][$rawTid])) {
+                $dayAgg[$dateStr][$rawTid] = 0;
             }
-            $runAgg[$groupKey][$rawTid] += ($qty * $ratio);
+            $dayAgg[$dateStr][$rawTid] += ($qty * $ratio);
         }
 
         // Only sum positive net changes per day to capture actual earnings/gains
         $assetChangeAgg = [];
-        foreach ($runAgg as $groupKey => $items) {
-            $dateStr = explode('_', $groupKey)[0];
+        foreach ($dayAgg as $dateStr => $items) {
             foreach ($items as $rawTid => $netQty) {
                 if ($netQty > 0) {
                     if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
@@ -318,7 +313,8 @@ class PerformanceEngine
                 'details' => []
             ];
 
-            // A. Process wallet journal rewards first
+            // A. Process wallet journal rewards first (aggregated by character and type per day)
+            $dayRewards = [];
             /** @var EveCharacterWalletJournalEntry $entry */
             foreach ($journalEntries as $entry) {
                 if ($entry->getDate()->format('Y-m-d') !== $dateStr) {
@@ -336,6 +332,7 @@ class PerformanceEngine
                     continue;
                 }
 
+                $charId = $entry->getCharacter()->getId();
                 $charName = $entry->getCharacter()->getName();
                 $refType = $entry->getRefType();
                 
@@ -346,19 +343,31 @@ class PerformanceEngine
                     default => 'Auszahlung'
                 };
 
+                $aggKey = $charId . '_' . $refType;
+                if (!isset($dayRewards[$aggKey])) {
+                    $dayRewards[$aggKey] = [
+                        'character' => $charName,
+                        'category' => 'wallet_rewards',
+                        'typeName' => $rewardName,
+                        'quantity' => 0,
+                        'price' => 0.0,
+                        'totalValue' => 0.0,
+                        'isWallet' => true,
+                        'typeId' => 0
+                    ];
+                }
+
+                $dayRewards[$aggKey]['quantity']++;
+                $dayRewards[$aggKey]['totalValue'] += $amount;
                 $dayData['summary']['byCategory']['wallet_rewards'] += $amount;
                 $dayData['summary']['totalValue'] += $amount;
+            }
 
-                $dayData['details'][] = [
-                    'character' => $charName,
-                    'category' => 'wallet_rewards',
-                    'typeName' => $rewardName,
-                    'quantity' => 1,
-                    'price' => $amount,
-                    'totalValue' => $amount,
-                    'isWallet' => true,
-                    'typeId' => 0
-                ];
+            foreach ($dayRewards as $rewardData) {
+                if ($rewardData['quantity'] > 0) {
+                    $rewardData['price'] = $rewardData['totalValue'] / $rewardData['quantity'];
+                }
+                $dayData['details'][] = $rewardData;
             }
 
             // B. Process manual entries
