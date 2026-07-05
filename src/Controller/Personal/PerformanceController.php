@@ -128,8 +128,8 @@ class PerformanceController extends AbstractController
             return new JsonResponse(['error' => 'Beschreibung fehlt.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if ($amount <= 0) {
-            return new JsonResponse(['error' => 'Betrag muss größer als 0 sein.'], Response::HTTP_BAD_REQUEST);
+        if ($amount === 0.0) {
+            return new JsonResponse(['error' => 'Betrag darf nicht 0 sein.'], Response::HTTP_BAD_REQUEST);
         }
 
         $character = null;
