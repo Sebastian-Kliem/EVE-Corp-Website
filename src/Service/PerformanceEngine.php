@@ -299,16 +299,14 @@ class PerformanceEngine
             $dayAgg[$dateStr][$rawTid] += ($qty * $ratio);
         }
 
-        // Only sum positive net changes per day to capture actual earnings/gains
+        // Map all net changes per day (allowing negatives to offset sales and manual deletes)
         $assetChangeAgg = [];
         foreach ($dayAgg as $dateStr => $items) {
             foreach ($items as $rawTid => $netQty) {
-                if ($netQty > 0) {
-                    if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
-                        $assetChangeAgg[$dateStr][$rawTid] = 0;
-                    }
-                    $assetChangeAgg[$dateStr][$rawTid] += $netQty;
+                if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
+                    $assetChangeAgg[$dateStr][$rawTid] = 0;
                 }
+                $assetChangeAgg[$dateStr][$rawTid] += $netQty;
             }
         }
 
