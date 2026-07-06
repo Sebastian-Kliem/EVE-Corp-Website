@@ -7,6 +7,7 @@ use App\Entity\EveCharacterAssetChange;
 use App\Entity\EveCharacterContract;
 use App\Entity\EveCharacterMarketTransaction;
 use App\Entity\EveCharacterWalletJournalEntry;
+use App\Entity\EveKillmail;
 use App\Entity\TrackingList;
 use App\Entity\TrackingListItem;
 use App\Entity\User;
@@ -117,6 +118,18 @@ class PerformanceEngine
             ->getQuery()
             ->getResult();
 
+        // 5b. Fetch all ship losses (Killmails where isLoss = true) in the range
+        $killmails = $this->entityManager->getRepository(EveKillmail::class)->createQueryBuilder('k')
+            ->where('k.character IN (:characters)')
+            ->andWhere('k.isLoss = true')
+            ->andWhere('k.killmailTime >= :start')
+            ->andWhere('k.killmailTime <= :end')
+            ->setParameter('characters', $characters)
+            ->setParameter('start', $startDate)
+            ->setParameter('end', $endDate)
+            ->getQuery()
+            ->getResult();
+
         // 5b. Fetch manual performance entries in the range
         $manualEntries = $this->entityManager->getRepository(\App\Entity\PerformanceManualEntry::class)->createQueryBuilder('m')
             ->where('m.user = :user')
@@ -143,6 +156,20 @@ class PerformanceEngine
             foreach ($contract->getItems() as $item) {
                 if (isset($item['typeId'])) {
                     $typeIds[] = (int)$item['typeId'];
+                }
+            }
+        }
+        /** @var EveKillmail $km */
+        foreach ($killmails as $km) {
+            if ($km->getVictimShipTypeId()) {
+                $typeIds[] = $km->getVictimShipTypeId();
+            }
+            $kmData = $km->getData();
+            if (isset($kmData['victim']['items']) && is_array($kmData['victim']['items'])) {
+                foreach ($kmData['victim']['items'] as $item) {
+                    if (isset($item['item_type_id'])) {
+                        $typeIds[] = (int)$item['item_type_id'];
+                    }
                 }
             }
         }
@@ -293,12 +320,19 @@ class PerformanceEngine
             $manualEntryAgg[$dateStr][] = $entry;
         }
 
+        $killmailDates = [];
+        /** @var EveKillmail $km */
+        foreach ($killmails as $km) {
+            $killmailDates[] = $km->getKillmailTime()->format('Y-m-d');
+        }
+
         // 11. Combine and calculate net items gained
         $dates = array_unique(array_merge(
             array_keys($assetChangeAgg),
             array_keys($marketBuyAgg),
             array_keys($contractRecAgg),
-            array_keys($manualEntryAgg)
+            array_keys($manualEntryAgg),
+            $killmailDates
         ));
         sort($dates);
 
@@ -314,6 +348,7 @@ class PerformanceEngine
                         'abyss_loot' => 0.0,
                         'hacking_salvage' => 0.0,
                         'wallet_rewards' => 0.0,
+                        'ship_losses' => 0.0,
                         'other' => 0.0
                     ]
                 ],
@@ -494,6 +529,60 @@ class PerformanceEngine
                     'totalValue' => $totalValue,
                     'isWallet' => false,
                     'typeId' => $rawTid
+                ];
+            }
+
+            // E. Process ship losses (Killmails where isLoss = true)
+            /** @var EveKillmail $km */
+            foreach ($killmails as $km) {
+                if ($km->getKillmailTime()->format('Y-m-d') !== $dateStr) {
+                    continue;
+                }
+
+                $char = $characterMap[$km->getCharacter()->getId()] ?? null;
+                $cutoff = $char?->getPerformanceCutoffDate();
+                if ($cutoff !== null && $km->getKillmailTime() < $cutoff) {
+                    continue;
+                }
+
+                $charName = $km->getCharacter()->getName();
+                $shipTypeId = $km->getVictimShipTypeId();
+                
+                // Calculate loss value based on global prices for the ship hull and all equipped/carried items
+                $shipPrice = $globalPrices[$shipTypeId] ?? 0.0;
+                $itemsPrice = 0.0;
+
+                $kmData = $km->getData();
+                if (isset($kmData['victim']['items']) && is_array($kmData['victim']['items'])) {
+                    foreach ($kmData['victim']['items'] as $item) {
+                        if (isset($item['item_type_id'])) {
+                            $itemTid = (int)$item['item_type_id'];
+                            $qty = (int)($item['quantity_destroyed'] ?? 0) + (int)($item['quantity_dropped'] ?? 0);
+                            $price = $globalPrices[$itemTid] ?? 0.0;
+                            $itemsPrice += ($qty * $price);
+                        }
+                    }
+                }
+
+                $totalLoss = -1.0 * ($shipPrice + $itemsPrice);
+
+                $dayData['summary']['byCategory']['ship_losses'] += $totalLoss;
+                $dayData['summary']['totalValue'] += $totalLoss;
+
+                $shipMeta = $itemMetadata[$shipTypeId] ?? [
+                    'name' => 'Ship #' . $shipTypeId
+                ];
+                $shipName = $shipMeta['name'];
+
+                $dayData['details'][] = [
+                    'character' => $charName,
+                    'category' => 'ship_losses',
+                    'typeName' => 'Verlust: ' . $shipName,
+                    'quantity' => 1,
+                    'price' => $totalLoss,
+                    'totalValue' => $totalLoss,
+                    'isWallet' => false,
+                    'typeId' => $shipTypeId
                 ];
             }
 

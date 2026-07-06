@@ -29,6 +29,7 @@ interface DailySummary {
         abyss_loot: number;
         hacking_salvage: number;
         wallet_rewards: number;
+        ship_losses: number;
         other: number;
     };
 }
@@ -56,6 +57,7 @@ const CATEGORY_NAMES: Record<string, string> = {
     abyss_loot: 'Abyss-Loot',
     hacking_salvage: 'Hacking & Salvaging',
     wallet_rewards: 'Belohnungen & Bounties',
+    ship_losses: 'Schiffsverluste',
     other: 'Sonstiges'
 };
 
@@ -66,6 +68,7 @@ const CATEGORY_COLORS: Record<string, string> = {
     abyss_loot: '#ff0055',
     hacking_salvage: '#a800ff',
     wallet_rewards: '#00ff88',
+    ship_losses: '#f14668',
     other: '#888888'
 };
 
@@ -113,7 +116,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     // Filters state
     const [selectedDateRange, setSelectedDateRange] = useState<string>('today'); // 'today', 'yesterday', '7', '30', '90'
     const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
-    const [selectedCategories, setSelectedCategories] = useState<string[]>(['gas', 'ore_ice', 'blue_loot', 'abyss_loot', 'hacking_salvage', 'wallet_rewards', 'other']);
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(['gas', 'ore_ice', 'blue_loot', 'abyss_loot', 'hacking_salvage', 'wallet_rewards', 'ship_losses', 'other']);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
     const [selectedTag, setSelectedTag] = useState<string>('all');
@@ -377,6 +380,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     abyss_loot: 0.0,
                     hacking_salvage: 0.0,
                     wallet_rewards: 0.0,
+                    ship_losses: 0.0,
                     other: 0.0
                 }
             };
@@ -475,6 +479,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             abyss_loot: 0.0,
             hacking_salvage: 0.0,
             wallet_rewards: 0.0,
+            ship_losses: 0.0,
             other: 0.0
         };
 
