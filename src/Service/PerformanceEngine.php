@@ -80,10 +80,9 @@ class PerformanceEngine
             ->getQuery()
             ->getResult();
 
-        // 3. Fetch all market buy transactions in the range
-        $marketBuys = $this->entityManager->getRepository(EveCharacterMarketTransaction::class)->createQueryBuilder('t')
+        // 3. Fetch all market transactions in the range (both buys and sells)
+        $marketTransactions = $this->entityManager->getRepository(EveCharacterMarketTransaction::class)->createQueryBuilder('t')
             ->where('t.character IN (:characters)')
-            ->andWhere('t.isBuy = true')
             ->andWhere('t.date >= :start')
             ->andWhere('t.date <= :end')
             ->setParameter('characters', $characters)
@@ -135,9 +134,9 @@ class PerformanceEngine
         foreach ($assetChanges as $change) {
             $typeIds[] = $change->getTypeId();
         }
-        /** @var EveCharacterMarketTransaction $buy */
-        foreach ($marketBuys as $buy) {
-            $typeIds[] = $buy->getTypeId();
+        /** @var EveCharacterMarketTransaction $tx */
+        foreach ($marketTransactions as $tx) {
+            $typeIds[] = $tx->getTypeId();
         }
         /** @var EveCharacterContract $contract */
         foreach ($contracts as $contract) {
@@ -167,29 +166,37 @@ class PerformanceEngine
             $compressionMap[$tid] = $this->resolveCompression($tid, $itemMetadata);
         }
 
-        // Aggregate market buys: [date][rawTypeId] => quantity
+        // Aggregate market transactions (buys and sells): [date][rawTypeId] => quantity
         $marketBuyAgg = [];
-        /** @var EveCharacterMarketTransaction $buy */
-        foreach ($marketBuys as $buy) {
-            $charId = $buy->getCharacter()->getId();
+        $marketSellAgg = [];
+        /** @var EveCharacterMarketTransaction $tx */
+        foreach ($marketTransactions as $tx) {
+            $charId = $tx->getCharacter()->getId();
             $char = $characterMap[$charId] ?? null;
             $cutoff = $char?->getPerformanceCutoffDate();
-            if ($cutoff !== null && $buy->getDate() < $cutoff) {
+            if ($cutoff !== null && $tx->getDate() < $cutoff) {
                 continue;
             }
 
-            $dateStr = $buy->getDate()->format('Y-m-d');
-            $tid = $buy->getTypeId();
-            $qty = (int)$buy->getQuantity();
+            $dateStr = $tx->getDate()->format('Y-m-d');
+            $tid = $tx->getTypeId();
+            $qty = (int)$tx->getQuantity();
 
             $comp = $compressionMap[$tid] ?? ['typeId' => $tid, 'ratio' => 1];
             $rawTid = $comp['typeId'];
             $ratio = $comp['ratio'];
 
-            if (!isset($marketBuyAgg[$dateStr][$rawTid])) {
-                $marketBuyAgg[$dateStr][$rawTid] = 0;
+            if ($tx->isBuy()) {
+                if (!isset($marketBuyAgg[$dateStr][$rawTid])) {
+                    $marketBuyAgg[$dateStr][$rawTid] = 0;
+                }
+                $marketBuyAgg[$dateStr][$rawTid] += ($qty * $ratio);
+            } else {
+                if (!isset($marketSellAgg[$dateStr][$rawTid])) {
+                    $marketSellAgg[$dateStr][$rawTid] = 0;
+                }
+                $marketSellAgg[$dateStr][$rawTid] += ($qty * $ratio);
             }
-            $marketBuyAgg[$dateStr][$rawTid] += ($qty * $ratio);
         }
 
         // Aggregate contract receipts: [date][rawTypeId] => quantity
@@ -403,6 +410,7 @@ class PerformanceEngine
             $tidsForDate = array_unique(array_merge(
                 isset($assetChangeAgg[$dateStr]) ? array_keys($assetChangeAgg[$dateStr]) : [],
                 isset($marketBuyAgg[$dateStr]) ? array_keys($marketBuyAgg[$dateStr]) : [],
+                isset($marketSellAgg[$dateStr]) ? array_keys($marketSellAgg[$dateStr]) : [],
                 isset($contractRecAgg[$dateStr]) ? array_keys($contractRecAgg[$dateStr]) : []
             ));
 
@@ -433,10 +441,11 @@ class PerformanceEngine
             foreach ($tidsForDate as $rawTid) {
                 $changeQty = $assetChangeAgg[$dateStr][$rawTid] ?? 0;
                 $buyQty = $marketBuyAgg[$dateStr][$rawTid] ?? 0;
+                $sellQty = $marketSellAgg[$dateStr][$rawTid] ?? 0;
                 $contractQty = $contractRecAgg[$dateStr][$rawTid] ?? 0;
 
-                // Net quantity acquired (user-level): total increases MINUS what was bought or contract-traded
-                $netQty = $changeQty - $buyQty - $contractQty;
+                // Net quantity acquired (user-level): total changes MINUS what was bought/contracted PLUS what was sold
+                $netQty = $changeQty - $buyQty - $contractQty + $sellQty;
 
                 if ($netQty <= 0) {
                     continue;
