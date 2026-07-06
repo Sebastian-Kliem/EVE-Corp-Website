@@ -90,10 +90,26 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
         $newKillmailsCount = 0;
         $batchSize = 25;
         $i = 0;
+        $processedIds = [];
 
         foreach ($response as $recent) {
             $killmailId = (string)$recent['killmail_id'];
             $killmailHash = $recent['killmail_hash'];
+
+            // Prevent processing the same killmail multiple times within the same response batch
+            if (in_array($killmailId, $processedIds, true)) {
+                continue;
+            }
+            $processedIds[] = $killmailId;
+
+            // Check if this killmail already exists in the database to prevent integrity violations
+            $exists = $killmailRepository->findOneBy([
+                'character' => $character,
+                'killmailId' => $killmailId
+            ]);
+            if ($exists) {
+                continue;
+            }
 
             // Since ESI returns from newest to oldest, we can stop importing once we hit an already imported killmail.
             if (in_array($killmailId, $existingIds, true)) {
