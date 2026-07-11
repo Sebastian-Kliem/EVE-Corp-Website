@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use App\Entity\PerformanceManualEntry;
+use App\Entity\PerformanceExclusion;
 use Symfony\Component\HttpFoundation\Request;
 
 #[Route('/personal/performance')]
@@ -89,8 +90,25 @@ class PerformanceController extends AbstractController
         }
 
         try {
-            $data = $this->performanceEngine->calculateDailyPerformance($currentUser);
-            return new JsonResponse($data);
+            $ledger = $this->performanceEngine->calculateDailyPerformance($currentUser);
+            $exclusions = $this->entityManager->getRepository(PerformanceExclusion::class)->findBy(['user' => $currentUser]);
+            
+            $exclusionsData = [];
+            foreach ($exclusions as $ex) {
+                $exclusionsData[] = [
+                    'id' => $ex->getId(),
+                    'date' => $ex->getDate()->format('Y-m-d'),
+                    'category' => $ex->getCategory(),
+                    'typeName' => $ex->getTypeName(),
+                    'characterName' => $ex->getCharacterName(),
+                    'amount' => (float)$ex->getAmount(),
+                ];
+            }
+
+            return new JsonResponse([
+                'ledger' => $ledger,
+                'exclusions' => $exclusionsData,
+            ]);
         } catch (\Exception $e) {
             return new JsonResponse([
                 'error' => 'Failed to calculate performance data: ' . $e->getMessage()
@@ -175,6 +193,79 @@ class PerformanceController extends AbstractController
         }
 
         $this->entityManager->remove($entry);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['success' => true]);
+    }
+
+    #[Route('/exclude', name: 'app_dashboard_performance_exclude_entry', methods: ['POST'])]
+    public function excludeEntry(Request $request): JsonResponse
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $dateStr = $data['date'] ?? null;
+        $category = $data['category'] ?? null;
+        $typeName = $data['typeName'] ?? null;
+        $characterName = $data['characterName'] ?? null;
+        $amount = (float)($data['amount'] ?? 0.0);
+
+        if (!$dateStr || !$category || !$typeName || !$characterName) {
+            return new JsonResponse(['error' => 'Fehlende Parameter.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $date = new \DateTimeImmutable($dateStr);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Ungültiges Datum.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Check if already excluded
+        $existing = $this->entityManager->getRepository(PerformanceExclusion::class)->findOneBy([
+            'user' => $currentUser,
+            'date' => $date,
+            'category' => $category,
+            'typeName' => $typeName,
+            'characterName' => $characterName,
+        ]);
+
+        if (!$existing) {
+            $exclusion = new PerformanceExclusion();
+            $exclusion->setUser($currentUser);
+            $exclusion->setDate($date);
+            $exclusion->setCategory($category);
+            $exclusion->setTypeName($typeName);
+            $exclusion->setCharacterName($characterName);
+            $exclusion->setAmount((string)$amount);
+
+            $this->entityManager->persist($exclusion);
+            $this->entityManager->flush();
+        }
+
+        return new JsonResponse(['success' => true]);
+    }
+
+    #[Route('/exclude/{id}', name: 'app_dashboard_performance_remove_exclusion', methods: ['DELETE'])]
+    public function removeExclusion(int $id): JsonResponse
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return new JsonResponse(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $exclusion = $this->entityManager->getRepository(PerformanceExclusion::class)->findOneBy([
+            'id' => $id,
+            'user' => $currentUser
+        ]);
+
+        if (!$exclusion) {
+            return new JsonResponse(['error' => 'Ausschluss nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->entityManager->remove($exclusion);
         $this->entityManager->flush();
 
         return new JsonResponse(['success' => true]);

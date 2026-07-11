@@ -78,6 +78,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, DailyPerformance>>({});
+    const [exclusions, setExclusions] = useState<any[]>([]);
 
     // Calculate dynamic Omega goal based on manually set Omega accounts
     const omegaGoal = useMemo(() => {
@@ -222,6 +223,60 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         });
     };
 
+    const handleExcludeEntry = (date: string, item: PerformanceDetail) => {
+        if (!confirm(`Möchtest du den Eintrag "${item.typeName}" am ${date} wirklich ausblenden?`)) {
+            return;
+        }
+
+        fetch('/personal/performance/exclude', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                date: date,
+                category: item.category,
+                typeName: item.typeName,
+                characterName: item.character,
+                amount: item.totalValue
+            })
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.error || 'Fehler beim Ausblenden.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            setRefreshTrigger(prev => prev + 1);
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    };
+
+    const handleRemoveExclusion = (id: number) => {
+        fetch(`/personal/performance/exclude/${id}`, {
+            method: 'DELETE'
+        })
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(data => {
+                    throw new Error(data.error || 'Fehler beim Einblenden.');
+                });
+            }
+            return res.json();
+        })
+        .then(() => {
+            setRefreshTrigger(prev => prev + 1);
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    };
+
     // Fetch data
     useEffect(() => {
         setLoading(true);
@@ -232,18 +287,19 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 }
                 return res.json();
             })
-            .then((data: Record<string, DailyPerformance>) => {
-                setLedgerData(data);
+            .then((data: { ledger: Record<string, DailyPerformance>; exclusions: any[] }) => {
+                setLedgerData(data.ledger || {});
+                setExclusions(data.exclusions || []);
 
                 // Expand the first date by default
-                const dates = Object.keys(data);
+                const dates = Object.keys(data.ledger || {});
                 if (dates.length > 0) {
                     setExpandedDates({ [dates[0]]: true });
                 }
 
                 // Collect all characters from data to select them by default
                 const chars = new Set<string>();
-                Object.values(data).forEach(day => {
+                Object.values(data.ledger || {}).forEach(day => {
                     day.details.forEach(d => {
                         chars.add(d.character);
                     });
@@ -788,7 +844,28 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                                 🗑️
                                                                             </button>
                                                                         ) : (
-                                                                            !item.isWallet ? (isExpanded ? '▼' : '▶') : ''
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                                                                                {!item.isWallet && (
+                                                                                    <span style={{ fontSize: '0.7rem' }}>{isExpanded ? '▼' : '▶'}</span>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleExcludeEntry(day.date, item);
+                                                                                    }}
+                                                                                    style={{
+                                                                                        background: 'none',
+                                                                                        border: 'none',
+                                                                                        color: '#888',
+                                                                                        cursor: 'pointer',
+                                                                                        padding: 0,
+                                                                                        fontSize: '0.85rem'
+                                                                                    }}
+                                                                                    title="Eintrag ausblenden (wird von der Berechnung abgezogen)"
+                                                                                >
+                                                                                    🗑️
+                                                                                </button>
+                                                                            </div>
                                                                         )}
                                                                     </td>
                                                                     <td>
@@ -946,6 +1023,45 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     {manualError && <div className="manual-error-msg mt-2">{manualError}</div>}
                 </form>
             </div>
+
+            {/* Hidden Entries Exclusions List */}
+            {exclusions.length > 0 && (
+                <div className="manual-entry-panel mt-5" style={{ background: 'rgba(255, 68, 68, 0.03)', borderColor: 'rgba(255, 68, 68, 0.15)' }}>
+                    <div className="filter-title" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 68, 68, 0.15)', paddingBottom: '0.5rem', color: '#ff6b8b' }}>
+                        👁️ Ausgeblendete automatische Buchungen ({exclusions.length})
+                    </div>
+                    <p className="is-size-7 text-muted mb-3">
+                        Diese automatisch erfassten Buchungen wurden ausgeblendet und werden nicht mehr in die Ertragsberechnungen einbezogen.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                        {exclusions.map(ex => (
+                            <div
+                                key={ex.id}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    padding: '6px 12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid rgba(255,255,255,0.05)'
+                                }}
+                            >
+                                <span className="is-size-7" style={{ color: '#ccc' }}>
+                                    <strong style={{ color: '#ff6b8b' }}>{ex.characterName}</strong> ({new Date(ex.date).toLocaleDateString('de-DE')}): {ex.typeName} — <strong style={{ color: ex.amount < 0 ? '#ff4444' : '#00ffaa' }}>{formatISK(ex.amount)}</strong>
+                                </span>
+                                <button
+                                    className="button is-small is-primary"
+                                    style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => handleRemoveExclusion(ex.id)}
+                                >
+                                    🔄 Wieder einblenden
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

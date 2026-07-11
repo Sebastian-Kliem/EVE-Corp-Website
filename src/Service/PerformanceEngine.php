@@ -8,6 +8,7 @@ use App\Entity\EveCharacterContract;
 use App\Entity\EveCharacterMarketTransaction;
 use App\Entity\EveCharacterWalletJournalEntry;
 use App\Entity\EveKillmail;
+use App\Entity\PerformanceExclusion;
 use App\Entity\TrackingList;
 use App\Entity\TrackingListItem;
 use App\Entity\User;
@@ -52,6 +53,22 @@ class PerformanceEngine
         // Get tracked type IDs for filtering
         $trackedTypeIds = $this->getTrackedTypeIds();
         $trackedTypeIdsMap = array_fill_keys($trackedTypeIds, true);
+
+        // Fetch exclusions for the user
+        $exclusions = $this->entityManager->getRepository(PerformanceExclusion::class)->findBy(['user' => $user]);
+        $exclusionMap = [];
+        /** @var PerformanceExclusion $ex */
+        foreach ($exclusions as $ex) {
+            $exDateStr = $ex->getDate()->format('Y-m-d');
+            $exKey = sprintf(
+                '%s_%s_%s_%s',
+                $exDateStr,
+                $ex->getCategory(),
+                $ex->getTypeName(),
+                $ex->getCharacterName()
+            );
+            $exclusionMap[$exKey] = true;
+        }
 
         $characterMap = [];
         $characterIds = [];
@@ -397,6 +414,12 @@ class PerformanceEngine
                     default => 'Auszahlung'
                 };
 
+                // Check exclusion for this wallet reward group
+                $exKey = sprintf('%s_%s_%s_%s', $dateStr, 'wallet_rewards', $rewardName, $charName);
+                if (isset($exclusionMap[$exKey])) {
+                    continue;
+                }
+
                 $aggKey = $charId . '_' . $refType;
                 if (!isset($dayRewards[$aggKey])) {
                     $dayRewards[$aggKey] = [
@@ -529,11 +552,19 @@ class PerformanceEngine
                     $category = 'hacking_salvage';
                 }
 
+                $attributedChar = $getAttributedCharacter($rawTid, $dateStr);
+
+                // Exclude check
+                $exKey = sprintf('%s_%s_%s_%s', $dateStr, $category, $meta['name'], $attributedChar);
+                if (isset($exclusionMap[$exKey])) {
+                    continue;
+                }
+
                 $dayData['summary']['byCategory'][$category] += $totalValue;
                 $dayData['summary']['totalValue'] += $totalValue;
 
                 $dayData['details'][] = [
-                    'character' => $getAttributedCharacter($rawTid, $dateStr),
+                    'character' => $attributedChar,
                     'category' => $category,
                     'typeName' => $meta['name'],
                     'quantity' => $netQty,
@@ -559,6 +590,17 @@ class PerformanceEngine
 
                 $charName = $km->getCharacter()->getName();
                 $shipTypeId = $km->getVictimShipTypeId();
+
+                $shipMeta = $itemMetadata[$shipTypeId] ?? [
+                    'name' => 'Ship #' . $shipTypeId
+                ];
+                $shipName = $shipMeta['name'];
+
+                // Exclude check
+                $exKey = sprintf('%s_%s_%s_%s', $dateStr, 'ship_losses', 'Verlust: ' . $shipName, $charName);
+                if (isset($exclusionMap[$exKey])) {
+                    continue;
+                }
                 
                 // Calculate loss value based on global prices for the ship hull and all equipped/carried items
                 $shipPrice = $globalPrices[$shipTypeId] ?? 0.0;
