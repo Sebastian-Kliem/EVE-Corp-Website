@@ -40,6 +40,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'json')]
     private array $personalCorpContainers = [];
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $shareBlueprints = false;
+
     public function __construct()
     {
         $this->eveAccounts = new ArrayCollection();
@@ -145,6 +148,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->password = $data["\0".self::class."\0password"] ?? null;
         $this->personalCorpHangars = $data["\0".self::class."\0personalCorpHangars"] ?? [];
         $this->personalCorpContainers = $data["\0".self::class."\0personalCorpContainers"] ?? [];
+        $this->shareBlueprints = $data["\0".self::class."\0shareBlueprints"] ?? false;
 
         if (isset($data["\0".self::class."\0eveAccounts"])) {
             $this->eveAccounts = $data["\0".self::class."\0eveAccounts"];
@@ -208,6 +212,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPersonalCorpContainers(array $personalCorpContainers): static
     {
         $this->personalCorpContainers = $personalCorpContainers;
+        return $this;
+    }
+
+    public function isShareBlueprints(): bool
+    {
+        return $this->shareBlueprints ?? false;
+    }
+
+    public function setShareBlueprints(bool $shareBlueprints): static
+    {
+        $this->shareBlueprints = $shareBlueprints;
         return $this;
     }
 }

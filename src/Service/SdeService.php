@@ -434,5 +434,79 @@ class SdeService
             return [];
         }
     }
+
+    /**
+     * Returns all type IDs belonging to blueprints or reaction formulas.
+     * @return int[]
+     */
+    public function getAllBlueprintTypeIds(): array
+    {
+        try {
+            return array_map('intval', $this->connection->fetchFirstColumn(
+                "SELECT t.typeID FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE g.groupName LIKE '%blueprint%' OR g.groupName LIKE '%formula%'"
+            ));
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Resolves the market category and product type ID of the item produced by the blueprint.
+     */
+    public function getBlueprintProductInfo(int $blueprintTypeId): array
+    {
+        try {
+            $row = $this->connection->fetchAssociative(
+                'SELECT p.productTypeID, g.categoryID, g.groupName FROM industryActivityProducts p 
+                 JOIN invTypes t ON p.productTypeID = t.typeID 
+                 JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE p.typeID = :bpId AND p.activityID IN (1, 11) 
+                 LIMIT 1',
+                ['bpId' => $blueprintTypeId]
+            );
+
+            if (!$row) {
+                return [
+                    'productId' => $blueprintTypeId,
+                    'category' => 'Sonstiges'
+                ];
+            }
+
+            $productId = (int)$row['productTypeID'];
+            $categoryId = (int)$row['categoryID'];
+            $groupName = (string)$row['groupName'];
+
+            $category = 'Sonstiges';
+            if ($categoryId === 6) {
+                $category = 'Schiffe';
+            }
+            if ($categoryId === 7) {
+                $category = 'Module';
+            }
+            if ($categoryId === 8) {
+                $category = 'Munition';
+            }
+            if ($categoryId === 18) {
+                $category = 'Drohnen';
+            }
+            if ($categoryId === 32) {
+                $category = 'Subsysteme';
+            }
+            if ($categoryId === 4 || $categoryId === 9 || str_contains(strtolower($groupName), 'component') || str_contains(strtolower($groupName), 'reaction') || str_contains(strtolower($groupName), 'polymer')) {
+                $category = 'Komponenten & Reaktionen';
+            }
+
+            return [
+                'productId' => $productId,
+                'category' => $category
+            ];
+        } catch (\Exception $e) {
+            return [
+                'productId' => $blueprintTypeId,
+                'category' => 'Sonstiges'
+            ];
+        }
+    }
 }
 

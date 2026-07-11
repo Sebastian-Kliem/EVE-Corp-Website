@@ -81,6 +81,34 @@
         </div>
     </details>
 
+    <!-- Blueprint-Tresor Freigabe-Einstellungen -->
+    <details class="box mt-5" id="profile-blueprint-sharing">
+        <summary>📑 Blueprint-Tresor Freigabe</summary>
+        <div class="details-content">
+            <p class="is-size-7 has-text-grey-light mb-4">
+                Aktiviere diese Option, um deine Blueprints (Originale und Kopien) und deren Lagerorte mit anderen Mitgliedern der Corporation im "Blueprint-Tresor" zu teilen. 
+                Dies hilft der Corp, unnötige Doppelkäufe zu vermeiden und den Austausch von Produktionsmitteln zu vereinfachen.
+            </p>
+
+            <form action="{{ path('app_profile_update_blueprint_sharing') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('update_blueprint_sharing') }}">
+
+                <div class="control mb-4">
+                    <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" name="share_blueprints" value="1" {% if user.shareBlueprints %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                        <span>
+                            <strong>Meine Blueprints im Corp-Blueprint-Tresor freigeben</strong>
+                        </span>
+                    </label>
+                </div>
+
+                <button type="submit" class="button is-primary is-fullwidth mt-4">
+                    Freigabe-Einstellungen speichern
+                </button>
+            </form>
+        </div>
+    </details>
+
     <!-- Persönliche Corp-Assets Einstellungen -->
     <details class="box mt-5" id="profile-personal-assets">
         <summary>💼 Persönliche Corp-Assets (Hangare & Container)</summary>

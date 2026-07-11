@@ -15,6 +15,7 @@ import ValueHistory from './components/Profile/ValueHistory';
 import WalletJournal from './components/Assets/WalletJournal';
 import IndustryJobsOverview from './components/Profile/IndustryJobsOverview';
 import ReactionDashboard from './components/Tool/ReactionDashboard';
+import BlueprintVault from './components/Corp/BlueprintVault';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
@@ -33,6 +34,7 @@ const components: Record<string, React.ComponentType<any>> = {
     WalletJournal,
     IndustryJobsOverview,
     ReactionDashboard,
+    BlueprintVault,
 };
 
 function mountReactComponents() {

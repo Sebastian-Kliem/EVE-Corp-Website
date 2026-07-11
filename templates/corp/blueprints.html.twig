@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Corp Blueprint-Tresor{% endblock %}
+
+{% block body %}
+<div class="container mt-5 mb-6">
+    <div class="columns is-vcentered mb-5">
+        <div class="column">
+            <h1 class="title is-2 text-gradient">
+                📑 Blueprint-Tresor
+            </h1>
+            <p class="subtitle is-6 has-text-grey-light">
+                Gezielter Überblick über alle geteilten Blueprints der Corporation, um Produktion abzusprechen und doppelte Einkäufe zu vermeiden.
+            </p>
+        </div>
+    </div>
+
+    <!-- Info / Hinweistext falls niemand teilt -->
+    {% if blueprints is empty %}
+        <div class="notification is-warning">
+            ⚠️ Aktuell hat kein Mitglied seine Blueprints im Tresor freigegeben oder es wurden noch keine Blueprints synchronisiert. 
+            Du kannst deine Freigabe in deinen <a href="{{ path('app_profile') }}">Profileinstellungen</a> aktivieren!
+        </div>
+    {% endif %}
+
+    <!-- Blueprint List React component mount point -->
+    {% set vaultProps = {
+        blueprints: blueprints,
+        imagePaths: {
+            types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' })
+        }
+    } %}
+
+    <div class="box p-5" style="background: #111625; border: 1px solid rgba(255,255,255,0.05);">
+        <div data-react-component="BlueprintVault" data-react-props="{{ vaultProps|json_encode|e('html_attr') }}"></div>
+    </div>
+</div>
+{% endblock %}

@@ -315,4 +315,25 @@ class ProfileController extends AbstractController
         $this->addFlash('success', 'Deine persönlichen Corp-Asset-Einstellungen wurden erfolgreich gespeichert!');
         return $this->redirectToRoute('app_profile');
     }
+
+    #[Route('/update-blueprint-sharing', name: 'app_profile_update_blueprint_sharing', methods: ['POST'])]
+    public function updateBlueprintSharing(Request $request): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        if (!$this->isCsrfTokenValid('update_blueprint_sharing', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $share = (bool)$request->request->get('share_blueprints', false);
+        $currentUser->setShareBlueprints($share);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Deine Blueprint-Freigabe-Einstellungen wurden gespeichert.');
+        return $this->redirectToRoute('app_profile');
+    }
 }
