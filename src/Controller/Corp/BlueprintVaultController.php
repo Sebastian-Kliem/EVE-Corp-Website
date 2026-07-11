@@ -6,6 +6,9 @@ use App\Entity\User;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterIndustryJob;
+use App\Entity\EveCorporationAsset;
+use App\Service\Esi\EsiClient;
+
 use App\Service\LocationService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,40 +28,81 @@ class BlueprintVaultController extends AbstractController
     ) {}
 
     #[Route('', name: 'app_corp_blueprints', methods: ['GET'])]
-    public function index(): Response
+    public function index(EsiClient $esiClient): Response
     {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
         }
 
-        // 1. Get all users who enabled blueprint sharing
+        // Get the unique corporation IDs associated with the current user's characters
+        $currentUserCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]);
+        $userCorpIds = [];
+        foreach ($currentUserCharacters as $char) {
+            if ($char->getCorporationId()) {
+                $userCorpIds[] = $char->getCorporationId();
+            }
+        }
+        $userCorpIds = array_unique($userCorpIds);
+
+        // Get all users who enabled blueprint sharing
         $sharingUsers = $this->entityManager->getRepository(User::class)->findBy(['shareBlueprints' => true]);
         
         $blueprintsData = [];
-        if (!empty($sharingUsers)) {
-            // Get all characters for sharing users
-            $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $sharingUsers]);
-            
-            if (!empty($characters)) {
-                $blueprintTypeIds = $this->sdeService->getAllBlueprintTypeIds();
+        $blueprintTypeIds = $this->sdeService->getAllBlueprintTypeIds();
 
-                if (!empty($blueprintTypeIds)) {
-                    // Fetch all blueprint assets for these characters
+        if (!empty($blueprintTypeIds)) {
+            // Find a character for each corporation to resolve structure locations
+            $charByCorp = [];
+            $allCharacters = $this->entityManager->getRepository(EveCharacter::class)->findAll();
+            foreach ($allCharacters as $char) {
+                if ($char->getCorporationId()) {
+                    $charByCorp[$char->getCorporationId()] = $char;
+                }
+            }
+
+            // Resolve corporation names helper
+            $corpNames = [];
+            $getCorpName = function (int $corpId) use ($esiClient, &$corpNames, $charByCorp) {
+                if (isset($corpNames[$corpId])) {
+                    return $corpNames[$corpId];
+                }
+                $syncChar = $charByCorp[$corpId] ?? null;
+                if ($syncChar) {
+                    try {
+                        $corpData = $esiClient->request('GET', sprintf('corporations/%d/', $corpId), [], $syncChar);
+                        if (isset($corpData['name'])) {
+                            $corpNames[$corpId] = $corpData['name'];
+                            return $corpData['name'];
+                        }
+                    } catch (\Exception $e) {
+                        // Ignore
+                    }
+                }
+                return 'Corp #' . $corpId;
+            };
+
+            $groupedBlueprints = [];
+
+            // 1. Process personal blueprints from sharing users
+            if (!empty($sharingUsers)) {
+                $sharingCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $sharingUsers]);
+                
+                if (!empty($sharingCharacters)) {
                     $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->createQueryBuilder('a')
                         ->where('a.character IN (:characters)')
                         ->andWhere('a.typeId IN (:blueprintTypeIds)')
-                        ->setParameter('characters', $characters)
+                        ->setParameter('characters', $sharingCharacters)
                         ->setParameter('blueprintTypeIds', $blueprintTypeIds)
                         ->getQuery()
                         ->getResult();
 
-                    // Fetch active/paused industry jobs for these characters that involve research or copying (activities 3, 4, 5)
+                    // Fetch active/paused industry jobs for these characters (activities 3, 4, 5)
                     $jobs = $this->entityManager->getRepository(EveCharacterIndustryJob::class)->createQueryBuilder('j')
                         ->where('j.character IN (:characters)')
                         ->andWhere('j.activityId IN (:activities)')
                         ->andWhere('j.status IN (:statuses)')
-                        ->setParameter('characters', $characters)
+                        ->setParameter('characters', $sharingCharacters)
                         ->setParameter('activities', [3, 4, 5])
                         ->setParameter('statuses', ['active', 'paused'])
                         ->getQuery()
@@ -73,8 +117,6 @@ class BlueprintVaultController extends AbstractController
                         }
                     }
 
-                    // Process blueprint assets and group identical ones
-                    $groupedBlueprints = [];
                     /** @var EveCharacterAsset $asset */
                     foreach ($assets as $asset) {
                         $char = $asset->getCharacter();
@@ -101,8 +143,6 @@ class BlueprintVaultController extends AbstractController
                             ];
                         }
 
-                        // Generate a key to group completely identical blueprints
-                        // If it has an active job, keep it separate to display the job status correctly
                         $jobKey = $jobData ? '_job_' . $itemId : '';
                         $groupKey = sprintf(
                             '%d_%d_%d_%d_%s_%s_%d%s',
@@ -139,9 +179,72 @@ class BlueprintVaultController extends AbstractController
                             ];
                         }
                     }
-                    $blueprintsData = array_values($groupedBlueprints);
                 }
             }
+
+            // 2. Process corporation blueprints for user corporations
+            if (!empty($userCorpIds)) {
+                $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('c')
+                    ->where('c.corporationId IN (:userCorpIds)')
+                    ->andWhere('c.typeId IN (:blueprintTypeIds)')
+                    ->setParameter('userCorpIds', $userCorpIds)
+                    ->setParameter('blueprintTypeIds', $blueprintTypeIds)
+                    ->getQuery()
+                    ->getResult();
+
+                /** @var EveCorporationAsset $corpAsset */
+                foreach ($corpAssets as $corpAsset) {
+                    $corpId = $corpAsset->getCorporationId();
+                    $typeId = $corpAsset->getTypeId();
+                    $itemId = (string)$corpAsset->getItemId();
+                    $isBpo = !$corpAsset->isBlueprintCopy();
+                    $me = $corpAsset->getMaterialEfficiency() ?? 0;
+                    $te = $corpAsset->getTimeEfficiency() ?? 0;
+                    $runs = $corpAsset->getRuns() ?? -1;
+
+                    $syncChar = $charByCorp[$corpId] ?? null;
+                    $resolvedLoc = $this->locationService->resolveLocation($corpAsset->getLocationId(), $syncChar);
+                    $locationName = $resolvedLoc['name'];
+
+                    $corpName = $getCorpName($corpId);
+
+                    $groupKey = sprintf(
+                        '%d_%d_%d_%d_%s_%s_%d',
+                        $typeId,
+                        $isBpo ? 1 : 0,
+                        $me,
+                        $te,
+                        $corpName,
+                        $locationName,
+                        $runs
+                    );
+
+                    if (isset($groupedBlueprints[$groupKey])) {
+                        $groupedBlueprints[$groupKey]['quantity'] += (int)$corpAsset->getQuantity();
+                    } else {
+                        $prodInfo = $this->sdeService->getBlueprintProductInfo($typeId);
+                        $groupedBlueprints[$groupKey] = [
+                            'itemId' => $itemId,
+                            'typeId' => $typeId,
+                            'productId' => $prodInfo['productId'],
+                            'name' => $this->sdeService->getItemName($typeId),
+                            'category' => $prodInfo['category'],
+                            'ownerCharacterName' => '🏢 ' . $corpName,
+                            'ownerUserName' => 'Corporation',
+                            'locationName' => $locationName,
+                            'systemName' => $resolvedLoc['systemName'],
+                            'isBpo' => $isBpo,
+                            'me' => $me,
+                            'te' => $te,
+                            'runs' => $runs,
+                            'quantity' => (int)$corpAsset->getQuantity(),
+                            'activeJob' => null,
+                        ];
+                    }
+                }
+            }
+
+            $blueprintsData = array_values($groupedBlueprints);
         }
 
         // Sort blueprints by name
