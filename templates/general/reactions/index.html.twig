@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Wurmloch-Reaktionen Kalkulator{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <details class="box" open>
+        <summary style="font-size: 1.25rem;">🧪 Wurmloch-Reaktionen (Kalkulator)</summary>
+        <div class="details-content">
+            {% set reactProps = {
+                apiDataUrl: path('app_general_reactions_data'),
+                imagePaths: {
+                    types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' })
+                },
+                structuresList: structuresList
+            } %}
+            <div data-react-component="ReactionDashboard" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+        </div>
+    </details>
+</div>
+{% endblock %}
