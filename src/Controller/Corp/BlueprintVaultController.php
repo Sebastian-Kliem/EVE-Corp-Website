@@ -45,8 +45,11 @@ class BlueprintVaultController extends AbstractController
         }
         $userCorpIds = array_unique($userCorpIds);
 
+        // Fetch all users in the system to resolve personal corp assets and settings
+        $allUsers = $this->entityManager->getRepository(User::class)->findAll();
+
         // Get all users who enabled blueprint sharing
-        $sharingUsers = $this->entityManager->getRepository(User::class)->findBy(['shareBlueprints' => true]);
+        $sharingUsers = array_filter($allUsers, fn($u) => $u->isShareBlueprints());
         
         $blueprintsData = [];
         $blueprintTypeIds = $this->sdeService->getAllBlueprintTypeIds();
@@ -184,6 +187,20 @@ class BlueprintVaultController extends AbstractController
 
             // 2. Process corporation blueprints for user corporations
             if (!empty($userCorpIds)) {
+                // Build maps of personal hangars/containers to handle privacy and ownership
+                $personalHangarsMap = [];
+                $personalContainersMap = [];
+                foreach ($allUsers as $u) {
+                    foreach ($u->getPersonalCorpHangars() as $conf) {
+                        $key = sprintf('%d_%d_%s', $conf['corporationId'], $conf['locationId'], $conf['locationFlag']);
+                        $personalHangarsMap[$key] = $u;
+                    }
+                    foreach ($u->getPersonalCorpContainers() as $conf) {
+                        $key = sprintf('%d_%d', $conf['corporationId'], $conf['itemId']);
+                        $personalContainersMap[$key] = $u;
+                    }
+                }
+
                 $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->createQueryBuilder('c')
                     ->where('c.corporationId IN (:userCorpIds)')
                     ->andWhere('c.typeId IN (:blueprintTypeIds)')
@@ -202,11 +219,39 @@ class BlueprintVaultController extends AbstractController
                     $te = $corpAsset->getTimeEfficiency() ?? 0;
                     $runs = $corpAsset->getRuns() ?? -1;
 
+                    // Check if inside a personal container first
+                    $ownerUser = null;
+                    $containerKey = sprintf('%d_%d', $corpId, $corpAsset->getLocationId());
+                    if (isset($personalContainersMap[$containerKey])) {
+                        $ownerUser = $personalContainersMap[$containerKey];
+                    }
+
+                    // Check if inside a personal hangar
+                    if (!$ownerUser) {
+                        $hangarKey = sprintf('%d_%d_%s', $corpId, $corpAsset->getLocationId(), $corpAsset->getLocationFlag());
+                        if (isset($personalHangarsMap[$hangarKey])) {
+                            $ownerUser = $personalHangarsMap[$hangarKey];
+                        }
+                    }
+
+                    // If it belongs to a personal hangar/container:
+                    if ($ownerUser) {
+                        // If that user has disabled blueprint sharing, hide it from the vault!
+                        if (!$ownerUser->isShareBlueprints()) {
+                            continue;
+                        }
+
+                        $ownerLabel = '👤 ' . $ownerUser->getUsername();
+                        $ownerType = 'Hangar von ' . $ownerUser->getUsername();
+                    } else {
+                        // Standard corp blueprint
+                        $ownerLabel = '🏢 ' . $getCorpName($corpId);
+                        $ownerType = 'Corporation';
+                    }
+
                     $syncChar = $charByCorp[$corpId] ?? null;
                     $resolvedLoc = $this->locationService->resolveLocation($corpAsset->getLocationId(), $syncChar);
                     $locationName = $resolvedLoc['name'];
-
-                    $corpName = $getCorpName($corpId);
 
                     $groupKey = sprintf(
                         '%d_%d_%d_%d_%s_%s_%d',
@@ -214,7 +259,7 @@ class BlueprintVaultController extends AbstractController
                         $isBpo ? 1 : 0,
                         $me,
                         $te,
-                        $corpName,
+                        $ownerLabel,
                         $locationName,
                         $runs
                     );
@@ -229,8 +274,8 @@ class BlueprintVaultController extends AbstractController
                             'productId' => $prodInfo['productId'],
                             'name' => $this->sdeService->getItemName($typeId),
                             'category' => $prodInfo['category'],
-                            'ownerCharacterName' => '🏢 ' . $corpName,
-                            'ownerUserName' => 'Corporation',
+                            'ownerCharacterName' => $ownerLabel,
+                            'ownerUserName' => $ownerType,
                             'locationName' => $locationName,
                             'systemName' => $resolvedLoc['systemName'],
                             'isBpo' => $isBpo,
