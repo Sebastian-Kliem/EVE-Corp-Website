@@ -7,6 +7,7 @@ use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterAssetChange;
 use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCorporationAsset;
+use App\Entity\EveCharacterMarketOrder;
 use App\Entity\TrackingListItem;
 use App\Repository\EveCharacterAssetRepository;
 use App\Repository\EveCorporationAssetRepository;
@@ -57,15 +58,16 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 continue;
             }
 
-            // Sync Wallet, Journal & Market Transactions
+            // Sync Wallet, Journal, Market Transactions & Orders
             try {
                 $this->syncRoles($character);
                 $this->syncWallet($character);
                 $this->syncWalletJournal($character);
                 $this->syncMarketTransactions($character);
+                $this->syncMarketOrders($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
-                    '[Cron] Failed to sync wallet/journal for character %s (%d): %s',
+                    '[Cron] Failed to sync wallet/journal/orders for character %s (%d): %s',
                     $character->getName(),
                     $character->getId(),
                     $e->getMessage()
@@ -545,6 +547,26 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 }
             }
 
+            // Add active market orders value (escrow for buy orders, items valued at Jita buy for sell orders)
+            $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy(['character' => $character]);
+            foreach ($marketOrders as $order) {
+                if ($order->isBuy()) {
+                    $totalAssetVal += (float)($order->getEscrow() ?? 0.0);
+                } else {
+                    $typeId = $order->getTypeId();
+                    $qty = $order->getVolumeRemain();
+                    $jitaBuyPrice = null;
+                    try {
+                        $priceInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
+                        $jitaBuyPrice = $priceInfo['price'];
+                    } catch (\Exception $e) {
+                        // Ignore
+                    }
+                    $price = $jitaBuyPrice ?? ($prices[$typeId] ?? 0.0);
+                    $totalAssetVal += ($price * $qty);
+                }
+            }
+
             // Merge Personal Corporation Assets if this is the primary character for the corporation
             $user = $character->getUser();
             if ($user && $character->getCorporationId()) {
@@ -959,5 +981,76 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $trackedTypeIds = array_merge($trackedTypeIds, $sdeTypeIds);
 
         return array_values(array_unique(array_filter($trackedTypeIds)));
+    }
+
+    private function syncMarketOrders(EveCharacter $character): void
+    {
+        $this->logger->debug(sprintf('[Cron] Syncing market orders for character %s...', $character->getName()));
+
+        try {
+            $response = $this->esiClient->requestAllPages(
+                sprintf('characters/%d/orders/', $character->getId()),
+                [],
+                $character
+            );
+
+            if ($response['fromCache'] ?? false) {
+                $this->logger->info(sprintf('[Cron] Market orders for character %s are still cached. Skipping update.', $character->getName()));
+                return;
+            }
+
+            $ordersData = $response['data'];
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                $ordersData = [];
+            } else {
+                throw $e;
+            }
+        }
+
+        $this->entityManager->wrapInTransaction(function() use ($character, $ordersData) {
+            // Delete all existing active market orders for this character
+            $this->entityManager->createQueryBuilder()
+                ->delete(EveCharacterMarketOrder::class, 'o')
+                ->where('o.character = :character')
+                ->setParameter('character', $character)
+                ->getQuery()
+                ->execute();
+
+            $insertedCount = 0;
+            foreach ($ordersData as $oData) {
+                $order = new EveCharacterMarketOrder();
+                $order->setCharacter($character);
+                $order->setOrderId((string)$oData['order_id']);
+                $order->setTypeId((int)$oData['type_id']);
+                $order->setLocationId((string)$oData['location_id']);
+                $order->setVolumeTotal((int)$oData['volume_total']);
+                $order->setVolumeRemain((int)$oData['volume_remain']);
+                $order->setPrice(number_format((float)$oData['price'], 2, '.', ''));
+                if (isset($oData['escrow'])) {
+                    $order->setEscrow(number_format((float)$oData['escrow'], 2, '.', ''));
+                }
+                $order->setIsBuy((bool)($oData['is_buy_order'] ?? false));
+                $order->setIssued(new \DateTimeImmutable($oData['issued']));
+                $order->setDuration((int)$oData['duration']);
+                $order->setRange((string)$oData['range']);
+                if (isset($oData['min_volume'])) {
+                    $order->setMinVolume((int)$oData['min_volume']);
+                }
+
+                $this->entityManager->persist($order);
+                $insertedCount++;
+            }
+
+            $this->entityManager->flush();
+
+            if ($insertedCount > 0) {
+                $this->logger->info(sprintf(
+                    '[Cron] Successfully synchronized %d active market orders for character %s.',
+                    $insertedCount,
+                    $character->getName()
+                ));
+            }
+        });
     }
 }

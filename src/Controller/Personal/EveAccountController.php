@@ -8,6 +8,7 @@ use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCharacterWalletJournalEntry;
 use App\Entity\EveCorporationAsset;
+use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
 use App\Service\LocationService;
 use App\Service\SdeService;
@@ -171,6 +172,25 @@ class EveAccountController extends AbstractController
             ['character' => $character],
             ['locationId' => 'ASC']
         );
+
+        // Add active sell orders as pseudo assets
+        $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy([
+            'character' => $character,
+            'isBuy' => false
+        ]);
+        foreach ($marketOrders as $order) {
+            $pseudoAsset = new EveCharacterAsset();
+            $pseudoAsset->setCharacter($character);
+            $pseudoAsset->setItemId((int)$order->getOrderId());
+            $pseudoAsset->setTypeId($order->getTypeId());
+            $pseudoAsset->setQuantity($order->getVolumeRemain());
+            $pseudoAsset->setLocationId((int)$order->getLocationId());
+            $pseudoAsset->setLocationType('station');
+            $pseudoAsset->setLocationFlag('MarketOrder');
+            $pseudoAsset->setIsSingleton(false);
+            $pseudoAsset->setCustomName('[Markt-Verkaufsorder]');
+            $assets[] = $pseudoAsset;
+        }
 
         // Group assets by location
         $groupedAssets = [];
@@ -341,6 +361,29 @@ class EveAccountController extends AbstractController
                 'character' => $character
             ]);
 
+            // Fetch active market orders (sell orders as pseudo assets, buy orders as escrow)
+            $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy([
+                'character' => $character
+            ]);
+            $escrowTotal = 0.0;
+            foreach ($marketOrders as $order) {
+                if ($order->isBuy()) {
+                    $escrowTotal += (float)($order->getEscrow() ?? 0.0);
+                } else {
+                    $pseudoAsset = new EveCharacterAsset();
+                    $pseudoAsset->setCharacter($character);
+                    $pseudoAsset->setItemId((int)$order->getOrderId());
+                    $pseudoAsset->setTypeId($order->getTypeId());
+                    $pseudoAsset->setQuantity($order->getVolumeRemain());
+                    $pseudoAsset->setLocationId((int)$order->getLocationId());
+                    $pseudoAsset->setLocationType('station');
+                    $pseudoAsset->setLocationFlag('MarketOrder');
+                    $pseudoAsset->setIsSingleton(false);
+                    $pseudoAsset->setCustomName('[Markt-Verkaufsorder]');
+                    $assets[] = $pseudoAsset;
+                }
+            }
+
             // Rebuild tree
             $assetsByItemId = [];
             foreach ($assets as $asset) {
@@ -385,9 +428,24 @@ class EveAccountController extends AbstractController
                 if ($asset->isBlueprintCopy()) {
                     continue;
                 }
-                $price = $prices[$asset->getTypeId()] ?? 0.0;
+                if ($asset->getLocationFlag() === 'MarketOrder') {
+                    $typeId = $asset->getTypeId();
+                    $jitaBuyPrice = null;
+                    try {
+                        $priceInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
+                        $jitaBuyPrice = $priceInfo['price'];
+                    } catch (\Exception $e) {
+                        // Ignore
+                    }
+                    $price = $jitaBuyPrice ?? ($prices[$typeId] ?? 0.0);
+                } else {
+                    $price = $prices[$asset->getTypeId()] ?? 0.0;
+                }
                 $totalAssetVal += ($price * $asset->getQuantity());
             }
+
+            // Add escrow of buy orders to assets value
+            $totalAssetVal += $escrowTotal;
 
             // Merge Personal Corporation Assets if this is the primary character for the corporation
             $corpId = $character->getCorporationId();
@@ -659,6 +717,18 @@ class EveAccountController extends AbstractController
             $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
         }
 
+        $price = $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0);
+        if ($asset->getLocationFlag() === 'MarketOrder' && !$asset->isBlueprintCopy()) {
+            try {
+                $priceInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
+                if ($priceInfo['price'] !== null) {
+                    $price = (float)$priceInfo['price'];
+                }
+            } catch (\Exception $e) {
+                // Keep default price
+            }
+        }
+
         return [
             'itemId' => $itemId,
             'typeId' => $typeId,
@@ -669,7 +739,7 @@ class EveAccountController extends AbstractController
             'isBlueprintCopy' => $asset->isBlueprintCopy(),
             'isBlueprint' => $sdeService->isBlueprint($typeId),
             'isSingleton' => $asset->isSingleton(),
-            'price' => $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0),
+            'price' => $price,
             'category' => $sdeService->getItemCategory($typeId),
             'materialEfficiency' => $asset->getMaterialEfficiency(),
             'timeEfficiency' => $asset->getTimeEfficiency(),
