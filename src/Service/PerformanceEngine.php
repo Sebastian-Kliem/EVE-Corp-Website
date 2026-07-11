@@ -70,17 +70,78 @@ class PerformanceEngine
             $exclusionMap[$exKey] = true;
         }
 
+        // Query the earliest asset change date for each character
+        $minAssetChangeDates = [];
+        $minTxDates = [];
+
+        $rawAssetChangesMin = $this->entityManager->getRepository(EveCharacterAssetChange::class)->createQueryBuilder('c')
+            ->select('IDENTITY(c.character) as charId, MIN(c.loggedAt) as minDate')
+            ->where('c.character IN (:characters)')
+            ->groupBy('charId')
+            ->setParameter('characters', $characters)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($rawAssetChangesMin as $row) {
+            if ($row['minDate']) {
+                $minAssetChangeDates[(int)$row['charId']] = new \DateTimeImmutable($row['minDate']);
+            }
+        }
+
+        $rawTxMin = $this->entityManager->getRepository(EveCharacterMarketTransaction::class)->createQueryBuilder('t')
+            ->select('IDENTITY(t.character) as charId, MIN(t.date) as minDate')
+            ->where('t.character IN (:characters)')
+            ->groupBy('charId')
+            ->setParameter('characters', $characters)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($rawTxMin as $row) {
+            if ($row['minDate']) {
+                $minTxDates[(int)$row['charId']] = new \DateTimeImmutable($row['minDate']);
+            }
+        }
+
         $characterMap = [];
         $characterIds = [];
+        $effectiveCutoffs = [];
         $earliestCutoff = null;
+
         foreach ($characters as $char) {
-            $characterIds[] = $char->getId();
-            $characterMap[$char->getId()] = $char;
+            $charId = $char->getId();
+            $characterIds[] = $charId;
+            $characterMap[$charId] = $char;
 
             $cutoff = $char->getPerformanceCutoffDate();
-            if ($cutoff !== null) {
-                if ($earliestCutoff === null || $cutoff < $earliestCutoff) {
-                    $earliestCutoff = $cutoff;
+            
+            // Get the earliest recorded asset data date
+            $minAssetDate = $minAssetChangeDates[$charId] ?? null;
+            $minTxDate = $minTxDates[$charId] ?? null;
+            
+            $earliestDataDate = null;
+            if ($minAssetDate && $minTxDate) {
+                $earliestDataDate = $minAssetDate < $minTxDate ? $minAssetDate : $minTxDate;
+            } elseif ($minAssetDate) {
+                $earliestDataDate = $minAssetDate;
+            } else {
+                $earliestDataDate = $minTxDate;
+            }
+
+            // The effective cutoff is the maximum of the configured cutoff and the earliest data date
+            $effectiveCutoff = null;
+            if ($cutoff && $earliestDataDate) {
+                $effectiveCutoff = $cutoff > $earliestDataDate ? $cutoff : $earliestDataDate;
+            } elseif ($cutoff) {
+                $effectiveCutoff = $cutoff;
+            } else {
+                $effectiveCutoff = $earliestDataDate;
+            }
+
+            $effectiveCutoffs[$charId] = $effectiveCutoff;
+
+            if ($effectiveCutoff !== null) {
+                if ($earliestCutoff === null || $effectiveCutoff < $earliestCutoff) {
+                    $earliestCutoff = $effectiveCutoff;
                 }
             }
         }
@@ -220,8 +281,7 @@ class PerformanceEngine
         /** @var EveCharacterMarketTransaction $tx */
         foreach ($marketTransactions as $tx) {
             $charId = $tx->getCharacter()->getId();
-            $char = $characterMap[$charId] ?? null;
-            $cutoff = $char?->getPerformanceCutoffDate();
+            $cutoff = $effectiveCutoffs[$charId] ?? null;
             if ($cutoff !== null && $tx->getDate() < $cutoff) {
                 continue;
             }
@@ -257,8 +317,7 @@ class PerformanceEngine
         /** @var EveCharacterContract $contract */
         foreach ($contracts as $contract) {
             $charId = $contract->getCharacter()->getId();
-            $char = $characterMap[$charId] ?? null;
-            $cutoff = $char?->getPerformanceCutoffDate();
+            $cutoff = $effectiveCutoffs[$charId] ?? null;
             if ($cutoff !== null && $contract->getDateCompleted() < $cutoff) {
                 continue;
             }
@@ -308,8 +367,7 @@ class PerformanceEngine
         /** @var EveCharacterAssetChange $change */
         foreach ($assetChanges as $change) {
             $charId = $change->getCharacter()->getId();
-            $char = $characterMap[$charId] ?? null;
-            $cutoff = $char?->getPerformanceCutoffDate();
+            $cutoff = $effectiveCutoffs[$charId] ?? null;
             if ($cutoff !== null && $change->getLoggedAt() < $cutoff) {
                 continue;
             }
@@ -392,8 +450,8 @@ class PerformanceEngine
                     continue;
                 }
                 
-                $char = $characterMap[$entry->getCharacter()->getId()] ?? null;
-                $cutoff = $char?->getPerformanceCutoffDate();
+                $charId = $entry->getCharacter()->getId();
+                $cutoff = $effectiveCutoffs[$charId] ?? null;
                 if ($cutoff !== null && $entry->getDate() < $cutoff) {
                     continue;
                 }
@@ -582,8 +640,8 @@ class PerformanceEngine
                     continue;
                 }
 
-                $char = $characterMap[$km->getCharacter()->getId()] ?? null;
-                $cutoff = $char?->getPerformanceCutoffDate();
+                $charId = $km->getCharacter()->getId();
+                $cutoff = $effectiveCutoffs[$charId] ?? null;
                 if ($cutoff !== null && $km->getKillmailTime() < $cutoff) {
                     continue;
                 }
