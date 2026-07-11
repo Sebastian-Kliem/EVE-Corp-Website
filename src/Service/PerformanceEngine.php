@@ -49,6 +49,10 @@ class PerformanceEngine
             return [];
         }
 
+        // Get tracked type IDs for filtering
+        $trackedTypeIds = $this->getTrackedTypeIds();
+        $trackedTypeIdsMap = array_fill_keys($trackedTypeIds, true);
+
         $characterMap = [];
         $characterIds = [];
         $earliestCutoff = null;
@@ -213,6 +217,11 @@ class PerformanceEngine
             $rawTid = $comp['typeId'];
             $ratio = $comp['ratio'];
 
+            // Skip untracked items to avoid fake gains/losses
+            if (!isset($trackedTypeIdsMap[$rawTid])) {
+                continue;
+            }
+
             if ($tx->isBuy()) {
                 if (!isset($marketBuyAgg[$dateStr][$rawTid])) {
                     $marketBuyAgg[$dateStr][$rawTid] = 0;
@@ -262,6 +271,11 @@ class PerformanceEngine
                     $comp = $compressionMap[$tid] ?? ['typeId' => $tid, 'ratio' => 1];
                     $rawTid = $comp['typeId'];
                     $ratio = $comp['ratio'];
+
+                    // Skip untracked items to avoid fake gains/losses
+                    if (!isset($trackedTypeIdsMap[$rawTid])) {
+                        continue;
+                    }
 
                     if (!isset($contractRecAgg[$dateStr][$rawTid])) {
                         $contractRecAgg[$dateStr][$rawTid] = 0;
@@ -697,5 +711,28 @@ class PerformanceEngine
         }
 
         return ['typeId' => $typeId, 'ratio' => 1];
+    }
+
+    /**
+     * Resolves the list of tracked type IDs from custom lists and the SDE.
+     * 
+     * @return int[]
+     */
+    private function getTrackedTypeIds(): array
+    {
+        try {
+            $listItems = $this->entityManager->getRepository(TrackingListItem::class)->findAll();
+            $trackedTypeIds = [];
+            foreach ($listItems as $item) {
+                $trackedTypeIds[] = $item->getTypeId();
+            }
+
+            $sdeTypeIds = $this->sdeService->getPerformanceTypeIds();
+            $trackedTypeIds = array_merge($trackedTypeIds, $sdeTypeIds);
+
+            return array_values(array_unique(array_filter($trackedTypeIds)));
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }
