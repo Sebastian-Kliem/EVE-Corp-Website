@@ -52,7 +52,7 @@ class EveCharacterMarketOrder
     #[ORM\Column]
     private ?int $duration = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(name: '`range`', length: 50)]
     private ?string $range = null;
 
     #[ORM\Column(nullable: true)]
