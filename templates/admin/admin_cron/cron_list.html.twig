@@ -8,11 +8,11 @@
     <div class="level">
         <div class="level-left">
             <h1 class="title is-2 text-gradient">
-                ⏱️ Cron-Job-Verwaltung & Logs
+                ⏱️ Cron-Job-Verwaltung
             </h1>
         </div>
         <div class="level-right">
-            <a href="{{ path('app_profile') }}" class="button is-dark">
+            <a href="{{ path('app_profile') }}" class="button">
                 Zurück zum Profil
             </a>
         </div>
@@ -28,40 +28,158 @@
     {% endfor %}
 
     <!-- Info Banner -->
-    <div class="notification is-dark mb-5 cron-info-banner" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--theme-card-border); border-radius: 8px;">
+    <div class="notification cron-info-banner mb-5">
         💡 <strong>System-Konfiguration:</strong> Richte auf dem Server einen Cron-Job ein, der alle 5 Minuten das folgende Command triggert:
-        <div class="box mt-2 mb-2 p-2 monospace-code has-text-primary cron-code-box" style="background: #000; border: 1px solid #222; font-family: monospace;">
+        <div class="box mt-2 mb-2 p-3 cron-code-box monospace-code has-text-primary">
             */5 * * * * cd {{ app.request.server.get('DOCUMENT_ROOT')|default('/var/www/html')|replace({'/public': ''}) }} && php bin/console app:cron:run &gt;/dev/null 2&gt;&amp;1
         </div>
-        Der Scheduler läuft nun vollautomatisch im Hintergrund und arbeitet alle aktiven Aufgaben nacheinander (sequentiell) ab. Durch die integrierte Cache-Optimierung werden Daten nur dann tatsächlich von EVE Online geladen, wenn sie nicht mehr im ESI-Cache liegen, was Systemressourcen und API-Limit schont.
+        Der Scheduler läuft vollautomatisch im Hintergrund. Daten werden durch die integrierte Cache-Optimierung nur dann von EVE Online geladen, wenn sie nicht mehr im ESI-Cache liegen.
     </div>
 
-    <!-- Actions & Terminal -->
-    <div class="box mb-5" style="background: rgba(0, 0, 0, 0.15); border: 1px solid var(--theme-card-border); border-radius: 8px;">
+    <!-- Cron Jobs Table -->
+    <div class="box mb-5">
         <div class="level mb-4">
             <div class="level-left">
                 <div>
-                    <h3 class="title is-5 mb-1" style="color: #fff; display: flex; align-items: center; gap: 8px;">
-                        <span>📄</span> Ausführungsprotokoll (cron.log)
+                    <h3 class="title is-5 mb-1">
+                        📋 Registrierte Hintergrund-Jobs
                     </h3>
-                    <p class="is-size-7 has-text-grey">Zeigt die letzten 150 Einträge der Hintergrund-Synchronisierung</p>
+                    <p class="is-size-7 has-text-grey-light">Übersicht aller automatischen Synchronisations-Aufgaben</p>
                 </div>
             </div>
             <div class="level-right">
-                <form action="{{ path('app_admin_cron_run_all') }}" method="POST" style="display: inline-block;">
+                <form action="{{ path('app_admin_cron_run_all') }}" method="POST" class="cron-action-form">
                     <input type="hidden" name="_token" value="{{ csrf_token('cron_run_all') }}">
-                    <button type="submit" class="button is-primary" style="font-weight: bold;">
-                        🔄 Synchronisierung jetzt manuell starten
+                    <button type="submit" class="button is-primary">
+                        🔄 Alle fälligen Jobs synchronisieren
                     </button>
                 </form>
             </div>
         </div>
 
-        <div style="background: #070708; border: 1px solid var(--theme-card-border); border-radius: 6px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.8); padding: 15px;">
-            <div style="overflow-y: auto; max-height: 600px; background: transparent;">
-                <pre style="background: transparent; color: #abb2bf; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; border: none; padding: 0; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;">{{ logContent|raw }}</pre>
+        <div class="cron-table-container">
+            <table class="table is-striped">
+                <thead>
+                    <tr>
+                        <th>Job-Name / Command</th>
+                        <th>Intervall</th>
+                        <th>Status</th>
+                        <th>Letzter Lauf</th>
+                        <th>Nächster Lauf</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in cronJobs %}
+                        <tr>
+                            <td>
+                                <strong>{{ job.name }}</strong>
+                                <br>
+                                <small class="has-text-grey-light">{{ job.command }}</small>
+                            </td>
+                            <td>
+                                <span class="tag monospace-code">{{ job.cronExpression }}</span>
+                            </td>
+                            <td>
+                                <span class="cron-status-badge {{ job.isActive ? 'cron-status-active' : 'cron-status-inactive' }}">
+                                    {{ job.isActive ? 'Aktiv' : 'Inaktiv' }}
+                                </span>
+                                <br>
+                                {% if job.lastStatus == 'success' %}
+                                    <span class="tag is-success mt-1">Erfolgreich</span>
+                                {% elseif job.lastStatus == 'error' %}
+                                    <span class="tag is-danger mt-1">Fehlgeschlagen</span>
+                                {% else %}
+                                    <span class="tag is-info mt-1">Ausstehend</span>
+                                {% endif %}
+                            </td>
+                            <td class="is-size-7">
+                                {% if job.lastRunAt %}
+                                    {{ job.lastRunAt|date('d.m.Y H:i:s') }}
+                                    {% if job.lastExecutionTime %}
+                                        <br>
+                                        <span class="has-text-grey-light">Dauer: {{ job.lastExecutionTime|number_format(2) }}s</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="has-text-grey-light">Nie</span>
+                                {% endif %}
+                            </td>
+                            <td class="is-size-7">
+                                {% if job.nextRunAt %}
+                                    {{ job.nextRunAt|date('d.m.Y H:i:s') }}
+                                {% else %}
+                                    <span class="has-text-grey-light">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="buttons">
+                                    <form action="{{ path('app_admin_cron_toggle', {id: job.id}) }}" method="POST" class="cron-action-form">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('cron_toggle_' ~ job.id) }}">
+                                        <button type="submit" class="button is-small">
+                                            {{ job.isActive ? 'Deaktivieren' : 'Aktivieren' }}
+                                        </button>
+                                    </form>
+                                    <form action="{{ path('app_admin_cron_run_single', {id: job.id}) }}" method="POST" class="cron-action-form">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('cron_run_' ~ job.id) }}">
+                                        <button type="submit" class="button is-small is-primary">
+                                            Ausführen
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% if job.lastStatus == 'error' and job.lastError %}
+                            <tr>
+                                <td colspan="6" class="p-0">
+                                    <details class="mb-3 ml-2 mr-2">
+                                        <summary class="is-size-7 has-text-danger p-2" style="cursor: pointer; font-weight: bold;">
+                                            ❌ Fehlermeldung anzeigen
+                                        </summary>
+                                        <div class="cron-error-details">
+                                            {{ job.lastError }}
+                                        </div>
+                                    </details>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="has-text-centered has-text-grey-light">
+                                Keine registrierten Cron-Jobs gefunden.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="box cron-log-section">
+        <div class="level mb-4">
+            <div class="level-left">
+                <div>
+                    <h3 class="title is-5 mb-1">
+                        📄 Letzte Log-Aktivitäten
+                    </h3>
+                    <p class="is-size-7 has-text-grey-light">Speicherschonende Live-Vorschau der letzten Protokolleinträge</p>
+                </div>
+            </div>
+            <div class="level-right">
+                {% if logFileExists %}
+                    <a href="{{ path('app_admin_cron_download_log') }}" class="button is-small">
+                        📥 Gesamtes Log herunterladen
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="cron-terminal-box">
+            <div class="cron-terminal-container">
+                <div class="cron-terminal-text">{{ logContent|raw }}</div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
+

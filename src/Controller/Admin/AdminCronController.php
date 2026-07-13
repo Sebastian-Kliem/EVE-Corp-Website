@@ -8,8 +8,10 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -25,14 +27,20 @@ class AdminCronController extends AbstractController
     #[Route('', name: 'app_admin_cron_index', methods: ['GET'])]
     public function index(KernelInterface $kernel): Response
     {
+        $cronJobs = $this->entityManager->getRepository(CronJob::class)->findBy([], ['name' => 'ASC']);
+
         $logFile = $kernel->getProjectDir() . '/var/log/cron.log';
         $logContent = '';
         if (file_exists($logFile)) {
-            $lines = file($logFile);
-            $lastLines = array_slice($lines, -150);
+            // Memory-efficient reading of the last 35 lines to prevent OutOfMemoryError on large logfiles
+            $rawLogs = $this->getLastLines($logFile, 35);
+            $lines = explode("\n", $rawLogs);
             
             $formattedLines = [];
-            foreach ($lastLines as $line) {
+            foreach ($lines as $line) {
+                if (trim($line) === '') {
+                    continue;
+                }
                 // Escape HTML characters to prevent XSS
                 $escapedLine = htmlspecialchars($line, ENT_QUOTES, 'UTF-8');
                 
@@ -53,13 +61,15 @@ class AdminCronController extends AbstractController
                 
                 $formattedLines[] = sprintf('<span style="color: %s;">%s</span>', $color, $escapedLine);
             }
-            $logContent = implode('', $formattedLines);
+            $logContent = implode('<br>', $formattedLines);
         } else {
             $logContent = '<span style="color: #6a737d;">Keine Logdatei unter var/log/cron.log gefunden.<br>Sobald der Cronjob zum ersten Mal läuft, wird diese automatisch erstellt.</span>';
         }
 
         return $this->render('admin/admin_cron/cron_list.html.twig', [
+            'cronJobs' => $cronJobs,
             'logContent' => $logContent,
+            'logFileExists' => file_exists($logFile),
         ]);
     }
 
@@ -93,5 +103,123 @@ class AdminCronController extends AbstractController
         }
 
         return $this->redirectToRoute('app_admin_cron_index');
+    }
+
+    #[Route('/{id}/run', name: 'app_admin_cron_run_single', methods: ['POST'])]
+    public function runSingle(CronJob $job, Request $request, KernelInterface $kernel): Response
+    {
+        if (!$this->isCsrfTokenValid('cron_run_' . $job->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_admin_cron_index');
+        }
+
+        // Make sure the job is active and due right now
+        $job->setNextRunAt(new \DateTimeImmutable());
+        if (!$job->isActive()) {
+            $job->setIsActive(true);
+        }
+        $this->entityManager->flush();
+
+        $application = new Application($kernel);
+        $application->setAutoExit(false);
+
+        $input = new ArrayInput(['command' => 'app:cron:run']);
+        $output = new BufferedOutput();
+
+        try {
+            $application->run($input, $output);
+            
+            // Refresh to get updated execution time, status, and error details
+            $this->entityManager->refresh($job);
+            
+            if ($job->getLastStatus() === 'success') {
+                $this->addFlash('success', sprintf('Der Cronjob "%s" wurde erfolgreich ausgeführt (Dauer: %.2f Sek.).', $job->getName(), $job->getLastExecutionTime()));
+            } else {
+                $this->addFlash('error', sprintf('Fehler beim Ausführen des Cronjobs "%s": %s', $job->getName(), $job->getLastError()));
+            }
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Fehler beim Ausführen des Cronjobs: ' . $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_admin_cron_index');
+    }
+
+    #[Route('/{id}/toggle', name: 'app_admin_cron_toggle', methods: ['POST'])]
+    public function toggle(CronJob $job, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('cron_toggle_' . $job->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_admin_cron_index');
+        }
+
+        $job->setIsActive(!$job->isActive());
+        $this->entityManager->flush();
+
+        $statusText = $job->isActive() ? 'aktiviert' : 'deaktiviert';
+        $this->addFlash('success', sprintf('Der Cronjob "%s" wurde erfolgreich %s.', $job->getName(), $statusText));
+
+        return $this->redirectToRoute('app_admin_cron_index');
+    }
+
+    #[Route('/log/download', name: 'app_admin_cron_download_log', methods: ['GET'])]
+    public function downloadLog(KernelInterface $kernel): Response
+    {
+        $logFile = $kernel->getProjectDir() . '/var/log/cron.log';
+        if (!file_exists($logFile)) {
+            $this->addFlash('error', 'Die Logdatei existiert noch nicht.');
+            return $this->redirectToRoute('app_admin_cron_index');
+        }
+
+        $response = new BinaryFileResponse($logFile);
+        $response->setContentDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            'cron.log'
+        );
+
+        return $response;
+    }
+
+    /**
+     * Speicherschonendes Lesen der letzten N Zeilen einer Datei.
+     */
+    private function getLastLines(string $filename, int $numLines = 50): string
+    {
+        if (!file_exists($filename) || !is_readable($filename)) {
+            return '';
+        }
+
+        $handle = fopen($filename, 'r');
+        if (!$handle) {
+            return '';
+        }
+
+        $lineCount = 0;
+        $pos = -1;
+        $buffer = '';
+        $chunkSize = 4096;
+
+        fseek($handle, 0, SEEK_END);
+        $fileSize = ftell($handle);
+
+        while ($fileSize > 0 && $lineCount < $numLines + 1) {
+            $readSize = min($chunkSize, $fileSize);
+            $fileSize -= $readSize;
+            
+            fseek($handle, $fileSize);
+            $chunk = fread($handle, $readSize);
+            $buffer = $chunk . $buffer;
+
+            $lineCount = substr_count($buffer, "\n");
+        }
+
+        // Split by lines and take the last $numLines
+        $lines = explode("\n", $buffer);
+        if (count($lines) > $numLines) {
+            $lines = array_slice($lines, -$numLines - 1);
+        }
+
+        fclose($handle);
+
+        return implode("\n", $lines);
     }
 }

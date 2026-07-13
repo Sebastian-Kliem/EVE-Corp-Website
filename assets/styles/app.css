@@ -3123,4 +3123,85 @@ input[type="number"] {
     margin-top: 0.5rem;
 }
 
+/* ==========================================================================
+   24. CRON MANAGER STYLES
+   ========================================================================== */
+.cron-info-banner {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border: 1px solid var(--theme-card-border) !important;
+    border-radius: 8px !important;
+}
+.cron-code-box {
+    background: #000 !important;
+    border: 1px solid #222 !important;
+    font-family: monospace !important;
+}
+.cron-log-section {
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid var(--theme-card-border) !important;
+    border-radius: 8px !important;
+}
+.cron-terminal-box {
+    background: #070708 !important;
+    border: 1px solid var(--theme-card-border) !important;
+    border-radius: 6px !important;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.8) !important;
+    padding: 15px !important;
+}
+.cron-terminal-container {
+    overflow-y: auto !important;
+    max-height: 300px !important;
+    background: transparent !important;
+}
+.cron-terminal-text {
+    background: transparent !important;
+    color: #abb2bf !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 0.85rem !important;
+    border: none !important;
+    padding: 0 !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
+}
+.cron-table-container {
+    overflow-x: auto !important;
+    margin-bottom: 2rem !important;
+}
+.cron-status-badge {
+    display: inline-block !important;
+    padding: 0.2rem 0.5rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    border-radius: 4px !important;
+    text-transform: uppercase !important;
+}
+.cron-status-active {
+    background-color: rgba(72, 199, 142, 0.15) !important;
+    color: #48c78e !important;
+    border: 1px solid rgba(72, 199, 142, 0.3) !important;
+}
+.cron-status-inactive {
+    background-color: rgba(241, 70, 104, 0.15) !important;
+    color: #f14668 !important;
+    border: 1px solid rgba(241, 70, 104, 0.3) !important;
+}
+.cron-error-details {
+    margin-top: 0.5rem !important;
+    padding: 0.75rem !important;
+    background-color: rgba(241, 70, 104, 0.05) !important;
+    border: 1px solid rgba(241, 70, 104, 0.2) !important;
+    border-radius: 4px !important;
+    font-family: monospace !important;
+    font-size: 0.8rem !important;
+    color: #f14668 !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+}
+.cron-action-form {
+    display: inline-block !important;
+    margin: 0 !important;
+}
+
+
 
