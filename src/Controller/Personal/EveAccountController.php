@@ -173,6 +173,10 @@ class EveAccountController extends AbstractController
             ['locationId' => 'ASC']
         );
 
+        $assets = array_filter($assets, function (EveCharacterAsset $a) {
+            return $a->getLocationType() !== 'industry_job';
+        });
+
         // Add active sell orders as pseudo assets
         $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy([
             'character' => $character,
@@ -360,6 +364,10 @@ class EveAccountController extends AbstractController
             $assets = $this->entityManager->getRepository(EveCharacterAsset::class)->findBy([
                 'character' => $character
             ]);
+
+            $assets = array_filter($assets, function (EveCharacterAsset $a) {
+                return $a->getLocationType() !== 'industry_job';
+            });
 
             // Fetch active market orders (sell orders as pseudo assets, buy orders as escrow)
             $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy([

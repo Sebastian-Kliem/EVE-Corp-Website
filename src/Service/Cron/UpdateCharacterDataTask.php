@@ -384,6 +384,32 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
+        // Append virtual assets for active industry job inputs so starting a job does not count as a loss/offset
+        try {
+            $activeJobs = $this->entityManager->getRepository(\App\Entity\EveCharacterIndustryJob::class)->findBy([
+                'character' => $character,
+                'status' => 'active'
+            ]);
+            foreach ($activeJobs as $job) {
+                $details = $this->sdeService->getBlueprintDetails($job->getBlueprintTypeId(), $job->getActivityId());
+                if (!empty($details['materials'])) {
+                    foreach ($details['materials'] as $mat) {
+                        $allAssets[] = [
+                            'item_id' => 0, // virtual ID
+                            'type_id' => (int)$mat['typeId'],
+                            'quantity' => (int)$mat['quantity'] * $job->getRuns(),
+                            'location_id' => (int)$job->getBlueprintLocationId(),
+                            'location_type' => 'industry_job',
+                            'location_flag' => 'IndustryJobInput',
+                            'is_singleton' => false,
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch active industry job inputs for character %s: %s', $character->getName(), $e->getMessage()));
+        }
+
         // Collect singleton item IDs and their type IDs
         $singletonItemIds = [];
         $itemToTypeMap = [];
