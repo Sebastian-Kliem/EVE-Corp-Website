@@ -359,7 +359,14 @@ class EsiClient
 
                     break; // Success
                 } catch (\Exception $e) {
-                    if ($attempt >= $maxPageRetries) {
+                    $isClientError = false;
+                    if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
+                        $statusCode = $e->getResponse()->getStatusCode();
+                        if ($statusCode >= 400 && $statusCode < 500 && $statusCode !== 420) {
+                            $isClientError = true;
+                        }
+                    }
+                    if ($isClientError || $attempt >= $maxPageRetries) {
                         throw $e;
                     }
                     $this->logCron(sprintf('[EsiClient] Request failed for page %d of %d on path %s (attempt %d/%d): %s. Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries, $e->getMessage()), 'warning');
