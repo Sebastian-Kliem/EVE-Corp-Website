@@ -657,6 +657,11 @@ details.box .details-content {
     position: relative;
 }
 
+.category-block:has(details[open]) {
+    z-index: 10;
+}
+
+
 .category-block > .title {
     border-bottom: 2px solid var(--theme-card-border);
     padding-bottom: 0.5rem;
