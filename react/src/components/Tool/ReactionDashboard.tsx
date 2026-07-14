@@ -292,27 +292,22 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
 
     if (loading) {
         return (
-            <div className="box has-text-centered p-5" style={{ background: 'transparent', border: 'none' }}>
-                <span className="loader" style={{
-                    display: 'inline-block',
-                    width: '2rem',
-                    height: '2rem',
-                    border: '3px solid var(--theme-primary)',
-                    borderRadius: '50%',
-                    borderTopColor: 'transparent',
-                    animation: 'spin 1s linear infinite'
-                }}></span>
-                <p className="mt-3">Reaktionsdaten & Live Systemkosten-Indizes werden geladen...</p>
+            <div className="text-center p-6 bg-transparent border-none">
+                <span className="inline-block w-8 h-8 border-[3px] border-eve-primary border-t-transparent rounded-full animate-spin"></span>
+                <p className="mt-3 text-eve-muted">Reaktionsdaten & Live Systemkosten-Indizes werden geladen...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="box has-text-centered p-5" style={{ borderColor: '#ff4444' }}>
-                <h3 className="title is-4" style={{ color: '#ff4444' }}>Fehler</h3>
-                <p className="subtitle is-6">{error}</p>
-                <button className="button is-small is-primary mt-3" onClick={fetchCalcData}>
+            <div className="text-center p-6 bg-eve-card border border-red-500/30 rounded-lg max-w-md mx-auto mt-6 shadow-eve">
+                <h3 className="text-xl font-semibold mb-3 text-red-500">Fehler</h3>
+                <p className="text-sm text-eve-muted mb-4">{error}</p>
+                <button 
+                    className="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-3 py-1 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
+                    onClick={fetchCalcData}
+                >
                     Erneut laden
                 </button>
             </div>
@@ -322,77 +317,85 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
     return (
         <div>
             {/* PARAMETERS PANEL */}
-            <div className="box mb-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--theme-card-border)', borderRadius: '6px', padding: '1.25rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div className="mb-4 bg-white/2 border border-eve-border rounded-lg p-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     
                     {/* Structure & Rigs */}
                     <div>
-                        <h4 className="title is-6 mb-3" style={{ color: 'var(--theme-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '5px' }}>
+                        <h4 className="text-sm font-semibold mb-3 text-eve-primary border-b border-white/5 pb-1.5">
                             🏢 Station & Rigs
                         </h4>
-                        <div className="field mb-2">
-                            <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Corp-Struktur vorauswählen</label>
-                            <div className="select is-fullwidth is-small">
-                                <select className="input-dark" value={selectedStructureId} onChange={(e) => handleStructureChange(e.target.value)}>
-                                    <option value="custom">Manuelle Einstellungen</option>
-                                    {structuresList.map(s => (
-                                        <option key={s.id} value={s.id}>
-                                            {s.name} ({s.solarSystemName || 'Unbekannt'})
-                                        </option>
-                                    ))}
+                        <div className="mb-3">
+                            <label className="block text-xs text-eve-muted mb-1">Corp-Struktur vorauswählen</label>
+                            <select 
+                                className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                value={selectedStructureId} 
+                                onChange={(e) => handleStructureChange(e.target.value)}
+                            >
+                                <option value="custom">Manuelle Einstellungen</option>
+                                {structuresList.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} ({s.solarSystemName || 'Unbekannt'})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5 mb-3">
+                            <div>
+                                <label className="block text-xs text-eve-muted mb-1">Strukturtyp</label>
+                                <select 
+                                    className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                    value={structureType} 
+                                    onChange={(e) => { setStructureType(e.target.value); setSelectedStructureId('custom'); }}
+                                >
+                                    <option value="athanor">Athanor (Refinery)</option>
+                                    <option value="tatara">Tatara (2% Fee Red.)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-eve-muted mb-1">Sicherheits-Status</label>
+                                <select 
+                                    className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                    value={securitySpace} 
+                                    onChange={(e) => { setSecuritySpace(e.target.value); setSelectedStructureId('custom'); }}
+                                >
+                                    <option value="highsec">Highsec (1.0x Rig)</option>
+                                    <option value="lowsec">Lowsec (1.5x Rig)</option>
+                                    <option value="nullsec">W-Space / Nullsec (1.9x)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="mb-2">
-                            <div>
-                                <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Strukturtyp</label>
-                                <div className="select is-fullwidth is-small">
-                                    <select className="input-dark" value={structureType} onChange={(e) => { setStructureType(e.target.value); setSelectedStructureId('custom'); }}>
-                                        <option value="athanor">Athanor (Refinery)</option>
-                                        <option value="tatara">Tatara (2% Fee Red.)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Sicherheits-Status</label>
-                                <div className="select is-fullwidth is-small">
-                                    <select className="input-dark" value={securitySpace} onChange={(e) => { setSecuritySpace(e.target.value); setSelectedStructureId('custom'); }}>
-                                        <option value="highsec">Highsec (1.0x Rig)</option>
-                                        <option value="lowsec">Lowsec (1.5x Rig)</option>
-                                        <option value="nullsec">W-Space / Nullsec (1.9x)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="field">
-                            <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Reaction Rig</label>
-                            <div className="select is-fullwidth is-small">
-                                <select className="input-dark" value={rigType} onChange={(e) => { setRigType(e.target.value); setSelectedStructureId('custom'); }}>
-                                    <option value="none">Kein Rig (0%)</option>
-                                    <option value="t1">T1 Hybrid Reaction Rig (-2% Material)</option>
-                                    <option value="t2">T2 Hybrid Reaction Rig (-2.4% Material)</option>
-                                </select>
-                            </div>
-                            <p className="is-size-7 has-text-grey mt-1">Aktuelle Materialreduktion: <strong>{formatPercent(rigBonus * 100)}</strong></p>
+                        <div className="mb-3">
+                            <label className="block text-xs text-eve-muted mb-1">Reaction Rig</label>
+                            <select 
+                                className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                value={rigType} 
+                                onChange={(e) => { setRigType(e.target.value); setSelectedStructureId('custom'); }}
+                            >
+                                <option value="none">Kein Rig (0%)</option>
+                                <option value="t1">T1 Hybrid Reaction Rig (-2% Material)</option>
+                                <option value="t2">T2 Hybrid Reaction Rig (-2.4% Material)</option>
+                            </select>
+                            <p className="text-[11px] text-eve-muted mt-1.5">Aktuelle Materialreduktion: <strong>{formatPercent(rigBonus * 100)}</strong></p>
                         </div>
                     </div>
 
                     {/* Job Index, Taxes & Gas Compression */}
                     <div>
-                        <h4 className="title is-6 mb-3" style={{ color: 'var(--theme-primary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '5px' }}>
+                        <h4 className="text-sm font-semibold mb-3 text-eve-primary border-b border-white/5 pb-1.5">
                             💰 Systemkosten & Gas-Modus
                         </h4>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }} className="mb-2">
+                        <div className="grid grid-cols-2 gap-2.5 mb-3">
                             <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Cost Index (%)</label>
-                                    <span style={{ fontSize: '0.65rem', color: '#00f0ff', fontWeight: 'bold' }}>LIVE API</span>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-xs text-eve-muted">Cost Index (%)</label>
+                                    <span className="text-[9px] text-[#00f0ff] font-bold">LIVE API</span>
                                 </div>
                                 <input
                                     type="number"
-                                    className="input input-dark is-small"
+                                    className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                                     value={systemCostIndex}
                                     onChange={(e) => { setSystemCostIndex(parseFloat(e.target.value) || 0); setSelectedStructureId('custom'); }}
                                     step="0.001"
@@ -401,10 +404,10 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
                                 />
                             </div>
                             <div>
-                                <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Installation Tax (%)</label>
+                                <label className="block text-xs text-eve-muted mb-1">Installation Tax (%)</label>
                                 <input
                                     type="number"
-                                    className="input input-dark is-small"
+                                    className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                                     value={taxRate}
                                     onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
                                     step="0.1"
@@ -415,70 +418,68 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
                         </div>
 
                         {/* Gas compression strategy selector */}
-                        <div className="field mb-2">
-                            <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Gas-Opportunitätspreis</label>
-                            <div className="select is-fullwidth is-small">
-                                <select className="input-dark" value={useCompressedGas ? 'compressed' : 'raw'} onChange={(e) => setUseCompressedGas(e.target.value === 'compressed')}>
-                                    <option value="compressed">Komprimiertes Gas (Jita-Mittelwert 10:1) [Standard]</option>
-                                    <option value="raw">Unkomprimiertes Rohgas (Jita-Mittelwert)</option>
-                                </select>
-                            </div>
-                            <p className="is-size-7 has-text-grey mt-1">Rechnet bei WH-Gasen mit dem Wert komprimierten Gases (Volumeneinsparung beim Export).</p>
+                        <div className="mb-3">
+                            <label className="block text-xs text-eve-muted mb-1">Gas-Opportunitätspreis</label>
+                            <select 
+                                className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                value={useCompressedGas ? 'compressed' : 'raw'} 
+                                onChange={(e) => setUseCompressedGas(e.target.value === 'compressed')}
+                            >
+                                <option value="compressed">Komprimiertes Gas (Jita-Mittelwert 10:1) [Standard]</option>
+                                <option value="raw">Unkomprimiertes Rohgas (Jita-Mittelwert)</option>
+                            </select>
+                            <p className="text-[11px] text-eve-muted mt-1.5">Rechnet bei WH-Gasen mit dem Wert komprimierten Gases (Volumeneinsparung beim Export).</p>
                         </div>
 
-                        <div className="field">
-                            <label className="label is-size-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>Zielsprunggelenk / Hub</label>
-                            <div className="select is-fullwidth is-small">
-                                <select className="input-dark" value={selectedHub} onChange={(e) => setSelectedHub(e.target.value)}>
-                                    <option value="jita">Jita (The Forge)</option>
-                                    <option value="amarr">Amarr (Domain)</option>
-                                    <option value="dodixie">Dodixie (Sinq Laison)</option>
-                                    <option value="hek">Hek (Metropolis)</option>
-                                </select>
-                            </div>
+                        <div className="mb-3">
+                            <label className="block text-xs text-eve-muted mb-1">Zielsprunggelenk / Hub</label>
+                            <select 
+                                className="w-full rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                                value={selectedHub} 
+                                onChange={(e) => setSelectedHub(e.target.value)}
+                            >
+                                <option value="jita">Jita (The Forge)</option>
+                                <option value="amarr">Amarr (Domain)</option>
+                                <option value="dodixie">Dodixie (Sinq Laison)</option>
+                                <option value="hek">Hek (Metropolis)</option>
+                            </select>
                         </div>
                     </div>
-
                 </div>
             </div>
 
             {/* FILTER SEARCH ROW */}
-            <div className="level mb-4">
-                <div className="level-left">
-                    <h3 className="title is-5 mb-0">Reaktionskalkulationen</h3>
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-4">
+                <div>
+                    <h3 className="text-lg font-semibold text-white">Reaktionskalkulationen</h3>
                 </div>
-                <div className="level-right">
+                <div>
                     <input
                         type="text"
-                        className="input input-dark"
+                        className="rounded-lg text-xs px-2.5 py-1.5 w-[250px] border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                         placeholder="Reaktion filtern..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{ width: '250px' }}
                     />
                 </div>
             </div>
 
             {/* CALCULATOR TABLE */}
-            <div className="box p-0" style={{ overflowX: 'auto', border: '1px solid var(--theme-card-border)', background: 'var(--theme-card-bg)', borderRadius: '8px' }}>
-                <table className="table is-fullwidth" style={{ background: 'transparent', margin: 0, borderCollapse: 'collapse' }}>
+            <div className="overflow-x-auto border border-eve-border bg-eve-card rounded-lg shadow-eve">
+                <table className="w-full border-collapse text-left text-eve-text">
                     <thead>
-                        <tr style={{ borderBottom: '2px solid var(--theme-card-border)' }}>
-                            <th style={{ padding: '1rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Reaktion / Polymer</th>
-                            <th style={{ padding: '1rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Input-Kosten (Jita)</th>
-                            <th style={{ padding: '1rem', color: 'var(--theme-text-muted)', fontWeight: 'bold' }}>Job-Startgebühr (Corp Cost)</th>
-                            <th style={{ padding: '1rem', color: 'var(--theme-text-muted)', fontWeight: 'bold', minWidth: '160px' }}>
-                                Sofortverkauf (Buy Order)
-                            </th>
-                            <th style={{ padding: '1rem', color: 'var(--theme-text-muted)', fontWeight: 'bold', minWidth: '160px' }}>
-                                Sell Order (List Preis)
-                            </th>
+                        <tr className="border-b-2 border-eve-border bg-[#0d121fe6]/50">
+                            <th className="p-4 text-eve-muted font-bold text-sm">Reaktion / Polymer</th>
+                            <th className="p-4 text-eve-muted font-bold text-sm">Input-Kosten (Jita)</th>
+                            <th className="p-4 text-eve-muted font-bold text-sm">Job-Startgebühr (Corp Cost)</th>
+                            <th className="p-4 text-eve-muted font-bold text-sm min-w-[160px]">Sofortverkauf (Buy Order)</th>
+                            <th className="p-4 text-eve-muted font-bold text-sm min-w-[160px]">Sell Order (List Preis)</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-white/5">
                         {filteredReactions.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="has-text-centered p-5 text-muted">
+                                <td colSpan={5} className="text-center p-6 text-eve-muted">
                                     Keine passenden Reaktionen gefunden.
                                 </td>
                             </tr>
@@ -488,46 +489,47 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
                                 const listingIsProfitable = react.listingProfit > 0;
 
                                 return (
-                                    <tr key={react.polymerTypeId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', verticalAlign: 'top' }}>
+                                    <tr key={react.polymerTypeId} className="hover:bg-white/2 transition-colors duration-150 align-top">
                                         {/* Polymer Details with collapsible input list */}
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} className="mb-2">
+                                        <td className="p-4 align-middle">
+                                            <div className="flex items-center gap-2.5 mb-2">
                                                 <img
                                                     src={imagePaths.types.replace('12345', react.polymerTypeId.toString())}
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${react.polymerTypeId}/icon`;
                                                     }}
                                                     alt=""
-                                                    style={{ width: '32px', height: '32px', borderRadius: '4px' }}
+                                                    className="w-8 h-8 rounded"
                                                 />
                                                 <div>
-                                                    <span style={{ fontWeight: 600, display: 'block' }}>{react.polymerName}</span>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)' }}>
+                                                    <span className="font-semibold block">{react.polymerName}</span>
+                                                    <span className="text-xs text-eve-muted">
                                                         {react.outputQuantity}x pro Lauf • Formula: {react.formulaName}
                                                     </span>
                                                 </div>
                                             </div>
 
                                             {/* Materials Details Collapsible */}
-                                            <details>
-                                                <summary style={{ fontSize: '0.75rem', color: 'var(--theme-primary)', cursor: 'pointer', outline: 'none' }}>
-                                                    Material-Details anzeigen
+                                            <details className="group">
+                                                <summary className="text-xs text-eve-primary cursor-pointer outline-none select-none flex items-center gap-1.5">
+                                                    <span>Material-Details anzeigen</span>
+                                                    <span className="text-[10px] transition-transform duration-200 group-open:rotate-180">▼</span>
                                                 </summary>
-                                                <div style={{ marginTop: '5px', padding: '8px', background: 'rgba(0,0,0,0.15)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                                                <div className="mt-1.5 p-2 bg-black/30 border border-white/5 rounded text-xs">
                                                     {react.detailedMaterials.map((mat) => (
-                                                        <div key={mat.typeId} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', borderBottom: '1px solid rgba(255,255,255,0.02)', alignItems: 'center' }}>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                        <div key={mat.typeId} className="flex justify-between py-1 border-b border-white/5 last:border-b-0 items-center gap-2">
+                                                            <span className="flex items-center gap-1.5">
                                                                 <img
                                                                     src={imagePaths.types.replace('12345', mat.usedTypeId.toString())}
                                                                     onError={(e) => {
                                                                         (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${mat.usedTypeId}/icon`;
                                                                     }}
                                                                     alt=""
-                                                                    style={{ width: '16px', height: '16px', borderRadius: '2px' }}
+                                                                    className="w-4 h-4 rounded-sm"
                                                                 />
                                                                 {mat.usedName} x{mat.reducedQty.toFixed(1)}
                                                             </span>
-                                                            <span style={{ fontFamily: 'monospace', color: 'var(--theme-text-muted)' }}>
+                                                            <span className="font-mono text-eve-muted text-[11px]">
                                                                 {formatISK(mat.jitaPrice)} / Stk.
                                                             </span>
                                                         </div>
@@ -537,62 +539,44 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
                                         </td>
 
                                         {/* Input Cost */}
-                                        <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
-                                            <div style={{ fontWeight: 'bold' }}>{formatISK(react.materialCost)}</div>
-                                            <div className="is-size-7 text-muted">
+                                        <td className="p-4 align-middle">
+                                            <div className="font-bold">{formatISK(react.materialCost)}</div>
+                                            <div className="text-xs text-eve-muted">
                                                 {useCompressedGas ? 'Compressed Gas Basis' : 'Raw Gas Basis'}
                                             </div>
                                         </td>
 
                                         {/* Job Fee */}
-                                        <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
-                                            <div style={{ fontWeight: 'bold' }}>{formatISK(react.jobFee)}</div>
-                                            <div className="is-size-7 text-muted" title={`Base Cost (EIV): ${formatISK(react.baseCost)}`}>
+                                        <td className="p-4 align-middle">
+                                            <div className="font-bold">{formatISK(react.jobFee)}</div>
+                                            <div className="text-xs text-eve-muted" title={`Base Cost (EIV): ${formatISK(react.baseCost)}`}>
                                                 EIV Base: {formatISK(Math.round(react.baseCost))} <br/>
                                                 Index: {systemCostIndex.toFixed(3)}%
                                             </div>
                                         </td>
 
                                         {/* Instant Profit */}
-                                        <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)' }}>
+                                        <td className="p-4 align-middle">
+                                            <div className="text-xs text-eve-muted">
                                                 Hub Preis: {formatISK(react.buyPrice)}
                                             </div>
-                                            <div style={{
-                                                fontWeight: 'bold',
-                                                color: instantIsProfitable ? '#00ff88' : '#ff4444',
-                                                fontSize: '1rem',
-                                                marginTop: '2px'
-                                            }}>
+                                            <div className={`font-bold text-base mt-0.5 ${instantIsProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                 {instantIsProfitable ? '+' : ''}{formatISK(react.instantProfit)}
                                             </div>
-                                            <div style={{
-                                                fontSize: '0.8rem',
-                                                color: instantIsProfitable ? '#00ff88' : '#ff4444',
-                                                fontWeight: 'bold'
-                                            }}>
+                                            <div className={`text-xs font-bold ${instantIsProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                 Margin: {instantIsProfitable ? '+' : ''}{formatPercent(react.instantMargin)}
                                             </div>
                                         </td>
 
                                         {/* Listing Profit */}
-                                        <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)' }}>
+                                        <td className="p-4 align-middle">
+                                            <div className="text-xs text-eve-muted">
                                                 Hub Preis: {formatISK(react.sellPrice)}
                                             </div>
-                                            <div style={{
-                                                fontWeight: 'bold',
-                                                color: listingIsProfitable ? '#00f0ff' : '#ff4444',
-                                                fontSize: '1rem',
-                                                marginTop: '2px'
-                                            }}>
+                                            <div className={`font-bold text-base mt-0.5 ${listingIsProfitable ? 'text-eve-primary' : 'text-rose-400'}`}>
                                                 {listingIsProfitable ? '+' : ''}{formatISK(react.listingProfit)}
                                             </div>
-                                            <div style={{
-                                                fontSize: '0.8rem',
-                                                color: listingIsProfitable ? '#00f0ff' : '#ff4444',
-                                                fontWeight: 'bold'
-                                            }}>
+                                            <div className={`text-xs font-bold ${listingIsProfitable ? 'text-eve-primary' : 'text-rose-400'}`}>
                                                 Margin: {listingIsProfitable ? '+' : ''}{formatPercent(react.listingMargin)}
                                             </div>
                                         </td>

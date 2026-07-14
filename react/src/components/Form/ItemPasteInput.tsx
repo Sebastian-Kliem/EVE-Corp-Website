@@ -76,91 +76,22 @@ export default function ItemPasteInput({
     };
 
     return (
-        <div className="item-paste-container-prof">
-            <style>{`
-                .item-paste-container-prof {
-                    margin-bottom: 1rem;
-                }
-                .paste-toggle-btn-prof {
-                    background: rgba(0, 240, 255, 0.08);
-                    border: 1px dashed var(--theme-primary, #00f0ff);
-                    color: var(--theme-primary, #00f0ff);
-                    border-radius: 6px;
-                    padding: 8px 12px;
-                    font-size: 0.8rem;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    transition: all 0.2s;
-                    font-weight: 600;
-                    width: 100%;
-                    justify-content: center;
-                }
-                .paste-toggle-btn-prof:hover {
-                    background: rgba(0, 240, 255, 0.15);
-                    box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
-                }
-                .paste-card-prof {
-                    background: rgba(20, 27, 43, 0.85);
-                    border: 1px solid var(--theme-card-border, #333);
-                    border-radius: 8px;
-                    padding: 1rem;
-                    margin-top: 8px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-                    backdrop-filter: blur(8px);
-                }
-                .textarea-dark-prof {
-                    width: 100%;
-                    min-height: 120px;
-                    background: rgba(0,0,0,0.4);
-                    border: 1px solid var(--theme-card-border, #444);
-                    border-radius: 6px;
-                    color: #fff;
-                    font-family: monospace;
-                    font-size: 0.8rem;
-                    padding: 8px;
-                    resize: vertical;
-                    outline: none;
-                    transition: border-color 0.2s;
-                }
-                .textarea-dark-prof:focus {
-                    border-color: var(--theme-primary, #00f0ff);
-                    box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
-                }
-                .unresolved-box-prof {
-                    background: rgba(255, 50, 50, 0.05);
-                    border: 1px solid rgba(255, 50, 50, 0.2);
-                    border-radius: 6px;
-                    padding: 8px 10px;
-                    margin-top: 8px;
-                    font-size: 0.75rem;
-                }
-                .unresolved-list-prof {
-                    max-height: 80px;
-                    overflow-y: auto;
-                    margin-top: 4px;
-                    padding-left: 15px;
-                    color: #ffaa55;
-                }
-            `}</style>
-
+        <div className="mb-4">
             {!isOpen ? (
                 <button 
                     type="button" 
-                    className="paste-toggle-btn-prof"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-eve-primary/8 border border-dashed border-eve-primary text-eve-primary rounded-md text-xs font-semibold cursor-pointer transition-all duration-200 hover:bg-eve-primary/15 hover:shadow-[0_0_8px_rgba(0,240,255,0.3)]"
                     onClick={() => setIsOpen(true)}
                 >
                     {buttonLabel}
                 </button>
             ) : (
-                <div className="paste-card-prof animate-slide-down">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#fff' }}>EVE Hangar Copy'n'Paste</span>
+                <div className="mt-2 p-4 bg-eve-card/85 border border-eve-border rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.4)] backdrop-blur-sm animate-slide-down">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-white">EVE Hangar Copy'n'Paste</span>
                         <button 
                             type="button" 
-                            className="button is-small is-text" 
-                            style={{ color: '#888', padding: '0 4px', height: 'auto' }}
+                            className="text-eve-muted hover:text-white px-1 h-auto text-xs cursor-pointer border-none bg-transparent"
                             onClick={() => {
                                 setIsOpen(false);
                                 setError(null);
@@ -173,7 +104,7 @@ export default function ItemPasteInput({
 
                     <form onSubmit={handleParse}>
                         <textarea
-                            className="textarea-dark-prof"
+                            className="w-full min-h-[120px] bg-black/40 border border-eve-border rounded-md text-white font-mono text-xs p-2 resize-y outline-none transition-colors duration-200 focus:border-eve-primary focus:shadow-[0_0_5px_rgba(0,240,255,0.2)]"
                             placeholder={placeholder}
                             value={pastedText}
                             onChange={(e) => setPastedText(e.target.value)}
@@ -181,20 +112,20 @@ export default function ItemPasteInput({
                         />
 
                         {error && (
-                            <div className="has-text-danger is-size-7 mt-1">
+                            <div className="text-red-500 text-xs mt-1">
                                 ⚠️ {error}
                             </div>
                         )}
 
                         {resultSummary && (
-                            <div className="has-text-success is-size-7 mt-1" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div className="text-green-500 text-xs mt-1 flex flex-col gap-1">
                                 <div>✅ {resultSummary.successCount} Gegenstände erfolgreich hinzugefügt!</div>
                                 {resultSummary.unresolved.length > 0 && (
-                                    <div className="unresolved-box-prof">
-                                        <div style={{ color: '#ffcc88' }}>
+                                    <div className="mt-2 px-2.5 py-2 bg-red-500/5 border border-red-500/20 rounded-md text-xs">
+                                        <div className="text-[#ffcc88]">
                                             ⚠️ Die folgenden {resultSummary.unresolved.length} Zeilen konnten nicht zugeordnet werden:
                                         </div>
-                                        <ul className="unresolved-list-prof">
+                                        <ul className="max-h-[80px] overflow-y-auto mt-1 pl-4 text-[#ffaa55]">
                                             {resultSummary.unresolved.map((line, idx) => (
                                                 <li key={idx}>{line}</li>
                                             ))}
@@ -204,13 +135,13 @@ export default function ItemPasteInput({
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                        <div className="flex gap-2 mt-2 justify-end">
                             <button
                                 type="submit"
-                                className={`button is-small is-primary ${loading ? 'is-loading' : ''}`}
+                                className={`inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold px-3 py-1 text-xs shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                                 disabled={loading || !pastedText.trim()}
                             >
-                                Hinzufügen
+                                {loading ? 'Lädt...' : 'Hinzufügen'}
                             </button>
                         </div>
                     </form>

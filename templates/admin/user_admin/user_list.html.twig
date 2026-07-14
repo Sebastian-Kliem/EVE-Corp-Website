@@ -3,30 +3,30 @@
 {% block title %}Benutzerverwaltung{% endblock %}
 
 {% block body %}
-<div class="container container-wide mt-5 mb-6" data-controller="user-search">
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12" data-controller="user-search">
     <!-- Headline -->
-    <div class="level">
-        <div class="level-left">
-            <h1 class="title is-2 text-gradient">
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-semibold text-white text-gradient">
                 Benutzerverwaltung
             </h1>
         </div>
-        <div class="level-right">
+        <div class="flex items-center gap-3">
             <!-- Search bar -->
             <form action="{{ path('app_admin_users') }}" method="GET" class="search-form {% if search is not empty %}is-active{% endif %}">
                 <div class="search-wrapper">
-                    <input class="input search-input" type="text" name="search" placeholder="Benutzer suchen..." value="{{ search }}" data-user-search-target="input" data-action="input->user-search#filter">
-                    <button type="button" class="button search-toggle-btn" onclick="let f=this.closest('.search-form'); let i=f.querySelector('.search-input'); if(f.classList.contains('is-active') && i.value.trim()!==''){f.submit();}else{f.classList.toggle('is-active'); if(f.classList.contains('is-active')){i.focus();}}">
+                    <input class="search-input" type="text" name="search" placeholder="Benutzer suchen..." value="{{ search }}" data-user-search-target="input" data-action="input->user-search#filter">
+                    <button type="button" class="search-toggle-btn" onclick="let f=this.closest('.search-form'); let i=f.querySelector('.search-input'); if(f.classList.contains('is-active') && i.value.trim()!==''){f.submit();}else{f.classList.toggle('is-active'); if(f.classList.contains('is-active')){i.focus();}}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </button>
-                    <button type="submit" class="button is-primary search-submit-btn">
+                    <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer search-submit-btn">
                         Suchen
                     </button>
                     {% if search is not empty %}
-                        <a href="{{ path('app_admin_users') }}" class="button search-clear-btn" title="Suche zurücksetzen">✕</a>
+                        <a href="{{ path('app_admin_users') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer search-clear-btn" title="Suche zurücksetzen">✕</a>
                     {% endif %}
                 </div>
             </form>
@@ -37,16 +37,16 @@
     {% for label, messages in app.flashes %}
         {% for message in messages %}
             {% if label == 'success_temp_password' %}
-                <div class="notification is-success is-highlighted mt-4 mb-4">
-                    <p class="title is-5 has-text-success">🔑 Temporäres Passwort generiert!</p>
+                <div class="border-2 border-[#48c78e] bg-[#48c78e]/15 text-white py-5 px-6 rounded-lg mt-4 mb-4">
+                    <p class="text-lg font-semibold mb-2 text-emerald-400">🔑 Temporäres Passwort generiert!</p>
                     <p class="mt-2">Das Passwort für <strong>{{ message.displayName }}</strong> ({{ message.username }}) wurde erfolgreich zurückgesetzt.</p>
-                    <div class="box mt-3 mb-2 p-3 has-text-centered box-dashed-success">
-                        <span class="is-size-4 has-text-weight-bold monospace-code has-text-primary">{{ message.password }}</span>
+                    <div class="bg-black/40 border border-dashed border-[#48c78e] p-3 rounded-lg mt-3 mb-2 text-center">
+                        <span class="text-2xl font-bold font-mono text-eve-primary">{{ message.password }}</span>
                     </div>
-                    <p class="is-size-7 has-text-warning">⚠️ WICHTIG: Dieses Passwort wird nur dieses eine Mal angezeigt. Bitte kopiere es jetzt und teile es dem Benutzer vertraulich (z. B. per Discord-DM) mit!</p>
+                    <p class="text-xs text-amber-400">⚠️ WICHTIG: Dieses Passwort wird nur dieses eine Mal angezeigt. Bitte kopiere es jetzt und teile es dem Benutzer vertraulich (z. B. per Discord-DM) mit!</p>
                 </div>
             {% else %}
-                <div class="notification is-{{ label == 'error' ? 'danger' : 'success' }} mt-4 mb-4">
+                <div class="py-5 px-6 rounded-lg mt-4 mb-4 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% else %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% endif %}">
                     {{ message }}
                 </div>
             {% endif %}
@@ -54,56 +54,55 @@
     {% endfor %}
 
     <!-- User Table inside a Glassmorphism box -->
-    <div class="box p-0 mt-5 overflow-x-auto">
-        <table class="table is-fullwidth is-striped mb-0">
+    <div class="bg-eve-card border border-eve-border shadow-eve p-0 mt-8 rounded-lg overflow-x-auto">
+        <table class="w-full border-collapse text-left bg-transparent text-eve-text mb-0">
             <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Status / Rollen</th>
-                    <th class="has-text-right pr-4">Aktionen zur Rollenänderung</th>
+                <tr class="border-b border-eve-border bg-[#0d121fe6]/50">
+                    <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Username</th>
+                    <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Status / Rollen</th>
+                    <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border text-right pr-4">Aktionen zur Rollenänderung</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-white/5">
                 {% for user in users %}
-                    <tr data-user-search-target="row" data-username="{{ user.username }}">
-                        <td>
-                            <span class="has-text-grey-light">{{ user.username }}</span>
+                    <tr data-user-search-target="row" data-username="{{ user.username }}" class="hover:bg-white/2 transition-colors duration-150">
+                        <td class="p-3 text-xs text-eve-text align-middle">
+                            <span class="text-eve-muted">{{ user.username }}</span>
                         </td>
 
                         <!-- Roles Tags -->
-                        <td>
-                            <div class="tags">
+                        <td class="p-3 text-xs text-eve-text align-middle">
+                            <div class="flex flex-wrap gap-1.5">
                                 {% for role in user.roles %}
                                     {% if role == 'ROLE_RECRUIT' %}
-                                        <span class="tag is-warning">Rekrut</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">Rekrut</span>
                                     {% elseif role == 'ROLE_MEMBER' %}
-                                        <span class="tag is-success">Mitglied</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Mitglied</span>
                                     {% elseif role == 'ROLE_OFFICER' %}
-                                        <span class="tag is-info">Officer</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">Officer</span>
                                     {% elseif role == 'ROLE_CEO' %}
-                                        <span class="tag is-primary">CEO</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20">CEO</span>
                                     {% elseif role == 'ROLE_ADMIN' %}
-                                        <span class="tag is-danger">Administrator</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">Administrator</span>
                                     {% else %}
-                                        <span class="tag is-dark">{{ role }}</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-white border border-white/10">{{ role }}</span>
                                     {% endif %}
                                 {% endfor %}
                             </div>
                         </td>
 
                         <!-- Actions Buttons -->
-                        <td class="has-text-right pr-4">
-
+                        <td class="p-3 text-xs text-eve-text align-middle text-right pr-4">
                             {% if user.id != app.user.id %}
-                                <div class="buttons is-right">
+                                <div class="flex gap-2 justify-end">
                                     {% set is_user_ceo = is_granted('ROLE_CEO') %}
                                     {% set can_reset_password = is_user_ceo or (not ('ROLE_ADMIN' in user.roles or 'ROLE_CEO' in user.roles or 'ROLE_OFFICER' in user.roles)) %}
 
                                     <!-- Passwort zurücksetzen -->
                                     {% if can_reset_password %}
-                                        <form action="{{ path('app_admin_reset_password', {'id': user.id}) }}" method="POST" onsubmit="return confirm('Möchtest du das Passwort für {{ user.displayName }} wirklich zurücksetzen? Der Benutzer kann sich danach nur noch mit einem neuen temporären Passwort einloggen.');">
+                                        <form action="{{ path('app_admin_reset_password', {'id': user.id}) }}" method="POST" onsubmit="return confirm('Möchtest du das Passwort für {{ user.displayName }} wirklich zurücksetzen? Der Benutzer kann sich danach nur noch mit einem neuen temporären Passwort einloggen.');" class="inline-block m-0">
                                             <input type="hidden" name="_token" value="{{ csrf_token('reset_password_' ~ user.id) }}">
-                                            <button type="submit" class="button is-small is-light" title="Passwort zurücksetzen">
+                                            <button type="submit" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-white/5 rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer" title="Passwort zurücksetzen">
                                                 🔑 Reset
                                             </button>
                                         </form>
@@ -124,18 +123,16 @@
                                              {% set current_role = 'ROLE_CEO' %}
                                          {% endif %}
 
-                                         <form action="{{ path('app_admin_set_role', {'id': user.id}) }}" method="POST" class="is-inline-block">
+                                         <form action="{{ path('app_admin_set_role', {'id': user.id}) }}" method="POST" class="inline-block m-0">
                                              <input type="hidden" name="_token" value="{{ csrf_token('set_role_' ~ user.id) }}">
-                                             <div class="select is-small">
-                                                 <select name="role" onchange="this.form.submit()">
-                                                     <option value="ROLE_RECRUIT" {{ current_role == 'ROLE_RECRUIT' ? 'selected' }}>Rekrut</option>
-                                                     <option value="ROLE_MEMBER" {{ current_role == 'ROLE_MEMBER' ? 'selected' }}>Mitglied</option>
-                                                     {% if is_user_ceo %}
-                                                         <option value="ROLE_OFFICER" {{ current_role == 'ROLE_OFFICER' ? 'selected' }}>Officer</option>
-                                                         <option value="ROLE_CEO" {{ current_role == 'ROLE_CEO' ? 'selected' }}>CEO</option>
-                                                     {% endif %}
-                                                 </select>
-                                             </div>
+                                             <select name="role" onchange="this.form.submit()" class="rounded-lg text-xs px-2 py-1 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer">
+                                                 <option value="ROLE_RECRUIT" {{ current_role == 'ROLE_RECRUIT' ? 'selected' }}>Rekrut</option>
+                                                 <option value="ROLE_MEMBER" {{ current_role == 'ROLE_MEMBER' ? 'selected' }}>Mitglied</option>
+                                                 {% if is_user_ceo %}
+                                                     <option value="ROLE_OFFICER" {{ current_role == 'ROLE_OFFICER' ? 'selected' }}>Officer</option>
+                                                     <option value="ROLE_CEO" {{ current_role == 'ROLE_CEO' ? 'selected' }}>CEO</option>
+                                                 {% endif %}
+                                             </select>
                                          </form>
                                      {% endif %}
                                  </div>
@@ -144,15 +141,15 @@
                     </tr>
                     
                     <!-- Live-Search No Results Row -->
-                    <tr data-user-search-target="noResultsRow" class="is-hidden">
-                        <td colspan="3" class="has-text-centered py-5">
-                            <span class="has-text-grey">Keine Benutzer mit diesem Namen gefunden.</span>
+                    <tr data-user-search-target="noResultsRow" style="display: none;">
+                        <td colspan="3" class="text-center text-eve-muted py-5">
+                            <span>Keine Benutzer mit diesem Namen gefunden.</span>
                         </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="3" class="has-text-centered py-5">
-                            <span class="has-text-grey">Keine Benutzer gefunden.</span>
+                        <td colspan="3" class="text-center text-eve-muted py-5">
+                            <span>Keine Benutzer gefunden.</span>
                         </td>
                     </tr>
                 {% endfor %}

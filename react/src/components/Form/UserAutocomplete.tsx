@@ -69,40 +69,25 @@ export default function UserAutocomplete({
     };
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', marginBottom: 'var(--spacing)' }}>
-            <div style={{ display: 'flex', position: 'relative' }}>
+        <div ref={containerRef} className="relative mb-4">
+            <div className="flex relative">
                 <input 
                     type="text" 
                     id={inputId}
                     name={inputName}
-                    className="input"
+                    className="rounded-lg w-full pl-3 pr-10 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                     value={query}
                     onChange={handleInputChange}
                     onFocus={() => setIsOpen(true)}
                     autoComplete="off" 
                     placeholder={placeholder}
                     form={form}
-                    style={{ paddingRight: '2.5rem' }}
                 />
                 {query && (
                     <button
                         type="button"
                         onClick={handleClear}
-                        style={{
-                            position: 'absolute',
-                            right: '8px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--theme-text-muted, #888)',
-                            cursor: 'pointer',
-                            fontSize: '1.2rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '4px'
-                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-eve-muted cursor-pointer text-xl flex items-center justify-center p-1"
                         title="Auswahl aufheben"
                     >
                         &times;
@@ -111,38 +96,12 @@ export default function UserAutocomplete({
             </div>
 
             {isOpen && suggestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    width: '100%',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    background: 'rgba(13, 18, 31, 0.95)',
-                    border: '1px solid var(--theme-card-border, rgba(0, 240, 255, 0.15))',
-                    borderRadius: '8px',
-                    boxShadow: 'var(--theme-shadow)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    marginTop: '4px'
-                }}>
+                <div className="absolute w-full max-h-[200px] overflow-y-auto z-[1000] bg-eve-card/95 border border-eve-border shadow-eve backdrop-blur-md rounded-lg mt-1">
                     {suggestions.map((user) => (
                         <div 
                             key={user}
                             onClick={() => handleSelectSuggestion(user)}
-                            style={{
-                                padding: '8px 12px',
-                                cursor: 'pointer',
-                                borderBottom: '1px solid var(--theme-card-border, rgba(0, 240, 255, 0.1))',
-                                transition: 'background 0.15s, color 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(0, 240, 255, 0.15)';
-                                e.currentTarget.style.color = 'var(--theme-primary, #00f0ff)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '';
-                                e.currentTarget.style.color = '';
-                            }}
+                            className="px-3 py-2 cursor-pointer border-b border-eve-border/60 transition-colors duration-150 hover:bg-eve-primary/15 hover:text-eve-primary"
                         >
                             {user}
                         </div>

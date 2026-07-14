@@ -107,11 +107,11 @@ export default function ItemAutocomplete({
     };
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', marginBottom: 'var(--spacing)' }}>
+        <div ref={containerRef} className="relative mb-4">
             <input 
                 type="text" 
                 ref={inputRef}
-                className="input"
+                className="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                 value={query}
                 onChange={handleInputChange}
                 onFocus={() => {
@@ -133,43 +133,17 @@ export default function ItemAutocomplete({
             />
 
             {isOpen && suggestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    width: '100%',
-                    maxHeight: '250px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    background: 'rgba(13, 18, 31, 0.95)',
-                    border: '1px solid var(--theme-card-border, rgba(0, 240, 255, 0.15))',
-                    borderRadius: '8px',
-                    boxShadow: 'var(--theme-shadow)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    marginTop: '4px'
-                }}>
+                <div className="absolute w-full max-h-[250px] overflow-y-auto z-[1000] bg-eve-card/95 border border-eve-border shadow-eve backdrop-blur-md rounded-lg mt-1">
                     {suggestions.map((item) => (
                         <div 
                             key={item.id}
                             onClick={() => handleSelectSuggestion(item)}
-                            style={{
-                                padding: '8px 12px',
-                                cursor: 'pointer',
-                                borderBottom: '1px solid var(--theme-card-border, rgba(0, 240, 255, 0.1))',
-                                transition: 'background 0.15s, color 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(0, 240, 255, 0.15)';
-                                e.currentTarget.style.color = 'var(--theme-primary, #00f0ff)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '';
-                                e.currentTarget.style.color = '';
-                            }}
+                            className="px-3 py-2 cursor-pointer border-b border-eve-border/60 transition-colors duration-150 hover:bg-eve-primary/15 hover:text-eve-primary"
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="flex items-center gap-2">
                                 <img 
                                     src={`https://images.evetech.net/types/${item.id}/${item.variation || 'icon'}?size=32`} 
-                                    style={{ width: '24px', height: '24px', borderRadius: '4px' }} 
+                                    className="w-6 h-6 rounded" 
                                     alt="" 
                                     loading="lazy"
                                 />

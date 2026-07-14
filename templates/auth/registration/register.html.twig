@@ -3,27 +3,27 @@
 {% block title %}Register{% endblock %}
 
 {% block body %}
-<main class="auth-container">
-    <div class="box">
+<main class="flex justify-center items-center my-16 px-6">
+    <div class="w-full max-w-[480px] bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg transition-all duration-300 hover:border-eve-primary hover:shadow-[0_10px_40px_rgba(0,240,255,0.15)]">
         {% if success %}
-            <h1 class="title is-3 has-text-centered has-text-success">✔️ Registrierung erfolgreich!</h1>
+            <h1 class="text-2xl font-semibold text-center mb-6 text-green-400">✔️ Registrierung erfolgreich!</h1>
             
-            <div class="notification is-success mt-4">
-                <p class="title is-5 has-text-success">⌛ Warteschlange für Freischaltung</p>
-                <p class="mt-2">Dein Account <strong>{{ last_username }}</strong> wurde erfolgreich angelegt!</p>
-                <p class="mt-2">Bitte wende dich jetzt an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
+            <div class="border border-green-500/30 bg-green-500/10 text-green-400 rounded-lg p-5 mt-4">
+                <p class="text-lg font-semibold text-green-400 mb-2">⌛ Warteschlange für Freischaltung</p>
+                <p class="mt-2 text-eve-text">Dein Account <strong>{{ last_username }}</strong> wurde erfolgreich angelegt!</p>
+                <p class="mt-2 text-eve-text">Bitte wende dich jetzt an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
             </div>
             
-            <a href="{{ path('app_login') }}" class="button is-primary is-fullwidth mt-5">
+            <a href="{{ path('app_login') }}" class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-base py-2.5 mt-6 shadow-[0_4px_15px_rgba(0,240,255,0.2)] hover:shadow-[0_6px_20px_rgba(0,240,255,0.45)] transition-all duration-300 hover:-translate-y-0.5 inline-flex justify-center items-center cursor-pointer no-underline">
                 Zum Login
             </a>
         {% else %}
-            <h1 class="title is-3 has-text-centered">Register</h1>
+            <h1 class="text-2xl font-semibold text-center mb-6 text-white">Register</h1>
             
             <form action="{{ path('app_register') }}" method="post" id="register-form" data-turbo="false">
                 {% if errors %}
-                    <div class="notification is-danger">
-                        <ul>
+                    <div class="border border-red-500/30 bg-red-500/10 text-red-400 rounded-lg p-5 mb-5">
+                        <ul class="list-disc list-inside space-y-1">
                             {% for error in errors %}
                                 <li>{{ error }}</li>
                             {% endfor %}
@@ -31,27 +31,27 @@
                     </div>
                 {% endif %}
 
-                <div class="form-group">
-                    <label for="username">Username *</label>
-                    <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" required autofocus>
+                <div class="flex flex-col gap-2 mb-5">
+                    <label for="username" class="text-sm font-semibold text-white">Username *</label>
+                    <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" class="rounded-lg w-full px-3 py-2.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" required autofocus>
                 </div>
                 
-                <div class="form-group">
-                    <label for="password">Password * (minimum 6 characters)</label>
-                    <input type="password" name="password" id="password" autocomplete="new-password" required>
+                <div class="flex flex-col gap-2 mb-5">
+                    <label for="password" class="text-sm font-semibold text-white">Password * (minimum 6 characters)</label>
+                    <input type="password" name="password" id="password" autocomplete="new-password" class="rounded-lg w-full px-3 py-2.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="password_confirm">Confirm Password *</label>
-                    <input type="password" name="password_confirm" id="password_confirm" required>
+                <div class="flex flex-col gap-2 mb-5">
+                    <label for="password_confirm" class="text-sm font-semibold text-white">Confirm Password *</label>
+                    <input type="password" name="password_confirm" id="password_confirm" class="rounded-lg w-full px-3 py-2.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" required>
                 </div>
                 
-                <button class="button is-primary is-fullwidth mt-4" type="submit">
+                <button class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-base py-2.5 mt-6 shadow-[0_4px_15px_rgba(0,240,255,0.2)] hover:shadow-[0_6px_20px_rgba(0,240,255,0.45)] transition-all duration-300 hover:-translate-y-0.5 inline-flex justify-center items-center cursor-pointer" type="submit">
                     Register
                 </button>
 
-                <div class="mt-4 has-text-centered">
-                    <p>Already have an account? <a href="{{ path('app_login') }}" class="has-text-primary is-underlined">Log in here</a></p>
+                <div class="mt-6 text-center text-sm text-eve-muted">
+                    <p>Already have an account? <a href="{{ path('app_login') }}" class="text-eve-primary hover:text-eve-primary-hover underline font-semibold">Log in here</a></p>
                 </div>
             </form>
         {% endif %}

@@ -3,28 +3,23 @@
 {% block title %}Home{% endblock %}
 
 {% block body %}
-<div class="container container-medium mt-5">
-    <div class="box">
-        <h1 class="title is-2">Willkommen bei den Keepers of Duat</h1>
+<div class="w-full max-w-[800px] mx-auto px-6 mt-12">
+    <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg transition-all duration-300 hover:border-eve-primary hover:shadow-[0_10px_40px_rgba(0,240,255,0.15)]">
+        <h1 class="text-3xl font-semibold mb-4 text-white">Willkommen bei den Keepers of Duat</h1>
         {% if is_granted('ROLE_MEMBER') %}
-            <p class="subtitle is-5 mt-3">
+            <p class="text-lg font-normal text-eve-muted mt-3">
                 Das ist eine kleine Werkzeugkiste, um das Leben im Wurmloch zu vereinfachen.
             </p>
         {% elseif app.user and is_granted('ROLE_RECRUIT') %}
-            <div class="notification is-warning mt-4">
-                <p class="title is-5 has-text-warning">⌛ Warteschlange für Freischaltung</p>
-                <p class="mt-2">Dein Account wurde erfolgreich registriert! Bitte wende dich an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
+            <div class="border border-amber-500/30 bg-amber-500/10 text-amber-400 rounded-lg p-5 mt-4">
+                <p class="text-lg font-semibold text-amber-400 mb-2">⌛ Warteschlange für Freischaltung</p>
+                <p class="mt-2 text-eve-text">Dein Account wurde erfolgreich registriert! Bitte wende dich an einen Corp-Officer oder Administrator in Discord oder EVE Online, damit dein Account verifiziert und für den internen Bereich freigeschaltet wird.</p>
             </div>
         {% else %}
-            <p class="subtitle is-5 mt-3">
+            <p class="text-lg font-normal text-eve-muted mt-3">
                 Bitte logge dich ein oder registriere dich, um auf die Corp-Werkzeuge zuzugreifen.
             </p>
         {% endif %}
-        
-        <!-- Tailwind CSS v4 Test Integration -->
-        <div class="text-eve-primary border-t border-eve-card-border p-4 mt-6 rounded bg-eve-bg font-eve shadow-eve">
-            ⚡ Tailwind CSS v4 Test: Integration erfolgreich!
-        </div>
     </div>
 </div>
 {% endblock %}

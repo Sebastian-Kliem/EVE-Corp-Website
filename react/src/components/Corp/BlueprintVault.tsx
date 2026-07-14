@@ -98,10 +98,10 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
         if (job.activityId === 4) {
             const nextMe = Math.min(10, bp.me + job.runs);
             return (
-                <div className="tag is-warning is-light" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '6px 10px' }}>
-                    <span style={{ fontWeight: 600 }}>🔬 Materialforschung</span>
-                    <span style={{ fontSize: '0.75rem' }}>Fertig: {endDateStr}</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Ergebnis: ME {nextMe}%</span>
+                <div className="inline-flex flex-col items-start px-2.5 py-1.5 rounded text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 h-auto font-semibold">
+                    <span>🔬 Materialforschung</span>
+                    <span className="text-[10px] font-normal text-eve-muted">Fertig: {endDateStr}</span>
+                    <span className="text-[10px] font-semibold">Ergebnis: ME {nextMe}%</span>
                 </div>
             );
         }
@@ -109,41 +109,41 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
         if (job.activityId === 3) {
             const nextTe = Math.min(20, bp.te + job.runs * 2);
             return (
-                <div className="tag is-info is-light" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '6px 10px' }}>
-                    <span style={{ fontWeight: 600 }}>⏳ Zeiteffizienzforschung</span>
-                    <span style={{ fontSize: '0.75rem' }}>Fertig: {endDateStr}</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Ergebnis: TE {nextTe}%</span>
+                <div className="inline-flex flex-col items-start px-2.5 py-1.5 rounded text-xs bg-sky-500/15 text-sky-400 border border-sky-500/30 h-auto font-semibold">
+                    <span>⏳ Zeiteffizienzforschung</span>
+                    <span className="text-[10px] font-normal text-eve-muted">Fertig: {endDateStr}</span>
+                    <span className="text-[10px] font-semibold">Ergebnis: TE {nextTe}%</span>
                 </div>
             );
         }
 
         if (job.activityId === 5) {
             return (
-                <div className="tag is-success is-light" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '6px 10px' }}>
-                    <span style={{ fontWeight: 600 }}>🖨️ Kopieren</span>
-                    <span style={{ fontSize: '0.75rem' }}>Fertig: {endDateStr}</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Ergebnis: {job.runs} Kopien (BPC)</span>
+                <div className="inline-flex flex-col items-start px-2.5 py-1.5 rounded text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 h-auto font-semibold">
+                    <span>🖨️ Kopieren</span>
+                    <span className="text-[10px] font-normal text-eve-muted">Fertig: {endDateStr}</span>
+                    <span className="text-[10px] font-semibold">Ergebnis: {job.runs} Kopien (BPC)</span>
                 </div>
             );
         }
 
-        return <span className="tag is-light">In Arbeit</span>;
+        return <span className="inline-flex items-center justify-center px-3 py-1 text-xs font-semibold rounded bg-white/10 text-white border border-white/10">In Arbeit</span>;
     };
 
     return (
         <div>
             {/* Search and Filters */}
-            <div className="columns is-vcentered mb-4">
-                <div className="column">
-                    <p className="is-size-7 has-text-grey-light">Durchsuche alle von Corp-Mitgliedern geteilten Blueprints.</p>
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+                <div className="flex-1 min-w-[250px]">
+                    <p className="text-xs text-eve-muted">Durchsuche alle von Corp-Mitgliedern geteilten Blueprints.</p>
                 </div>
-                <div className="column is-narrow">
-                    <div className="field mb-0">
-                        <div className="control select is-small">
+                <div className="flex-shrink-0">
+                    <div className="mb-0">
+                        <div className="relative block">
                             <select
                                 value={filterType}
                                 onChange={(e) => setFilterType(e.target.value as any)}
-                                style={{ background: '#101525', color: '#ccc', borderColor: '#444' }}
+                                className="rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
                             >
                                 <option value="all">Alle Typen ({blueprints.length})</option>
                                 <option value="bpo">Originale (BPOs) ({blueprints.filter(b => b.isBpo).length})</option>
@@ -154,13 +154,13 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                     </div>
                 </div>
                 {categories.length > 0 && (
-                    <div className="column is-narrow">
-                        <div className="field mb-0">
-                            <div className="control select is-small">
+                    <div className="flex-shrink-0">
+                        <div className="mb-0">
+                            <div className="relative block">
                                 <select
                                     value={selectedCategory}
                                     onChange={(e) => setSelectedCategory(e.target.value)}
-                                    style={{ background: '#101525', color: '#ccc', borderColor: '#444' }}
+                                    className="rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
                                 >
                                     <option value="all">Alle Kategorien</option>
                                     {categories.map(cat => (
@@ -171,18 +171,17 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                         </div>
                     </div>
                 )}
-                <div className="column is-narrow">
-                    <div className="field mb-0">
-                        <div className="control has-icons-left">
+                <div className="flex-shrink-0">
+                    <div className="mb-0">
+                        <div className="relative">
                             <input
-                                className="input is-small assets-search-input"
+                                className="rounded-lg text-xs pl-8 pr-3 py-1.5 w-[250px] border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                                 type="text"
                                 placeholder="Blueprints suchen..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                style={{ width: '250px' }}
                             />
-                            <span className="icon is-small is-left">🔍</span>
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-eve-muted pointer-events-none">🔍</span>
                         </div>
                     </div>
                 </div>
@@ -190,31 +189,31 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
 
             {/* Blueprint Vault List */}
             {filteredBlueprints.length === 0 ? (
-                <div className="notification is-dark has-text-centered py-6" style={{ background: '#13192b', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p className="has-text-grey-light">Keine passenden Blueprints im Tresor gefunden.</p>
+                <div className="text-center py-12 rounded-lg bg-[#13192b] border border-white/5">
+                    <p className="text-eve-muted">Keine passenden Blueprints im Tresor gefunden.</p>
                 </div>
             ) : (
                 <div style={{ overflowX: 'auto' }}>
-                    <table className="table is-fullwidth is-striped is-hoverable assets-table" style={{ background: '#101525', color: '#eee', minWidth: '800px' }}>
+                    <table className="w-full border-collapse text-left bg-[#101525] text-eve-text min-w-[800px]">
                         <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                <th style={{ color: '#aaa', width: '50px' }}>Icon</th>
-                                <th style={{ color: '#aaa' }}>Name</th>
-                                <th style={{ color: '#aaa', width: '120px' }}>Typ</th>
-                                <th style={{ color: '#aaa', width: '150px' }}>ME / TE</th>
-                                <th style={{ color: '#aaa', width: '200px' }}>Eigentümer</th>
-                                <th style={{ color: '#aaa' }}>Standort</th>
-                                <th style={{ color: '#aaa', width: '250px' }}>Forschung / Status</th>
+                            <tr className="bg-white/2">
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50 w-[50px]">Icon</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50">Name</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50 w-[120px]">Typ</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50 w-[150px]">ME / TE</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50 w-[200px]">Eigentümer</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50">Standort</th>
+                                <th className="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border bg-[#0d121fe6]/50 w-[250px]">Forschung / Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-white/5">
                             {filteredBlueprints.map((bp) => {
                                 const isHovered = hoveredItemId === bp.itemId;
                                 return (
-                                    <tr key={bp.itemId} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <td style={{ verticalAlign: 'middle' }}>
+                                    <tr key={bp.itemId} className="hover:bg-white/2 transition-colors duration-150">
+                                        <td className="p-3 text-sm align-middle">
                                             <div 
-                                                style={{ position: 'relative', width: '32px', height: '32px', cursor: 'help' }}
+                                                className="relative w-8 h-8 cursor-help"
                                                 onMouseEnter={() => setHoveredItemId(bp.itemId)}
                                                 onMouseLeave={() => setHoveredItemId(null)}
                                                 title="Fahre mit der Maus darüber, um das fertige Produkt zu sehen"
@@ -222,80 +221,60 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                                 <img
                                                     src={getBlueprintIconUrl(bp)}
                                                     alt={bp.name}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        borderRadius: '4px',
-                                                        transition: 'opacity 0.2s ease-in-out',
-                                                        opacity: isHovered ? 0 : 1,
-                                                        zIndex: isHovered ? 1 : 2,
-                                                    }}
+                                                    className={`absolute top-0 left-0 w-8 h-8 rounded transition-opacity duration-200 ease-in-out ${isHovered ? 'opacity-0 z-10' : 'opacity-100 z-20'}`}
                                                     loading="lazy"
                                                 />
                                                 <img
                                                     src={getProductIconUrl(bp)}
                                                     alt={bp.name}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: 0,
-                                                        left: 0,
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        borderRadius: '4px',
-                                                        transition: 'opacity 0.2s ease-in-out',
-                                                        opacity: isHovered ? 1 : 0,
-                                                        zIndex: isHovered ? 2 : 1,
-                                                    }}
+                                                    className={`absolute top-0 left-0 w-8 h-8 rounded transition-opacity duration-200 ease-in-out ${isHovered ? 'opacity-100 z-20' : 'opacity-0 z-10'}`}
                                                     loading="lazy"
                                                 />
                                             </div>
                                         </td>
-                                    <td style={{ verticalAlign: 'middle', fontWeight: 600 }}>
+                                    <td className="p-3 text-sm font-semibold align-middle">
                                         {bp.name}
                                         {bp.quantity > 1 && (
-                                            <span style={{ fontWeight: 'normal', color: 'var(--theme-text-muted)', marginLeft: '6px' }}>
+                                            <span className="font-normal text-eve-muted ml-1.5">
                                                 (x{bp.quantity})
                                             </span>
                                         )}
                                     </td>
-                                    <td style={{ verticalAlign: 'middle' }}>
+                                    <td className="p-3 text-sm align-middle">
                                         {bp.isBpo ? (
-                                            <span className="tag is-success is-light" style={{ fontWeight: 600 }}>Original (BPO)</span>
+                                            <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Original (BPO)</span>
                                         ) : (
-                                            <span className="tag is-info is-light" style={{ display: 'inline-flex', flexDirection: 'column', height: 'auto', padding: '4px 8px' }}>
+                                            <span className="inline-flex flex-col items-center justify-center px-2 py-1 text-xs font-semibold rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 text-center leading-tight">
                                                 <span>Kopie (BPC)</span>
-                                                <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{bp.runs} Runs übrig</span>
+                                                <span className="text-[10px] font-semibold">{bp.runs} Runs übrig</span>
                                             </span>
                                         )}
                                     </td>
-                                    <td style={{ verticalAlign: 'middle' }}>
-                                        <div style={{ display: 'flex', gap: '6px' }}>
-                                            <span className="tag is-dark" style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#3273dc', fontWeight: 'bold' }}>
+                                    <td className="p-3 text-sm align-middle">
+                                        <div className="flex gap-1.5">
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded bg-black/40 border border-white/10 text-sky-400">
                                                 ME: {bp.me}%
                                             </span>
-                                            <span className="tag is-dark" style={{ border: '1px solid rgba(255,255,255,0.1)', color: '#00d1b2', fontWeight: 'bold' }}>
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded bg-black/40 border border-white/10 text-emerald-400">
                                                 TE: {bp.te}%
                                             </span>
                                         </div>
                                     </td>
-                                    <td style={{ verticalAlign: 'middle' }}>
+                                    <td className="p-3 text-sm align-middle">
                                         <div>
-                                            <span style={{ fontWeight: 600 }}>{bp.ownerCharacterName}</span>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)' }}>User: {bp.ownerUserName}</div>
+                                            <span className="font-semibold">{bp.ownerCharacterName}</span>
+                                            <div className="text-xs text-eve-muted">User: {bp.ownerUserName}</div>
                                         </div>
                                     </td>
-                                    <td style={{ verticalAlign: 'middle' }}>
+                                    <td className="p-3 text-sm align-middle">
                                         <div>
-                                            <span style={{ fontWeight: 600, color: 'var(--theme-primary)' }}>{bp.systemName}</span>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--theme-text-muted)' }}>{bp.locationName}</div>
+                                            <span className="font-semibold text-eve-primary">{bp.systemName}</span>
+                                            <div className="text-xs text-eve-muted">{bp.locationName}</div>
                                         </div>
                                     </td>
-                                    <td style={{ verticalAlign: 'middle' }}>
+                                    <td className="p-3 text-sm align-middle">
                                         {bp.activeJob ? formatJobDetails(bp, bp.activeJob) : (
-                                            <span className="has-text-grey" style={{ fontSize: '0.85rem' }}>Bereit (Hangar)</span>
+                                            <span className="text-eve-muted text-xs">Bereit (Hangar)</span>
                                         )}
                                     </td>
                                 </tr>

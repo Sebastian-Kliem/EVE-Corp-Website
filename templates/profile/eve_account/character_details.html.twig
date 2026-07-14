@@ -3,37 +3,37 @@
 {% block title %}Details von {{ character.name }}{% endblock %}
 
 {% block body %}
-<div class="container mt-5 mb-6">
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
 
     <!-- Header Box with Portrait and Meta Info -->
-    <div class="box p-5 mb-5" style="display: flex; align-items: center; gap: 24px; border: 1px solid var(--theme-card-border);">
-        <figure class="image is-128x128" style="flex-shrink: 0; margin: 0;">
-            <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: character.id, action: 'portrait' }) }}?size=256" alt="{{ character.name }}" class="is-rounded" style="border: 2px solid var(--theme-card-border); border-radius: 50%;">
+    <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-5 mb-6 flex items-center gap-6">
+        <figure class="w-32 h-32 flex-shrink-0 m-0">
+            <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: character.id, action: 'portrait' }) }}?size=256" alt="{{ character.name }}" class="rounded-full w-full h-full object-cover border-2 border-eve-border">
         </figure>
 
-        <div style="flex-grow: 1;">
-            <h1 class="title is-2 mb-2 text-gradient" style="margin-top: 0;">
+        <div class="flex-grow">
+            <h1 class="text-3xl font-semibold mb-2 text-white text-gradient mt-0">
                 {{ character.name }}
             </h1>
-            <div class="is-size-6" style="color: #ccc; display: flex; flex-direction: column; gap: 4px;">
+            <div class="text-sm text-[#ccc] flex flex-col gap-1.5">
                 <div>
-                    <strong>ID:</strong> <span class="has-text-grey-light">{{ character.id }}</span>
+                    <strong>ID:</strong> <span class="text-eve-muted">{{ character.id }}</span>
                 </div>
                 <div>
                     <strong>Corporation:</strong>
-                    <span class="has-text-info">{{ corporationName ?: 'Unbekannt (' ~ character.corporationId ~ ')' }}</span>
+                    <span class="text-eve-primary">{{ corporationName ?: 'Unbekannt (' ~ character.corporationId ~ ')' }}</span>
                 </div>
                 {% if allianceName or character.allianceId %}
                     <div>
                         <strong>Allianz:</strong>
-                        <span class="has-text-warning">{{ allianceName ?: 'Unbekannt (' ~ character.allianceId ~ ')' }}</span>
+                        <span class="text-amber-400">{{ allianceName ?: 'Unbekannt (' ~ character.allianceId ~ ')' }}</span>
                     </div>
                 {% endif %}
 
                 {% if not character.account %}
                 <div>
                     <strong>Account-Status:</strong>
-                        <span class="tag is-dark">Keinem Account zugewiesen.</span>
+                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-white border border-white/10">Keinem Account zugewiesen.</span>
                 </div>
                 {% endif %}
 
@@ -43,20 +43,20 @@
                     {% if character.walletBalance is not null %}
                         {{ character.walletBalance|number_format(2, ',', '.') }} ISK
                     {% else %}
-                        <span class="has-text-grey">Keine Daten</span>
+                        <span class="text-eve-muted">Keine Daten</span>
                     {% endif %}
                 </div>
 
                 <div>
                     <strong>Standort:</strong>
 
-                    {{ currentLocation ?: '<span class="has-text-grey">Unbekannt</span>'|raw }}
+                    {{ currentLocation ?: '<span class="text-eve-muted">Unbekannt</span>'|raw }}
                 </div>
             </div>
         </div>
 
-        <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
-            <a href="{{ path('app_dashboard_eve_character_assets', { id: character.id }) }}" class="button is-primary is-small">
+        <div class="text-right flex-shrink-0 flex flex-col gap-2">
+            <a href="{{ path('app_dashboard_eve_character_assets', { id: character.id }) }}" class="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-3 py-1.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
                 Inventar
             </a>
         </div>
@@ -64,43 +64,43 @@
 
     <!-- Alert for invalid token -->
     {% if not character.tokenValid %}
-        <div class="notification is-danger mb-5">
+        <div class="py-5 px-6 rounded-lg mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-400">
             ⚠️ <strong>SSO-Token ungültig!</strong> Das Passwort wurde geändert oder der Zugriff wurde entzogen. Bitte klicke rechts auf "Re-Auth", um die Verknüpfung zu erneuern.
         </div>
     {% endif %}
 
-    <div class="columns is-multiline">
+    <div class="flex flex-wrap gap-6">
         <!-- Linke Spalte: Status & Daten -->
-        <div class="column is-6">
+        <div class="flex-1 min-w-[300px]">
             <!-- General details box -->
-            <div class="box mb-5">
-                <h3 class="title is-4 mb-4 text-gradient">📊 Status & Daten</h3>
+            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">📊 Status & Daten</h3>
 
-                <table class="table is-fullwidth" style="background: transparent; color: #ccc; margin-bottom: 0;">
+                <table class="w-full border-collapse text-left bg-transparent text-xs text-[#ccc]">
                     <tbody>
 
                         <tr>
-                            <td><strong>Total Skillpunkte:</strong></td>
-                            <td class="has-text-info">
+                            <td class="p-2 border-b border-white/5"><strong>Total Skillpunkte:</strong></td>
+                            <td class="p-2 border-b border-white/5 text-eve-primary">
                                 {% if character.skills.total_sp is defined %}
                                     {{ character.skills.total_sp|number_format(0, ',', '.') }} SP
                                 {% else %}
-                                    <span class="has-text-grey">Keine Daten</span>
+                                    <span class="text-eve-muted">Keine Daten</span>
                                 {% endif %}
                             </td>
                         </tr>
 
                         <tr>
-                            <td><strong>Tags:</strong></td>
-                            <td>
+                            <td class="p-2 border-b border-white/5"><strong>Tags:</strong></td>
+                            <td class="p-2 border-b border-white/5">
                                 {% if character.tags is not empty %}
-                                    <div class="tags">
+                                    <div class="flex flex-wrap gap-1">
                                         {% for tag in character.tags %}
-                                            <span class="tag is-info">{{ tag }}</span>
+                                            <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">{{ tag }}</span>
                                         {% endfor %}
                                     </div>
                                 {% else %}
-                                    <span class="has-text-grey">Keine Tags</span>
+                                    <span class="text-eve-muted">Keine Tags</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -109,31 +109,31 @@
             </div>
 
             <!-- Sync Timestamps Box -->
-            <div class="box">
-                <h3 class="title is-4 mb-4 text-gradient">🕒 Letzte Synchronisierungen</h3>
-                <table class="table is-fullwidth" style="background: transparent; color: #ccc; margin-bottom: 0;">
+            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🕒 Letzte Synchronisierungen</h3>
+                <table class="w-full border-collapse text-left bg-transparent text-xs text-[#ccc]">
                     <tbody>
                         <tr>
-                            <td style="border-top: none; width: 40%;"><strong>Wallet-Journal:</strong></td>
-                            <td style="border-top: none;" class="has-text-grey-light">
+                            <td class="p-2 border-b border-white/5 border-t-0 w-2/5"><strong>Wallet-Journal:</strong></td>
+                            <td class="p-2 border-b border-white/5 text-eve-muted border-t-0">
                                 {{ character.lastWalletUpdate ? character.lastWalletUpdate|date('d.m.Y H:i:s') : 'Nie' }}
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Assets (Hangar):</strong></td>
-                            <td class="has-text-grey-light">
+                            <td class="p-2 border-b border-white/5"><strong>Assets (Hangar):</strong></td>
+                            <td class="p-2 border-b border-white/5 text-eve-muted">
                                 {{ character.lastAssetsUpdate ? character.lastAssetsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Mining-Tagebuch:</strong></td>
-                            <td class="has-text-grey-light">
+                            <td class="p-2 border-b border-white/5"><strong>Mining-Tagebuch:</strong></td>
+                            <td class="p-2 border-b border-white/5 text-eve-muted">
                                 {{ character.lastMiningUpdate ? character.lastMiningUpdate|date('d.m.Y H:i:s') : 'Nie' }}
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Industrie-Jobs:</strong></td>
-                            <td class="has-text-grey-light">
+                            <td class="p-2 border-b border-white/5"><strong>Industrie-Jobs:</strong></td>
+                            <td class="p-2 border-b border-white/5 text-eve-muted">
                                 {{ character.lastIndustryJobsUpdate ? character.lastIndustryJobsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
                             </td>
                         </tr>
@@ -143,18 +143,18 @@
         </div>
 
         <!-- Rechte Spalte: Attribute, Implantate & Skillqueue -->
-        <div class="column is-6">
+        <div class="flex-1 min-w-[300px]">
             <!-- Attributes box -->
             {% if character.attributes is not empty %}
-                <div class="box mb-5">
-                    <h3 class="title is-4 mb-4 text-gradient">🧬 Charakter-Attribute</h3>
-                    <div class="columns is-mobile is-multiline">
+                <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                    <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🧬 Charakter-Attribute</h3>
+                    <div class="flex flex-wrap gap-3">
                         {% for key, val in character.attributes %}
                             {% if key in ['intelligence', 'perception', 'willpower', 'charisma', 'memory'] %}
-                                <div class="column is-4 has-text-centered mb-2">
-                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 8px; border-radius: 4px;">
-                                        <div class="is-size-7 has-text-grey mb-1">{{ key|capitalize }}</div>
-                                        <div class="is-size-5 has-text-weight-bold has-text-info">{{ val }}</div>
+                                <div class="flex-1 min-w-[100px] text-center">
+                                    <div class="bg-white/[0.03] border border-white/[0.05] p-2 rounded">
+                                        <div class="text-xs text-eve-muted mb-1">{{ key|capitalize }}</div>
+                                        <div class="text-lg font-bold text-eve-primary">{{ val }}</div>
                                     </div>
                                 </div>
                             {% endif %}
@@ -164,16 +164,16 @@
             {% endif %}
 
             <!-- Skill Queue Box -->
-            <div class="box mb-5">
-                <h3 class="title is-4 mb-4 text-gradient">🎓 Skill-Warteschlange</h3>
+            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🎓 Skill-Warteschlange</h3>
                 {% if character.skillQueue is not empty %}
-                    <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    <div class="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
                         {% for item in character.skillQueue %}
                             {% set skillName = skillNames[item.skill_id] ?? 'Skill #' ~ item.skill_id %}
-                            <div class="p-2" style="background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <div class="p-2 bg-white/[0.03] rounded border border-white/[0.05] flex justify-between items-center">
                                 <div>
-                                    <div class="has-text-weight-semibold is-size-7">{{ skillName }}</div>
-                                    <div class="is-size-7 has-text-grey">
+                                    <div class="font-semibold text-xs text-white">{{ skillName }}</div>
+                                    <div class="text-xs text-eve-muted">
                                         {% if item.training_start_date is defined and item.training_end_date is defined %}
                                             Ende: {{ item.training_end_date|date('d.m.Y H:i') }}
                                         {% else %}
@@ -181,28 +181,28 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <span class="tag is-info is-small">Stufe {{ item.finished_level }}</span>
+                                <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Stufe {{ item.finished_level }}</span>
                             </div>
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="is-size-7 has-text-grey">Die Warteschlange ist leer oder es wurden keine Daten synchronisiert.</p>
+                    <p class="text-xs text-eve-muted">Die Warteschlange ist leer oder es wurden keine Daten synchronisiert.</p>
                 {% endif %}
             </div>
 
             <!-- Implantate Box -->
-            <div class="box">
-                <h3 class="title is-4 mb-4 text-gradient">🔌 Aktive Implantate</h3>
+            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🔌 Aktive Implantate</h3>
                 {% if character.implants is not empty %}
-                    <ul style="margin: 0; padding-left: 20px; list-style-type: square; color: #ccc;">
+                    <ul class="m-0 pl-5 list-square text-xs text-[#ccc] space-y-1">
                         {% for typeId in character.implants %}
-                            <li class="is-size-7 mb-1">
+                            <li class="mb-1">
                                 {{ implantNames[typeId] ?? 'Implantat #' ~ typeId }}
                             </li>
                         {% endfor %}
                     </ul>
                 {% else %}
-                    <p class="is-size-7 has-text-grey">Keine aktiven Implantate verknüpft oder synchronisiert.</p>
+                    <p class="text-xs text-eve-muted">Keine aktiven Implantate verknüpft oder synchronisiert.</p>
                 {% endif %}
             </div>
         </div>

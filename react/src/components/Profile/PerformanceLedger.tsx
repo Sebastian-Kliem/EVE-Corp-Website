@@ -552,18 +552,18 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
     if (loading) {
         return (
-            <div className="box has-text-centered p-5">
-                <span className="loader" style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}></span>
-                <p className="mt-3">Performance-Daten werden berechnet...</p>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12">
+                <span className="inline-block w-8 h-8 border-3 border-eve-primary rounded-full border-t-transparent animate-spin"></span>
+                <p className="mt-3 text-eve-muted">Performance-Daten werden berechnet...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="box has-text-centered p-5" style={{ borderColor: 'red' }}>
-                <h3 className="title is-4" style={{ color: '#ff4444' }}>Fehler</h3>
-                <p className="subtitle is-6">{error}</p>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12 border-rose-500/30">
+                <h3 className="text-xl font-semibold mb-2 text-rose-400">Fehler</h3>
+                <p className="text-sm text-eve-muted">{error}</p>
             </div>
         );
     }
@@ -596,19 +596,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 const isNegative = currentMonthEarnings < 0;
 
                 return (
-                    <div className="box omega-tracker-box mb-4" style={{
-                        background: 'rgba(13, 19, 32, 0.7)',
-                        border: '1px solid var(--theme-card-border)',
-                        borderRadius: '8px',
-                        padding: '1.25rem',
-                        marginBottom: '1.5rem'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                            <div style={{ flex: '1 1 300px' }}>
-                                <h3 className="title is-6 mb-2" style={{ color: 'var(--theme-primary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg mb-6">
+                        <div className="flex justify-between items-center flex-wrap gap-4">
+                            <div className="flex-1 min-w-[300px]">
+                                <h3 className="text-sm font-semibold mb-2 text-eve-primary flex items-center gap-2 m-0">
                                     🎯 Omega-Ziel Tracker ({currentMonthName})
                                 </h3>
-                                <p className="is-size-7 has-text-grey-light mb-0">
+                                <p className="text-xs text-eve-muted mb-0">
                                     {omegaAccountCount > 0 ? (
                                         <span>Fortschritt für deine <strong>{omegaAccountCount} Omega-Accounts</strong> (Ziel: <strong>{formatISK(omegaGoal)}</strong>).</span>
                                     ) : (
@@ -617,50 +611,42 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                 </p>
                             </div>
 
-                            <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span className="is-size-7" style={{ color: '#ccc' }}>
-                                        Erwirtschaftet: <strong style={{ color: isNegative ? '#f14668' : '#fff' }}>{formatISK(currentMonthEarnings)}</strong>
+                            <div className="flex-1 min-w-[300px] flex flex-col gap-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-[#ccc]">
+                                        Erwirtschaftet: <strong className={isNegative ? 'text-rose-400' : 'text-white'}>{formatISK(currentMonthEarnings)}</strong>
                                     </span>
-                                    <span className={`is-size-7`} style={{ fontWeight: 'bold', color: isNegative ? '#f14668' : percent >= 100 ? '#00ffaa' : 'var(--theme-primary)' }}>
+                                    <span className={`text-xs font-bold ${isNegative ? 'text-rose-400' : percent >= 100 ? 'text-emerald-400' : 'text-eve-primary'}`}>
                                         {isNegative ? '0%' : `${percent.toFixed(1)}%`}
                                     </span>
                                 </div>
 
                                 {/* Progress Bar Container */}
-                                <div style={{
-                                    width: '100%',
-                                    height: '14px',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                                    borderRadius: '7px',
-                                    overflow: 'hidden',
-                                    border: '1px solid var(--theme-card-border)',
-                                    position: 'relative'
-                                }}>
-                                    <div style={{
-                                        width: `${isNegative ? 0 : percent}%`,
-                                        height: '100%',
-                                        background: percent >= 100
-                                            ? 'linear-gradient(90deg, #00b37a 0%, #00ffaa 100%)'
-                                            : 'linear-gradient(90deg, #0284c7 0%, var(--theme-primary) 100%)',
-                                        borderRadius: '7px',
-                                        transition: 'width 0.5s ease-out',
-                                        boxShadow: percent >= 100 ? '0 0 8px rgba(0, 255, 170, 0.4)' : '0 0 8px rgba(0, 240, 255, 0.3)'
-                                    }}></div>
+                                <div className="w-full h-3.5 bg-black/40 rounded-full overflow-hidden border border-eve-border relative">
+                                    <div 
+                                        className="h-full rounded-full transition-all duration-500"
+                                        style={{
+                                            width: `${isNegative ? 0 : percent}%`,
+                                            background: percent >= 100
+                                                ? 'linear-gradient(90deg, #00b37a 0%, #00ffaa 100%)'
+                                                : 'linear-gradient(90deg, #0284c7 0%, var(--theme-primary) 100%)',
+                                            boxShadow: percent >= 100 ? '0 0 8px rgba(0, 255, 170, 0.4)' : '0 0 8px rgba(0, 240, 255, 0.3)'
+                                        }}
+                                    ></div>
                                 </div>
                             </div>
 
-                            <div style={{ flex: '1 1 100%', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px', marginTop: '5px' }}>
+                            <div className="w-full border-t border-white/5 pt-2.5 mt-1">
                                 {percent >= 100 ? (
-                                    <div className="is-size-7" style={{ color: '#00ffaa', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div className="text-xs text-emerald-400 flex items-center gap-1.5">
                                         <span>🎉</span> <strong>Omega gesichert!</strong> Du hast diesen Monat genug erwirtschaftet, um dein Omega-Abonnement zu decken.
                                     </div>
                                 ) : isNegative ? (
-                                    <div className="is-size-7" style={{ color: '#f14668', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div className="text-xs text-rose-400 flex items-center gap-1.5">
                                         <span>⚠️</span> <strong>Verlustmonat!</strong> Du bist diesen Monat im Minus.
                                     </div>
                                 ) : (
-                                    <div className="is-size-7" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--theme-text-muted)' }}>
+                                    <div className="text-xs flex items-center gap-1.5 text-eve-muted">
                                         <span>⏳</span> Noch <strong>{formatISK(omegaGoal - currentMonthEarnings)}</strong> benötigt, um das Omega-Ziel zu erreichen.
                                     </div>
                                 )}
@@ -1030,7 +1016,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     <div className="filter-title" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 68, 68, 0.15)', paddingBottom: '0.5rem', color: '#ff6b8b' }}>
                         👁️ Ausgeblendete automatische Buchungen ({exclusions.length})
                     </div>
-                    <p className="is-size-7 text-muted mb-3">
+                    <p className="text-xs text-eve-muted mb-3">
                         Diese automatisch erfassten Buchungen wurden ausgeblendet und werden nicht mehr in die Ertragsberechnungen einbezogen.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
@@ -1047,12 +1033,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                     border: '1px solid rgba(255,255,255,0.05)'
                                 }}
                             >
-                                <span className="is-size-7" style={{ color: '#ccc' }}>
+                                <span className="text-xs" style={{ color: '#ccc' }}>
                                     <strong style={{ color: '#ff6b8b' }}>{ex.characterName}</strong> ({new Date(ex.date).toLocaleDateString('de-DE')}): {ex.typeName} — <strong style={{ color: ex.amount < 0 ? '#ff4444' : '#00ffaa' }}>{formatISK(ex.amount)}</strong>
                                 </span>
                                 <button
-                                    className="button is-small is-primary"
-                                    style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    className="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 cursor-pointer"
+                                    style={{ height: '22px', fontSize: '0.7rem' }}
                                     onClick={() => handleRemoveExclusion(ex.id)}
                                 >
                                     🔄 Wieder einblenden
@@ -1134,20 +1120,20 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
     };
 
     if (loading) {
-        return <div className="is-size-7 text-muted">Lade Einzelbuchungen...</div>;
+        return <div className="text-xs text-eve-muted">Lade Einzelbuchungen...</div>;
     }
 
     if (error) {
-        return <div className="is-size-7 has-text-danger">{error}</div>;
+        return <div className="text-xs text-rose-400">{error}</div>;
     }
 
     if (changes.length === 0) {
-        return <div className="is-size-7 text-muted">Keine Einzelbuchungen (Zuwächse) für diesen Tag vorhanden.</div>;
+        return <div className="text-xs text-eve-muted">Keine Einzelbuchungen (Zuwächse) für diesen Tag vorhanden.</div>;
     }
 
     return (
         <div>
-            <h5 className="is-size-7 has-text-weight-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse) für diesen Tag:</h5>
+            <h5 className="text-xs font-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse) für diesen Tag:</h5>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
                 {changes.map(c => (
                     <div
@@ -1162,13 +1148,13 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
                             border: '1px solid rgba(255,255,255,0.05)'
                         }}
                     >
-                        <span className="is-size-7" style={{ color: '#ccc' }}>
+                        <span className="text-xs" style={{ color: '#ccc' }}>
                             <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk.
                             <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
                         </span>
                         <button
-                            className="button is-danger is-small p-1"
-                            style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            className="inline-flex items-center justify-center border border-transparent rounded bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs px-2 py-1 transition-all duration-300 cursor-pointer"
+                            style={{ height: '22px', fontSize: '0.7rem' }}
                             onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
                             disabled={deletingId === c.id}
                         >

@@ -4,92 +4,82 @@
 
 {% block body %}
 
-    <div class="container">
+    <div class="w-full max-w-[1200px] mx-auto px-6 mt-12 mb-16">
 
-        <h2 class="title is-3 mt-4">Bestellliste:</h2>
+        <h2 class="text-2xl font-bold mt-8 mb-6 text-white">Bestellliste:</h2>
 
-        <details class="box mb-5 compact-box">
-            <summary>Neue Bestellung erstellen</summary>
-            <div class="details-content">
+        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[720px] group">
+            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
+                <span>Neue Bestellung erstellen</span>
+                <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
+            </summary>
+            <div class="border-t border-eve-border p-6 bg-black/15">
                 <form action="{{ path('app_order_create_order') }}" method="post">
-                    <div class="field">
-                        <label class="label" for="itemname_buy">Item:</label>
-                        <div class="control">
-                            {{ react_component('ItemAutocomplete', {
-                                'jwtToken': jwt_token(app.user),
-                                'inputId': 'itemname_buy',
-                                'inputName': 'itemname',
-                                'placeholder': 'Item eingeben und auswählen...'
-                            }) }}
-                        </div>
-                        <p class="help has-text-grey-light">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
+                    <div class="flex flex-col gap-2 mb-4">
+                        <label class="text-sm font-semibold text-white" for="itemname_buy">Item:</label>
+                        {{ react_component('ItemAutocomplete', {
+                            'jwtToken': jwt_token(app.user),
+                            'inputId': 'itemname_buy',
+                            'inputName': 'itemname',
+                            'placeholder': 'Item eingeben und auswählen...'
+                        }) }}
+                        <p class="text-xs text-eve-muted mt-1">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
                     </div>
 
-                    <div class="columns mt-3">
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="amount_buy">Menge:</label>
-                                <div class="control">
-                                    <input class="input" type="number" id="amount_buy" name="amount" min="1" step="1" required>
-                                </div>
+                    <div class="flex flex-wrap gap-4 mt-3">
+                        <div class="flex-1 min-w-[150px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="amount_buy">Menge:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="amount_buy" name="amount" min="1" step="1" required>
                             </div>
                         </div>
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="jita_buy">Prozent zu Jita-Buy:</label>
-                                <div class="control">
-                                    <input class="input" type="number" id="jita_buy" name="jita_buy" value="100" required>
-                                </div>
+                        <div class="flex-1 min-w-[150px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="jita_buy">Prozent zu Jita-Buy:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="jita_buy" name="jita_buy" value="100" required>
                             </div>
                         </div>
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="note_buy">Notiz:</label>
-                                <div class="control">
-                                    <input class="input" type="text" id="note_buy" name="note" placeholder="Optional...">
-                                </div>
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="note_buy">Notiz:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="note_buy" name="note" placeholder="Optional...">
                             </div>
                         </div>
-                        <div class="column is-narrow">
-                            <div class="field">
-                                <label class="label">&nbsp;</label>
-                                <div class="control">
-                                    <button type="submit" class="button is-primary" title="Bestellung erstellen">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                                            <polyline points="12 5 19 12 12 19"></polyline>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="flex-none self-end pb-4">
+                            <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" title="Bestellung erstellen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </form>
             </div>
         </details>
 
-        <div class="table-container table-responsive-cards">
-            <table class="table is-striped is-fullwidth">
+        <div class="overflow-x-auto w-full border border-eve-border rounded-lg bg-eve-card/30 shadow-eve mb-8">
+            <table class="w-full border-collapse">
                 <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Menge</th>
-                    <th>% zu Jita-Buy</th>
-                    <th>Gesamtwert</th>
-                    <th>Notiz</th>
-                    <th>Besteller</th>
-                    <th>Wird bedient von</th>
-                    <th></th>
-                    <th></th>
-                </tr>
+                    <tr class="border-b border-eve-border bg-[#0d121fe6]/50">
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Item</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Menge</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">% zu Jita-Buy</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Gesamtwert</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Notiz</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Besteller</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Wird bedient von</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm" style="width: 100px;"></th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm" style="width: 100px;"></th>
+                    </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-white/5">
                 {% for buy_order in buy_orders %}
                     {% if editing_buy_order and editing_buy_order.id == buy_order.id %}
-                        <form id="edit_buy_form_{{ buy_order.id }}" action="{{ path('update_order', {'id': buy_order.id}) }}" method="post" class="is-display-none"></form>
-                        <tr class="is-selected tr-editing-selected">
-                            <td data-label="Item">
-                                <div class="control control-item-autocomplete">
+                        <form id="edit_buy_form_{{ buy_order.id }}" action="{{ path('update_order', {'id': buy_order.id}) }}" method="post" class="hidden"></form>
+                        <tr class="bg-eve-primary/5">
+                            <td class="p-3 text-sm" data-label="Item">
+                                <div class="min-w-[250px]">
                                     {{ react_component('ItemAutocomplete', {
                                         'jwtToken': jwt_token(app.user),
                                         'inputId': 'itemname_buy_' ~ buy_order.id,
@@ -100,38 +90,38 @@
                                         'form': 'edit_buy_form_' ~ buy_order.id
                                     }) }}
                                     {% if buy_order.jitaPriceInfo and buy_order.jitaPriceInfo.price is not null %}
-                                        <p class="help has-text-grey-light mt-1">
+                                        <p class="text-xs text-eve-muted mt-1">
                                             Jita-Buy: {{ buy_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
                                             {% if buy_order.jitaPriceInfo.warning %}
-                                                <span class="has-text-warning" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
+                                                <span class="text-amber-400" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
                                             {% endif %}
                                         </p>
                                     {% endif %}
                                 </div>
                             </td>
-                            <td data-label="Menge">
-                                <input class="input input-narrow" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" required>
+                            <td class="p-3 text-sm" data-label="Menge">
+                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" required>
                             </td>
-                            <td data-label="% zu Jita-Buy">
-                                <input class="input input-narrow" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" required>
+                            <td class="p-3 text-sm" data-label="% zu Jita-Buy">
+                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" required>
                             </td>
-                            <td data-label="Gesamtwert">
+                            <td class="p-3 text-sm" data-label="Gesamtwert">
                                 {% if buy_order.calculatedTotal is not null %}
-                                    <strong class="copyable-price" 
+                                    <strong class="copyable-price hover:text-eve-primary underline cursor-pointer font-bold text-white" 
                                             title="Wert kopieren (für EVE)"
                                             onclick="window.copyToClipboard('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
-                                    <span class="has-text-grey-light">-</span>
+                                    <span class="text-eve-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td data-label="Notiz">
-                                <input class="input" type="text" name="note" value="{{ buy_order.note }}" form="edit_buy_form_{{ buy_order.id }}" placeholder="Notiz...">
+                            <td class="p-3 text-sm" data-label="Notiz">
+                                <input class="rounded-lg w-full px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="text" name="note" value="{{ buy_order.note }}" form="edit_buy_form_{{ buy_order.id }}" placeholder="Notiz...">
                             </td>
-                            <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
-                            <td data-label="Wird bedient von">
-                                <div class="control control-user-autocomplete">
+                            <td class="p-3 text-sm" data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
+                            <td class="p-3 text-sm" data-label="Wird bedient von">
+                                <div class="min-w-[180px]">
                                     {{ react_component('UserAutocomplete', {
                                         'inputId': 'seller_' ~ buy_order.id,
                                         'inputName': 'seller',
@@ -142,81 +132,73 @@
                                     }) }}
                                 </div>
                             </td>
-                            <td>
-                                <button type="submit" form="edit_buy_form_{{ buy_order.id }}" class="button is-small is-success">Speichern</button>
+                            <td class="p-3 text-sm">
+                                <button type="submit" form="edit_buy_form_{{ buy_order.id }}" class="inline-flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white font-medium text-xs px-3 py-1.5 cursor-pointer transition-colors duration-200">Speichern</button>
                             </td>
-                            <td>
-                                <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                            <td class="p-3 text-sm">
+                                <a href="{{ path('app_order_list') }}" class="inline-flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3 py-1.5 cursor-pointer no-underline transition-colors duration-200">Abbrechen</a>
                             </td>
                         </tr>
                     {% else %}
-                        <tr>
-                            <td data-label="Item">
-                                <div class="is-flex-align-center">
+                        <tr class="hover:bg-white/2 transition-colors duration-150 odd:bg-white/[0.01]">
+                            <td class="p-3 text-sm" data-label="Item">
+                                <div class="flex items-center gap-2">
                                     {{ buy_order.item|eve_item_icon(24) }}
                                     <div>
-                                        <span class="ml-2">{{ buy_order.item|eve_item_name }}</span>
+                                        <span class="ml-2 font-medium text-white">{{ buy_order.item|eve_item_name }}</span>
                                         {% if buy_order.jitaPriceInfo and buy_order.jitaPriceInfo.price is not null %}
                                             <br>
-                                            <span class="ml-2 is-size-7 has-text-grey-light">
+                                            <span class="ml-2 text-xs text-eve-muted">
                                                 Jita-Buy: {{ buy_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
                                                 {% if buy_order.jitaPriceInfo.warning %}
-                                                    <span class="has-text-warning cursor-help" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
+                                                    <span class="text-amber-400 cursor-help" title="{{ buy_order.jitaPriceInfo.message }}">⚠️</span>
                                                 {% endif %}
                                             </span>
                                         {% endif %}
                                     </div>
                                 </div>
                             </td>
-                            <td data-label="Menge">{{ buy_order.amount }}</td>
-                            <td data-label="% zu Jita-Buy">{{ buy_order.percentToJitaBuy }}%</td>
-                            <td data-label="Gesamtwert">
+                            <td class="p-3 text-sm" data-label="Menge">{{ buy_order.amount }}</td>
+                            <td class="p-3 text-sm" data-label="% zu Jita-Buy">{{ buy_order.percentToJitaBuy }}%</td>
+                            <td class="p-3 text-sm" data-label="Gesamtwert">
                                 {% if buy_order.calculatedTotal is not null %}
-                                    <strong class="copyable-price" 
+                                    <strong class="copyable-price hover:text-eve-primary underline cursor-pointer font-bold text-white" 
                                             title="Wert kopieren (für EVE)"
                                             onclick="window.copyToClipboard('{{ buy_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ buy_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
-                                    <span class="has-text-grey-light">-</span>
+                                    <span class="text-eve-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td data-label="Notiz">
-                                {{ buy_order.note ?: '<span class="has-text-grey-light">-</span>' }}
+                            <td class="p-3 text-sm" data-label="Notiz">
+                                {{ buy_order.note ?: '<span class="text-eve-muted">-</span>' }}
                             </td>
-                            <td data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
+                            <td class="p-3 text-sm" data-label="Besteller">{{ buy_order.buyer.displayName }}</td>
      
                             {% if buy_order.fulfiller %}
-                                <td data-label="Wird bedient von">{{ buy_order.fulfiller.displayName }}</td>
+                                <td class="p-3 text-sm" data-label="Wird bedient von">{{ buy_order.fulfiller.displayName }}</td>
                             {% else %}
-                                <td data-label="Wird bedient von">
-                                    <form action="{{ path('set_order_fulfiller', {'id': buy_order.id}) }}"
-                                          method="POST"
-                                          class="m-0">
-                                        <button type="submit" class="button is-small is-primary is-outlined">
+                                <td class="p-3 text-sm" data-label="Wird bedient von">
+                                    <form action="{{ path('set_order_fulfiller', {'id': buy_order.id}) }}" method="POST" class="m-0">
+                                        <button type="submit" class="inline-flex items-center justify-center rounded border border-eve-primary hover:bg-eve-primary hover:text-[#060911] text-eve-primary font-medium text-xs px-3 py-1.5 cursor-pointer transition-all duration-200 bg-transparent">
                                             Annehmen
                                         </button>
                                     </form>
                                 </td>
                             {% endif %}
      
-                            <td>
+                            <td class="p-3 text-sm">
                                 {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
-                                    <a class="button is-small is-light" href="{{ path('update_order', {'id': buy_order.id}) }}">Bearbeiten</a>
+                                    <a class="inline-flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3 py-1.5 cursor-pointer no-underline transition-colors duration-200" href="{{ path('update_order', {'id': buy_order.id}) }}">Bearbeiten</a>
                                 {% endif %}
                             </td>
      
-                            <td>
+                            <td class="p-3 text-sm">
                                 {% if buy_order.buyer == app.user or is_granted('ROLE_CEO') %}
-                                    <form action="{{ path('app_order_delete', {'id': buy_order.id}) }}"
-                                          method="POST"
-                                          onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ buy_order.item|eve_item_name }} löschen möchten?');">
-     
-                                        <input type="hidden"
-                                               name="_method"
-                                               value="DELETE">
-     
-                                        <button type="submit" class="button is-small is-danger">
+                                    <form action="{{ path('app_order_delete', {'id': buy_order.id}) }}" method="POST" onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ buy_order.item|eve_item_name }} löschen möchten?');" class="m-0">
+                                        <input type="hidden" name="_method" value="DELETE">
+                                        <button type="submit" class="inline-flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white font-medium text-xs px-3 py-1.5 cursor-pointer transition-colors duration-200">
                                             Löschen
                                         </button>
                                     </form>
@@ -229,92 +211,82 @@
             </table>
         </div>
 
-        <hr>
+        <hr class="border-0 border-t border-eve-border/30 my-8">
 
-        <h2 class="title is-3 mt-4">Verkaufsliste:</h2>
+        <h2 class="text-2xl font-bold mt-8 mb-6 text-white">Verkaufsliste:</h2>
 
-        <details class="box mb-5 compact-box">
-            <summary>Neues Angebot erstellen</summary>
-            <div class="details-content">
+        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[720px] group">
+            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
+                <span>Neues Angebot erstellen</span>
+                <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
+            </summary>
+            <div class="border-t border-eve-border p-6 bg-black/15">
                 <form action="{{ path('app_order_create_sell') }}" method="post">
-                    <div class="field">
-                        <label class="label" for="itemname_sell">Item:</label>
-                        <div class="control">
-                            {{ react_component('ItemAutocomplete', {
-                                'jwtToken': jwt_token(app.user),
-                                'inputId': 'itemname_sell',
-                                'inputName': 'itemname',
-                                'placeholder': 'Item eingeben und auswählen...'
-                            }) }}
-                        </div>
-                        <p class="help has-text-grey-light">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
+                    <div class="flex flex-col gap-2 mb-4">
+                        <label class="text-sm font-semibold text-white" for="itemname_sell">Item:</label>
+                        {{ react_component('ItemAutocomplete', {
+                            'jwtToken': jwt_token(app.user),
+                            'inputId': 'itemname_sell',
+                            'inputName': 'itemname',
+                            'placeholder': 'Item eingeben und auswählen...'
+                        }) }}
+                        <p class="text-xs text-eve-muted mt-1">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
                     </div>
 
-                    <div class="columns mt-3">
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="amount_sell">Menge:</label>
-                                <div class="control">
-                                    <input class="input" type="number" id="amount_sell" name="amount" min="1" step="1" required>
-                                </div>
+                    <div class="flex flex-wrap gap-4 mt-3">
+                        <div class="flex-1 min-w-[150px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="amount_sell">Menge:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="amount_sell" name="amount" min="1" step="1" required>
                             </div>
                         </div>
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="jita_sell">Prozent zu Jita-Sell:</label>
-                                <div class="control">
-                                    <input class="input" type="number" id="jita_sell" name="jita_sell" value="100" required>
-                                </div>
+                        <div class="flex-1 min-w-[150px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="jita_sell">Prozent zu Jita-Sell:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="jita_sell" name="jita_sell" value="100" required>
                             </div>
                         </div>
-                        <div class="column">
-                            <div class="field">
-                                <label class="label" for="note_sell">Notiz:</label>
-                                <div class="control">
-                                    <input class="input" type="text" id="note_sell" name="note" placeholder="Optional...">
-                                </div>
+                        <div class="flex-1 min-w-[200px]">
+                            <div class="flex flex-col gap-2 mb-4">
+                                <label class="text-sm font-semibold text-white" for="note_sell">Notiz:</label>
+                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="note_sell" name="note" placeholder="Optional...">
                             </div>
                         </div>
-                        <div class="column is-narrow">
-                            <div class="field">
-                                <label class="label">&nbsp;</label>
-                                <div class="control">
-                                    <button type="submit" class="button is-primary" title="Angebot erstellen">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                                            <polyline points="12 5 19 12 12 19"></polyline>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="flex-none self-end pb-4">
+                            <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" title="Angebot erstellen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </form>
             </div>
         </details>
 
-        <div class="table-container table-responsive-cards">
-            <table class="table is-striped is-fullwidth">
+        <div class="overflow-x-auto w-full border border-eve-border rounded-lg bg-eve-card/30 shadow-eve">
+            <table class="w-full border-collapse">
                 <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Menge</th>
-                    <th>% zu Jita-Sell</th>
-                    <th>Gesamtwert</th>
-                    <th>Notiz</th>
-                    <th>Verkäufer</th>
-                    <th>Wird bedient von</th>
-                    <th></th>
-                    <th></th>
-                </tr>
+                    <tr class="border-b border-eve-border bg-[#0d121fe6]/50">
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Item</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Menge</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">% zu Jita-Sell</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Gesamtwert</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Notiz</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Verkäufer</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm">Wird bedient von</th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm" style="width: 100px;"></th>
+                        <th class="text-left font-semibold text-eve-muted p-3 text-sm" style="width: 100px;"></th>
+                    </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-white/5">
                 {% for sell_order in sell_orders %}
                     {% if editing_sell_order and editing_sell_order.id == sell_order.id %}
-                        <form id="edit_sell_form_{{ sell_order.id }}" action="{{ path('update_sell', {'id': sell_order.id}) }}" method="post" class="is-display-none"></form>
-                        <tr class="is-selected tr-editing-selected">
-                            <td data-label="Item">
-                                <div class="control control-item-autocomplete">
+                        <form id="edit_sell_form_{{ sell_order.id }}" action="{{ path('update_sell', {'id': sell_order.id}) }}" method="post" class="hidden"></form>
+                        <tr class="bg-eve-primary/5">
+                            <td class="p-3 text-sm" data-label="Item">
+                                <div class="min-w-[250px]">
                                     {{ react_component('ItemAutocomplete', {
                                         'jwtToken': jwt_token(app.user),
                                         'inputId': 'itemname_sell_' ~ sell_order.id,
@@ -325,38 +297,38 @@
                                         'form': 'edit_sell_form_' ~ sell_order.id
                                     }) }}
                                     {% if sell_order.jitaPriceInfo and sell_order.jitaPriceInfo.price is not null %}
-                                        <p class="help has-text-grey-light mt-1">
+                                        <p class="text-xs text-eve-muted mt-1">
                                             Jita-Sell: {{ sell_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
                                             {% if sell_order.jitaPriceInfo.warning %}
-                                                <span class="has-text-warning" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
+                                                <span class="text-amber-400" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
                                             {% endif %}
                                         </p>
                                     {% endif %}
                                 </div>
                             </td>
-                            <td data-label="Menge">
-                                <input class="input input-narrow" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" required>
+                            <td class="p-3 text-sm" data-label="Menge">
+                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" required>
                             </td>
-                            <td data-label="% zu Jita-Sell">
-                                <input class="input input-narrow" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" required>
+                            <td class="p-3 text-sm" data-label="% zu Jita-Sell">
+                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" required>
                             </td>
-                            <td data-label="Gesamtwert">
+                            <td class="p-3 text-sm" data-label="Gesamtwert">
                                 {% if sell_order.calculatedTotal is not null %}
-                                    <strong class="copyable-price" 
+                                    <strong class="copyable-price hover:text-eve-primary underline cursor-pointer font-bold text-white" 
                                             title="Wert kopieren (für EVE)"
                                             onclick="window.copyToClipboard('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
-                                    <span class="has-text-grey-light">-</span>
+                                    <span class="text-eve-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td data-label="Notiz">
-                                <input class="input" type="text" name="note" value="{{ sell_order.note }}" form="edit_sell_form_{{ sell_order.id }}" placeholder="Notiz...">
+                            <td class="p-3 text-sm" data-label="Notiz">
+                                <input class="rounded-lg w-full px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="text" name="note" value="{{ sell_order.note }}" form="edit_sell_form_{{ sell_order.id }}" placeholder="Notiz...">
                             </td>
-                            <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
-                            <td data-label="Wird bedient von">
-                                <div class="control control-user-autocomplete">
+                            <td class="p-3 text-sm" data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
+                            <td class="p-3 text-sm" data-label="Wird bedient von">
+                                <div class="min-w-[180px]">
                                     {{ react_component('UserAutocomplete', {
                                         'inputId': 'buyer_' ~ sell_order.id,
                                         'inputName': 'buyer',
@@ -367,81 +339,73 @@
                                     }) }}
                                 </div>
                             </td>
-                            <td>
-                                <button type="submit" form="edit_sell_form_{{ sell_order.id }}" class="button is-small is-success">Speichern</button>
+                            <td class="p-3 text-sm">
+                                <button type="submit" form="edit_sell_form_{{ sell_order.id }}" class="inline-flex items-center justify-center rounded bg-green-500 hover:bg-green-600 text-white font-medium text-xs px-3 py-1.5 cursor-pointer transition-colors duration-200">Speichern</button>
                             </td>
-                            <td>
-                                <a href="{{ path('app_order_list') }}" class="button is-small is-light">Abbrechen</a>
+                            <td class="p-3 text-sm">
+                                <a href="{{ path('app_order_list') }}" class="inline-flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3 py-1.5 cursor-pointer no-underline transition-colors duration-200">Abbrechen</a>
                             </td>
                         </tr>
                     {% else %}
-                        <tr>
-                            <td data-label="Item">
-                                <div class="is-flex-align-center">
+                        <tr class="hover:bg-white/2 transition-colors duration-150 odd:bg-white/[0.01]">
+                            <td class="p-3 text-sm" data-label="Item">
+                                <div class="flex items-center gap-2">
                                     {{ sell_order.item|eve_item_icon(24) }}
                                     <div>
-                                        <span class="ml-2">{{ sell_order.item|eve_item_name }}</span>
+                                        <span class="ml-2 font-medium text-white">{{ sell_order.item|eve_item_name }}</span>
                                         {% if sell_order.jitaPriceInfo and sell_order.jitaPriceInfo.price is not null %}
                                             <br>
-                                            <span class="ml-2 is-size-7 has-text-grey-light">
+                                            <span class="ml-2 text-xs text-eve-muted">
                                                 Jita-Sell: {{ sell_order.jitaPriceInfo.price|number_format(2, ',', '.') }} ISK
                                                 {% if sell_order.jitaPriceInfo.warning %}
-                                                    <span class="has-text-warning cursor-help" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
+                                                    <span class="text-amber-400 cursor-help" title="{{ sell_order.jitaPriceInfo.message }}">⚠️</span>
                                                 {% endif %}
                                             </span>
                                         {% endif %}
                                     </div>
                                 </div>
                             </td>
-                            <td data-label="Menge">{{ sell_order.amount }}</td>
-                            <td data-label="% zu Jita-Sell">{{ sell_order.percentToJitaSell }}%</td>
-                            <td data-label="Gesamtwert">
+                            <td class="p-3 text-sm" data-label="Menge">{{ sell_order.amount }}</td>
+                            <td class="p-3 text-sm" data-label="% zu Jita-Sell">{{ sell_order.percentToJitaSell }}%</td>
+                            <td class="p-3 text-sm" data-label="Gesamtwert">
                                 {% if sell_order.calculatedTotal is not null %}
-                                    <strong class="copyable-price" 
+                                    <strong class="copyable-price hover:text-eve-primary underline cursor-pointer font-bold text-white" 
                                             title="Wert kopieren (für EVE)"
                                             onclick="window.copyToClipboard('{{ sell_order.calculatedTotal|number_format(2, '.', '') }}', this)">
                                         {{ sell_order.calculatedTotal|number_format(2, ',', '.') }} ISK
                                     </strong>
                                 {% else %}
-                                    <span class="has-text-grey-light">-</span>
+                                    <span class="text-eve-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td data-label="Notiz">
-                                {{ sell_order.note ?: '<span class="has-text-grey-light">-</span>' }}
+                            <td class="p-3 text-sm" data-label="Notiz">
+                                {{ sell_order.note ?: '<span class="text-eve-muted">-</span>' }}
                             </td>
-                            <td data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
+                            <td class="p-3 text-sm" data-label="Verkäufer">{{ sell_order.seller.displayName }}</td>
      
                             {% if sell_order.buyer %}
-                                <td data-label="Wird bedient von">{{ sell_order.buyer.displayName }}</td>
+                                <td class="p-3 text-sm" data-label="Wird bedient von">{{ sell_order.buyer.displayName }}</td>
                             {% else %}
-                                <td data-label="Wird bedient von">
-                                    <form action="{{ path('set_sell_fulfiller', {'id': sell_order.id}) }}"
-                                          method="POST"
-                                          class="m-0">
-                                        <button type="submit" class="button is-small is-primary is-outlined">
+                                <td class="p-3 text-sm" data-label="Wird bedient von">
+                                    <form action="{{ path('set_sell_fulfiller', {'id': sell_order.id}) }}" method="POST" class="m-0">
+                                        <button type="submit" class="inline-flex items-center justify-center rounded border border-eve-primary hover:bg-eve-primary hover:text-[#060911] text-eve-primary font-medium text-xs px-3 py-1.5 cursor-pointer transition-all duration-200 bg-transparent">
                                             Annehmen
                                         </button>
                                     </form>
                                 </td>
                             {% endif %}
      
-                            <td>
+                            <td class="p-3 text-sm">
                                 {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
-                                    <a class="button is-small is-light" href="{{ path('update_sell', {'id': sell_order.id}) }}">Bearbeiten</a>
+                                    <a class="inline-flex items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3 py-1.5 cursor-pointer no-underline transition-colors duration-200" href="{{ path('update_sell', {'id': sell_order.id}) }}">Bearbeiten</a>
                                 {% endif %}
                             </td>
      
-                            <td>
+                            <td class="p-3 text-sm">
                                 {% if sell_order.seller == app.user or is_granted('ROLE_CEO') %}
-                                    <form action="{{ path('app_sell_delete', {'id': sell_order.id}) }}"
-                                          method="POST"
-                                          onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ sell_order.item|eve_item_name }} löschen möchten?');">
-     
-                                        <input type="hidden"
-                                               name="_method"
-                                               value="DELETE">
-     
-                                        <button type="submit" class="button is-small is-danger">
+                                    <form action="{{ path('app_sell_delete', {'id': sell_order.id}) }}" method="POST" onsubmit="return confirm('Sind Sie sicher, dass Sie die Bestellung {{ sell_order.item|eve_item_name }} löschen möchten?');" class="m-0">
+                                        <input type="hidden" name="_method" value="DELETE">
+                                        <button type="submit" class="inline-flex items-center justify-center rounded bg-red-500 hover:bg-red-600 text-white font-medium text-xs px-3 py-1.5 cursor-pointer transition-colors duration-200">
                                             Löschen
                                         </button>
                                     </form>

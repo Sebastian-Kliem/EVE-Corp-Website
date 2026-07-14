@@ -3,16 +3,16 @@
 {% block title %}Corp-Inventar Hangar-Sichtbarkeit{% endblock %}
 
 {% block body %}
-<div class="container container-wide mt-5 mb-6">
-    <div class="level mb-4">
-        <div class="level-left">
-            <h1 class="title is-2 text-gradient">
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-4">
+        <div class="flex items-center gap-3 flex-wrap">
+            <h1 class="text-3xl font-semibold mb-4 text-white text-gradient">
                 Hangar-Sichtbarkeit
             </h1>
         </div>
     </div>
 
-    <p class="subtitle is-6 has-text-grey mb-5">
+    <p class="text-sm text-eve-muted mb-8">
         Lege fest, welche Hangars einer Station/Zitadelle für normale Mitglieder sichtbar sein sollen.
         Wenn neue Zitadellen oder Stationen hinzukommen, sind diese standardmäßig für andere unsichtbar, bis sie hier freigegeben werden.
     </p>
@@ -20,7 +20,7 @@
     <!-- Flash Messages -->
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="notification is-{{ label == 'error' ? 'danger' : 'success' }} mt-4 mb-4">
+            <div class="py-5 px-6 rounded-lg mt-4 mb-4 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% else %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% endif %}">
                 {{ message }}
             </div>
         {% endfor %}

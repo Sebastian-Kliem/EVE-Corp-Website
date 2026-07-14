@@ -365,266 +365,46 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
 
     if (loading) {
         return (
-            <div className="box has-text-centered p-5">
-                <span className="loader" style={{
-                    display: 'inline-block',
-                    width: '2rem',
-                    height: '2rem',
-                    border: '3px solid var(--theme-primary)',
-                    borderRadius: '50%',
-                    borderTopColor: 'transparent',
-                    animation: 'spin 1s linear infinite'
-                }}></span>
-                <p className="mt-3">Industriedaten werden geladen...</p>
-                <style>{`
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}</style>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12">
+                <span className="inline-block w-8 h-8 border-3 border-eve-primary rounded-full border-t-transparent animate-spin"></span>
+                <p className="mt-3 text-eve-muted">Industriedaten werden geladen...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="box has-text-centered p-5" style={{borderColor: 'red'}}>
-                <h3 className="title is-4" style={{color: '#ff4444'}}>Fehler</h3>
-                <p className="subtitle is-6">{error}</p>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12 border-rose-500/30">
+                <h3 className="text-xl font-semibold mb-2 text-rose-400">Fehler</h3>
+                <p className="text-sm text-eve-muted">{error}</p>
             </div>
         );
     }
 
     return (
         <div>
-            <style>{`
-                .char-industry-box {
-                    background: rgba(20, 27, 43, 0.45);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    overflow: hidden;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-                }
-                .char-industry-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    background: rgba(10, 15, 25, 0.75);
-                    padding: 0.85rem 1.25rem;
-                    border-bottom: 1px solid var(--theme-card-border);
-                    flex-wrap: wrap;
-                    gap: 0.75rem;
-                }
-                .char-profile-section {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.85rem;
-                }
-                .char-profile-section img {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    border: 2px solid var(--theme-primary);
-                }
-                .char-profile-name {
-                    font-weight: 700;
-                    font-size: 1.15rem;
-                    color: #fff;
-                    margin: 0;
-                }
-                .char-sync-time {
-                    font-size: 0.75rem;
-                    color: var(--theme-text-muted);
-                    margin: 0;
-                }
-                .char-jobs-count-badge {
-                    background: rgba(0, 240, 255, 0.1);
-                    border: 1px solid var(--theme-primary);
-                    color: var(--theme-primary);
-                    font-weight: bold;
-                    font-size: 0.85rem;
-                    padding: 0.25rem 0.6rem;
-                    border-radius: 4px;
-                }
-                .char-industry-body {
-                    padding: 1.25rem;
-                }
-                .collapsible-activity-group {
-                    margin-bottom: 1rem;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 6px;
-                    overflow: hidden;
-                    background: rgba(10, 15, 25, 0.2);
-                }
-                .collapsible-activity-group:last-child {
-                    margin-bottom: 0;
-                }
-                .collapsible-activity-group summary {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 0.75rem 1rem;
-                    background: rgba(20, 27, 43, 0.65);
-                    cursor: pointer;
-                    font-weight: bold;
-                    color: #fff;
-                    user-select: none;
-                    list-style: none; /* Hide default caret */
-                    transition: background 0.2s ease;
-                }
-                .collapsible-activity-group summary::-webkit-details-marker {
-                    display: none; /* Hide default caret on Safari */
-                }
-                .collapsible-activity-group summary:hover {
-                    background: rgba(20, 27, 43, 0.85);
-                }
-                .group-title-side {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-                .group-title-indicator {
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 50%;
-                }
-                .group-stats-side {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    font-size: 0.8rem;
-                    color: var(--theme-text-muted);
-                }
-                .group-jobs-list {
-                    padding: 0.85rem;
-                    border-top: 1px solid rgba(255, 255, 255, 0.05);
-                }
-                .job-item-row {
-                    background: rgba(10, 15, 25, 0.3);
-                    border: 1px solid rgba(255, 255, 255, 0.04);
-                    border-radius: 6px;
-                    padding: 0.85rem;
-                    margin-bottom: 0.75rem;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 0.75rem;
-                    transition: border-color 0.2s ease;
-                }
-                .job-item-row:hover {
-                    border-color: rgba(0, 240, 255, 0.25);
-                }
-                .job-item-row:last-child {
-                    margin-bottom: 0;
-                }
-                .job-row-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    flex-wrap: wrap;
-                    gap: 0.5rem;
-                }
-                .item-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                }
-                .item-icon-img {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 4px;
-                    border: 1px solid var(--theme-card-border);
-                }
-                .item-title {
-                    font-weight: bold;
-                    color: #fff;
-                    margin: 0;
-                    font-size: 0.95rem;
-                }
-                .item-subtitle {
-                    font-size: 0.75rem;
-                    color: var(--theme-text-muted);
-                    margin: 0;
-                }
-                .bp-ref {
-                    color: #bbb;
-                }
-                .job-meta-line {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 1.5rem;
-                    font-size: 0.8rem;
-                    color: #ccc;
-                    background: rgba(0, 0, 0, 0.15);
-                    padding: 0.5rem 0.75rem;
-                    border-radius: 4px;
-                }
-                .meta-item {
-                    display: flex;
-                    gap: 0.35rem;
-                }
-                .meta-label {
-                    color: var(--theme-text-muted);
-                }
-                .meta-value {
-                    font-weight: 600;
-                }
-                .progress-bar-wrapper {
-                    background: rgba(255, 255, 255, 0.08);
-                    height: 6px;
-                    border-radius: 3px;
-                    overflow: hidden;
-                }
-                .progress-bar-fill {
-                    height: 100%;
-                    border-radius: 3px;
-                    transition: width 0.5s ease;
-                }
-                .progress-texts {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 0.75rem;
-                    font-weight: 500;
-                }
-                .progress-percent {
-                    color: #eee;
-                }
-                .progress-countdown {
-                    color: var(--theme-primary);
-                }
-                .summary-card {
-                    background: rgba(20, 27, 43, 0.5);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    padding: 1.25rem;
-                    margin-bottom: 1.5rem;
-                }
-            `}</style>
-
             {/* Aggregated Stats Cards */}
-            <div className="columns mb-4">
-                <div className="column">
-                    <div className="summary-card mb-0">
-                        <p className="subtitle is-6 mb-1" style={{color: 'var(--theme-text-muted)'}}>Aktive Aufträge</p>
-                        <p className="title is-3 mb-0" style={{color: 'var(--theme-primary)'}}>
+            <div className="flex flex-wrap gap-6 mb-6">
+                <div className="flex-1 min-w-[200px]">
+                    <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                        <p className="text-xs text-eve-muted mb-1">Aktive Aufträge</p>
+                        <p className="text-2xl font-bold text-eve-primary mb-0">
                             {stats.totalActive}
                         </p>
                     </div>
                 </div>
-                <div className="column">
-                    <div className="summary-card mb-0">
-                        <p className="subtitle is-6 mb-1" style={{color: 'var(--theme-text-muted)'}}>Kosten aktiver
-                            Aufträge</p>
-                        <p className="title is-3 mb-0">
+                <div className="flex-1 min-w-[200px]">
+                    <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                        <p className="text-xs text-eve-muted mb-1">Kosten aktiver Aufträge</p>
+                        <p className="text-2xl font-bold text-white mb-0">
                             {formatISK(stats.totalCostActive)}
                         </p>
                     </div>
                 </div>
-                <div className="column">
-                    <div className="summary-card mb-0">
-                        <p className="subtitle is-6 mb-1" style={{color: 'var(--theme-text-muted)'}}>Durchgänge
-                            gesamt</p>
-                        <p className="title is-3 mb-0">
+                <div className="flex-1 min-w-[200px]">
+                    <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                        <p className="text-xs text-eve-muted mb-1">Durchgänge gesamt</p>
+                        <p className="text-2xl font-bold text-white mb-0">
                             {stats.totalRunsActive}
                         </p>
                     </div>
@@ -632,28 +412,23 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
             </div>
 
             {/* Global Search & Filters */}
-            <div className="box mb-4">
-                <div className="columns is-multiline">
-                    <div className="column is-6">
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                <div className="flex flex-wrap gap-4 mb-4">
+                    <div className="flex-1 min-w-[280px]">
                         <input
                             type="text"
-                            className="input input-dark"
+                            className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                             placeholder="Nach Gegenstand oder Blueprint suchen..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <div className="column is-2">
-                        <div className="select is-fullwidth">
+                    <div className="w-full md:w-1/4 min-w-[200px]">
+                        <div className="relative w-full">
                             <select
                                 value={filterActivity}
                                 onChange={(e) => setFilterActivity(e.target.value)}
-                                className="input-dark"
-                                style={{
-                                    background: '#101525',
-                                    color: '#fff',
-                                    border: '1px solid var(--theme-card-border)'
-                                }}
+                                className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                             >
                                 <option value="all">Alle Aktivitäten</option>
                                 <option value="1">Produktion</option>
@@ -667,19 +442,14 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                         </div>
                     </div>
                 </div>
-                <div className="columns is-multiline">
-                    <div className="column is-2">
-                        <div className="select is-fullwidth">
+
+                <div className="flex flex-wrap gap-4 mb-4">
+                    <div className="flex-1 min-w-[200px]">
+                        <div className="relative w-full">
                             <select
                                 value={inputCostMode}
                                 onChange={(e) => setInputCostMode(e.target.value as 'buy' | 'sell')}
-                                className="input-dark"
-                                style={{
-                                    background: '#101525',
-                                    color: '#fff',
-                                    border: '1px solid var(--theme-card-border)',
-                                    width: '100%'
-                                }}
+                                className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                                 title="Materialberechnung nach"
                             >
                                 <option value="buy">Material: Jita Buy (Gefarmt)</option>
@@ -687,18 +457,12 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                             </select>
                         </div>
                     </div>
-                    <div className="column is-2">
-                        <div className="select is-fullwidth">
+                    <div className="flex-1 min-w-[200px]">
+                        <div className="relative w-full">
                             <select
                                 value={outputValueMode}
                                 onChange={(e) => setOutputValueMode(e.target.value as 'buy' | 'sell')}
-                                className="input-dark"
-                                style={{
-                                    background: '#101525',
-                                    color: '#fff',
-                                    border: '1px solid var(--theme-card-border)',
-                                    width: '100%'
-                                }}
+                                className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                                 title="Ergebnisberechnung nach"
                             >
                                 <option value="buy">Ergebnis: Jita Buy (Sofortverkauf)</option>
@@ -707,24 +471,16 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                         </div>
                     </div>
                 </div>
-                <div className="columns is-multiline">
-                    <div className="column is-12 mt-1"
-                          style={{display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center'}}>
+
+                <div className="flex flex-wrap gap-4 items-center">
+                    <div className="w-full mt-1 flex flex-wrap gap-6 items-center">
                         <button
-                            className="button is-small"
+                            className="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary rounded px-3 py-1.5 text-xs font-semibold transition-all duration-300 cursor-pointer gap-1.5"
                             onClick={() => setOnlyKopiererMode(prev => !prev)}
                             title="Weise deinen Charakteren das Tag 'Copy-Char' in den Einstellungen zu, damit sie hier gruppiert werden."
                             style={{
-                                background: onlyKopiererMode ? 'var(--theme-primary)' : '#101525',
+                                background: onlyKopiererMode ? 'var(--theme-primary)' : 'rgba(16, 21, 37, 0.45)',
                                 color: onlyKopiererMode ? '#000' : '#ccc',
-                                border: '1px solid var(--theme-card-border)',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                padding: '0.25rem 0.6rem',
-                                borderRadius: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.35rem'
                             }}
                         >
                             <span>📂</span>
@@ -732,19 +488,12 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                         </button>
 
                         {!onlyKopiererMode && (
-                            <label className="checkbox" style={{
-                                color: 'var(--theme-text-muted)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                cursor: 'pointer',
-                                marginBottom: 0
-                            }}>
+                            <label className="flex items-center gap-2 cursor-pointer text-xs text-eve-muted select-none">
                                 <input
                                     type="checkbox"
                                     checked={hideEmptyCharacters}
                                     onChange={(e) => setHideEmptyCharacters(e.target.checked)}
-                                    style={{accentColor: 'var(--theme-primary)'}}
+                                    className="accent-eve-primary"
                                 />
                                 <span>Charaktere ohne aktive Industrie-Jobs ausblenden</span>
                             </label>
@@ -782,70 +531,30 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
 
                     if (onlyKopiererMode) {
                         return (
-                            <div key={char.id} className="char-industry-box-compact" style={{
-                                background: 'rgba(20, 27, 43, 0.45)',
-                                border: '1px solid var(--theme-card-border)',
-                                borderRadius: '8px',
-                                marginBottom: '1rem',
-                                padding: '0.75rem 1rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                flexWrap: 'wrap',
-                                gap: '1rem',
-                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.15)'
-                            }}>
+                            <div key={char.id} className="bg-[#141b2b73] border border-eve-border rounded-lg mb-4 p-3 px-4 flex items-center justify-between flex-wrap gap-4 shadow-eve">
                                 {/* Left Side: Portrait & Name */}
-                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '220px'}}>
+                                <div className="flex items-center gap-3 min-w-[220px]">
                                     <img
                                         src={getCharacterPortraitUrl(char.id)}
                                         alt={char.name}
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            borderRadius: '50%',
-                                            border: '2px solid var(--theme-primary)'
-                                        }}
+                                        className="w-8 h-8 rounded-full border-2 border-eve-primary"
                                     />
                                     <div>
-                                        <h4 style={{
-                                            fontWeight: 'bold',
-                                            color: '#fff',
-                                            margin: 0,
-                                            fontSize: '0.95rem'
-                                        }}>{char.name}</h4>
-                                        <p style={{
-                                            fontSize: '0.7rem',
-                                            color: 'var(--theme-text-muted)',
-                                            margin: 0
-                                        }}>Sync: {lastSync}</p>
+                                        <h4 className="font-bold text-white m-0 text-sm">{char.name}</h4>
+                                        <p className="text-[10px] text-eve-muted m-0">Sync: {lastSync}</p>
                                     </div>
                                 </div>
 
                                 {/* Middle Side: Jobs Summary */}
-                                <div style={{
-                                    flexGrow: 1,
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: '0.5rem',
-                                    alignItems: 'center'
-                                }}>
+                                <div className="flex-grow flex flex-wrap gap-2 items-center">
                                     {char.error ? (
-                                        <span style={{fontSize: '0.8rem', color: '#ff8888'}}>⚠️ {char.error}</span>
+                                        <span className="text-xs text-rose-400">⚠️ {char.error}</span>
                                     ) : activeJobs.length === 0 ? (
-                                        <span style={{
-                                            fontSize: '0.8rem',
-                                            fontWeight: 'bold',
-                                            color: '#ffdd57',
-                                            background: 'rgba(255, 221, 87, 0.1)',
-                                            padding: '0.25rem 0.6rem',
-                                            borderRadius: '4px',
-                                            border: '1px solid rgba(255, 221, 87, 0.3)'
-                                        }}>
-                                        ⚠️ Keine aktiven Jobs (Bereit!)
-                                    </span>
+                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                                            ⚠️ Keine aktiven Jobs (Bereit!)
+                                        </span>
                                     ) : (
-                                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.4rem'}}>
+                                        <div className="flex flex-wrap gap-1.5">
                                             {activeJobs.map(job => {
                                                 const endMs = new Date(job.endDate).getTime();
                                                 const timeRemaining = endMs - nowTime;
@@ -855,32 +564,18 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                                 return (
                                                     <div
                                                         key={job.jobId}
-                                                        style={{
-                                                            background: 'rgba(10, 15, 25, 0.6)',
-                                                            border: `1px solid ${isReady ? '#00ffaa' : 'rgba(255, 255, 255, 0.08)'}`,
-                                                            borderRadius: '4px',
-                                                            padding: '0.2rem 0.5rem',
-                                                            fontSize: '0.75rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.35rem',
-                                                            color: isReady ? '#00ffaa' : '#ccc'
-                                                        }}
+                                                        className={`bg-black/30 border rounded px-2 py-0.5 text-xs flex items-center gap-1.5 ${isReady ? 'border-emerald-500/40 text-emerald-400' : 'border-white/5 text-[#ccc]'}`}
                                                     >
-                                                    <span style={{
-                                                        width: '6px',
-                                                        height: '6px',
-                                                        borderRadius: '50%',
-                                                        background: activityColor,
-                                                        display: 'inline-block'
-                                                    }}></span>
-                                                        <span style={{fontWeight: 'bold'}}>{job.blueprintName}</span>
-                                                        <span
-                                                            style={{color: 'var(--theme-text-muted)'}}>({job.runs}x)</span>
+                                                        <span 
+                                                            className="w-1.5 h-1.5 rounded-full inline-block"
+                                                            style={{ background: activityColor }}
+                                                        ></span>
+                                                        <span className="font-bold">{job.blueprintName}</span>
+                                                        <span className="text-eve-muted">({job.runs}x)</span>
                                                         <span>-</span>
-                                                        <span style={{fontWeight: isReady ? 'bold' : 'normal'}}>
-                                                        {isReady ? 'Fertig' : formatDuration(timeRemaining)}
-                                                    </span>
+                                                        <span className={isReady ? 'font-bold' : 'normal'}>
+                                                            {isReady ? 'Fertig' : formatDuration(timeRemaining)}
+                                                        </span>
                                                     </div>
                                                 );
                                             })}
@@ -889,17 +584,7 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                 </div>
 
                                 {/* Right Side: Total Jobs Badge */}
-                                <div style={{
-                                    background: activeJobs.length > 0 ? 'rgba(0, 240, 255, 0.1)' : 'rgba(255, 68, 68, 0.1)',
-                                    border: activeJobs.length > 0 ? '1px solid var(--theme-primary)' : '1px solid #ff4444',
-                                    color: activeJobs.length > 0 ? 'var(--theme-primary)' : '#ff4444',
-                                    fontWeight: 'bold',
-                                    fontSize: '0.8rem',
-                                    padding: '0.2rem 0.5rem',
-                                    borderRadius: '4px',
-                                    minWidth: '80px',
-                                    textAlign: 'center'
-                                }}>
+                                <div className={`font-bold text-xs px-2 py-1 rounded min-w-[80px] text-center border ${activeJobs.length > 0 ? 'bg-eve-primary/10 border-eve-primary/30 text-eve-primary' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
                                     {activeJobs.length} Aktiv
                                 </div>
                             </div>
@@ -956,32 +641,27 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                         });
 
                     return (
-                        <div key={char.id} className="char-industry-box">
-                            <div className="char-industry-header">
-                                <div className="char-profile-section">
-                                    <img src={getCharacterPortraitUrl(char.id)} alt={char.name}/>
+                        <div key={char.id} className="bg-[#141b2b73] border border-eve-border rounded-lg mb-6 overflow-hidden shadow-eve">
+                            <div className="flex items-center justify-between bg-black/30 p-4 border-b border-eve-border flex-wrap gap-3">
+                                <div className="flex items-center gap-3">
+                                    <img src={getCharacterPortraitUrl(char.id)} alt={char.name} className="w-10 h-10 rounded-full border-2 border-eve-primary"/>
                                     <div>
-                                        <h3 className="char-profile-name">{char.name}</h3>
-                                        <p className="char-sync-time">Sync: {lastSync}</p>
+                                        <h3 className="font-bold text-lg text-white m-0">{char.name}</h3>
+                                        <p className="text-xs text-eve-muted m-0">Sync: {lastSync}</p>
                                     </div>
                                 </div>
-                                <div className="char-jobs-count-badge">
+                                <div className="bg-eve-primary/10 border border-eve-primary/30 text-eve-primary font-bold text-xs px-2.5 py-1 rounded">
                                     {activeJobs.length} aktive Aufträge
                                 </div>
                             </div>
 
-                            <div className="char-industry-body">
+                            <div className="p-5">
                                 {char.error ? (
-                                    <div className="notification is-danger p-3 mb-0" style={{
-                                        background: 'rgba(255, 68, 68, 0.12)',
-                                        border: '1px solid #ff4444',
-                                        color: '#ff8888',
-                                        borderRadius: '6px'
-                                    }}>
+                                    <div className="py-5 px-6 rounded-lg mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-400 mb-0">
                                         {char.error}
                                     </div>
                                 ) : filteredJobs.length === 0 ? (
-                                    <div className="has-text-centered p-4" style={{color: 'var(--theme-text-muted)'}}>
+                                    <div className="text-center p-4 text-eve-muted text-xs">
                                         Keine aktiven Aufträge gefunden.
                                     </div>
                                 ) : (
@@ -1008,7 +688,7 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                             return (
                                                 <details
                                                     key={activityId}
-                                                    className="collapsible-activity-group"
+                                                    className="mb-4 border border-white/10 rounded-lg overflow-hidden bg-black/10 last:mb-0 group"
                                                     onToggle={(e) => {
                                                         const target = e.target as HTMLDetailsElement;
                                                         if (target.open) {
@@ -1018,27 +698,20 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                                         }
                                                     }}
                                                 >
-                                                    <summary>
-                                                        <div className="group-title-side">
-                                                            <span>{groupName}</span>
+                                                    <summary className="flex justify-between items-center p-3 px-4 bg-eve-card cursor-pointer font-bold text-white select-none transition-colors duration-200 hover:bg-black/20 list-none">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: groupColor }}></span>
+                                                            <span className="text-sm">{groupName}</span>
                                                         </div>
-                                                        <div className="group-stats-side">
-                                                            {runningCount > 0 && <span
-                                                                style={{color: '#00f0ff'}}>{runningCount} laufend</span>}
-                                                            {runningCount > 0 && readyCount > 0 && <span style={{
-                                                                color: 'var(--theme-text-muted)',
-                                                                margin: '0 4px'
-                                                            }}>|</span>}
-                                                            {readyCount > 0 && <span
-                                                                style={{color: '#00ffaa'}}>{readyCount} bereit</span>}
-                                                            <span style={{
-                                                                fontSize: '0.6rem',
-                                                                marginLeft: '0.4rem'
-                                                            }}>▼</span>
+                                                        <div className="flex items-center gap-2 text-xs text-eve-muted font-normal">
+                                                            {runningCount > 0 && <span className="text-eve-primary">{runningCount} laufend</span>}
+                                                            {runningCount > 0 && readyCount > 0 && <span className="text-white/20 mx-1">|</span>}
+                                                            {readyCount > 0 && <span className="text-emerald-400">{readyCount} bereit</span>}
+                                                            <span className="text-[10px] text-eve-primary transition-transform duration-200 group-open:rotate-180 ml-1">▼</span>
                                                         </div>
                                                     </summary>
 
-                                                    <div className="group-jobs-list">
+                                                    <div className="p-4 border-t border-white/5 flex flex-col gap-3 bg-[#0a0f1d]/20">
                                                         {jobs.map((job) => {
                                                             const startMs = new Date(job.startDate).getTime();
                                                             const endMs = new Date(job.endDate).getTime();
@@ -1054,136 +727,74 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                                             const finances = calculateJobFinances(job);
 
                                                             return (
-                                                                <div key={job.jobId} className="job-item-row">
-                                                                    <div className="job-row-header">
-                                                                        <div className="item-info">
+                                                                <div key={job.jobId} className="bg-[#0a0f1d]/20 border border-white/5 rounded-lg p-4 flex flex-col gap-3 transition-colors duration-200 hover:border-eve-primary/30">
+                                                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                                                        <div className="flex items-center gap-3">
                                                                             <img
                                                                                 src={getItemIconUrl(iconTypeId)}
                                                                                 alt={iconName}
-                                                                                className="item-icon-img"
+                                                                                className="w-9 h-9 rounded border border-eve-border"
                                                                             />
                                                                             <div>
-                                                                                <h4 className="item-title">{iconName}</h4>
-                                                                                <p className="item-subtitle">
+                                                                                <h4 className="font-bold text-white m-0 text-sm">{iconName}</h4>
+                                                                                <p className="text-xs text-eve-muted m-0">
                                                                                     {isResearch ? 'Forschung an: ' : 'Hergestellt aus: '}
-                                                                                    <span
-                                                                                        className="bp-ref">{job.blueprintName}</span>
+                                                                                    <span className="text-[#bbb]">{job.blueprintName}</span>
                                                                                 </p>
                                                                             </div>
                                                                         </div>
                                                                     </div>
 
-                                                                    <div className="job-meta-line">
-                                                                        <div className="meta-item">
-                                                                            <span className="meta-label">Runs:</span>
-                                                                            <span
-                                                                                className="meta-value">{job.runs}</span>
+                                                                    <div className="flex flex-wrap gap-6 text-xs text-[#ccc] bg-black/25 p-2 px-3 rounded">
+                                                                        <div className="flex gap-1">
+                                                                            <span className="text-eve-muted">Runs:</span>
+                                                                            <span className="font-semibold">{job.runs}</span>
                                                                         </div>
-                                                                        <div className="meta-item"
-                                                                             style={{flexGrow: 1, minWidth: '150px'}}>
-                                                                            <span
-                                                                                className="meta-label">Standort:</span>
-                                                                            <span className="meta-value"
-                                                                                  title={job.blueprintLocationName}>{job.blueprintLocationName}</span>
+                                                                        <div className="flex gap-1 flex-grow min-w-[150px]">
+                                                                            <span className="text-eve-muted">Standort:</span>
+                                                                            <span className="font-semibold truncate" title={job.blueprintLocationName}>{job.blueprintLocationName}</span>
                                                                         </div>
                                                                     </div>
 
                                                                     {finances.loading ? (
-                                                                        <div className="job-calculation-line" style={{
-                                                                            display: 'flex',
-                                                                            justifyContent: 'center',
-                                                                            alignItems: 'center',
-                                                                            fontSize: '0.8rem',
-                                                                            padding: '0.5rem 0.75rem',
-                                                                            background: 'rgba(0,0,0,0.15)',
-                                                                            borderRadius: '4px',
-                                                                            border: '1px solid rgba(255,255,255,0.03)',
-                                                                            color: 'var(--theme-text-muted)'
-                                                                        }}>
-                                                                            <span className="loader" style={{
-                                                                                display: 'inline-block',
-                                                                                width: '1rem',
-                                                                                height: '1rem',
-                                                                                border: '2px solid var(--theme-primary)',
-                                                                                borderRadius: '50%',
-                                                                                borderTopColor: 'transparent',
-                                                                                animation: 'spin 1s linear infinite',
-                                                                                marginRight: '0.5rem'
-                                                                            }}></span>
+                                                                        <div className="flex justify-center items-center text-xs p-2.5 px-3 bg-black/15 rounded border border-white/5 text-eve-muted">
+                                                                            <span className="inline-block w-4 h-4 border-2 border-eve-primary rounded-full border-t-transparent animate-spin mr-2"></span>
                                                                             Kalkulation wird berechnet...
                                                                         </div>
                                                                     ) : finances.hasData ? (
-                                                                        <div className="job-calculation-line" style={{
-                                                                            display: 'flex',
-                                                                            justifyContent: 'space-between',
-                                                                            fontSize: '0.8rem',
-                                                                            padding: '0.5rem 0.75rem',
-                                                                            background: 'rgba(0,0,0,0.15)',
-                                                                            borderRadius: '4px',
-                                                                            border: '1px solid rgba(255,255,255,0.03)',
-                                                                            flexWrap: 'wrap',
-                                                                            gap: '0.5rem'
-                                                                        }}>
+                                                                        <div className="flex justify-between text-xs p-2.5 px-3 bg-black/15 rounded border border-white/5 flex-wrap gap-2">
                                                                             <div>
-                                                                                <span
-                                                                                    style={{color: 'var(--theme-text-muted)'}}>Materialien ({inputCostMode === 'buy' ? 'Jita Buy' : 'Jita Sell'}): </span>
-                                                                                <span style={{
-                                                                                    fontWeight: 'bold',
-                                                                                    color: '#eee'
-                                                                                }}>{formatISK(finances.totalMaterialCost)}</span>
+                                                                                <span className="text-eve-muted">Materialien ({inputCostMode === 'buy' ? 'Jita Buy' : 'Jita Sell'}): </span>
+                                                                                <span className="font-bold text-[#eee]">{formatISK(finances.totalMaterialCost)}</span>
                                                                             </div>
                                                                             <div>
-                                                                                <span
-                                                                                    style={{color: 'var(--theme-text-muted)'}}>Job-Kosten: </span>
-                                                                                <span style={{
-                                                                                    fontWeight: 'bold',
-                                                                                    color: '#eee'
-                                                                                }}>{formatISK(finances.jobCost)}</span>
+                                                                                <span className="text-eve-muted">Job-Kosten: </span>
+                                                                                <span className="font-bold text-[#eee]">{formatISK(finances.jobCost)}</span>
                                                                             </div>
                                                                             {!isResearch && (
                                                                                 <>
                                                                                     <div>
-                                                                                        <span
-                                                                                            style={{color: 'var(--theme-text-muted)'}}>Ergebnis ({outputValueMode === 'buy' ? 'Jita Buy' : 'Jita Sell'}): </span>
-                                                                                        <span style={{
-                                                                                            fontWeight: 'bold',
-                                                                                            color: finances.totalProductValue > 0 ? '#00f0ff' : '#eee'
-                                                                                        }}>{formatISK(finances.totalProductValue)}</span>
+                                                                                        <span className="text-eve-muted">Ergebnis ({outputValueMode === 'buy' ? 'Jita Buy' : 'Jita Sell'}): </span>
+                                                                                        <span className={`font-bold ${finances.totalProductValue > 0 ? 'text-eve-primary' : 'text-[#eee]'}`}>{formatISK(finances.totalProductValue)}</span>
                                                                                     </div>
                                                                                     <div>
-                                                                                        <span
-                                                                                            style={{color: 'var(--theme-text-muted)'}}>Gewinn: </span>
-                                                                                        <span style={{
-                                                                                            fontWeight: 'bold',
-                                                                                            color: finances.profit >= 0 ? '#00ffaa' : '#ff4444'
-                                                                                        }}>
-                                                                                        {finances.profit >= 0 ? '+' : ''}{formatISK(finances.profit)} ({finances.profit >= 0 ? '+' : ''}{finances.profitPercent.toFixed(1)}%)
-                                                                                    </span>
+                                                                                        <span className="text-eve-muted">Gewinn: </span>
+                                                                                        <span className={`font-bold ${finances.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                                            {finances.profit >= 0 ? '+' : ''}{formatISK(finances.profit)} ({finances.profit >= 0 ? '+' : ''}{finances.profitPercent.toFixed(1)}%)
+                                                                                        </span>
                                                                                     </div>
                                                                                 </>
                                                                             )}
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="job-calculation-line" style={{
-                                                                            display: 'flex',
-                                                                            justifyContent: 'center',
-                                                                            fontSize: '0.8rem',
-                                                                            padding: '0.5rem 0.75rem',
-                                                                            background: 'rgba(0,0,0,0.15)',
-                                                                            borderRadius: '4px',
-                                                                            border: '1px solid rgba(255,255,255,0.03)',
-                                                                            color: 'var(--theme-text-muted)'
-                                                                        }}>
+                                                                        <div className="flex justify-center text-xs p-2.5 px-3 bg-black/15 rounded border border-white/5 text-eve-muted">
                                                                             <a
                                                                                 href="#"
                                                                                 onClick={(e) => {
                                                                                     e.preventDefault();
                                                                                     loadBlueprintFinances(job.blueprintTypeId, job.activityId, job.productTypeId);
                                                                                 }}
-                                                                                style={{
-                                                                                    color: 'var(--theme-primary)',
-                                                                                    textDecoration: 'underline'
-                                                                                }}
+                                                                                className="text-eve-primary underline"
                                                                             >
                                                                                 Gewinn & Materialwerte laden
                                                                             </a>
@@ -1191,41 +802,19 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                                                     )}
 
                                                                     {finances.materials.length > 0 && (
-                                                                        <details style={{marginTop: '0.1rem'}}>
-                                                                            <summary style={{
-                                                                                fontSize: '0.75rem',
-                                                                                color: 'var(--theme-primary)',
-                                                                                cursor: 'pointer',
-                                                                                userSelect: 'none',
-                                                                                outline: 'none'
-                                                                            }}>
-                                                                                Material-Details anzeigen
+                                                                        <details className="mt-0.5 group/details">
+                                                                            <summary className="text-xs text-eve-primary cursor-pointer select-none outline-none flex items-center gap-1.5">
+                                                                                <span>Material-Details anzeigen</span>
+                                                                                <span className="text-[9px] transition-transform duration-200 group-open/details:rotate-180">▼</span>
                                                                             </summary>
-                                                                            <div style={{
-                                                                                marginTop: '0.4rem',
-                                                                                background: 'rgba(0,0,0,0.2)',
-                                                                                padding: '0.6rem',
-                                                                                borderRadius: '4px',
-                                                                                maxHeight: '150px',
-                                                                                overflowY: 'auto',
-                                                                                display: 'flex',
-                                                                                flexDirection: 'column',
-                                                                                gap: '0.35rem',
-                                                                                border: '1px solid rgba(255,255,255,0.03)'
-                                                                            }}>
+                                                                            <div className="mt-2 bg-black/20 p-3 rounded max-h-[150px] overflow-y-auto flex flex-col gap-1.5 border border-white/5">
                                                                                 {finances.materials.map(m => {
                                                                                     const price = marketPrices[m.typeId]?.[inputCostMode] ?? 0;
                                                                                     const totalVal = price * m.quantity * job.runs;
                                                                                     return (
-                                                                                        <div key={m.typeId} style={{
-                                                                                            display: 'flex',
-                                                                                            justifyContent: 'space-between',
-                                                                                            fontSize: '0.75rem',
-                                                                                            color: '#ccc'
-                                                                                        }}>
+                                                                                        <div key={m.typeId} className="flex justify-between text-xs text-[#ccc]">
                                                                                             <span>{m.quantity * job.runs}x {m.name}</span>
-                                                                                            <span
-                                                                                                style={{fontFamily: 'monospace'}}>{formatISK(totalVal)}</span>
+                                                                                            <span className="font-mono">{formatISK(totalVal)}</span>
                                                                                         </div>
                                                                                     );
                                                                                 })}
@@ -1233,23 +822,21 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                                                                         </details>
                                                                     )}
 
-                                                                    <div className="progress-container">
-                                                                        <div className="progress-bar-wrapper">
+                                                                    <div className="mt-2">
+                                                                        <div className="bg-white/10 h-1.5 rounded-full overflow-hidden">
                                                                             <div
-                                                                                className="progress-bar-fill"
+                                                                                className="h-full rounded-full transition-all duration-500"
                                                                                 style={{
                                                                                     width: `${percent}%`,
                                                                                     backgroundColor: groupColor
                                                                                 }}
                                                                             ></div>
                                                                         </div>
-                                                                        <div className="progress-texts mt-1">
-                                                                            <span
-                                                                                className="progress-percent">{percent.toFixed(1)}%</span>
-                                                                            <span className="progress-countdown"
-                                                                                  style={{color: timeRemaining > 0 ? 'var(--theme-primary)' : '#00ffaa'}}>
-                                                                            {formatDuration(timeRemaining)}
-                                                                        </span>
+                                                                        <div className="flex justify-between text-xs font-semibold mt-1">
+                                                                            <span className="text-white/90">{percent.toFixed(1)}%</span>
+                                                                            <span className={`font-bold ${timeRemaining > 0 ? 'text-eve-primary' : 'text-emerald-400'}`}>
+                                                                                {formatDuration(timeRemaining)}
+                                                                            </span>
                                                                         </div>
                                                                     </div>
                                                                 </div>

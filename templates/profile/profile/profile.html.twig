@@ -3,44 +3,50 @@
 {% block title %}Mein Profil{% endblock %}
 
 {% block body %}
-<div class="container container-narrow mt-5 mb-6">
+<div class="w-full max-w-[800px] mx-auto px-6 mt-10 mb-12">
     <!-- Headline -->
-    <h1 class="title is-2 text-gradient">
+    <h1 class="text-3xl font-semibold mb-4 text-white text-gradient">
         Mein Profil
     </h1>
 
     <!-- Flash Messages -->
     {% for message in app.flashes('success') %}
-        <div class="notification is-success">
+        <div class="py-5 px-6 rounded-lg mb-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
             ✔️ {{ message }}
         </div>
     {% endfor %}
 
     <!-- Profile Details Box -->
-    <details class="box mt-5" id="profile-details" {% if errors is not empty %}open{% endif %}>
-        <summary>👤 User-Profil</summary>
-        <div class="details-content">
-            <div class="form-group">
-                <label>Username</label>
-                <span class="is-size-6 has-text-grey-light">{{ user.username }}</span>
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-details" {% if errors is not empty %}open{% endif %}>
+        <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
+            <span>👤 User-Profil</span>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+        <div class="p-6 border-t border-eve-border">
+            <div class="flex flex-col gap-2 mb-5">
+                <label class="font-semibold text-[0.95rem] text-white">Username</label>
+                <span class="text-base text-eve-muted">{{ user.username }}</span>
             </div>
 
             {% if not is_granted('ROLE_MEMBER') %}
-                <div class="form-group mt-4">
-                    <label>Zugriffsstatus</label>
-                    <div class="notification is-warning mb-0">
+                <div class="flex flex-col gap-2 mb-5 mt-4">
+                    <label class="font-semibold text-[0.95rem] text-white">Zugriffsstatus</label>
+                    <div class="py-5 px-6 rounded-lg bg-amber-500/10 border border-amber-500/30 text-white mb-0">
                         Dein Account ist noch nicht freigeschaltet. Bitte wende dich an einen Corp-Officer oder Administrator, um verifiziert zu werden.
                     </div>
                 </div>
             {% endif %}
 
             <!-- Password Change Form Box -->
-            <details class="profile-details-wrapper mt-4" id="profile-password-edit" {% if errors is not empty %}open{% endif %}>
-                <summary class="profile-details-summary">🔑 Passwort ändern</summary>
+            <details class="border border-dashed border-white/10 rounded-md p-3 bg-white/[0.01] mt-4 group" id="profile-password-edit" {% if errors is not empty %}open{% endif %}>
+                <summary class="cursor-pointer font-bold text-eve-primary list-none flex justify-between items-center gap-1.5 select-none text-sm">
+                    <span>🔑 Passwort ändern</span>
+                    <span class="text-[10px] transition-transform duration-200 group-open:rotate-180">▼</span>
+                </summary>
                 <div class="mt-3">
                     <!-- Errors -->
                     {% if errors is not empty %}
-                        <div class="notification is-danger mt-3">
+                        <div class="py-5 px-6 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 mt-3">
                             <ul>
                                 {% for error in errors %}
                                     <li>❌ {{ error }}</li>
@@ -53,26 +59,26 @@
                         <input type="hidden" name="_token" value="{{ csrf_token('change_password') }}">
 
                         <!-- Current Password -->
-                        <div class="form-group">
-                            <label for="current_password">Aktuelles Passwort</label>
-                            <input type="password" id="current_password" name="current_password" required placeholder="Dein aktuelles Passwort...">
-                            <p class="has-text-grey-light is-size-7 mt-1">Wird zur Verifizierung benötigt (auch bei temporären Passwörtern).</p>
+                        <div class="flex flex-col gap-2 mb-5">
+                            <label for="current_password" class="font-semibold text-[0.95rem] text-white">Aktuelles Passwort</label>
+                            <input type="password" id="current_password" name="current_password" required placeholder="Dein aktuelles Passwort..." class="w-full px-3 py-2 text-sm border rounded-lg bg-[#0f172a59] border-eve-border text-eve-text placeholder-eve-muted focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300">
+                            <p class="text-eve-muted text-xs mt-1">Wird zur Verifizierung benötigt (auch bei temporären Passwörtern).</p>
                         </div>
 
                         <!-- New Password -->
-                        <div class="form-group mt-4">
-                            <label for="new_password">Neues Passwort</label>
-                            <input type="password" id="new_password" name="new_password" required placeholder="Mindestens 6 Zeichen...">
+                        <div class="flex flex-col gap-2 mb-5 mt-4">
+                            <label for="new_password" class="font-semibold text-[0.95rem] text-white">Neues Passwort</label>
+                            <input type="password" id="new_password" name="new_password" required placeholder="Mindestens 6 Zeichen..." class="w-full px-3 py-2 text-sm border rounded-lg bg-[#0f172a59] border-eve-border text-eve-text placeholder-eve-muted focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300">
                         </div>
 
                         <!-- New Password Confirm -->
-                        <div class="form-group mt-4">
-                            <label for="new_password_confirm">Neues Passwort wiederholen</label>
-                            <input type="password" id="new_password_confirm" name="new_password_confirm" required placeholder="Neues Passwort bestätigen...">
+                        <div class="flex flex-col gap-2 mb-5 mt-4">
+                            <label for="new_password_confirm" class="font-semibold text-[0.95rem] text-white">Neues Passwort wiederholen</label>
+                            <input type="password" id="new_password_confirm" name="new_password_confirm" required placeholder="Neues Passwort bestätigen..." class="w-full px-3 py-2 text-sm border rounded-lg bg-[#0f172a59] border-eve-border text-eve-text placeholder-eve-muted focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300">
                         </div>
 
                         <!-- Submit button -->
-                        <button type="submit" class="button is-primary is-fullwidth mt-5">
+                        <button type="submit" class="w-full inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer mt-5">
                             Passwort aktualisieren
                         </button>
                     </form>
@@ -82,10 +88,13 @@
     </details>
 
     <!-- Blueprint-Tresor Freigabe-Einstellungen -->
-    <details class="box mt-5" id="profile-blueprint-sharing">
-        <summary>📑 Blueprint-Tresor Freigabe</summary>
-        <div class="details-content">
-            <p class="is-size-7 has-text-grey-light mb-4">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-blueprint-sharing">
+        <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
+            <span>📑 Blueprint-Tresor Freigabe</span>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+        <div class="p-6 border-t border-eve-border">
+            <p class="text-xs text-eve-muted mb-4">
                 Aktiviere diese Option, um deine Blueprints (Originale und Kopien) und deren Lagerorte mit anderen Mitgliedern der Corporation im "Blueprint-Tresor" zu teilen. 
                 Dies hilft der Corp, unnötige Doppelkäufe zu vermeiden und den Austausch von Produktionsmitteln zu vereinfachen.
             </p>
@@ -93,16 +102,16 @@
             <form action="{{ path('app_profile_update_blueprint_sharing') }}" method="POST">
                 <input type="hidden" name="_token" value="{{ csrf_token('update_blueprint_sharing') }}">
 
-                <div class="control mb-4">
-                    <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="checkbox" name="share_blueprints" value="1" {% if user.shareBlueprints %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                <div class="mb-4">
+                    <label class="flex items-center cursor-pointer text-xs text-eve-muted select-none">
+                        <input type="checkbox" name="share_blueprints" value="1" {% if user.shareBlueprints %}checked{% endif %} class="mr-2 cursor-pointer w-4 h-4 accent-eve-primary">
                         <span>
                             <strong>Meine Blueprints im Corp-Blueprint-Tresor freigeben</strong>
                         </span>
                     </label>
                 </div>
 
-                <button type="submit" class="button is-primary is-fullwidth mt-4">
+                <button type="submit" class="w-full inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer mt-4">
                     Freigabe-Einstellungen speichern
                 </button>
             </form>
@@ -110,10 +119,13 @@
     </details>
 
     <!-- Persönliche Corp-Assets Einstellungen -->
-    <details class="box mt-5" id="profile-personal-assets">
-        <summary>💼 Persönliche Corp-Assets (Hangare & Container)</summary>
-        <div class="details-content">
-            <p class="is-size-7 has-text-grey-light mb-4">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-personal-assets">
+        <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
+            <span>💼 Persönliche Corp-Assets (Hangare & Container)</span>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+        <div class="p-6 border-t border-eve-border">
+            <p class="text-xs text-eve-muted mb-4">
                 Hier kannst du Corp-Hangare oder darin liegende Container markieren, damit deren Inhalt zu deinem persönlichen Vermögen und deinen Assets hinzugerechnet wird. 
                 Es stehen nur Hangare und Container zur Auswahl, für deren Corporationen du mindestens einen verknüpften Charakter besitzt.
             </p>
@@ -122,9 +134,9 @@
                 <input type="hidden" name="_token" value="{{ csrf_token('update_personal_assets') }}">
 
                 <!-- Corp Hangars Section -->
-                <h3 class="title is-6 mb-2 text-gradient">🏢 Corporation Hangare</h3>
+                <h3 class="text-sm font-semibold mb-2 text-white text-gradient">🏢 Corporation Hangare</h3>
                 {% if availableHangars is not empty %}
-                    <div class="field mb-5" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; border: 1px solid var(--theme-card-border);">
+                    <div class="mb-5 max-h-[200px] overflow-y-auto bg-black/20 p-3 rounded-md border border-eve-border">
                         {% for hangar in availableHangars %}
                             {% set isChecked = false %}
                             {% for config in user.personalCorpHangars %}
@@ -132,24 +144,24 @@
                                     {% set isChecked = true %}
                                 {% endif %}
                             {% endfor %}
-                            <div class="control mb-2">
-                                <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="checkbox" name="hangars[]" value="{{ hangar.id }}" {% if isChecked %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                            <div class="mb-2">
+                                <label class="flex items-center cursor-pointer text-xs text-eve-muted select-none">
+                                    <input type="checkbox" name="hangars[]" value="{{ hangar.id }}" {% if isChecked %}checked{% endif %} class="mr-2 cursor-pointer w-4 h-4 accent-eve-primary">
                                     <span>
-                                        <strong>{{ hangar.locationName }}</strong> - <span class="has-text-info">{{ hangar.divisionName }}</span>
+                                        <strong>{{ hangar.locationName }}</strong> - <span class="text-eve-primary">{{ hangar.divisionName }}</span>
                                     </span>
                                 </label>
                             </div>
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="is-size-7 has-text-grey mb-4">Keine verfügbaren Corporation-Hangare gefunden.</p>
+                    <p class="text-xs text-eve-muted mb-4">Keine verfügbaren Corporation-Hangare gefunden.</p>
                 {% endif %}
 
                 <!-- Corp Containers Section -->
-                <h3 class="title is-6 mb-2 text-gradient">📦 Container in Corp-Hangaren</h3>
+                <h3 class="text-sm font-semibold mb-2 text-white text-gradient">📦 Container in Corp-Hangaren</h3>
                 {% if availableContainers is not empty %}
-                    <div class="field mb-5" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 6px; border: 1px solid var(--theme-card-border);">
+                    <div class="mb-5 max-h-[200px] overflow-y-auto bg-black/20 p-3 rounded-md border border-eve-border">
                         {% for container in availableContainers %}
                             {% set isChecked = false %}
                             {% for config in user.personalCorpContainers %}
@@ -157,39 +169,39 @@
                                     {% set isChecked = true %}
                                 {% endif %}
                             {% endfor %}
-                            <div class="control mb-2">
-                                <label class="checkbox has-text-grey-light" style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="checkbox" name="containers[]" value="{{ container.id }}" {% if isChecked %}checked{% endif %} class="mr-2" style="cursor: pointer;">
+                            <div class="mb-2">
+                                <label class="flex items-center cursor-pointer text-xs text-eve-muted select-none">
+                                    <input type="checkbox" name="containers[]" value="{{ container.id }}" {% if isChecked %}checked{% endif %} class="mr-2 cursor-pointer w-4 h-4 accent-eve-primary">
                                     <span>
-                                        <strong>{{ container.name }}</strong> (in {{ container.locationName }} - <span class="has-text-info">{{ container.locationFlag }}</span>)
+                                        <strong>{{ container.name }}</strong> (in {{ container.locationName }} - <span class="text-sky-400">{{ container.locationFlag }}</span>)
                                     </span>
                                 </label>
                             </div>
                         {% endfor %}
                     </div>
                 {% else %}
-                    <p class="is-size-7 has-text-grey mb-4">Keine verfügbaren Container in Corporation-Hangaren gefunden.</p>
+                    <p class="text-xs text-eve-muted mb-4">Keine verfügbaren Container in Corporation-Hangaren gefunden.</p>
                 {% endif %}
 
-                <button type="submit" class="button is-primary is-fullwidth mt-4">
+                <button type="submit" class="w-full inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer mt-4">
                     Einstellungen speichern
                 </button>
             </form>
         </div>
     </details>
 
-
-
     <!-- Custom Tracking Lists Box -->
-    <details class="box mt-5" id="tracking-manager">
-        <summary>📋 Custom Tracking-Listen</summary>
-        <div class="details-content">
-            <p class="subtitle is-6 has-text-grey-light mt-1">Erstelle persönliche Listen, verwalte Gegenstände oder kopiere System-Vorlagen. Die Einnahmen-Auswertung findest du unter "Persönlich -> Asset-Tracking".</p>
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="tracking-manager">
+        <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
+            <span>📋 Custom Tracking-Listen</span>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+        <div class="p-6 border-t border-eve-border">
+            <p class="text-sm text-eve-muted mt-1 mb-4">Erstelle persönliche Listen, verwalte Gegenstände oder kopiere System-Vorlagen. Die Einnahmen-Auswertung findest du unter "Persönlich -> Asset-Tracking".</p>
             
             {# React Island mount point #}
             <div data-react-component="TrackingListManager" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>
         </div>
     </details>
-
 </div>
 {% endblock %}

@@ -167,90 +167,47 @@ function UnassignedPocoRow({
     };
 
     return (
-        <div style={{
-            padding: '0.75rem',
-            borderRadius: '4px',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-            <div style={{
-                fontWeight: 'bold',
-                fontSize: '0.9rem',
-                marginBottom: '0.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.5rem'
-            }}>
-                <span>📍 {poco.name} <span style={{
-                    color: 'var(--theme-text-muted)',
-                    fontWeight: 'normal',
-                    fontSize: '0.8rem'
-                }}>(ID: {poco.location_id})</span></span>
-                <span style={{
-                    color: 'var(--theme-text-muted)',
-                    fontSize: '0.8rem'
-                }}>System: {poco.solar_system_name}</span>
+        <div className="p-3 rounded bg-white/5 border border-white/5">
+            <div className="font-bold text-sm mb-1 flex justify-between flex-wrap gap-2">
+                <span>
+                    📍 {poco.name}{" "}
+                    <span className="text-eve-muted font-normal text-xs">
+                        (ID: {poco.location_id})
+                    </span>
+                </span>
+                <span className="text-eve-muted text-xs">
+                    System: {poco.solar_system_name}
+                </span>
             </div>
-            <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                marginTop: '0.25rem',
-                marginBottom: '0.75rem'
-            }}>
+            <div className="flex gap-2 flex-wrap mt-1 mb-3">
                 {poco.contents.map((item) => (
-                    <span key={item.type_id} style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        fontSize: '0.8rem',
-                        padding: '0.1rem 0.4rem',
-                        borderRadius: '3px',
-                        backgroundColor: 'rgba(255,255,255,0.08)'
-                    }}>
-                        <img src={getTypeIconUrl(item.type_id)}
-                             alt={item.name} style={{
-                            width: '16px',
-                            height: '16px'
-                        }}/>
+                    <span
+                        key={item.type_id}
+                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-white/8"
+                    >
+                        <img
+                            src={getTypeIconUrl(item.type_id)}
+                            alt={item.name}
+                            className="w-4 h-4"
+                        />
                         {item.quantity.toLocaleString()}x {item.name}
                         {item.container && (
-                            <span style={{
-                                color: 'var(--theme-text-muted)',
-                                fontSize: '0.75rem',
-                                marginLeft: '0.25rem'
-                            }}>
+                            <span className="text-eve-muted text-[10px] ml-1">
                                 ({item.container})
                             </span>
                         )}
                     </span>
                 ))}
             </div>
-            <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                alignItems: 'center',
-                marginTop: '0.5rem',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                paddingTop: '0.5rem'
-            }}>
+            <div className="flex gap-2 items-center mt-2 border-t border-white/5 pt-2">
                 <select
                     value={mappingPlanetId}
                     onChange={(e) => setMappingPlanetId(e.target.value)}
                     disabled={mappingLoading}
-                    style={{
-                        padding: '0.3rem 0.5rem',
-                        borderRadius: '4px',
-                        backgroundColor: 'var(--theme-bg-dark, #1e1e24)',
-                        color: 'var(--theme-text, #ffffff)',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        fontSize: '0.85rem',
-                        flex: '1'
-                    }}
+                    className="px-2 py-1 rounded bg-[#0f172a59] text-white border border-white/15 text-xs flex-1 focus:outline-none focus:border-eve-primary"
                 >
                     <option value="">-- Planeten auswählen --</option>
-                    {planets.map(planet => (
+                    {planets.map((planet) => (
                         <option key={planet.planet_id} value={planet.planet_id}>
                             {planet.name} ({planet.type})
                         </option>
@@ -259,18 +216,13 @@ function UnassignedPocoRow({
                 <button
                     onClick={handleMapPoco}
                     disabled={!mappingPlanetId || mappingLoading}
-                    style={{
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '4px',
-                        backgroundColor: 'var(--theme-primary, #007bff)',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        opacity: (!mappingPlanetId || mappingLoading) ? 0.6 : 1
-                    }}
+                    className={`px-3 py-1 rounded bg-eve-primary text-black font-semibold text-xs cursor-pointer ${
+                        !mappingPlanetId || mappingLoading
+                            ? "opacity-60 cursor-not-allowed"
+                            : ""
+                    }`}
                 >
-                    {mappingLoading ? 'Verknüpfe...' : 'Verknüpfen'}
+                    {mappingLoading ? "Verknüpfe..." : "Verknüpfen"}
                 </button>
             </div>
         </div>
@@ -490,11 +442,11 @@ export default function PIOverview({
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Aktive Extraktoren</div>
-                        <div className="stat-value text-success">{activeExtractors}</div>
+                        <div className="stat-value text-emerald-400">{activeExtractors}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Inaktive Extraktoren</div>
-                        <div className="stat-value text-warning">{idleExtractors}</div>
+                        <div className="stat-value text-amber-400">{idleExtractors}</div>
                     </div>
                     <div className="stat-card">
                         <div className="stat-label">Fabriken</div>
@@ -512,7 +464,7 @@ export default function PIOverview({
                         placeholder="Filter nach Planet, System, Material, Fabrik..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="form-control input-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     />
                 </div>
 
@@ -521,7 +473,7 @@ export default function PIOverview({
                         <select
                             value={selectedTag}
                             onChange={(e) => setSelectedTag(e.target.value)}
-                            className="form-control select-dark"
+                            className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                         >
                             <option value="all">-- Alle Tags --</option>
                             {allTags.map(tag => (
@@ -535,7 +487,7 @@ export default function PIOverview({
                     <select
                         value={selectedSystem}
                         onChange={(e) => setSelectedSystem(e.target.value)}
-                        className="form-control select-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     >
                         <option value="">-- Alle Systeme --</option>
                         {uniqueSystems.map((sys) => (
@@ -550,7 +502,7 @@ export default function PIOverview({
                     <select
                         value={selectedMaterial}
                         onChange={(e) => setSelectedMaterial(e.target.value)}
-                        className="form-control select-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     >
                         <option value="">-- Alle Materialien --</option>
                         {uniqueMaterials.map((mat) => (
@@ -568,7 +520,7 @@ export default function PIOverview({
                             setSelectedSystem('');
                             setSelectedMaterial('');
                         }}
-                        className="btn btn-secondary btn-sm"
+                        className="inline-flex items-center justify-center border border-white/10 hover:border-eve-primary text-eve-text hover:text-eve-primary bg-white/5 hover:bg-white/10 rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer"
                     >
                         Zurücksetzen
                     </button>
@@ -584,7 +536,7 @@ export default function PIOverview({
             )}
 
             {error && (
-                <div className="pi-error-state message-danger">
+                <div className="pi-error-state p-4 rounded bg-rose-500/10 border border-rose-500/30 text-rose-400">
                     <strong>Fehler:</strong> {error}
                 </div>
             )}
@@ -615,7 +567,7 @@ export default function PIOverview({
                                                             />
                                                             <span className="char-name">{char.name}</span>
                                                             <span
-                                                                className="badge badge-secondary">{planetCount} P</span>
+                                                                className="px-2 py-0.5 text-xs font-semibold rounded bg-white/10 text-eve-muted border border-white/5">{planetCount} P</span>
                                                         </div>
                                                     );
                                                 })}
@@ -646,9 +598,9 @@ export default function PIOverview({
                                                 className="char-portrait"
                                             />
                                             <h2>{charData.character_name}</h2>
-                                            <span className="badge badge-primary">
+                                             <span className="px-2 py-0.5 text-xs font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20">
                                                 {charData.planets.length} Planeten
-                                            </span>
+                                             </span>
                                         </div>
                                         <span className="collapse-arrow">
                                             {collapsedCharacters[charData.character_id] ? '▶' : '▼'}
@@ -656,7 +608,7 @@ export default function PIOverview({
                                     </div>
 
                                     {charData.error && (
-                                        <div className="char-error message-warning">
+                                        <div className="char-error p-4 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400">
                                             {charData.error}
                                         </div>
                                     )}
@@ -911,49 +863,49 @@ export default function PIOverview({
                                                             }
                                                         });
 
-                                                        if (hasConsumption) {
-                                                            if (minDurationHours === Infinity) {
-                                                                statusText = 'Unbekannt';
-                                                                statusClass = 'badge-secondary';
-                                                            } else if (minDurationHours === 0) {
-                                                                statusText = 'Vorrat LEER!';
-                                                                statusClass = 'badge-danger';
-                                                            } else {
-                                                                const totalHours = minDurationHours;
-                                                                if (totalHours >= 24) {
-                                                                    const days = Math.floor(totalHours / 24);
-                                                                    const hours = Math.round(totalHours % 24);
-                                                                    statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                if (hasConsumption) {
+                                                                    if (minDurationHours === Infinity) {
+                                                                        statusText = 'Unbekannt';
+                                                                        statusClass = 'bg-white/10 text-eve-muted border border-white/5';
+                                                                    } else if (minDurationHours === 0) {
+                                                                        statusText = 'Vorrat LEER!';
+                                                                        statusClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                                                                    } else {
+                                                                        const totalHours = minDurationHours;
+                                                                        if (totalHours >= 24) {
+                                                                            const days = Math.floor(totalHours / 24);
+                                                                            const hours = Math.round(totalHours % 24);
+                                                                            statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                        } else {
+                                                                            statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                        }
+                                                                        statusClass = totalHours < 6 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : (totalHours < 24 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30');
+                                                                    }
                                                                 } else {
-                                                                    statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                    statusText = 'Kein Verbrauch';
+                                                                    statusClass = 'bg-white/10 text-eve-muted border border-white/5';
                                                                 }
-                                                                statusClass = totalHours < 6 ? 'badge-danger' : (totalHours < 24 ? 'badge-warning' : 'badge-success');
-                                                            }
-                                                        } else {
-                                                            statusText = 'Kein Verbrauch';
-                                                            statusClass = 'badge-secondary';
-                                                        }
-                                                    } else if (extractors.length > 0) {
-                                                        // Pure extractor planet: calculate extraction time remaining
-                                                        if (hasActiveExtractor && maxRemainingMs > 0) {
-                                                            const totalHours = maxRemainingMs / (1000 * 60 * 60);
-                                                            if (totalHours >= 24) {
-                                                                const days = Math.floor(totalHours / 24);
-                                                                const hours = Math.round(totalHours % 24);
-                                                                statusText = `Abbau: ${days}d ${hours}h`;
+                                                            } else if (extractors.length > 0) {
+                                                                // Pure extractor planet: calculate extraction time remaining
+                                                                if (hasActiveExtractor && maxRemainingMs > 0) {
+                                                                    const totalHours = maxRemainingMs / (1000 * 60 * 60);
+                                                                    if (totalHours >= 24) {
+                                                                        const days = Math.floor(totalHours / 24);
+                                                                        const hours = Math.round(totalHours % 24);
+                                                                        statusText = `Abbau: ${days}d ${hours}h`;
+                                                                    } else {
+                                                                        const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
+                                                                        statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
+                                                                    }
+                                                                    statusClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                                                                } else {
+                                                                    statusText = 'Abbau beendet!';
+                                                                    statusClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                                                                }
                                                             } else {
-                                                                const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
-                                                                statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
+                                                                statusText = 'Inaktiv';
+                                                                statusClass = 'bg-white/10 text-eve-muted border border-white/5';
                                                             }
-                                                            statusClass = 'badge-success';
-                                                        } else {
-                                                            statusText = 'Abbau beendet!';
-                                                            statusClass = 'badge-danger';
-                                                        }
-                                                    } else {
-                                                        statusText = 'Inaktiv';
-                                                        statusClass = 'badge-secondary';
-                                                    }
 
                                                     return (
                                                         <div key={planet.planet_id}
@@ -988,13 +940,13 @@ export default function PIOverview({
                                                                     ))}
                                                                     {launchpadCapacity > 0 && (
                                                                         <span
-                                                                            className={`badge ${launchpadPercent >= 90 ? 'badge-danger' : (launchpadPercent >= 75 ? 'badge-warning' : 'badge-success')}`}
+                                                                            className={`px-2 py-0.5 text-xs font-semibold rounded ${launchpadPercent >= 90 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : (launchpadPercent >= 75 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')}`}
                                                                             title={`Launchpad-Auslastung: ${Math.round(launchpadVolumeUsed).toLocaleString()} / ${launchpadCapacity.toLocaleString()} m³ (${Math.round(launchpadPercent)}%)`}
                                                                         >
                                                                         🚀 {Math.round(launchpadPercent)}%
                                                                     </span>
                                                                     )}
-                                                                    <span className={`badge ${statusClass}`}>
+                                                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded ${statusClass}`}>
                                                                     {statusText}
                                                                 </span>
                                                                     <span className="collapse-arrow">
@@ -1071,7 +1023,7 @@ export default function PIOverview({
                                                                                 (POCO): {planet.poco.name}</h4>
                                                                             {planet.poco.resolved ? (
                                                                                 <span
-                                                                                    className="resolved-status text-success">✓ Verbunden</span>
+                                                                                    className="resolved-status text-emerald-400">✓ Verbunden</span>
                                                                             ) : (
                                                                                 <span
                                                                                     className="resolved-status text-muted">⚠ Unverbunden</span>
@@ -1131,7 +1083,7 @@ export default function PIOverview({
                                                                                             <div
                                                                                                 className="pi-progress-bar-container">
                                                                                                 <div
-                                                                                                    className={`pi-progress-bar ${percent >= 90 ? 'bg-danger' : (percent >= 75 ? 'bg-warning' : 'bg-success')}`}
+                                                                                                    className={`pi-progress-bar ${percent >= 90 ? 'bg-rose-500' : (percent >= 75 ? 'bg-amber-500' : 'bg-emerald-500')}`}
                                                                                                     style={{width: `${Math.min(percent, 100)}%`}}
                                                                                                 />
                                                                                             </div>

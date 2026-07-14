@@ -219,32 +219,28 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
     }, [processedData.historyList]);
 
     return (
-        <div className="section p-0">
-            <div className="level">
-                <div className="level-left">
-                    <h1 className="title is-3" style={{ color: 'var(--theme-primary)', textShadow: '0 0 10px rgba(0, 240, 255, 0.3)' }}>
+        <div className="w-full">
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-eve-primary" style={{ textShadow: '0 0 10px rgba(0, 240, 255, 0.3)' }}>
                         📈 Vermögensverlauf
                     </h1>
                 </div>
-                <div className="level-right">
-                    <div className="field is-horizontal align-items-center" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span className="has-text-grey-light is-size-7">Charakter filtern:</span>
-                        <div className="select is-small">
+                <div className="flex items-center ml-auto">
+                    <div className="flex gap-2 items-center">
+                        <span className="text-xs text-eve-muted">Charakter filtern:</span>
+                        <div className="relative">
                             <select
                                 value={selectedCharacterId}
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     setSelectedCharacterId(val === 'all' ? 'all' : parseInt(val, 10));
                                 }}
-                                style={{
-                                    backgroundColor: 'var(--theme-card-bg)',
-                                    color: 'var(--theme-text)',
-                                    borderColor: 'var(--theme-card-border)'
-                                }}
+                                className="rounded px-2.5 py-1 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
                             >
-                                <option value="all">Alle Charaktere (Kombiniert)</option>
+                                <option value="all" style={{ background: '#101525' }}>Alle Charaktere (Kombiniert)</option>
                                 {characters.map(char => (
-                                    <option key={char.id} value={char.id}>{char.name}</option>
+                                    <option key={char.id} value={char.id} style={{ background: '#101525' }}>{char.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -253,33 +249,34 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             </div>
 
             {/* Statistics Cards */}
-            <div className="columns mb-4">
-                <div className="column">
-                    <div className="box" style={{ position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'var(--theme-primary)' }}></div>
-                        <p className="subtitle is-7 mb-2 uppercase" style={{ tracking: '1px', fontSize: '0.75rem' }}>Gesamtvermögen</p>
-                        <p className="title is-4 mb-1" style={{ color: '#fff' }}>
+            <div className="flex flex-wrap gap-6 mb-6">
+                <div className="flex-1 min-w-[280px]">
+                    <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-[3px] bg-eve-primary"></div>
+                        <p className="text-xs text-eve-muted mb-2 uppercase tracking-wider">Gesamtvermögen</p>
+                        <p className="text-xl font-bold mb-1 text-white">
                             {formatIskShort(processedData.currentTotal)}
                         </p>
-                        <div className="is-size-7 has-text-grey-light" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div className="text-xs text-eve-muted flex justify-between">
                             <span>Liquid: {formatIskShort(processedData.currentWallet)}</span>
                             <span>Assets: {formatIskShort(processedData.currentAssets)}</span>
                         </div>
                     </div>
                 </div>
                 
-                <div className="column">
-                    <div className="box" style={{ position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ 
-                            position: 'absolute', top: 0, left: 0, right: 0, height: '3px', 
-                            background: processedData.todayEarned > 0 ? '#00ffaa' : processedData.todayEarned < 0 ? '#f14668' : 'var(--theme-text-muted)' 
-                        }}></div>
-                        <p className="subtitle is-7 mb-2 uppercase" style={{ tracking: '1px', fontSize: '0.75rem' }}>Gewinn heute (Bisher)</p>
-                        <p className={`title is-4 mb-1 ${processedData.todayEarned > 0 ? 'has-text-success' : processedData.todayEarned < 0 ? 'has-text-danger' : ''}`}
-                           style={{ color: processedData.todayEarned > 0 ? '#00ffaa' : processedData.todayEarned < 0 ? '#f14668' : undefined }}>
+                <div className="flex-1 min-w-[280px]">
+                    <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg relative overflow-hidden">
+                        <div 
+                            className="absolute top-0 left-0 right-0 h-[3px]"
+                            style={{ 
+                                background: processedData.todayEarned > 0 ? '#00ffaa' : processedData.todayEarned < 0 ? '#f14668' : 'var(--theme-text-muted)' 
+                            }}
+                        ></div>
+                        <p className="text-xs text-eve-muted mb-2 uppercase tracking-wider">Gewinn heute (Bisher)</p>
+                        <p className={`text-xl font-bold mb-1 ${processedData.todayEarned > 0 ? 'text-emerald-400' : processedData.todayEarned < 0 ? 'text-rose-400' : 'text-white'}`}>
                             {processedData.todayEarned > 0 ? '+' : ''}{formatIsk(processedData.todayEarned)}
                         </p>
-                        <p className="is-size-7 has-text-grey-light">Vergleich mit dem Stand von gestern</p>
+                        <p className="text-xs text-eve-muted">Vergleich mit dem Stand von gestern</p>
                     </div>
                 </div>
             </div>
@@ -287,10 +284,10 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             {/* Daily History (Directly visible) */}
             <div>
                 {/* SVG Area Chart */}
-                <div className="box mb-4" style={{ background: 'rgba(10, 15, 28, 0.8)', padding: '1.5rem', overflowX: 'auto' }}>
-                    <h3 className="title is-6 has-text-grey-light mb-3">Nettovermögen Entwicklung</h3>
+                <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 overflow-x-auto" style={{ background: 'rgba(10, 15, 28, 0.8)' }}>
+                    <h3 className="text-sm font-semibold text-eve-muted mb-3">Nettovermögen Entwicklung</h3>
                     {chartSvg ? (
-                        <div style={{ position: 'relative', width: '100%', minWidth: '850px' }}>
+                        <div className="relative w-full min-w-[850px]">
                             <svg viewBox={`0 0 ${chartSvg.width} ${chartSvg.height}`} width="100%" height={chartSvg.height}>
                                 <defs>
                                     <linearGradient id="networthGlow" x1="0" y1="0" x2="0" y2="1">
@@ -382,42 +379,42 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                             )}
                         </div>
                     ) : (
-                        <p className="has-text-grey-light is-size-7 has-text-centered py-5">
+                        <p className="text-xs text-eve-muted text-center py-5">
                             Mindestens 2 Tage mit Daten sind erforderlich, um das Diagramm zu zeichnen.
                         </p>
                     )}
                 </div>
 
                 {/* Daily History Table */}
-                <div className="box">
-                    <h3 className="title is-6 has-text-grey-light mb-3">Tägliche Aufzeichnungen</h3>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="table is-fullwidth" style={{ backgroundColor: 'transparent', color: 'var(--theme-text)' }}>
+                <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                    <h3 className="text-sm font-semibold text-eve-muted mb-3">Tägliche Aufzeichnungen</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-xs bg-transparent text-eve-text">
                             <thead>
-                                <tr style={{ borderBottom: '2px solid var(--theme-card-border)' }}>
-                                    <th style={{ color: 'var(--theme-text-muted)' }}>Datum</th>
-                                    <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right' }}>Liquid (Wallet)</th>
-                                    <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right' }}>Assets (Gegenstände)</th>
-                                    <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right' }}>Gesamtwert</th>
-                                    <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right' }}>Veränderung</th>
+                                <tr className="border-b border-eve-border">
+                                    <th className="text-left font-semibold text-eve-muted p-2">Datum</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Liquid (Wallet)</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Assets (Gegenstände)</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Gesamtwert</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Veränderung</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-white/5">
                                 {processedData.historyList.slice().reverse().map((entry, index) => (
-                                    <tr key={index} style={{ borderBottom: '1px solid rgba(0, 240, 255, 0.05)' }}>
-                                        <td style={{ fontWeight: 500 }}>
+                                    <tr key={index} className="hover:bg-white/2">
+                                        <td className="p-2 font-medium">
                                             {formatDateGerman(entry.date)} {entry.date === todayStr ? ' (Heute)' : ''}
                                         </td>
-                                        <td style={{ textAlign: 'right' }}>{formatIsk(entry.wallet)}</td>
-                                        <td style={{ textAlign: 'right' }}>{formatIsk(entry.assets)}</td>
-                                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatIsk(entry.total)}</td>
+                                        <td className="p-2 text-right font-mono">{formatIsk(entry.wallet)}</td>
+                                        <td className="p-2 text-right font-mono">{formatIsk(entry.assets)}</td>
+                                        <td className="p-2 text-right font-bold font-mono">{formatIsk(entry.total)}</td>
                                         <td style={{ 
                                             textAlign: 'right', 
                                             fontWeight: 'bold', 
                                             color: !entry.hasPrev ? 'var(--theme-text-muted)' : entry.change > 0 ? '#00ffaa' : entry.change < 0 ? '#f14668' : 'var(--theme-text)'
-                                        }}>
+                                        }} className="p-2 font-mono">
                                             {!entry.hasPrev ? (
-                                                <span className="has-text-grey-light">Startwert</span>
+                                                <span className="text-eve-muted">Startwert</span>
                                             ) : (
                                                 <span>
                                                     {entry.change > 0 ? '+' : ''}

@@ -1,85 +1,80 @@
-<div class="brand-title-container">
-    <a class="brand-title" href="{{ path('home') }}">
+<!-- Top Brand Title (Desktop only) -->
+<div class="hidden lg:block text-center pt-6 pb-3">
+    <a class="tracking-wider uppercase text-transparent bg-clip-text bg-gradient-to-r from-eve-primary to-purple-400 text-3xl font-bold no-underline inline-block transition-all hover:scale-102 hover:opacity-95" href="{{ path('home') }}">
         Keepers of Duat
     </a>
 </div>
 
-<nav class="navbar" role="navigation" aria-label="main navigation" data-controller="navbar">
-
-    <div class="container">
-
-        <div class="navbar-brand">
-            <a class="navbar-item brand-mobile-title" href="{{ path('home') }}">
+<nav class="relative z-30 bg-[#0d121fe6] border-b border-eve-border backdrop-blur-md mb-8" role="navigation" aria-label="main navigation" data-controller="navbar">
+    <div class="w-full max-w-[1200px] mx-auto px-6">
+        
+        <!-- Brand & Burger (Mobile only) -->
+        <div class="flex items-center justify-between lg:hidden w-full h-13">
+            <a class="uppercase tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-eve-primary to-purple-400 text-lg font-bold no-underline" href="{{ path('home') }}">
                 Keepers of Duat
             </a>
-            <button class="navbar-burger" aria-label="menu" aria-expanded="false" data-navbar-target="burger" data-action="click->navbar#toggle">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
+            <button class="flex flex-col justify-center items-center gap-1 w-13 h-13 bg-transparent border-none cursor-pointer z-40 group" aria-label="menu" aria-expanded="false" data-navbar-target="burger" data-action="click->navbar#toggle">
+                <span class="block w-5 h-[2px] bg-eve-primary rounded-[2px] transition-transform duration-300 [.is-active_&]:translate-y-[6px] [.is-active_&]:rotate-45"></span>
+                <span class="block w-5 h-[2px] bg-eve-primary rounded-[2px] transition-opacity duration-300 [.is-active_&]:opacity-0"></span>
+                <span class="block w-5 h-[2px] bg-eve-primary rounded-[2px] transition-transform duration-300 [.is-active_&]:-translate-y-[6px] [.is-active_&]:-rotate-45"></span>
             </button>
         </div>
 
-        <div class="navbar-menu" data-navbar-target="menu">
-            <div class="navbar-start">
+        <!-- Menu -->
+        <div class="hidden lg:flex lg:items-center lg:justify-between w-full bg-[#0d121ffa] lg:bg-transparent border border-eve-border lg:border-none shadow-eve lg:shadow-none rounded-lg lg:rounded-none p-4 lg:p-0 absolute lg:static left-6 right-6 top-full [&.is-active]:block" data-navbar-target="menu">
+            <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-6 w-full lg:w-auto">
                 {% if is_granted('ROLE_MEMBER') %}
-                    <!-- Allgemein -->
-                    <div class="navbar-item has-dropdown" data-controller="dropdown">
-                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
-                            Allgemein <span class="dropdown-caret">▼</span>
+                    
+                    <!-- Allgemein Dropdown -->
+                    <div class="relative group" data-controller="dropdown">
+                        <a class="cursor-pointer flex items-center gap-2 py-2 lg:py-0 font-semibold text-eve-primary hover:text-eve-primary-hover bg-transparent select-none no-underline transition-colors duration-200" data-action="click->dropdown#toggle">
+                            Allgemein <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
-                        <div class="navbar-dropdown">
-                            <a class="navbar-item" href="{{ path('link_collection') }}">Linksammlung</a>
-                            <a class="navbar-item" href="{{ path('app_suggestions') }}">Vorschläge</a>
-                            <a class="navbar-item" href="{{ path('app_general_reactions') }}">Wurmloch-Reaktionen</a>
+                        <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('link_collection') }}">Linksammlung</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_suggestions') }}">Vorschläge</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_general_reactions') }}">Wurmloch-Reaktionen</a>
                         </div>
                     </div>
 
-                    <!-- Corp -->
-                    <div class="navbar-item has-dropdown" data-controller="dropdown">
-                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
-                            Corp <span class="dropdown-caret">▼</span>
+                    <!-- Corp Dropdown -->
+                    <div class="relative group" data-controller="dropdown">
+                        <a class="cursor-pointer flex items-center gap-2 py-2 lg:py-0 font-semibold text-eve-primary hover:text-eve-primary-hover bg-transparent select-none no-underline transition-colors duration-200" data-action="click->dropdown#toggle">
+                            Corp <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
-                        <div class="navbar-dropdown">
-                            <a class="navbar-item" href="{{ path('app_order_list') }}">Orders</a>
-                            <a class="navbar-item" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
-                            <a class="navbar-item" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>
+                        <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_order_list') }}">Orders</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>
                         </div>
                     </div>
 
-                    <!-- Persönlich -->
-                    <div class="navbar-item has-dropdown" data-controller="dropdown">
-                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
-                            Persönlich <span class="dropdown-caret">▼</span>
+                    <!-- Persönlich Dropdown -->
+                    <div class="relative group" data-controller="dropdown">
+                        <a class="cursor-pointer flex items-center gap-2 py-2 lg:py-0 font-semibold text-eve-primary hover:text-eve-primary-hover bg-transparent select-none no-underline transition-colors duration-200" data-action="click->dropdown#toggle">
+                            Persönlich <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
-                        <div class="navbar-dropdown">
-                            <a class="navbar-item" href="{{ path('app_profile') }}" data-turbo="false">
-                                Mein Profil
-                            </a>
-                            <a class="navbar-item" href="{{ path('app_profile_characters') }}" data-turbo="false">Charakterübersicht</a>
-                            <a class="navbar-item" href="{{ path('app_profile_skill_farm') }}" data-turbo="false">Skill-Farmen</a>
-                            <a class="navbar-item" href="{{ path('app_dashboard_pi_overview') }}" data-turbo="false">PI-Planung</a>
-                            <a class="navbar-item" href="{{ path('app_dashboard_mining_ledger') }}" data-turbo="false">Bergbautagebuch</a>
-                            <a class="navbar-item" href="{{ path('app_dashboard_industry_overview') }}" data-turbo="false">Industrie-Aufträge</a>
-                            <a class="navbar-item" href="{{ path('app_dashboard_assets_overview') }}" data-turbo="false">Inventar & Wallet</a>
+                        <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_profile') }}" data-turbo="false">Mein Profil</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_profile_characters') }}" data-turbo="false">Charakterübersicht</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_profile_skill_farm') }}" data-turbo="false">Skill-Farmen</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_dashboard_pi_overview') }}" data-turbo="false">PI-Planung</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_dashboard_mining_ledger') }}" data-turbo="false">Bergbautagebuch</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_dashboard_industry_overview') }}" data-turbo="false">Industrie-Aufträge</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_dashboard_assets_overview') }}" data-turbo="false">Inventar & Wallet</a>
                         </div>
                     </div>
 
                     {% if is_granted('ROLE_CEO') %}
-                    <!-- Admin Panel -->
-                    <div class="navbar-item has-dropdown" data-controller="dropdown">
-                        <a class="navbar-link is-arrowless" data-action="click->dropdown#toggle">
-                            ⚙️ Admin-Panel <span class="dropdown-caret">▼</span>
+                    <!-- Admin Panel Dropdown -->
+                    <div class="relative group" data-controller="dropdown">
+                        <a class="cursor-pointer flex items-center gap-2 py-2 lg:py-0 font-semibold text-eve-primary hover:text-eve-primary-hover bg-transparent select-none no-underline transition-colors duration-200" data-action="click->dropdown#toggle">
+                            ⚙️ Admin-Panel <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
-                        <div class="navbar-dropdown">
-                            <a class="navbar-item" href="{{ path('app_admin_users') }}" data-turbo="false">
-                                Benutzerverwaltung
-                            </a>
-                            <a class="navbar-item" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">
-                                Hangar-Sichtbarkeit
-                            </a>
-                            <a class="navbar-item" href="{{ path('app_admin_cron_index') }}" data-turbo="false">
-                                Cron-Jobs
-                            </a>
+                        <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_admin_users') }}" data-turbo="false">Benutzerverwaltung</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
+                            <a class="block w-full text-left text-eve-muted hover:text-eve-primary hover:bg-white/5 px-5 py-2 no-underline transition-colors duration-200" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
                         </div>
                     </div>
                     {% endif %}
@@ -87,14 +82,14 @@
                 {% endif %}
             </div>
 
-            <div class="navbar-end">
+            <div class="flex items-center gap-4 mt-4 lg:mt-0">
                 {% if app.user %}
-                    <a class="navbar-item" href="{{ path('app_logout') }}">
+                    <a class="cursor-pointer py-2 lg:py-0 font-medium text-eve-muted hover:text-eve-primary no-underline transition-colors duration-200" href="{{ path('app_logout') }}">
                         🚪 Logout
                     </a>
                 {% else %}
-                    <div class="navbar-item">
-                        <a class="button is-small is-primary" href="{{ path('app_login') }}" data-turbo="false">
+                    <div class="py-2 lg:py-0">
+                        <a class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5" href="{{ path('app_login') }}" data-turbo="false">
                             Login
                         </a>
                     </div>

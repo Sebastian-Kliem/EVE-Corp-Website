@@ -3,59 +3,53 @@
 {% block title %}Linksammlung{% endblock %}
 
 {% block body %}
-<div class="container mt-5">
-    <h2 class="title is-3 title-bordered mb-5">Linksammlung</h2>
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-12 mb-16">
+    <h2 class="text-2xl font-semibold border-b border-eve-border pb-2 mb-6 text-white">Linksammlung</h2>
 
     {% if categories|length == 0 %}
-        <div class="box">
-            <p class="subtitle is-5">Es sind noch keine Einträge enthalten.</p>
+        <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg">
+            <p class="text-lg font-normal text-eve-muted">Es sind noch keine Einträge enthalten.</p>
         </div>
     {% else %}
         {% for category in categories %}
             {# Finde die Links dieser Kategorie #}
             {% set categoryLinks = groupedLinks[category.name] ?? [] %}
             
-            <div class="box category-block mb-5">
+            <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg mb-6 relative">
                 
-                <div class="is-flex is-justify-content-space-between is-align-items-center mb-4 category-header">
-                    <h3 class="title is-4 mb-0 has-text-primary">
+                <div class="flex justify-between items-center mb-4 border-b border-eve-border/30 pb-2">
+                    <h3 class="text-xl font-bold text-eve-primary mb-0">
                         {{ category.name }}
                     </h3>
                     
                     {% if is_granted('ROLE_OFFICER') %}
                         {# Einklappbares Formular zum Erstellen eines Links direkt in dieser Kategorie #}
-                        <details class="compact-box category-add-link-details">
-                            <summary class="category-add-summary" title="Link in „{{ category.name }}“ hinzufügen">
-                                <img src="{{ asset('images/add_button.png') }}" class="add-link-btn-img" alt="Hinzufügen">
+                        <details class="relative max-w-[600px] m-0 group">
+                            <summary class="cursor-pointer select-none rounded p-1.5 hover:bg-white/5 transition-colors duration-200 inline-flex items-center" title="Link in „{{ category.name }}“ hinzufügen">
+                                <img src="{{ asset('images/add_button.png') }}" class="w-7 h-7 cursor-pointer transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_6px_var(--theme-primary)]" alt="Hinzufügen">
                             </summary>
-                            <div class="box mt-3 add-link-dropdown">
-                                <h4 class="title is-5">Neuen Link hinzufügen</h4>
+                            <div class="absolute right-0 w-[320px] text-left z-50 border border-eve-primary bg-[#0f172af2] rounded-lg p-5 mt-3 shadow-eve">
+                                <h4 class="text-lg font-semibold mb-4 text-white">Neuen Link hinzufügen</h4>
                                 <form method="post" action="{{ path('link_create_link') }}">
                                     <input type="hidden" name="Category" value="{{ category.id }}">
                                     
-                                    <div class="field">
-                                        <label class="label" for="Name_{{ category.id }}">Name:</label>
-                                        <div class="control">
-                                            <input class="input" type="text" id="Name_{{ category.id }}" name="Name" required>
-                                        </div>
+                                    <div class="flex flex-col gap-2 mb-4">
+                                        <label class="text-sm font-semibold text-white" for="Name_{{ category.id }}">Name:</label>
+                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="Name_{{ category.id }}" name="Name" required>
                                     </div>
 
-                                    <div class="field">
-                                        <label class="label" for="URL_{{ category.id }}">URL:</label>
-                                        <div class="control">
-                                            <input class="input" type="url" id="URL_{{ category.id }}" name="URL" placeholder="https://" required>
-                                        </div>
+                                    <div class="flex flex-col gap-2 mb-4">
+                                        <label class="text-sm font-semibold text-white" for="URL_{{ category.id }}">URL:</label>
+                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="url" id="URL_{{ category.id }}" name="URL" placeholder="https://" required>
                                     </div>
 
-                                    <div class="field">
-                                        <label class="label" for="Description_{{ category.id }}">Beschreibung:</label>
-                                        <div class="control">
-                                            <textarea class="textarea" id="Description_{{ category.id }}" name="Description" rows="2"></textarea>
-                                        </div>
+                                    <div class="flex flex-col gap-2 mb-4">
+                                        <label class="text-sm font-semibold text-white" for="Description_{{ category.id }}">Beschreibung:</label>
+                                        <textarea class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 resize-y" id="Description_{{ category.id }}" name="Description" rows="2"></textarea>
                                     </div>
 
-                                    <div class="control mt-4">
-                                        <input class="button is-primary is-fullwidth" type="submit" value="Link speichern">
+                                    <div class="mt-4">
+                                        <input class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" type="submit" value="Link speichern">
                                     </div>
                                 </form>
                             </div>
@@ -63,19 +57,19 @@
                     {% endif %}
                 </div>
                 
-                <div class="content pl-3 mb-5 category-links-container">
+                <div class="border-l-2 border-eve-border/30 pl-4 mt-4 mb-2">
                     {% if categoryLinks|length == 0 %}
-                        <p class="has-text-grey-light italic mb-0">Keine Links in dieser Kategorie vorhanden.</p>
+                        <p class="text-eve-muted italic mb-0">Keine Links in dieser Kategorie vorhanden.</p>
                     {% else %}
                         {% for link in categoryLinks %}
-                            <div class="link-item mb-4">
-                                <h4 class="title is-5 mb-1">
-                                    <a href="{{ link.url }}" target="_blank" class="has-text-primary">
+                            <div class="mb-4 last:mb-0">
+                                <h4 class="text-base font-semibold mb-1">
+                                    <a href="{{ link.url }}" target="_blank" class="text-eve-primary hover:text-eve-primary-hover underline transition-colors duration-150">
                                         {{ link.name }}
                                     </a>
                                 </h4>
                                 {% if link.description %}
-                                    <p class="has-text-grey-light">{{ link.description }}</p>
+                                    <p class="text-sm text-eve-muted ml-2">{{ link.description }}</p>
                                 {% endif %}
                             </div>
                         {% endfor %}
@@ -88,21 +82,20 @@
 
     {# Ganz unten: Kategorie erstellen #}
     {% if is_granted('ROLE_OFFICER') %}
-        <details class="box mb-5 compact-box category-create-details">
-            <summary class="font-weight-600">
+        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[600px] mt-12 group">
+            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
                 <span>+ Neue Kategorie erstellen</span>
+                <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
             </summary>
-            <div class="details-content">
+            <div class="border-t border-eve-border p-6 bg-black/15">
                 <form method="post" action="{{ path('link_create_category') }}">
-                    <div class="field">
-                        <label class="label" for="CategoryName">Name der neuen Kategorie:</label>
-                        <div class="control">
-                            <input class="input" type="text" id="CategoryName" name="CategoryName" required>
-                        </div>
+                    <div class="flex flex-col gap-2 mb-4">
+                        <label class="text-sm font-semibold text-white" for="CategoryName">Name der neuen Kategorie:</label>
+                        <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="CategoryName" name="CategoryName" required>
                     </div>
 
-                    <div class="control mt-4">
-                        <input class="button is-primary is-fullwidth" type="submit" value="Kategorie erstellen">
+                    <div class="mt-6">
+                        <input class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" type="submit" value="Kategorie erstellen">
                     </div>
                 </form>
             </div>
