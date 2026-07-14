@@ -108,7 +108,7 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
         charactersList.forEach(c => {
             if (c.tags) {
                 c.tags.forEach(t => {
-                    if (t !== 'Kopierer' && t !== 'Kopier-Alt' && t !== 'Copy-Alt' && t !== 'Copy-Char') {
+                    if (t !== 'Copy-Char') {
                         tags.add(t);
                     }
                 });
@@ -709,10 +709,11 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                 </div>
                 <div className="columns is-multiline">
                     <div className="column is-12 mt-1"
-                         style={{display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center'}}>
+                          style={{display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center'}}>
                         <button
                             className="button is-small"
                             onClick={() => setOnlyKopiererMode(prev => !prev)}
+                            title="Weise deinen Charakteren das Tag 'Copy-Char' in den Einstellungen zu, damit sie hier gruppiert werden."
                             style={{
                                 background: onlyKopiererMode ? 'var(--theme-primary)' : '#101525',
                                 color: onlyKopiererMode ? '#000' : '#ccc',
@@ -755,12 +756,7 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
             {charactersData
                 .filter((char) => {
                     const charObj = charactersList.find(c => c.id === char.id);
-                    const isKopierer = charObj && charObj.tags && (
-                        charObj.tags.includes('Kopierer') ||
-                        charObj.tags.includes('Kopier-Alt') ||
-                        charObj.tags.includes('Copy-Alt') ||
-                        charObj.tags.includes('Copy-Char')
-                    );
+                    const isKopierer = charObj && charObj.tags && charObj.tags.includes('Copy-Char');
 
                     if (onlyKopiererMode) {
                         return isKopierer;

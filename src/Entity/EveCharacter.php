@@ -374,7 +374,7 @@ class EveCharacter
         return $this;
     }
 
-    public const PREDEFINED_TAGS = ['Skill-Extractor-Farm', 'PI', 'Industrie', 'Mining', 'Combat', 'Trading'];
+    public const PREDEFINED_TAGS = ['Skill-Extractor-Farm', 'PI', 'Industrie', 'Mining', 'Combat', 'Trading', 'Copy-Char'];
 
     public function getTags(): array
     {
