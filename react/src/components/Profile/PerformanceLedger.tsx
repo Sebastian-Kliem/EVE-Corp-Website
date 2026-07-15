@@ -570,21 +570,21 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
     return (
         <div className="perf-ledger-container">
-            <div className="stats-panel">
-                <div className="stat-box" style={{ borderLeft: '4px solid var(--theme-primary)' }}>
-                    <span className="stat-label">Gesamtertrag (Netto)</span>
-                    <span className="stat-val" style={{ color: 'var(--theme-primary)' }}>{formatISK(totalEarnings.total)}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-[#0d132099] border border-eve-border rounded-lg p-4 flex flex-col justify-between" style={{ borderLeft: '4px solid var(--theme-primary)' }}>
+                    <span className="text-xs text-eve-muted mb-1">Gesamtertrag (Netto)</span>
+                    <span className="text-lg font-bold truncate" style={{ color: 'var(--theme-primary)' }}>{formatISK(totalEarnings.total)}</span>
                 </div>
-                <div className="stat-box" style={{ borderLeft: '4px solid #3ab0ff' }}>
-                    <span className="stat-label">Ø Tagesgewinn (30 Tage)</span>
-                    <span className="stat-val" style={{ color: '#3ab0ff' }}>{formatISK(average30Days)}</span>
+                <div className="bg-[#0d132099] border border-eve-border rounded-lg p-4 flex flex-col justify-between" style={{ borderLeft: '4px solid #3ab0ff' }}>
+                    <span className="text-xs text-eve-muted mb-1">Ø Tagesgewinn (30 Tage)</span>
+                    <span className="text-lg font-bold truncate" style={{ color: '#3ab0ff' }}>{formatISK(average30Days)}</span>
                 </div>
                 {Object.entries(totalEarnings.byCat).map(([cat, val]) => {
                     if (val === 0) return null;
                     return (
-                        <div key={cat} className="stat-box" style={{ borderLeft: `4px solid ${CATEGORY_COLORS[cat]}` }}>
-                            <span className="stat-label">{CATEGORY_NAMES[cat]}</span>
-                            <span className="stat-val">{formatISK(val)}</span>
+                        <div key={cat} className="bg-[#0d132099] border border-eve-border rounded-lg p-4 flex flex-col justify-between" style={{ borderLeft: `4px solid ${CATEGORY_COLORS[cat]}` }}>
+                            <span className="text-xs text-eve-muted mb-1">{CATEGORY_NAMES[cat]}</span>
+                            <span className="text-lg font-bold truncate">{formatISK(val)}</span>
                         </div>
                     );
                 })}
@@ -658,11 +658,11 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
             {/* Top filter panel */}
             <div className="filter-panel-top mb-4">
-                <div className="filter-grid-top">
-                    <div className="filter-column">
-                        <div className="filter-title">Zeitraum</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="flex flex-col gap-2">
+                        <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider">Zeitraum</div>
                         <select
-                            className="select-input"
+                            className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm cursor-pointer focus:border-eve-primary focus:outline-none"
                             value={selectedDateRange}
                             onChange={(e) => setSelectedDateRange(e.target.value)}
                         >
@@ -675,10 +675,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     </div>
 
                     {allTags.length > 0 && (
-                        <div className="filter-column">
-                            <div className="filter-title">Tag-Filter</div>
+                        <div className="flex flex-col gap-2">
+                            <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider">Tag-Filter</div>
                             <select
-                                className="select-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm cursor-pointer focus:border-eve-primary focus:outline-none"
                                 value={selectedTag}
                                 onChange={(e) => setSelectedTag(e.target.value)}
                             >
@@ -690,11 +690,11 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         </div>
                     )}
 
-                    <div className="filter-column">
-                        <div className="filter-title">Suche Gegenstand</div>
+                    <div className="flex flex-col gap-2">
+                        <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider">Suche Gegenstand</div>
                         <input
                             type="text"
-                            className="ledger-input"
+                            className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
                             placeholder="z.B. Fullerite..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -703,10 +703,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
                     {availableCharacters.length > 0 && (
                         <div className="filter-column filter-column-wide">
-                            <div className="filter-title">Charaktere</div>
-                            <div className="filter-checkbox-group">
+                            <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider">Charaktere</div>
+                            <div className="flex flex-wrap gap-x-5 gap-y-2">
                                 {availableCharacters.map(char => (
-                                    <label key={char} className="filter-row">
+                                    <label key={char} className="flex items-center gap-2 mb-2 text-sm cursor-pointer select-none text-eve-text hover:text-white">
                                         <input
                                             type="checkbox"
                                             checked={selectedCharacters.includes(char)}
@@ -720,10 +720,10 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     )}
 
                     <div className="filter-column filter-column-wide">
-                        <div className="filter-title">Kategorien</div>
-                        <div className="filter-checkbox-group">
+                        <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider">Kategorien</div>
+                        <div className="flex flex-wrap gap-x-5 gap-y-2">
                             {Object.entries(CATEGORY_NAMES).map(([cat, name]) => (
-                                <label key={cat} className="filter-row">
+                                <label key={cat} className="flex items-center gap-2 mb-2 text-sm cursor-pointer select-none text-eve-text hover:text-white">
                                     <input
                                         type="checkbox"
                                         checked={selectedCategories.includes(cat)}
@@ -739,7 +739,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             </div>
 
             {/* Ledger list */}
-            <div className="day-list">
+            <div className="flex flex-col gap-4">
                 {filteredLedger.length === 0 ? (
                     <div className="box has-text-centered p-5">
                         <p className="text-muted">Keine Ertragsdatensätze für die gewählten Filter gefunden.</p>
@@ -757,25 +757,25 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         });
 
                         return (
-                            <div key={day.date} className="day-card">
-                                <div className="day-header" onClick={() => toggleDateExpand(day.date)}>
-                                    <div className="day-title">
+                            <div key={day.date} className="bg-[#0d132080] border border-eve-border rounded-lg overflow-hidden transition-all duration-200 hover:border-eve-primary/40">
+                                <div className="p-4 flex justify-between items-center cursor-pointer bg-[#141b2b66] select-none" onClick={() => toggleDateExpand(day.date)}>
+                                    <div className="flex items-center gap-4">
                                         <span style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)' }}>
                                             {isExpanded ? '▼' : '▶'}
                                         </span>
-                                        <span className="day-date">{formattedDate}</span>
+                                        <span className="text-lg font-bold text-white">{formattedDate}</span>
                                     </div>
-                                    <span className="day-total">{formatISK(day.summary.totalValue)}</span>
+                                    <span className="text-lg font-bold text-eve-primary">{formatISK(day.summary.totalValue)}</span>
                                 </div>
 
                                 {isExpanded && (
-                                    <div className="day-body">
+                                    <div className="p-5 border-t border-eve-border bg-[#0a0f1933]">
                                         {/* Category breakdown */}
-                                        <div className="day-breakdown">
+                                        <div className="flex flex-wrap gap-3 mb-5 pb-4 border-b border-dashed border-eve-border">
                                             {Object.entries(day.summary.byCategory).map(([cat, val]) => {
                                                 if (val === 0) return null;
                                                 return (
-                                                    <div key={cat} className="breakdown-badge">
+                                                    <div key={cat} className="bg-[#141b2bcc] border border-eve-border py-1.5 px-2.5 rounded text-xs flex items-center text-eve-muted">
                                                         <span className="category-indicator" style={{ backgroundColor: CATEGORY_COLORS[cat] }}></span>
                                                         <span>{CATEGORY_NAMES[cat]}: <strong>{formatISK(val)}</strong></span>
                                                     </div>
@@ -784,8 +784,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                         </div>
 
                                         {/* Details Table */}
-                                        <div className="item-table-wrapper">
-                                            <table className="item-table">
+                                        <div className="w-full overflow-x-auto mt-2 rounded">
+                                            <table className="w-full border-collapse text-sm min-w-[750px]">
                                                 <thead>
                                                     <tr>
                                                         <th style={{ width: '30px' }}></th>
@@ -856,7 +856,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                     </td>
                                                                     <td>
                                                                         {!item.isWallet && !item.manualEntryId && (
-                                                                            <div className="item-icon-wrapper">
+                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10">
                                                                                 <img
                                                                                     src={imagePaths.types.replace('12345', item.typeId.toString())}
                                                                                     onError={(e) => {
@@ -867,7 +867,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                             </div>
                                                                         )}
                                                                         {item.manualEntryId && (
-                                                                            <div className="item-icon-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
+                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
                                                                                 ✍️
                                                                             </div>
                                                                         )}
@@ -875,7 +875,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                     <td style={{ fontWeight: 600 }}>{item.typeName}</td>
                                                                     <td>
                                                                         <span
-                                                                            className="badge-cat"
+                                                                            className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase"
                                                                             style={{
                                                                                 backgroundColor: `${CATEGORY_COLORS[item.category]}20`,
                                                                                 color: CATEGORY_COLORS[item.category],
@@ -923,30 +923,30 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             </div>
 
             {/* Bottom manual entry card */}
-            <div className="manual-entry-panel">
-                <div className="filter-title" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--theme-card-border)', paddingBottom: '0.5rem' }}>
+            <div className="bg-[#0d1320b3] border border-eve-border rounded-lg p-5 mt-8">
+                <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--theme-card-border)', paddingBottom: '0.5rem' }}>
                     ✍️ Manuelle Buchung
                 </div>
                 <form onSubmit={handleAddManualEntry}>
-                    <div className="manual-form-grid">
-                        <div className="manual-form-group">
-                            <label htmlFor="manual-date" className="manual-form-label">Datum</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+                        <div className="m-0">
+                            <label htmlFor="manual-date" className="block text-xs text-eve-muted mb-1 font-semibold">Datum</label>
                             <input
                                 id="manual-date"
                                 name="date"
                                 type="date"
-                                className="ledger-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
                                 value={manualDate}
                                 onChange={(e) => setManualDate(e.target.value)}
                                 required
                             />
                         </div>
-                        <div className="manual-form-group">
-                            <label htmlFor="manual-character" className="manual-form-label">Charakter</label>
+                        <div className="m-0">
+                            <label htmlFor="manual-character" className="block text-xs text-eve-muted mb-1 font-semibold">Charakter</label>
                             <select
                                 id="manual-character"
                                 name="characterId"
-                                className="select-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm cursor-pointer focus:border-eve-primary focus:outline-none"
                                 value={manualCharId}
                                 onChange={(e) => setManualCharId(e.target.value)}
                             >
@@ -956,12 +956,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                 ))}
                             </select>
                         </div>
-                        <div className="manual-form-group">
-                            <label htmlFor="manual-category" className="manual-form-label">Kategorie</label>
+                        <div className="m-0">
+                            <label htmlFor="manual-category" className="block text-xs text-eve-muted mb-1 font-semibold">Kategorie</label>
                             <select
                                 id="manual-category"
                                 name="category"
-                                className="select-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm cursor-pointer focus:border-eve-primary focus:outline-none"
                                 value={manualCategory}
                                 onChange={(e) => setManualCategory(e.target.value)}
                             >
@@ -970,26 +970,26 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                 ))}
                             </select>
                         </div>
-                        <div className="manual-form-group">
-                            <label htmlFor="manual-description" className="manual-form-label">Beschreibung</label>
+                        <div className="m-0">
+                            <label htmlFor="manual-description" className="block text-xs text-eve-muted mb-1 font-semibold">Beschreibung</label>
                             <input
                                 id="manual-description"
                                 name="description"
                                 type="text"
-                                className="ledger-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
                                 placeholder="z.B. Skill-Injektor..."
                                 value={manualDescription}
                                 onChange={(e) => setManualDescription(e.target.value)}
                                 required
                             />
                         </div>
-                        <div className="manual-form-group">
-                            <label htmlFor="manual-amount" className="manual-form-label">Betrag (ISK)</label>
+                        <div className="m-0">
+                            <label htmlFor="manual-amount" className="block text-xs text-eve-muted mb-1 font-semibold">Betrag (ISK)</label>
                             <input
                                 id="manual-amount"
                                 name="amount"
                                 type="number"
-                                className="ledger-input"
+                                className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
                                 placeholder="Betrag in ISK"
                                 value={manualAmount}
                                 onChange={(e) => setManualAmount(e.target.value)}
@@ -999,7 +999,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                         <div className="manual-form-group manual-action-group">
                             <button
                                 type="submit"
-                                className="manual-submit-btn"
+                                className="w-full bg-eve-primary text-black border-0 p-2 rounded font-semibold cursor-pointer transition-opacity duration-200 text-sm h-[38px] flex items-center justify-center hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={manualLoading}
                             >
                                 {manualLoading ? 'Speichert...' : 'Eintragen'}
@@ -1013,7 +1013,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             {/* Hidden Entries Exclusions List */}
             {exclusions.length > 0 && (
                 <div className="manual-entry-panel mt-5" style={{ background: 'rgba(255, 68, 68, 0.03)', borderColor: 'rgba(255, 68, 68, 0.15)' }}>
-                    <div className="filter-title" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 68, 68, 0.15)', paddingBottom: '0.5rem', color: '#ff6b8b' }}>
+                    <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 68, 68, 0.15)', paddingBottom: '0.5rem', color: '#ff6b8b' }}>
                         👁️ Ausgeblendete automatische Buchungen ({exclusions.length})
                     </div>
                     <p className="text-xs text-eve-muted mb-3">

@@ -1,5 +1,3 @@
-/* Import existing custom styles and layouts */
-@import "../../assets/styles/legacy.css";
 
 /* Import Tailwind CSS v4 modules (OMITTING preflight to avoid breaking legacy layouts) */
 @import "tailwindcss/theme";

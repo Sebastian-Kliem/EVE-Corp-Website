@@ -316,19 +316,19 @@ export default function CharacterAssets({
                                                             <span className="inline-flex gap-1 items-center ml-1">
                                                                 {item.isBlueprintCopy ? (
                                                                     <>
-                                                                        <span className="asset-blueprint-tag bpc">Kopie</span>
+                                                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-purple-500/15 text-purple-400 border border-purple-500/30">Kopie</span>
                                                                         {item.runs !== undefined && item.runs !== null && item.runs >= 0 && (
-                                                                            <span className="asset-blueprint-tag runs">{item.runs} Runs</span>
+                                                                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/30">{item.runs} Runs</span>
                                                                         )}
                                                                     </>
                                                                 ) : (
-                                                                    <span className="asset-blueprint-tag bpo">Original</span>
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-orange-500/15 text-orange-400 border border-orange-500/30">Original</span>
                                                                 )}
                                                                 {item.materialEfficiency !== undefined && item.materialEfficiency !== null && (
-                                                                    <span className="asset-blueprint-tag me">ME: {item.materialEfficiency}%</span>
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ME: {item.materialEfficiency}%</span>
                                                                 )}
                                                                 {item.timeEfficiency !== undefined && item.timeEfficiency !== null && (
-                                                                    <span className="asset-blueprint-tag te">TE: {item.timeEfficiency}%</span>
+                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-sky-500/15 text-sky-400 border border-sky-500/30">TE: {item.timeEfficiency}%</span>
                                                                 )}
                                                             </span>
                                                         ) : item.isBlueprintCopy && (

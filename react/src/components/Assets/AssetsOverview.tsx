@@ -285,7 +285,7 @@ export default function AssetsOverview({
         const isNodeExpanded = isSearching || isFiltering || !!expandedNodes[item.itemId];
 
         return (
-            <div className="asset-tree-node" data-item-name={item.name}>
+            <div className="ml-[2px]" data-item-name={item.name}>
                 <div
                     className={`py-1 asset-header-row ${hasChildren ? 'has-children' : ''}`}
                     onClick={() => hasChildren && toggleNode(item.itemId)}
@@ -323,19 +323,19 @@ export default function AssetsOverview({
                                 <span className="tags mb-0" style={{ display: 'inline-flex', gap: '4px' }}>
                                     {item.isBlueprintCopy ? (
                                         <>
-                                            <span className="asset-blueprint-tag bpc">Kopie</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-purple-500/15 text-purple-400 border border-purple-500/30">Kopie</span>
                                             {item.runs !== undefined && item.runs !== null && item.runs >= 0 && (
-                                                <span className="asset-blueprint-tag runs">{item.runs} Runs</span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/30">{item.runs} Runs</span>
                                             )}
                                         </>
                                     ) : (
-                                        <span className="asset-blueprint-tag bpo">Original</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-orange-500/15 text-orange-400 border border-orange-500/30">Original</span>
                                     )}
                                     {item.materialEfficiency !== undefined && item.materialEfficiency !== null && (
-                                        <span className="asset-blueprint-tag me">ME: {item.materialEfficiency}%</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ME: {item.materialEfficiency}%</span>
                                     )}
                                     {item.timeEfficiency !== undefined && item.timeEfficiency !== null && (
-                                        <span className="asset-blueprint-tag te">TE: {item.timeEfficiency}%</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-sky-500/15 text-sky-400 border border-sky-500/30">TE: {item.timeEfficiency}%</span>
                                     )}
                                 </span>
                             ) : item.isBlueprintCopy ? (
@@ -372,7 +372,7 @@ export default function AssetsOverview({
                 </div>
 
                 {hasChildren && (
-                    <div className={`nested-children-container ${isNodeExpanded ? '' : 'hidden'}`}>
+                    <div className={`border-l border-dashed border-white/10 ml-1 mt-[2px] pl-3 ${isNodeExpanded ? '' : 'hidden'}`}>
                         {item.children.map((child, idx) => (
                             <RenderAssetNode key={`${child.itemId}-${idx}`} item={child} />
                         ))}
@@ -520,7 +520,7 @@ export default function AssetsOverview({
 
                             {/* Panel Content (Asset List) */}
                             <div
-                                className={`character-panel-content character-assets-panel-content ${
+                                className={`character-panel-content pt-3 pr-5 pb-3 pl-6 border-l border-dashed border-white/10 ml-9 ${
                                     isCharExpanded ? '' : 'hidden'
                                 }`}
                                 id={`char-assets-${charId}`}
@@ -538,14 +538,14 @@ export default function AssetsOverview({
                                         return (
                                             <div
                                                 key={locKey}
-                                                className="location-block mb-4 last:mb-0 border border-white/5 rounded-lg overflow-hidden bg-black/10"
+                                                className="mb-4 last:mb-0 border border-white/5 rounded-lg overflow-hidden bg-black/10"
                                                 data-location-name={displayName}
                                             >
                                                 <h3
-                                                    className="text-xs font-semibold flex justify-between items-center cursor-pointer p-3 bg-white/2 hover:bg-white/5 location-header border-b border-white/5"
+                                                    className="text-xs font-semibold flex justify-between items-center cursor-pointer p-3 bg-white/2 hover:bg-white/5 border-b border-white/5"
                                                     onClick={(e) => { e.stopPropagation(); toggleLocation(locKey); }}
                                                 >
-                                                    <span className="location-header-title flex-grow mr-4 text-white flex items-center">
+                                                    <span className="flex-grow mr-4 text-white flex items-center">
                                                         {editingStructureId === location.id ? (
                                                             <div
                                                                 className="flex gap-2 items-center flex-wrap w-full"
@@ -603,13 +603,13 @@ export default function AssetsOverview({
                                                         )}
                                                     </span>
                                                     <div className="flex gap-2 items-center flex-shrink-0">
-                                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-eve-muted border border-white/5 font-mono location-header-tag">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-eve-muted border border-white/5 font-mono ">
                                                             {location.items.length} Top-Level
                                                         </span>
                                                         {(() => {
                                                             const locVal = location.items.reduce((sum, item) => sum + getAssetValue(item), 0);
                                                             return (
-                                                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20 font-mono location-header-tag">
+                                                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20 font-mono ">
                                                                     {locVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                                                 </span>
                                                             );
