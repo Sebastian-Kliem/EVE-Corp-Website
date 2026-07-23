@@ -174,7 +174,7 @@ class EveAccountController extends AbstractController
         );
 
         $assets = array_filter($assets, function (EveCharacterAsset $a) {
-            return $a->getLocationType() !== 'industry_job';
+            return $a->getLocationType() !== 'industry_job' && $a->getLocationType() !== 'personal_corp_asset';
         });
 
         // Add active sell orders as pseudo assets
@@ -366,7 +366,7 @@ class EveAccountController extends AbstractController
             ]);
 
             $assets = array_filter($assets, function (EveCharacterAsset $a) {
-                return $a->getLocationType() !== 'industry_job';
+                return $a->getLocationType() !== 'industry_job' && $a->getLocationType() !== 'personal_corp_asset';
             });
 
             // Fetch active market orders (sell orders as pseudo assets, buy orders as escrow)

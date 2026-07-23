@@ -325,6 +325,7 @@ class EsiClient
         $page = 1;
         $totalPages = 1;
         $mergedData = [];
+        $allFromCache = true;
 
         while ($page <= $totalPages) {
             $pageOptions = $options;
@@ -340,11 +341,8 @@ class EsiClient
                 try {
                     $response = $this->requestWithHeaders('GET', $path, $pageOptions, $character, 5);
 
-                    if ($page === 1 && ($response['fromCache'] ?? false)) {
-                        return [
-                            'data' => $response['data'],
-                            'fromCache' => true
-                        ];
+                    if (!($response['fromCache'] ?? false)) {
+                        $allFromCache = false;
                     }
 
                     $data = $response['data'];
@@ -392,7 +390,7 @@ class EsiClient
 
         return [
             'data' => $mergedData,
-            'fromCache' => false
+            'fromCache' => $allFromCache
         ];
     }
 
