@@ -508,5 +508,21 @@ class SdeService
             ];
         }
     }
+
+    /**
+     * Resolves the volume of an item from the SDE.
+     */
+    public function getItemVolume(int $typeId): float
+    {
+        try {
+            $volume = $this->connection->fetchOne(
+                'SELECT volume FROM invTypes WHERE typeID = :id LIMIT 1',
+                ['id' => $typeId]
+            );
+            return $volume !== false ? (float)$volume : 0.0;
+        } catch (\Exception $e) {
+            return 0.0;
+        }
+    }
 }
 

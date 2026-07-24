@@ -5,6 +5,7 @@ namespace App\Controller\Personal;
 use App\Entity\User;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterPi;
+use App\Service\PiSimulationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +18,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class PiController extends AbstractController
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly PiSimulationService $piSimulationService
     ) {}
 
     #[Route('', name: 'app_dashboard_pi_overview', methods: ['GET'])]
@@ -28,21 +30,7 @@ class PiController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        // Group accounts/characters to display in navigation panels, matching other pages
-        $groupedAccounts = [];
-        $uncategorized = [];
-        foreach ($currentUser->getEveAccounts() as $account) {
-            $groupName = $account->getGroupName();
-            if ($groupName) {
-                $groupedAccounts[$groupName][] = $account;
-            } else {
-                $uncategorized[] = $account;
-            }
-        }
-        ksort($groupedAccounts);
-        if (!empty($uncategorized)) {
-            $groupedAccounts['Ungruppiert'] = $uncategorized;
-        }
+
 
         // Collect all character IDs to pass to frontend so it knows what to load
         $charactersList = [];
@@ -116,10 +104,15 @@ class PiController extends AbstractController
 
             if ($piEntry) {
                 $piData = $piEntry->getPiData();
+                $planets = $piData['planets'] ?? [];
+                
+                // Simulate production flow for nodes/routes to reflect actual inventory
+                $simulatedPlanets = $this->piSimulationService->simulatePlanets($planets);
+
                 $data[] = [
                     'character_id' => $character->getId(),
                     'character_name' => $character->getName(),
-                    'planets' => $piData['planets'] ?? [],
+                    'planets' => $simulatedPlanets,
                     'unassigned_pocos' => $piData['unassigned_pocos'] ?? [],
                     'last_updated' => $piEntry->getLastUpdated()->format('d.m.Y H:i'),
                 ];

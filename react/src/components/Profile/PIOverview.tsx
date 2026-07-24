@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import PIRouteVisualizer from './PIRouteVisualizer';
 
 interface CharacterListItem {
     id: number;
@@ -46,6 +47,8 @@ interface PinData {
     type_id: number;
     name: string;
     category: 'command_center' | 'launchpad' | 'storage' | 'extractor' | 'factory' | 'other';
+    latitude?: number;
+    longitude?: number;
     contents: Material[];
     extractor_info: ExtractorInfo | null;
     factory_info: FactoryInfo | null;
@@ -78,6 +81,7 @@ interface PlanetData {
     num_pins: number;
     last_update: string;
     pins: PinData[];
+    routes?: any[];
     poco: PocoData;
 }
 
@@ -325,19 +329,7 @@ export default function PIOverview({
     const uniqueSystems = Array.from(systemsSet).sort();
     const uniqueMaterials = Array.from(materialsSet).sort();
 
-    // Group the characters in characterList by account group/name for sidebar or select
-    const groupedAccounts: Record<string, Record<string, CharacterListItem[]>> = {};
-    charactersList.forEach((char) => {
-        const group = char.accountGroup;
-        const account = char.accountName;
-        if (!groupedAccounts[group]) {
-            groupedAccounts[group] = {};
-        }
-        if (!groupedAccounts[group][account]) {
-            groupedAccounts[group][account] = [];
-        }
-        groupedAccounts[group][account].push(char);
-    });
+
 
     // Filtering logic
     const filteredPiData = piData.map((charData) => {
@@ -541,43 +533,8 @@ export default function PIOverview({
                 </div>
             )}
 
-            {/* Main content grid */}
             {!loading && !error && (
-                <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-                    {/* Account configuration hierarchy info */}
-                    <div className="bg-eve-card border border-eve-border rounded-lg p-5">
-                        <h3>Charakter-Gruppen</h3>
-                        <div className="sidebar-group-list">
-                            {Object.entries(groupedAccounts).map(([groupName, accounts]) => (
-                                <div key={groupName} className="sidebar-group">
-                                    <h4 className="group-title">{groupName}</h4>
-                                    {Object.entries(accounts).map(([accountName, chars]) => (
-                                        <div key={accountName} className="sidebar-account">
-                                            <div className="account-title">{accountName}</div>
-                                            <div className="sidebar-chars">
-                                                {chars.map((char) => {
-                                                    const characterData = piData.find(c => c.character_id === char.id);
-                                                    const planetCount = characterData?.planets.length ?? 0;
-                                                    return (
-                                                        <div key={char.id} className="sidebar-char-item">
-                                                            <img
-                                                                src={getCharacterPortraitUrl(char.id)}
-                                                                alt={char.name}
-                                                                className="char-icon"
-                                                            />
-                                                            <span className="char-name">{char.name}</span>
-                                                            <span
-                                                                className="px-2 py-0.5 text-xs font-semibold rounded bg-white/10 text-eve-muted border border-white/5">{planetCount} P</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                <div className="pi-content">
 
                     <div className="flex flex-col gap-6">
                         {filteredPiData.length === 0 ? (
@@ -957,7 +914,14 @@ export default function PIOverview({
 
 
                                                             {!isCollapsed && (
-                                                                <div className="p-4 flex flex-col gap-6">
+                                                                <div className="planet-card-body">
+                                                                    {planet.routes && planet.routes.length > 0 && (
+                                                                        <PIRouteVisualizer
+                                                                            pins={planet.pins}
+                                                                            routes={planet.routes}
+                                                                            getTypeIconUrl={getTypeIconUrl}
+                                                                        />
+                                                                    )}
 
                                                                     {/* Extractors (P0) section */}
                                                                     {extractors.length > 0 && (
