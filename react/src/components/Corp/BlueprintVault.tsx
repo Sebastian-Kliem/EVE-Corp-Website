@@ -283,10 +283,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                         </div>
                                     </td>
                                     <td className="p-3 text-sm align-middle">
-                                        <div>
-                                            <span className="font-semibold">{bp.ownerCharacterName}</span>
-                                            <div className="text-xs text-eve-muted">User: {bp.ownerUserName}</div>
-                                        </div>
+                                        <span className="font-semibold">{bp.ownerUserName}</span>
                                     </td>
                                     <td className="p-3 text-sm align-middle">
                                         <div>
