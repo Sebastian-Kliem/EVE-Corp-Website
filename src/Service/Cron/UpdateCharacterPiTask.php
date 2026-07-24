@@ -234,6 +234,8 @@ class UpdateCharacterPiTask implements CronTaskInterface
                     'type_id' => $typeId,
                     'name' => $typeName,
                     'category' => $category,
+                    'latitude' => (float)($pin['latitude'] ?? 0.0),
+                    'longitude' => (float)($pin['longitude'] ?? 0.0),
                     'contents' => $contents,
                     'extractor_info' => $extractorInfo,
                     'factory_info' => $factoryInfo,

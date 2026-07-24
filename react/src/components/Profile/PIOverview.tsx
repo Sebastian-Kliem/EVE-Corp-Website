@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import PIRouteVisualizer from './PIRouteVisualizer';
 
 interface CharacterListItem {
     id: number;
@@ -46,6 +47,8 @@ interface PinData {
     type_id: number;
     name: string;
     category: 'command_center' | 'launchpad' | 'storage' | 'extractor' | 'factory' | 'other';
+    latitude?: number;
+    longitude?: number;
     contents: Material[];
     extractor_info: ExtractorInfo | null;
     factory_info: FactoryInfo | null;
@@ -78,6 +81,7 @@ interface PlanetData {
     num_pins: number;
     last_update: string;
     pins: PinData[];
+    routes?: any[];
     poco: PocoData;
 }
 
@@ -961,6 +965,13 @@ export default function PIOverview({
 
                                                             {!isCollapsed && (
                                                                 <div className="planet-card-body">
+                                                                    {planet.routes && planet.routes.length > 0 && (
+                                                                        <PIRouteVisualizer
+                                                                            pins={planet.pins}
+                                                                            routes={planet.routes}
+                                                                            getTypeIconUrl={getTypeIconUrl}
+                                                                        />
+                                                                    )}
 
                                                                     {/* Extractors (P0) section */}
                                                                     {extractors.length > 0 && (
