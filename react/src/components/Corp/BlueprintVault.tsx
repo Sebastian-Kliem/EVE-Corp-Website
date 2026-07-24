@@ -32,6 +32,28 @@ interface BlueprintVaultProps {
     };
 }
 
+const getMeTagClass = (me: number) => {
+    const base = "inline-flex items-center justify-center h-[22px] min-w-[52px] px-1.5 text-xs font-bold rounded leading-none";
+    if (me === 10) {
+        return `${base} bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]`;
+    }
+    if (me === 9) {
+        return `${base} bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]`;
+    }
+    return `${base} bg-black/40 border border-white/10 text-sky-400`;
+};
+
+const getTeTagClass = (te: number) => {
+    const base = "inline-flex items-center justify-center h-[22px] min-w-[52px] px-1.5 text-xs font-bold rounded leading-none";
+    if (te === 20) {
+        return `${base} bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]`;
+    }
+    if (te === 18) {
+        return `${base} bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]`;
+    }
+    return `${base} bg-black/40 border border-white/10 text-emerald-400`;
+};
+
 export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaultProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'bpo' | 'bpc' | 'job'>('all');
@@ -101,7 +123,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                 <div className="inline-flex flex-col items-start px-2.5 py-1.5 rounded text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 h-auto font-semibold">
                     <span>🔬 Materialforschung</span>
                     <span className="text-[10px] font-normal text-eve-muted">Fertig: {endDateStr}</span>
-                    <span className="text-[10px] font-semibold">Ergebnis: ME {nextMe}%</span>
+                    <span className="text-[10px] font-semibold">Ergebnis: ME {nextMe}</span>
                 </div>
             );
         }
@@ -112,7 +134,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                 <div className="inline-flex flex-col items-start px-2.5 py-1.5 rounded text-xs bg-sky-500/15 text-sky-400 border border-sky-500/30 h-auto font-semibold">
                     <span>⏳ Zeiteffizienzforschung</span>
                     <span className="text-[10px] font-normal text-eve-muted">Fertig: {endDateStr}</span>
-                    <span className="text-[10px] font-semibold">Ergebnis: TE {nextTe}%</span>
+                    <span className="text-[10px] font-semibold">Ergebnis: TE {nextTe}</span>
                 </div>
             );
         }
@@ -252,11 +274,11 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                     </td>
                                     <td className="p-3 text-sm align-middle">
                                         <div className="flex gap-1.5">
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded bg-black/40 border border-white/10 text-sky-400">
-                                                ME: {bp.me}%
+                                            <span className={getMeTagClass(bp.me)}>
+                                                ME: {bp.me}
                                             </span>
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold rounded bg-black/40 border border-white/10 text-emerald-400">
-                                                TE: {bp.te}%
+                                            <span className={getTeTagClass(bp.te)}>
+                                                TE: {bp.te}
                                             </span>
                                         </div>
                                     </td>
