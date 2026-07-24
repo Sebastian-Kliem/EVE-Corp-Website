@@ -86,19 +86,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 ));
             }
 
-            // Sync Assets (Inventory)
-            try {
-                $this->syncAssets($character);
-            } catch (\Exception $e) {
-                $this->logger->error(sprintf(
-                    '[Cron] Failed to sync assets for character %s (%d): %s',
-                    $character->getName(),
-                    $character->getId(),
-                    $e->getMessage()
-                ));
-            }
-
-            // Sync Corporation Assets
+            // Sync Corporation Assets first so they are updated in the DB before syncAssets reads them
             $corpId = $character->getCorporationId();
             if ($corpId && !in_array($corpId, $syncedCorpIds, true)) {
                 try {
@@ -112,6 +100,18 @@ class UpdateCharacterDataTask implements CronTaskInterface
                         $e->getMessage()
                     ));
                 }
+            }
+
+            // Sync Assets (Inventory)
+            try {
+                $this->syncAssets($character);
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf(
+                    '[Cron] Failed to sync assets for character %s (%d): %s',
+                    $character->getName(),
+                    $character->getId(),
+                    $e->getMessage()
+                ));
             }
         }
 
@@ -384,6 +384,103 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
+        // Merge Personal Corporation Assets if this is the primary character for the corporation
+        try {
+            $user = $character->getUser();
+            if ($user && $character->getCorporationId()) {
+                $allUserChars = $this->entityManager->getRepository(EveCharacter::class)->findBy([
+                    'user' => $user
+                ]);
+                $corpChars = [];
+                foreach ($allUserChars as $uc) {
+                    if ($uc->getCorporationId() === $character->getCorporationId()) {
+                        $corpChars[] = $uc;
+                    }
+                }
+                usort($corpChars, fn($a, $b) => $a->getId() <=> $b->getId());
+
+                if (!empty($corpChars) && $corpChars[0]->getId() === $character->getId()) {
+                    $personalHangars = $user->getPersonalCorpHangars();
+                    $personalContainers = $user->getPersonalCorpContainers();
+
+                    if (!empty($personalHangars) || !empty($personalContainers)) {
+                        $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy([
+                            'corporationId' => $character->getCorporationId()
+                        ]);
+
+                        $corpAssetsByItemId = [];
+                        foreach ($corpAssets as $ca) {
+                            $corpAssetsByItemId[$ca->getItemId()] = $ca;
+                        }
+
+                        $corpNestedAssets = [];
+                        foreach ($corpAssets as $ca) {
+                            $parentId = $ca->getLocationId();
+                            if (isset($corpAssetsByItemId[$parentId])) {
+                                $corpNestedAssets[$parentId][] = $ca;
+                            }
+                        }
+
+                        $personalRoots = [];
+                        foreach ($personalHangars as $h) {
+                            if ((int)$h['corporationId'] === $character->getCorporationId()) {
+                                $locId = (int)$h['locationId'];
+                                $flag = $h['locationFlag'];
+                                foreach ($corpAssets as $ca) {
+                                    if ($ca->getLocationId() === $locId && $ca->getLocationFlag() === $flag) {
+                                        $personalRoots[] = $ca;
+                                    }
+                                }
+                            }
+                        }
+
+                        foreach ($personalContainers as $c) {
+                            if ((int)$c['corporationId'] === $character->getCorporationId()) {
+                                $itemId = (int)$c['itemId'];
+                                if (isset($corpAssetsByItemId[$itemId])) {
+                                    $personalRoots[] = $corpAssetsByItemId[$itemId];
+                                }
+                            }
+                        }
+
+                        $collectDescendants = null;
+                        $collectDescendants = function($ca, $nested, &$collected) use (&$collectDescendants) {
+                            $collected[] = $ca;
+                            if (isset($nested[$ca->getItemId()])) {
+                                foreach ($nested[$ca->getItemId()] as $child) {
+                                    $collectDescendants($child, $nested, $collected);
+                                }
+                            }
+                        };
+
+                        $personalAssets = [];
+                        foreach ($personalRoots as $root) {
+                            $collectDescendants($root, $corpNestedAssets, $personalAssets);
+                        }
+
+                        foreach ($personalAssets as $ca) {
+                            $allAssets[] = [
+                                'item_id' => $ca->getItemId(),
+                                'type_id' => $ca->getTypeId(),
+                                'quantity' => $ca->getQuantity(),
+                                'location_id' => $ca->getLocationId(),
+                                'location_type' => 'personal_corp_asset',
+                                'location_flag' => $ca->getLocationFlag(),
+                                'is_singleton' => (bool)$ca->isSingleton(),
+                                'is_blueprint_copy' => (bool)$ca->isBlueprintCopy(),
+                                'custom_name' => $ca->getCustomName(),
+                                'material_efficiency' => $ca->getMaterialEfficiency(),
+                                'time_efficiency' => $ca->getTimeEfficiency(),
+                                'runs' => $ca->getRuns(),
+                            ];
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch personal corp assets for character %s: %s', $character->getName(), $e->getMessage()));
+        }
+
         // Append virtual assets for active industry job inputs so starting a job does not count as a loss/offset
         try {
             $activeJobs = $this->entityManager->getRepository(\App\Entity\EveCharacterIndustryJob::class)->findBy([
@@ -531,12 +628,18 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
                 if (isset($namesMap[$assetData['item_id']])) {
                     $asset->setCustomName($namesMap[$assetData['item_id']]);
+                } elseif (isset($assetData['custom_name'])) {
+                    $asset->setCustomName($assetData['custom_name']);
                 }
 
                 if (isset($blueprintsMap[$assetData['item_id']])) {
                     $asset->setMaterialEfficiency($blueprintsMap[$assetData['item_id']]['me']);
                     $asset->setTimeEfficiency($blueprintsMap[$assetData['item_id']]['te']);
                     $asset->setRuns($blueprintsMap[$assetData['item_id']]['runs']);
+                } elseif (isset($assetData['material_efficiency'])) {
+                    $asset->setMaterialEfficiency($assetData['material_efficiency']);
+                    $asset->setTimeEfficiency($assetData['time_efficiency']);
+                    $asset->setRuns($assetData['runs']);
                 }
 
                 $this->entityManager->persist($asset);
@@ -565,6 +668,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $isBpc = false;
                 if (isset($blueprintsMap[(int)$assetData['item_id']])) {
                     $isBpc = $blueprintsMap[(int)$assetData['item_id']]['runs'] > 0;
+                } elseif (isset($assetData['is_blueprint_copy'])) {
+                    $isBpc = (bool)$assetData['is_blueprint_copy'];
                 }
                 
                 if (!$isBpc) {
@@ -593,88 +698,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 }
             }
 
-            // Merge Personal Corporation Assets if this is the primary character for the corporation
-            $user = $character->getUser();
-            if ($user && $character->getCorporationId()) {
-                $allUserChars = $this->entityManager->getRepository(EveCharacter::class)->findBy([
-                    'user' => $user
-                ]);
-                $corpChars = [];
-                foreach ($allUserChars as $uc) {
-                    if ($uc->getCorporationId() === $character->getCorporationId()) {
-                        $corpChars[] = $uc;
-                    }
-                }
-                usort($corpChars, fn($a, $b) => $a->getId() <=> $b->getId());
-                
-                if (!empty($corpChars) && $corpChars[0]->getId() === $character->getId()) {
-                    $personalHangars = $user->getPersonalCorpHangars();
-                    $personalContainers = $user->getPersonalCorpContainers();
-
-                    if (!empty($personalHangars) || !empty($personalContainers)) {
-                        $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy([
-                            'corporationId' => $character->getCorporationId()
-                        ]);
-
-                        $corpAssetsByItemId = [];
-                        foreach ($corpAssets as $ca) {
-                            $corpAssetsByItemId[$ca->getItemId()] = $ca;
-                        }
-
-                        $corpNestedAssets = [];
-                        foreach ($corpAssets as $ca) {
-                            $parentId = $ca->getLocationId();
-                            if (isset($corpAssetsByItemId[$parentId])) {
-                                $corpNestedAssets[$parentId][] = $ca;
-                            }
-                        }
-
-                        $personalRoots = [];
-                        foreach ($personalHangars as $h) {
-                            if ((int)$h['corporationId'] === $character->getCorporationId()) {
-                                $locId = (int)$h['locationId'];
-                                $flag = $h['locationFlag'];
-                                foreach ($corpAssets as $ca) {
-                                    if ($ca->getLocationId() === $locId && $ca->getLocationFlag() === $flag) {
-                                        $personalRoots[] = $ca;
-                                    }
-                                }
-                            }
-                        }
-
-                        foreach ($personalContainers as $c) {
-                            if ((int)$c['corporationId'] === $character->getCorporationId()) {
-                                $itemId = (int)$c['itemId'];
-                                if (isset($corpAssetsByItemId[$itemId])) {
-                                    $personalRoots[] = $corpAssetsByItemId[$itemId];
-                                }
-                            }
-                        }
-
-                        $calcVal = null;
-                        $calcVal = function($ca, $nested) use (&$calcVal, $prices) {
-                            $val = 0.0;
-                            if (!($ca->isBlueprintCopy() ?? false)) {
-                                $price = $prices[$ca->getTypeId()] ?? 0.0;
-                                $val += ($price * $ca->getQuantity());
-                            }
-                            if (isset($nested[$ca->getItemId()])) {
-                                foreach ($nested[$ca->getItemId()] as $child) {
-                                    $val += $calcVal($child, $nested);
-                                }
-                            }
-                            return $val;
-                        };
-
-                        $personalAssetVal = 0.0;
-                        foreach ($personalRoots as $root) {
-                            $personalAssetVal += $calcVal($root, $corpNestedAssets);
-                        }
-
-                        $totalAssetVal += $personalAssetVal;
-                    }
-                }
-            }
+            // Personal Corporation Assets are now merged into $allAssets at the beginning of syncAssets
 
             // Save character value snapshot
             $walletBalance = (float)($character->getWalletBalance() ?? 0.0);
