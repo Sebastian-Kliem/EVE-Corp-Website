@@ -37,7 +37,7 @@ class SeedTrackingTemplatesCommand extends Command
                 'name' => 'Abyss Loot',
                 'description' => 'Standard-Tracking-Liste für typische Abyss-Gegenstände (Red Loot, Triglavian-Materialien, Filaments und BPCs).',
                 'items' => [
-                    
+
                     47297, // Unstable 50MN Microwarpdrive Mutaplasmid
                     47299, // Decayed 500MN Microwarpdrive Mutaplasmid
                     47699, // Decayed Stasis Webifier Mutaplasmid
@@ -519,14 +519,34 @@ class SeedTrackingTemplatesCommand extends Command
                     90611, // Exigent Ice Harvesting Drone Mutaplasmid
                     90619, // Exigent 'Excavator' Mining Drone Mutaplasmid
                     90620, // Exigent 'Excavator' Ice Harvesting Drone Mutaplasmid
-
+                    // Faction Rogue Drones (Rampancy)
+                    92033, // Orbweaver SW-300-I
+                    92034, // Huntsman SW-600-I
+                    92035, // Arabellata SW-900-I
+                    92036, // Tick EV-300-I
+                    92037, // Mosquito EV-600-I
+                    92038, // Tabanida EV-900-I
+                    92039, // Inshore EC-300-I
+                    92040, // Nertic EC-600-I
+                    92041, // Humboldt EC-900-I
+                    92461, // Skimmer TP-300-I
+                    92462, // Darter TP-600-I
+                    92463, // Meganeura TP-900-I
+                    92464, // Stigmella SD-300-I
+                    92465, // Luna SD-600-I
+                    92466, // Atlas SD-900-I
+                    92467, // Stellate TD-300-I
+                    92468, // Immaculate TD-600-I
+                    92469, // Torafugu TD-900-I
+                    // Other Requested Items
+                    91773, // Rampancy Data Dump
                 ]
             ]
         ];
 
         foreach ($templates as $tmplData) {
             $existingList = $listRepo->findOneBy(['name' => $tmplData['name'], 'user' => null]);
-            
+
             if (!$existingList) {
                 $list = new TrackingList();
                 $list->setName($tmplData['name']);
