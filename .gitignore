@@ -30,3 +30,4 @@
 /assets/react.js.map
 # /assets/react.js (einkommentieren, falls du die kompilierte JS-Datei nicht im Git haben willst)
 /.gemini/cron.log
+/.gemini/
