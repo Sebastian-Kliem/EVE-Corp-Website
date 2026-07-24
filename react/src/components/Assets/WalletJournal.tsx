@@ -39,89 +39,83 @@ export default function WalletJournal({ journalEntries, characters }: WalletJour
 
     return (
         <div>
-            <div className="level mb-4">
-                <div className="level-left">
-                    <p className="is-size-7 has-text-grey-light">Verfolge Wallet-Transaktionen deiner EVE Online Charaktere chronologisch.</p>
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-4">
+                <div className="flex-grow">
+                    <p className="text-xs text-eve-muted">Verfolge Wallet-Transaktionen deiner EVE Online Charaktere chronologisch.</p>
                 </div>
-                <div className="level-right" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    <div className="field mb-0">
-                        <div className="control has-icons-left">
-                            <input 
-                                className="input is-small" 
-                                type="text" 
-                                placeholder="Beschreibung suchen..." 
-                                value={walletSearchQuery} 
-                                onChange={(e) => setWalletSearchQuery(e.target.value)} 
-                                style={{ backgroundColor: 'var(--theme-card-bg)', color: 'var(--theme-text)', borderColor: 'var(--theme-card-border)' }}
-                            />
-                            <span className="icon is-small is-left">🔍</span>
-                        </div>
+                <div className="flex gap-3 items-center ml-auto">
+                    <div className="relative flex items-center">
+                        <span className="absolute left-2.5 text-xs text-eve-muted">🔍</span>
+                        <input 
+                            className="rounded pl-7 pr-3 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-[200px]" 
+                            type="text" 
+                            placeholder="Beschreibung suchen..." 
+                            value={walletSearchQuery} 
+                            onChange={(e) => setWalletSearchQuery(e.target.value)} 
+                        />
                     </div>
-                    <div className="select is-small">
+                    <div>
                         <select 
                             value={selectedWalletCharId} 
                             onChange={(e) => {
                                 const val = e.target.value;
                                 setSelectedWalletCharId(val === 'all' ? 'all' : parseInt(val, 10));
                             }}
-                            style={{ backgroundColor: 'var(--theme-card-bg)', color: 'var(--theme-text)', borderColor: 'var(--theme-card-border)' }}
+                            className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
                         >
-                            <option value="all">Alle Charaktere</option>
+                            <option value="all" style={{ background: '#101525' }}>Alle Charaktere</option>
                             {characters.map(char => (
-                                <option key={char.id} value={char.id}>{char.name}</option>
+                                <option key={char.id} value={char.id} style={{ background: '#101525' }}>{char.name}</option>
                             ))}
                         </select>
                     </div>
                 </div>
             </div>
 
-            <div style={{ overflowX: 'auto', maxHeight: '450px', overflowY: 'auto' }} className="mt-4">
-                <table className="table is-fullwidth" style={{ backgroundColor: 'transparent', color: 'var(--theme-text)' }}>
+            <div className="overflow-auto max-h-[450px] mt-4 border border-eve-border rounded-lg bg-black/10">
+                <table className="w-full border-collapse">
                     <thead>
-                        <tr style={{ borderBottom: '2px solid var(--theme-card-border)' }}>
-                            <th style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>Datum</th>
-                            <th style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>Charakter</th>
-                            <th style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>Typ</th>
-                            <th style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>Details</th>
-                            <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right', fontSize: '0.85rem' }}>Betrag</th>
-                            <th style={{ color: 'var(--theme-text-muted)', textAlign: 'right', fontSize: '0.85rem' }}>Kontostand</th>
+                        <tr className="border-b border-eve-border bg-[#0d121fe6]/50">
+                            <th className="text-left font-semibold text-eve-muted p-3 text-xs">Datum</th>
+                            <th className="text-left font-semibold text-eve-muted p-3 text-xs">Charakter</th>
+                            <th className="text-left font-semibold text-eve-muted p-3 text-xs">Typ</th>
+                            <th className="text-left font-semibold text-eve-muted p-3 text-xs">Details</th>
+                            <th className="text-right font-semibold text-eve-muted p-3 text-xs">Betrag</th>
+                            <th className="text-right font-semibold text-eve-muted p-3 text-xs">Kontostand</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-white/5">
                         {filteredJournalEntries.length > 0 ? (
                             filteredJournalEntries.map((entry, idx) => (
-                                <tr key={idx} style={{ borderBottom: '1px solid rgba(0, 240, 255, 0.05)' }}>
-                                    <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{entry.date}</td>
-                                    <td style={{ fontSize: '0.85rem' }}>{entry.characterName}</td>
-                                    <td style={{ fontSize: '0.85rem' }}>
-                                        <span className="tag is-dark" style={{ fontSize: '0.75rem', textTransform: 'capitalize' }}>
+                                <tr key={idx} className="hover:bg-white/2">
+                                    <td className="p-3 text-xs text-[#ccc] vertical-middle whitespace-nowrap">{entry.date}</td>
+                                    <td className="p-3 text-xs text-[#ccc] vertical-middle">{entry.characterName}</td>
+                                    <td className="p-3 text-xs text-[#ccc] vertical-middle">
+                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-eve-muted border border-white/5 capitalize">
                                             {entry.refType.replace(/_/g, ' ')}
                                         </span>
                                     </td>
-                                    <td style={{ fontSize: '0.85rem', maxWidth: '300px', wordBreak: 'break-word' }}>
+                                    <td className="p-3 text-xs text-[#ccc] vertical-middle max-w-[300px] break-words">
                                         <div>{entry.description || '-'}</div>
                                         {entry.reason && (
-                                            <div className="is-size-7 has-text-grey-light" style={{ fontStyle: 'italic' }}>
+                                            <div className="text-[10px] text-eve-muted mt-0.5 italic">
                                                 Grund: {entry.reason}
                                             </div>
                                         )}
                                     </td>
-                                    <td style={{ 
-                                        textAlign: 'right', 
-                                        fontWeight: 'bold', 
-                                        fontSize: '0.85rem',
-                                        color: entry.amount > 0 ? '#00ffaa' : entry.amount < 0 ? '#f14668' : 'var(--theme-text)'
-                                    }}>
+                                    <td className={`p-3 text-xs vertical-middle text-right font-bold font-mono ${
+                                        entry.amount > 0 ? 'text-emerald-400' : entry.amount < 0 ? 'text-rose-400' : 'text-[#ccc]'
+                                    }`}>
                                         {entry.amount > 0 ? '+' : ''}{entry.amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                     </td>
-                                    <td style={{ textAlign: 'right', fontSize: '0.85rem', color: 'var(--theme-text-muted)' }}>
+                                    <td className="p-3 text-xs vertical-middle text-right text-eve-muted font-mono">
                                         {entry.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={6} className="has-text-centered has-text-grey-light py-4" style={{ fontSize: '0.85rem' }}>
+                                <td colSpan={6} className="text-center text-eve-muted py-8 text-xs">
                                     Keine Transaktionen gefunden.
                                 </td>
                             </tr>

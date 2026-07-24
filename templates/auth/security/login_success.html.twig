@@ -3,14 +3,14 @@
 {% block title %}Login erfolgreich!{% endblock %}
 
 {% block body %}
-<div class="container container-narrow mt-6">
-    <div class="box">
-        <h1 class="title is-3 has-text-centered has-text-primary">✔️ Login erfolgreich!</h1>
+<div class="w-full max-w-[500px] mx-auto px-6 mt-16">
+    <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg transition-all duration-300 hover:border-eve-primary hover:shadow-[0_10px_40px_rgba(0,240,255,0.15)]">
+        <h1 class="text-2xl font-semibold text-center mb-6 text-eve-primary">✔️ Login erfolgreich!</h1>
 
-        <div class="suggested-links">
-            <a href="{{ path('home') }}" class="button is-fullwidth">
+        <div class="flex flex-col gap-4 mt-8">
+            <a href="{{ path('home') }}" class="flex justify-between items-center w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-5 py-4 transition-all duration-300 font-semibold no-underline cursor-pointer">
                 <span>zurück zur Startseite</span>
-                <span>→</span>
+                <span class="text-eve-primary">→</span>
             </a>
         </div>
     </div>

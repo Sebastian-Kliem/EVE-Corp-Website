@@ -212,122 +212,40 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
 
     if (loading) {
         return (
-            <div className="box has-text-centered p-5">
-                <span className="loader" style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}></span>
-                <p className="mt-3">Bergbaudaten werden geladen...</p>
-                <style>{`
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}</style>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12">
+                <span className="inline-block w-8 h-8 border-3 border-eve-primary rounded-full border-t-transparent animate-spin"></span>
+                <p className="mt-3 text-eve-muted">Bergbaudaten werden geladen...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="box has-text-centered p-5" style={{ borderColor: 'red' }}>
-                <h3 className="title is-4" style={{ color: '#ff4444' }}>Fehler</h3>
-                <p className="subtitle is-6">{error}</p>
+            <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6 text-center py-12 border-rose-500/30">
+                <h3 className="text-xl font-semibold mb-2 text-rose-400">Fehler</h3>
+                <p className="text-sm text-eve-muted">{error}</p>
             </div>
         );
     }
 
     return (
         <div>
-            {/* Custom Tab styling */}
-            <style>{`
-                .mining-tabs {
-                    display: flex;
-                    border-bottom: 2px solid var(--theme-card-border);
-                    margin-bottom: 1.5rem;
-                    gap: 0.5rem;
-                }
-                .mining-tab-btn {
-                    background: transparent;
-                    border: none;
-                    color: var(--theme-text-muted);
-                    padding: 0.75rem 1.25rem;
-                    font-size: 1rem;
-                    cursor: pointer;
-                    font-weight: 500;
-                    border-bottom: 3px solid transparent;
-                    transition: all 0.2s ease;
-                }
-                .mining-tab-btn:hover {
-                    color: var(--theme-primary);
-                }
-                .mining-tab-btn.is-active {
-                    color: var(--theme-primary);
-                    border-bottom-color: var(--theme-primary);
-                }
-                .summary-card {
-                    background: rgba(20, 27, 43, 0.5);
-                    border: 1px solid var(--theme-card-border);
-                    border-radius: 8px;
-                    padding: 1.5rem;
-                    margin-bottom: 1.5rem;
-                }
-                .char-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 1rem;
-                    margin-bottom: 1.5rem;
-                }
-                .char-card-selector {
-                    display: flex;
-                    align-items: center;
-                    gap: 1rem;
-                    padding: 1rem;
-                    border-radius: 8px;
-                    border: 1px solid var(--theme-card-border);
-                    background: rgba(20, 27, 43, 0.4);
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .char-card-selector:hover {
-                    border-color: var(--theme-primary);
-                }
-                .char-card-selector.is-active {
-                    background: rgba(0, 240, 255, 0.08);
-                    border-color: var(--theme-primary);
-                    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-                }
-                .char-portrait {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    border: 2px solid var(--theme-card-border);
-                }
-                .char-card-selector.is-active .char-portrait {
-                    border-color: var(--theme-primary);
-                }
-                .item-icon {
-                    width: 24px;
-                    height: 24px;
-                    vertical-align: middle;
-                    margin-right: 0.5rem;
-                    border-radius: 4px;
-                }
-            `}</style>
-
             {/* Navigation Tabs */}
-            <div className="mining-tabs">
+            <div className="flex border-b border-eve-border mb-6 gap-2">
                 <button 
-                    className={`mining-tab-btn ${activeMainTab === 'daily' ? 'is-active' : ''}`}
+                    className={`bg-transparent border-none text-eve-muted px-4 py-2.5 text-sm cursor-pointer font-medium border-b-2 border-transparent transition-all duration-200 hover:text-eve-primary ${activeMainTab === 'daily' ? '!text-eve-primary !border-eve-primary' : ''}`}
                     onClick={() => setActiveMainTab('daily')}
                 >
                     📅 Tageseinkommen
                 </button>
                 <button 
-                    className={`mining-tab-btn ${activeMainTab === 'monthly' ? 'is-active' : ''}`}
+                    className={`bg-transparent border-none text-eve-muted px-4 py-2.5 text-sm cursor-pointer font-medium border-b-2 border-transparent transition-all duration-200 hover:text-eve-primary ${activeMainTab === 'monthly' ? '!text-eve-primary !border-eve-primary' : ''}`}
                     onClick={() => setActiveMainTab('monthly')}
                 >
                     📊 Monatseinkommen
                 </button>
                 <button 
-                    className={`mining-tab-btn ${activeMainTab === 'characters' ? 'is-active' : ''}`}
+                    className={`bg-transparent border-none text-eve-muted px-4 py-2.5 text-sm cursor-pointer font-medium border-b-2 border-transparent transition-all duration-200 hover:text-eve-primary ${activeMainTab === 'characters' ? '!text-eve-primary !border-eve-primary' : ''}`}
                     onClick={() => setActiveMainTab('characters')}
                 >
                     👤 Charakterübersicht
@@ -336,56 +254,55 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
 
             {/* TAB: DAILY INCOME */}
             {activeMainTab === 'daily' && (
-                <div className="box">
-                    <div className="level mb-4">
-                        <div className="level-left">
-                            <h2 className="title is-4 mb-0">Gemeinsames Tageseinkommen</h2>
+                <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                    <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
+                        <div>
+                            <h2 className="text-xl font-semibold text-white mb-0">Gemeinsames Tageseinkommen</h2>
                         </div>
-                        <div className="level-right">
-                            <label className="label mr-2 mb-0" style={{ color: 'var(--theme-text-muted)' }}>Tag auswählen:</label>
+                        <div className="flex items-center gap-3">
+                            <label className="text-xs font-semibold text-eve-muted mb-0">Tag auswählen:</label>
                             <input 
                                 type="date" 
-                                className="input input-dark" 
-                                style={{ width: 'auto' }}
+                                className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 w-auto" 
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="columns">
+                    <div className="flex flex-wrap gap-6">
                         {/* Summary Stats */}
-                        <div className="column is-one-third">
-                            <div className="summary-card">
-                                <p className="subtitle is-6 mb-2">Gesamtwert am {selectedDate}</p>
-                                <h3 className="title is-3" style={{ color: 'var(--theme-primary)' }}>
+                        <div className="w-full md:w-1/3 flex flex-col gap-4">
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <p className="text-xs text-eve-muted mb-2">Gesamtwert am {selectedDate}</p>
+                                <h3 className="text-2xl font-bold text-eve-primary">
                                     {formatISK(dailyCombined.totalValue)}
                                 </h3>
-                                <hr style={{ borderColor: 'var(--theme-card-border)', margin: '1rem 0' }} />
-                                <p className="subtitle is-6 mb-1">Menge erzielt:</p>
-                                <p className="has-text-weight-bold">{formatNumber(dailyCombined.totalQuantity)} Einheiten</p>
+                                <hr className="border-eve-border my-4" />
+                                <p className="text-xs text-eve-muted mb-1">Menge erzielt:</p>
+                                <p className="font-bold text-sm text-white">{formatNumber(dailyCombined.totalQuantity)} Einheiten</p>
                             </div>
 
                             {/* Character share */}
-                            <div className="summary-card">
-                                <h4 className="title is-5 mb-3">Aufteilung nach Charakter</h4>
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <h4 className="text-base font-semibold mb-3 text-white">Aufteilung nach Charakter</h4>
                                 {dailyCombined.charSummary.length === 0 ? (
-                                    <p className="text-muted">Keine Aktivitäten an diesem Tag.</p>
+                                    <p className="text-xs text-eve-muted">Keine Aktivitäten an diesem Tag.</p>
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div className="flex flex-col gap-3">
                                         {dailyCombined.charSummary.map((c) => (
-                                            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 0.5rem', minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                            <div key={c.id} className="flex justify-between items-center flex-wrap gap-1 min-w-0">
+                                                <div className="flex items-center gap-2 min-w-0">
                                                     <img 
                                                         src={getCharacterPortraitUrl(c.id)} 
                                                         alt={c.name} 
-                                                        style={{ width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0 }} 
+                                                        className="w-6 h-6 rounded-full border border-eve-border flex-shrink-0"
                                                     />
-                                                    <span style={{ fontSize: '0.95rem' }}>
+                                                    <span className="text-sm text-eve-text truncate">
                                                         {c.name}
                                                     </span>
                                                 </div>
-                                                <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--theme-primary)', marginLeft: 'auto', flexShrink: 0 }}>
+                                                <span className="whitespace-nowrap font-bold text-sm text-eve-primary ml-auto flex-shrink-0">
                                                     {formatISK(c.value)}
                                                 </span>
                                             </div>
@@ -396,38 +313,38 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
                         </div>
 
                         {/* Ore Breakdown */}
-                        <div className="column is-two-thirds">
-                            <div className="summary-card">
-                                <h4 className="title is-5 mb-3">Abgebautes Erz / Ressourcen</h4>
+                        <div className="flex-1 min-w-[280px]">
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <h4 className="text-base font-semibold mb-3 text-white">Abgebautes Erz / Ressourcen</h4>
                                 {dailyCombined.oreSummary.length === 0 ? (
-                                    <div className="has-text-centered p-5">
-                                        <p className="text-muted">An diesem Tag wurden keine Erze abgebaut.</p>
+                                    <div className="text-center p-5">
+                                        <p className="text-xs text-eve-muted">An diesem Tag wurden keine Erze abgebaut.</p>
                                     </div>
                                 ) : (
-                                    <div className="table-container">
-                                        <table className="table is-striped is-fullwidth">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-left bg-transparent text-eve-text text-xs">
                                             <thead>
-                                                <tr>
-                                                    <th>Ressource</th>
-                                                    <th className="has-text-right">Menge</th>
-                                                    <th className="has-text-right">Est. Stückpreis</th>
-                                                    <th className="has-text-right">Gesamtwert</th>
+                                                <tr className="border-b border-white/10">
+                                                    <th className="font-semibold text-eve-muted p-2">Ressource</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Menge</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Est. Stückpreis</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Gesamtwert</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {dailyCombined.oreSummary.map((ore) => (
-                                                    <tr key={ore.typeId}>
-                                                        <td>
+                                                    <tr key={ore.typeId} className="border-b border-white/5">
+                                                        <td className="p-2 flex items-center">
                                                             <img 
                                                                 src={getItemIconUrl(ore.typeId)} 
                                                                 alt={ore.name} 
-                                                                className="item-icon" 
+                                                                className="w-6 h-6 inline-block mr-2 rounded" 
                                                             />
                                                             {ore.name}
                                                         </td>
-                                                        <td className="has-text-right">{formatNumber(ore.quantity)}</td>
-                                                        <td className="has-text-right">{formatISK(ore.value / ore.quantity)}</td>
-                                                        <td className="has-text-right has-text-weight-bold" style={{ color: 'var(--theme-primary)' }}>
+                                                        <td className="p-2 text-right">{formatNumber(ore.quantity)}</td>
+                                                        <td className="p-2 text-right">{formatISK(ore.value / ore.quantity)}</td>
+                                                        <td className="p-2 text-right font-bold text-eve-primary">
                                                             {formatISK(ore.value)}
                                                         </td>
                                                     </tr>
@@ -444,56 +361,55 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
 
             {/* TAB: MONTHLY INCOME */}
             {activeMainTab === 'monthly' && (
-                <div className="box">
-                    <div className="level mb-4">
-                        <div className="level-left">
-                            <h2 className="title is-4 mb-0">Gemeinsames Monatseinkommen</h2>
+                <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                    <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
+                        <div>
+                            <h2 className="text-xl font-semibold text-white mb-0">Gemeinsames Monatseinkommen</h2>
                         </div>
-                        <div className="level-right">
-                            <label className="label mr-2 mb-0" style={{ color: 'var(--theme-text-muted)' }}>Monat auswählen:</label>
+                        <div className="flex items-center gap-3">
+                            <label className="text-xs font-semibold text-eve-muted mb-0">Monat auswählen:</label>
                             <input 
                                 type="month" 
-                                className="input input-dark" 
-                                style={{ width: 'auto' }}
+                                className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 w-auto" 
                                 value={selectedMonth}
                                 onChange={(e) => setSelectedMonth(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="columns">
+                    <div className="flex flex-wrap gap-6">
                         {/* Summary Stats */}
-                        <div className="column is-one-third">
-                            <div className="summary-card">
-                                <p className="subtitle is-6 mb-2">Gesamtwert im Monat: {selectedMonth}</p>
-                                <h3 className="title is-3" style={{ color: 'var(--theme-primary)' }}>
+                        <div className="w-full md:w-1/3 flex flex-col gap-4">
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <p className="text-xs text-eve-muted mb-2">Gesamtwert im Monat: {selectedMonth}</p>
+                                <h3 className="text-2xl font-bold text-eve-primary">
                                     {formatISK(monthlyCombined.totalValue)}
                                 </h3>
-                                <hr style={{ borderColor: 'var(--theme-card-border)', margin: '1rem 0' }} />
-                                <p className="subtitle is-6 mb-1">Menge erzielt:</p>
-                                <p className="has-text-weight-bold">{formatNumber(monthlyCombined.totalQuantity)} Einheiten</p>
+                                <hr className="border-eve-border my-4" />
+                                <p className="text-xs text-eve-muted mb-1">Menge erzielt:</p>
+                                <p className="font-bold text-sm text-white">{formatNumber(monthlyCombined.totalQuantity)} Einheiten</p>
                             </div>
 
                             {/* Character share */}
-                            <div className="summary-card">
-                                <h4 className="title is-5 mb-3">Aufteilung nach Charakter</h4>
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <h4 className="text-base font-semibold mb-3 text-white">Aufteilung nach Charakter</h4>
                                 {monthlyCombined.charSummary.length === 0 ? (
-                                    <p className="text-muted">Keine Aktivitäten in diesem Monat.</p>
+                                    <p className="text-xs text-eve-muted">Keine Aktivitäten in diesem Monat.</p>
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div className="flex flex-col gap-3">
                                         {monthlyCombined.charSummary.map((c) => (
-                                            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 0.5rem', minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                            <div key={c.id} className="flex justify-between items-center flex-wrap gap-1 min-w-0">
+                                                <div className="flex items-center gap-2 min-w-0">
                                                     <img 
                                                         src={getCharacterPortraitUrl(c.id)} 
                                                         alt={c.name} 
-                                                        style={{ width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0 }} 
+                                                        className="w-6 h-6 rounded-full border border-eve-border flex-shrink-0"
                                                     />
-                                                    <span style={{ fontSize: '0.95rem' }}>
+                                                    <span className="text-sm text-eve-text truncate">
                                                         {c.name}
                                                     </span>
                                                 </div>
-                                                <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.95rem', color: 'var(--theme-primary)', marginLeft: 'auto', flexShrink: 0 }}>
+                                                <span className="whitespace-nowrap font-bold text-sm text-eve-primary ml-auto flex-shrink-0">
                                                     {formatISK(c.value)}
                                                 </span>
                                             </div>
@@ -504,38 +420,38 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
                         </div>
 
                         {/* Ore Breakdown */}
-                        <div className="column is-two-thirds">
-                            <div className="summary-card">
-                                <h4 className="title is-5 mb-3">Abgebautes Erz / Ressourcen</h4>
+                        <div className="flex-1 min-w-[280px]">
+                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                <h4 className="text-base font-semibold mb-3 text-white">Abgebautes Erz / Ressourcen</h4>
                                 {monthlyCombined.oreSummary.length === 0 ? (
-                                    <div className="has-text-centered p-5">
-                                        <p className="text-muted">In diesem Monat wurden keine Erze abgebaut.</p>
+                                    <div className="text-center p-5">
+                                        <p className="text-xs text-eve-muted">In diesem Monat wurden keine Erze abgebaut.</p>
                                     </div>
                                 ) : (
-                                    <div className="table-container">
-                                        <table className="table is-striped is-fullwidth">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-left bg-transparent text-eve-text text-xs">
                                             <thead>
-                                                <tr>
-                                                    <th>Ressource</th>
-                                                    <th className="has-text-right">Menge</th>
-                                                    <th className="has-text-right">Est. Stückpreis</th>
-                                                    <th className="has-text-right">Gesamtwert</th>
+                                                <tr className="border-b border-white/10">
+                                                    <th className="font-semibold text-eve-muted p-2">Ressource</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Menge</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Est. Stückpreis</th>
+                                                    <th className="font-semibold text-eve-muted p-2 text-right">Gesamtwert</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {monthlyCombined.oreSummary.map((ore) => (
-                                                    <tr key={ore.typeId}>
-                                                        <td>
+                                                    <tr key={ore.typeId} className="border-b border-white/5">
+                                                        <td className="p-2 flex items-center">
                                                             <img 
                                                                 src={getItemIconUrl(ore.typeId)} 
                                                                 alt={ore.name} 
-                                                                className="item-icon" 
+                                                                className="w-6 h-6 inline-block mr-2 rounded" 
                                                             />
                                                             {ore.name}
                                                         </td>
-                                                        <td className="has-text-right">{formatNumber(ore.quantity)}</td>
-                                                        <td className="has-text-right">{formatISK(ore.value / ore.quantity)}</td>
-                                                        <td className="has-text-right has-text-weight-bold" style={{ color: 'var(--theme-primary)' }}>
+                                                        <td className="p-2 text-right">{formatNumber(ore.quantity)}</td>
+                                                        <td className="p-2 text-right">{formatISK(ore.value / ore.quantity)}</td>
+                                                        <td className="p-2 text-right font-bold text-eve-primary">
                                                             {formatISK(ore.value)}
                                                         </td>
                                                     </tr>
@@ -554,7 +470,7 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
             {activeMainTab === 'characters' && (
                 <div>
                     {/* Character Cards list */}
-                    <div className="char-grid">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 mb-6">
                         {charactersData.map((char) => {
                             let charValue = 0;
                             char.records.forEach(r => charValue += r.value);
@@ -562,20 +478,20 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
                             return (
                                 <div 
                                     key={char.id} 
-                                    className={`char-card-selector ${selectedCharId === char.id ? 'is-active' : ''}`}
+                                    className={`flex items-center gap-4 p-4 rounded-lg border border-eve-border bg-[#141b2b66] cursor-pointer transition-all duration-200 hover:border-eve-primary ${selectedCharId === char.id ? 'bg-eve-primary/10 border-eve-primary shadow-[0_0_10px_rgba(0,240,255,0.2)]' : ''}`}
                                     onClick={() => setSelectedCharId(char.id)}
                                 >
                                     <img 
                                         src={getCharacterPortraitUrl(char.id)} 
                                         alt={char.name} 
-                                        className="char-portrait" 
+                                        className={`w-12 h-12 rounded-full border-2 ${selectedCharId === char.id ? 'border-eve-primary' : 'border-eve-border'}`} 
                                     />
                                     <div>
-                                        <h4 className="has-text-weight-bold mb-0">{char.name}</h4>
+                                        <h4 className="font-bold text-sm text-white mb-0">{char.name}</h4>
                                         {char.error ? (
-                                            <span style={{ color: '#ff4444', fontSize: '0.8rem' }}>⚠️ Fehler</span>
+                                            <span className="text-rose-400 text-xs">⚠️ Fehler</span>
                                         ) : (
-                                            <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                                            <span className="text-eve-muted text-xs">
                                                 90d: {formatISK(charValue)}
                                             </span>
                                         )}
@@ -587,90 +503,90 @@ export default function MiningLedger({ charactersList, apiDataUrl, imagePaths }:
 
                     {/* Selected Character Detail */}
                     {activeChar && (
-                        <div className="box">
-                            <div className="level mb-4">
-                                <div className="level-left">
+                        <div className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                            <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
+                                <div className="flex items-center gap-3">
                                     <img 
                                         src={getCharacterPortraitUrl(activeChar.id)} 
                                         alt={activeChar.name} 
-                                        style={{ width: '48px', height: '48px', borderRadius: '50%', border: '2px solid var(--theme-primary)' }} 
+                                        className="w-12 h-12 rounded-full border-2 border-eve-primary" 
                                     />
                                     <div>
-                                        <h2 className="title is-4 mb-0">{activeChar.name}</h2>
-                                        <p className="text-muted" style={{ fontSize: '0.9rem' }}>Bergbautagebuch-Details</p>
+                                        <h2 className="text-xl font-semibold text-white mb-0">{activeChar.name}</h2>
+                                        <p className="text-eve-muted text-xs">Bergbautagebuch-Details</p>
                                     </div>
                                 </div>
                             </div>
 
                             {activeChar.error ? (
-                                <div className="notification is-danger" style={{ background: 'rgba(255, 68, 68, 0.15)', border: '1px solid #ff4444', borderRadius: '8px', padding: '1rem', color: '#ff8888' }}>
+                                <div className="py-5 px-6 rounded-lg mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-400">
                                     <p className="mb-0">{activeChar.error}</p>
                                 </div>
                             ) : (
                                 <div>
                                     {/* Stats grid */}
-                                    <div className="columns mb-4">
-                                        <div className="column">
-                                            <div className="summary-card mb-0">
-                                                <p className="subtitle is-6 mb-1">Gesamtwert (90 Tage)</p>
-                                                <p className="title is-4 mb-0" style={{ color: 'var(--theme-primary)' }}>
+                                    <div className="flex flex-wrap gap-4 mb-6">
+                                        <div className="flex-1 min-w-[200px]">
+                                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                                <p className="text-xs text-eve-muted mb-1">Gesamtwert (90 Tage)</p>
+                                                <p className="text-lg font-bold text-eve-primary mb-0">
                                                     {formatISK(activeCharStats.totalVal)}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="column">
-                                            <div className="summary-card mb-0">
-                                                <p className="subtitle is-6 mb-1">Geförderte Erze</p>
-                                                <p className="title is-4 mb-0">
-                                                    {formatNumber(activeCharStats.totalQty)} <span className="is-size-6 font-weight-normal text-muted">Einheiten</span>
+                                        <div className="flex-1 min-w-[200px]">
+                                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                                <p className="text-xs text-eve-muted mb-1">Geförderte Erze</p>
+                                                <p className="text-lg font-bold text-white mb-0">
+                                                    {formatNumber(activeCharStats.totalQty)} <span className="text-xs font-normal text-eve-muted">Einheiten</span>
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="column">
-                                            <div className="summary-card mb-0">
-                                                <p className="subtitle is-6 mb-1">Einträge</p>
-                                                <p className="title is-4 mb-0">
-                                                    {activeCharStats.count} <span className="is-size-6 font-weight-normal text-muted">Aktivitäten</span>
+                                        <div className="flex-1 min-w-[200px]">
+                                            <div className="bg-[#141b2b80] border border-eve-border rounded-lg p-5">
+                                                <p className="text-xs text-eve-muted mb-1">Einträge</p>
+                                                <p className="text-lg font-bold text-white mb-0">
+                                                    {activeCharStats.count} <span className="text-xs font-normal text-eve-muted">Aktivitäten</span>
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Full Log Table */}
-                                    <h4 className="title is-5 mb-3">Chronologisches Bergbautagebuch</h4>
+                                    <h4 className="text-base font-semibold mb-3 text-white">Chronologisches Bergbautagebuch</h4>
                                     {activeChar.records.length === 0 ? (
-                                        <div className="has-text-centered p-5">
-                                            <p className="text-muted">Keine Bergbaueinträge in den letzten 90 Tagen gefunden.</p>
+                                        <div className="text-center p-5">
+                                            <p className="text-xs text-eve-muted">Keine Bergbaueinträge in den letzten 90 Tagen gefunden.</p>
                                         </div>
                                     ) : (
-                                        <div className="table-container">
-                                            <table className="table is-striped is-fullwidth">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse text-left bg-transparent text-eve-text text-xs">
                                                 <thead>
-                                                    <tr>
-                                                        <th>Datum</th>
-                                                        <th>Sonnensystem</th>
-                                                        <th>Ressource</th>
-                                                        <th className="has-text-right">Menge</th>
-                                                        <th className="has-text-right">Einheitspreis</th>
-                                                        <th className="has-text-right">Gesamtwert</th>
+                                                    <tr className="border-b border-white/10">
+                                                        <th className="font-semibold text-eve-muted p-2">Datum</th>
+                                                        <th className="font-semibold text-eve-muted p-2">Sonnensystem</th>
+                                                        <th className="font-semibold text-eve-muted p-2">Ressource</th>
+                                                        <th className="font-semibold text-eve-muted p-2 text-right">Menge</th>
+                                                        <th className="font-semibold text-eve-muted p-2 text-right">Einheitspreis</th>
+                                                        <th className="font-semibold text-eve-muted p-2 text-right">Gesamtwert</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {activeChar.records.map((rec, idx) => (
-                                                        <tr key={idx}>
-                                                            <td>{rec.date}</td>
-                                                            <td>{rec.solarSystemName}</td>
-                                                            <td>
+                                                        <tr key={idx} className="border-b border-white/5">
+                                                            <td className="p-2">{rec.date}</td>
+                                                            <td className="p-2">{rec.solarSystemName}</td>
+                                                            <td className="p-2 flex items-center">
                                                                 <img 
                                                                     src={getItemIconUrl(rec.typeId)} 
                                                                     alt={rec.typeName} 
-                                                                    className="item-icon" 
+                                                                    className="w-6 h-6 inline-block mr-2 rounded" 
                                                                 />
                                                                 {rec.typeName}
                                                             </td>
-                                                            <td className="has-text-right">{formatNumber(rec.quantity)}</td>
-                                                            <td className="has-text-right">{formatISK(rec.price)}</td>
-                                                            <td className="has-text-right has-text-weight-bold" style={{ color: 'var(--theme-primary)' }}>
+                                                            <td className="p-2 text-right">{formatNumber(rec.quantity)}</td>
+                                                            <td className="p-2 text-right">{formatISK(rec.price)}</td>
+                                                            <td className="p-2 text-right font-bold text-eve-primary">
                                                                 {formatISK(rec.value)}
                                                             </td>
                                                         </tr>

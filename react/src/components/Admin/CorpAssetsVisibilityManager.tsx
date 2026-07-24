@@ -63,11 +63,10 @@ function HangarUserSearch({ allUsers, selectedUsers, onAddUser }: HangarUserSear
     }, []);
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', marginTop: '0.5rem', width: '100%', maxWidth: '300px' }}>
+        <div ref={containerRef} className="relative mt-2 w-full max-w-[300px]">
             <input
                 type="text"
-                className="input"
-                style={{ fontSize: '0.85rem', padding: '0.4rem 0.6rem', height: 'auto' }}
+                className="rounded-lg w-full px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                 placeholder="Mitglied suchen..."
                 value={query}
                 onChange={(e) => {
@@ -77,19 +76,7 @@ function HangarUserSearch({ allUsers, selectedUsers, onAddUser }: HangarUserSear
                 onFocus={() => setIsOpen(true)}
             />
             {isOpen && suggestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    width: '100%',
-                    maxHeight: '150px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    background: 'rgba(13, 18, 31, 0.98)',
-                    border: '1px solid var(--theme-card-border, rgba(0, 240, 255, 0.15))',
-                    borderRadius: '6px',
-                    boxShadow: 'var(--theme-shadow)',
-                    backdropFilter: 'blur(12px)',
-                    marginTop: '2px'
-                }}>
+                <div className="absolute w-full max-h-[150px] overflow-y-auto z-[1000] bg-eve-card/98 border border-eve-border shadow-eve backdrop-blur-md rounded-md mt-0.5">
                     {suggestions.map(user => (
                         <div
                             key={user}
@@ -98,21 +85,7 @@ function HangarUserSearch({ allUsers, selectedUsers, onAddUser }: HangarUserSear
                                 setQuery('');
                                 setIsOpen(false);
                             }}
-                            style={{
-                                padding: '6px 10px',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                color: 'var(--theme-text)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = 'rgba(0, 240, 255, 0.15)';
-                                e.currentTarget.style.color = 'var(--theme-primary)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '';
-                                e.currentTarget.style.color = 'var(--theme-text)';
-                            }}
+                            className="px-2.5 py-1.5 cursor-pointer text-xs border-b border-white/5 text-eve-text transition-colors duration-150 hover:bg-eve-primary/15 hover:text-eve-primary"
                         >
                             {user}
                         </div>
@@ -235,17 +208,17 @@ export default function CorpAssetsVisibilityManager({
                 const divisions = firstCorpId ? corpDivisions[firstCorpId] : defaultDivisions;
 
                 return (
-                    <div key={locId} className="box mb-5">
-                        <h3 className="title is-5 mb-4" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div key={locId} className="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+                        <h3 className="text-lg font-semibold mb-4 text-white flex items-center flex-wrap">
                             {loc.name}
                             {loc.systemName && (
-                                <span className="tag is-dark ml-2" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', backgroundColor: '#1e293b', borderRadius: '4px' }}>
+                                <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold rounded bg-slate-800 border border-white/5 text-eve-muted ml-2">
                                     {loc.systemName}
                                 </span>
                             )}
                         </h3>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="flex flex-col gap-4">
                             {Object.entries(flagsToMap).map(([flag, label]) => {
                                 const hangarName = divisions[label] ?? `Hangar ${label}`;
                                 const state = settings[locId]?.[flag] || { visible: false, restricted: false, users: [] };
@@ -253,13 +226,7 @@ export default function CorpAssetsVisibilityManager({
                                 return (
                                     <div 
                                         key={flag} 
-                                        style={{ 
-                                            padding: '1rem', 
-                                            borderRadius: '8px', 
-                                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                                            backgroundColor: state.visible ? 'rgba(0, 240, 255, 0.02)' : 'transparent',
-                                            transition: 'background-color 0.2s'
-                                        }}
+                                        className={`p-4 rounded-lg border transition-colors duration-200 ${state.visible ? 'border-eve-primary/20 bg-eve-primary/2' : 'border-white/5 bg-transparent'}`}
                                     >
                                         {/* Hidden inputs to sync with Symfony's request processing */}
                                         {state.visible && (
@@ -269,75 +236,52 @@ export default function CorpAssetsVisibilityManager({
                                             <input key={u} type="hidden" name={`visibility[${locId}][${flag}][users][]`} value={u} />
                                         ))}
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div className="flex justify-between items-start flex-wrap gap-4">
+                                            <div className="flex items-center gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id={`chk-${locId}-${flag}`}
                                                     checked={state.visible}
                                                     onChange={() => toggleVisible(locId, flag)}
-                                                    style={{ cursor: 'pointer', width: '1.1rem', height: '1.1rem', accentColor: 'var(--theme-primary)' }}
+                                                    className="cursor-pointer w-4.5 h-4.5 accent-eve-primary"
                                                 />
                                                 <label 
                                                     htmlFor={`chk-${locId}-${flag}`} 
-                                                    style={{ 
-                                                        cursor: 'pointer', 
-                                                        fontWeight: 500, 
-                                                        color: state.visible ? 'var(--theme-text)' : 'var(--theme-text-muted)' 
-                                                    }}
+                                                    className={`cursor-pointer font-medium ${state.visible ? 'text-eve-text' : 'text-eve-muted'}`}
                                                 >
                                                     {hangarName}
                                                 </label>
                                             </div>
 
                                             {state.visible && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '450px', marginTop: '0.25rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div className="flex flex-col gap-2 w-full max-w-[450px] mt-1">
+                                                    <div className="flex items-center gap-2">
                                                         <input
                                                             type="checkbox"
                                                             id={`restrict-${locId}-${flag}`}
                                                             checked={state.restricted}
                                                             onChange={() => toggleRestricted(locId, flag)}
-                                                            style={{ cursor: 'pointer', width: '0.95rem', height: '0.95rem', accentColor: 'var(--theme-primary)' }}
+                                                            className="cursor-pointer w-4 h-4 accent-eve-primary"
                                                         />
-                                                        <label htmlFor={`restrict-${locId}-${flag}`} style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--theme-text-muted)' }}>
+                                                        <label htmlFor={`restrict-${locId}-${flag}`} className="cursor-pointer text-xs text-eve-muted">
                                                             Sichtbarkeit auf bestimmte Mitglieder einschränken
                                                         </label>
                                                     </div>
 
                                                     {state.restricted && (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.5rem', marginTop: '0.25rem' }}>
+                                                        <div className="flex flex-col gap-2 pl-6 mt-1">
                                                             {state.users.length > 0 ? (
-                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                                <div className="flex flex-wrap gap-1.5">
                                                                     {state.users.map(user => (
                                                                         <span 
                                                                             key={user} 
-                                                                            style={{ 
-                                                                                fontSize: '0.75rem',
-                                                                                padding: '0.2rem 0.5rem',
-                                                                                backgroundColor: 'rgba(0, 240, 255, 0.1)',
-                                                                                border: '1px solid rgba(0, 240, 255, 0.2)',
-                                                                                borderRadius: '12px',
-                                                                                color: 'var(--theme-primary)',
-                                                                                display: 'inline-flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '0.3rem'
-                                                                            }}
+                                                                            className="text-xs px-2 py-0.5 bg-eve-primary/10 border border-eve-primary/20 rounded-full text-eve-primary inline-flex items-center gap-1.5"
                                                                         >
                                                                             {user}
                                                                             <button 
                                                                                 type="button" 
                                                                                 onClick={() => removeUser(locId, flag, user)}
-                                                                                style={{
-                                                                                    background: 'none',
-                                                                                    border: 'none',
-                                                                                    color: 'var(--theme-primary)',
-                                                                                    cursor: 'pointer',
-                                                                                    fontWeight: 'bold',
-                                                                                    fontSize: '0.85rem',
-                                                                                    lineHeight: 1,
-                                                                                    padding: 0
-                                                                                }}
+                                                                                className="bg-transparent border-none text-eve-primary cursor-pointer font-bold text-sm leading-none p-0"
                                                                             >
                                                                                 &times;
                                                                             </button>
@@ -345,7 +289,7 @@ export default function CorpAssetsVisibilityManager({
                                                                     ))}
                                                                 </div>
                                                             ) : (
-                                                                <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontStyle: 'italic' }}>
+                                                                <span className="text-xs text-amber-500 italic">
                                                                     Keine Mitglieder ausgewählt (Hangar bleibt unsichtbar, bis Mitglieder hinzugefügt werden).
                                                                 </span>
                                                             )}
@@ -369,35 +313,16 @@ export default function CorpAssetsVisibilityManager({
             })}
 
             {locationList.length > 0 ? (
-                <div className="field mt-5">
-                    <div className="control">
-                        <button type="submit" className="button is-primary is-fullwidth" style={{
-                            padding: '0.75rem',
-                            fontSize: '1rem',
-                            fontWeight: '600',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            backgroundColor: 'var(--theme-primary)',
-                            color: '#0d121f',
-                            border: 'none',
-                            transition: 'background-color 0.2s',
-                            width: '100%'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary-hover)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--theme-primary)'}
-                        >
-                            💾 Sichtbarkeits-Freigaben speichern
-                        </button>
-                    </div>
+                <div className="mt-6">
+                    <button 
+                        type="submit" 
+                        className="w-full inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-base py-3 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
+                    >
+                        💾 Sichtbarkeits-Freigaben speichern
+                    </button>
                 </div>
             ) : (
-                <div style={{
-                    padding: '1.25rem',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.2)',
-                    borderRadius: '8px',
-                    color: '#fbbf24'
-                }}>
+                <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400">
                     Bisher wurden keine Corporation-Assets in der Datenbank gefunden.
                     Bitte stelle sicher, dass der Synchronisierungs-Cronjob gelaufen ist.
                 </div>

@@ -74,119 +74,58 @@ export default function TrackingViewer(_props: TrackingViewerProps) {
     };
 
     return (
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <style>{`
-                .collapsible-card {
-                    background: rgba(20, 27, 43, 0.4);
-                    border: 1px solid var(--theme-card-border, #333);
-                    border-radius: 8px;
-                    margin-bottom: 1rem;
-                    overflow: hidden;
-                    transition: border-color 0.2s, box-shadow 0.2s;
-                }
-                .collapsible-card:hover {
-                    border-color: var(--theme-primary, #00f0ff);
-                }
-                .collapsible-header {
-                    padding: 1.25rem;
-                    cursor: pointer;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    background: rgba(0, 0, 0, 0.15);
-                    user-select: none;
-                }
-                .collapsible-header-title {
-                    color: #fff;
-                    font-weight: bold;
-                    font-size: 1.1rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                .collapsible-body {
-                    padding: 1.5rem;
-                    border-top: 1px solid rgba(255,255,255,0.05);
-                    background: rgba(0, 0, 0, 0.05);
-                }
-                .tag-template-view {
-                    background: rgba(0, 240, 255, 0.1);
-                    color: #00f0ff;
-                    font-size: 0.7rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-weight: normal;
-                }
-                .tag-private-view {
-                    background: rgba(0, 255, 170, 0.1);
-                    color: #00ffaa;
-                    font-size: 0.7rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-weight: normal;
-                }
-                .caret-icon {
-                    font-size: 0.8rem;
-                    transition: transform 0.2s;
-                    color: var(--theme-text-muted);
-                }
-                .caret-icon.is-expanded {
-                    transform: rotate(180deg);
-                    color: var(--theme-primary);
-                }
-            `}</style>
-
+        <div className="w-full max-w-[900px] mx-auto">
             {loadingLists ? (
-                <div className="box has-text-centered p-5">
-                    <span className="loader" style={{ display: 'inline-block', width: '2rem', height: '2rem', border: '3px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}></span>
-                    <p className="mt-3">Tracking-Listen werden geladen...</p>
+                <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg text-center">
+                    <span className="inline-block w-8 h-8 border-3 border-eve-primary rounded-full border-t-transparent animate-spin"></span>
+                    <p className="mt-3 text-xs text-eve-muted">Tracking-Listen werden geladen...</p>
                 </div>
             ) : listError ? (
-                <div className="notification is-danger">{listError}</div>
+                <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">{listError}</div>
             ) : lists.length === 0 ? (
-                <div className="box has-text-centered p-5">
-                    <p className="text-muted mb-3">Du hast noch keine Tracking-Listen eingerichtet.</p>
-                    <a href="/profile" className="button is-primary is-small">
+                <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg text-center">
+                    <p className="text-eve-muted text-xs mb-3">Du hast noch keine Tracking-Listen eingerichtet.</p>
+                    <a href="/profile" className="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1.5 shadow-eve transition-all duration-300 cursor-pointer">
                         ⚙️ Tracking-Listen in meinem Profil verwalten
                     </a>
                 </div>
             ) : (
                 <div>
                     {lists.map(list => (
-                        <div key={list.id} className="collapsible-card">
+                        <div key={list.id} className="bg-[#141b2b66] border border-eve-border rounded-lg mb-4 overflow-hidden transition-all duration-200 hover:border-eve-primary">
                             <div 
-                                className="collapsible-header"
+                                className="p-4 cursor-pointer flex justify-between items-center bg-black/15 select-none"
                                 onClick={() => toggleExpand(list.id)}
                             >
                                 <div>
-                                    <span className="collapsible-header-title">
+                                    <span className="text-white font-bold text-sm flex items-center gap-2">
                                         {list.name}
                                         {list.isTemplate ? (
-                                            <span className="tag-template-view">System-Vorlage</span>
+                                            <span className="bg-eve-primary/10 text-eve-primary text-[10px] px-1.5 py-0.5 rounded font-normal">System-Vorlage</span>
                                         ) : (
-                                            <span className="tag-private-view">Persönlich</span>
+                                            <span className="bg-emerald-500/10 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-normal">Persönlich</span>
                                         )}
                                     </span>
                                     {list.description && (
-                                        <p className="is-size-7 text-muted mt-1" style={{ margin: 0 }}>{list.description}</p>
+                                        <p className="text-xs text-eve-muted mt-1">{list.description}</p>
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <span className="is-size-7 text-muted">{list.items.length} Items</span>
-                                    <span className={`caret-icon ${expandedListId === list.id ? 'is-expanded' : ''}`}>▼</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs text-eve-muted">{list.items.length} Items</span>
+                                    <span className={`text-xs transition-transform duration-200 text-eve-muted ${expandedListId === list.id ? 'transform rotate-180 text-eve-primary' : ''}`}>▼</span>
                                 </div>
                             </div>
-
+ 
                             {expandedListId === list.id && (
-                                <div className="collapsible-body">
+                                <div className="p-5 border-t border-white/5 bg-black/5">
                                     <ListAnalyticsViewer listId={list.id} />
                                 </div>
                             )}
                         </div>
                     ))}
                     
-                    <div className="has-text-centered mt-5">
-                        <a href="/profile" className="button is-dark is-small">
+                    <div className="text-center mt-5">
+                        <a href="/profile" className="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-3 py-1.5 text-xs font-semibold transition-all duration-300 cursor-pointer">
                             ⚙️ Tracking-Listen im Profil verwalten
                         </a>
                     </div>
@@ -265,15 +204,15 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
 
     if (loading) {
         return (
-            <div className="has-text-centered p-5">
-                <span className="loader" style={{ display: 'inline-block', width: '1.5rem', height: '1.5rem', border: '2px solid var(--theme-primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}></span>
-                <p className="mt-2 is-size-7">Berechne Zuwächse...</p>
+            <div className="text-center p-5">
+                <span className="inline-block w-6 h-6 border-2 border-eve-primary rounded-full border-t-transparent animate-spin"></span>
+                <p className="mt-2 text-xs text-eve-muted">Berechne Zuwächse...</p>
             </div>
         );
     }
 
     if (error) {
-        return <div className="notification is-danger is-light is-size-7">{error}</div>;
+        return <div className="p-3 rounded text-xs bg-rose-500/10 border border-rose-500/30 text-rose-400">{error}</div>;
     }
 
     if (!analytics) return null;
@@ -296,103 +235,42 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
 
     return (
         <div>
-            <style>{`
-                .viewer-stats-panel {
-                    background: rgba(0, 0, 0, 0.15);
-                    border: 1px solid var(--theme-card-border, #333);
-                    border-radius: 8px;
-                    padding: 1.25rem;
-                    margin-bottom: 1rem;
-                }
-                .viewer-share-bar {
-                    display: flex;
-                    height: 20px;
-                    border-radius: 10px;
-                    overflow: hidden;
-                    background: rgba(255, 255, 255, 0.03);
-                    margin: 1rem 0;
-                }
-                .viewer-share-bar-segment {
-                    height: 100%;
-                    transition: width 0.3s;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 0.7rem;
-                    font-weight: bold;
-                    color: #000;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    white-space: nowrap;
-                    padding: 0 4px;
-                }
-                .viewer-progress-bar {
-                    background: rgba(255, 255, 255, 0.05);
-                    height: 5px;
-                    border-radius: 3px;
-                    overflow: hidden;
-                    margin-top: 4px;
-                }
-                .viewer-progress-fill {
-                    background: var(--theme-primary, #00f0ff);
-                    height: 100%;
-                    border-radius: 3px;
-                }
-                .time-control-flex {
-                    display: flex;
-                    justify-content: flex-end;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 1.25rem;
-                    flex-wrap: wrap;
-                }
-                .time-select-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-                .item-row-hover:hover {
-                    background: rgba(255, 255, 255, 0.04) !important;
-                }
-            `}</style>
-
             {/* Time range and single date selectors */}
-            <div className="time-control-flex">
+            <div className="flex justify-end items-center gap-2.5 mb-5 flex-wrap">
                 {timeSelect === 'single' && (
-                    <div className="time-select-container">
-                        <span className="is-size-7 text-muted">Datum:</span>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-eve-muted">Datum:</span>
                         <input 
                             type="date" 
-                            className="input is-small input-dark-prof" 
+                            className="rounded px-2.5 py-1 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-auto" 
                             value={singleDate} 
                             onChange={(e) => setSingleDate(e.target.value)}
                             max={todayStr}
                             min={minDateStr}
-                            style={{ width: 'auto' }}
                         />
                     </div>
                 )}
                 
-                <div className="time-select-container">
-                    <span className="is-size-7 text-muted">Auswahl:</span>
-                    <div className="select is-small">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-eve-muted">Auswahl:</span>
+                    <div>
                         <select 
                             value={timeSelect} 
                             onChange={(e) => setTimeSelect(e.target.value as TimeSelection)}
-                            style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', borderColor: '#444' }}
+                            className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
                         >
-                            <optgroup label="Stunden">
+                            <optgroup label="Stunden" style={{ background: '#101525' }}>
                                 <option value="3h">Letzte 3 Stunden</option>
                                 <option value="6h">Letzte 6 Stunden</option>
                                 <option value="12h">Letzte 12 Stunden</option>
                                 <option value="24h">Letzte 24 Stunden</option>
                             </optgroup>
-                            <optgroup label="Tage (max. 30)">
+                            <optgroup label="Tage (max. 30)" style={{ background: '#101525' }}>
                                 <option value="7d">Letzte 7 Tage</option>
                                 <option value="14d">Letzte 14 Tage</option>
                                 <option value="30d">Letzte 30 Tage (Gesamt)</option>
                             </optgroup>
-                            <optgroup label="Einzelner Tag">
+                            <optgroup label="Einzelner Tag" style={{ background: '#101525' }}>
                                 <option value="single">Spezifischer Tag...</option>
                             </optgroup>
                         </select>
@@ -401,21 +279,21 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
             </div>
 
             {/* Summary statistics */}
-            <div className="viewer-stats-panel">
-                <p className="subtitle is-7 mb-1" style={{ color: 'var(--theme-text-muted)' }}>
+            <div className="bg-black/15 border border-eve-border rounded-lg p-5 mb-4">
+                <p className="text-[10px] text-eve-muted mb-1">
                     {timeSelect === 'single' 
                         ? `Wert der Zuwächse am ${singleDate}` 
                         : timeSelect.endsWith('h') 
                             ? `Wert der Zuwächse (Letzte ${timeSelect.replace('h', '')} Std.)` 
                             : `Wert der Zuwächse (Letzte ${timeSelect.replace('d', '')} Tage)`}
                 </p>
-                <h3 className="title is-4 mb-2" style={{ color: 'var(--theme-primary, #00f0ff)' }}>
+                <h3 className="text-xl font-bold text-eve-primary mb-2">
                     {formatISK(totalCalculatedValue)}
                 </h3>
 
                 {charSummary.length > 0 ? (
                     <div>
-                        <div className="viewer-share-bar">
+                        <div className="flex h-5 rounded-full overflow-hidden bg-white/3 my-4">
                             {(() => {
                                 const colors = ['#00f0ff', '#00ffaa', '#ffbb00', '#ff00aa', '#9900ff', '#3388ff'];
                                 return charSummary.map((char, index) => {
@@ -424,7 +302,7 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                                     return (
                                         <div 
                                             key={char.name}
-                                            className="viewer-share-bar-segment"
+                                            className="h-full transition-all duration-300 flex items-center justify-center text-[10px] font-bold text-black overflow-hidden truncate px-1"
                                             style={{ 
                                                 width: `${sharePercent}%`, 
                                                 backgroundColor: colors[index % colors.length] 
@@ -439,80 +317,79 @@ function ListAnalyticsViewer({ listId }: ListAnalyticsViewerProps) {
                         </div>
 
                         {/* Legend */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px' }}>
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-1.5">
                             {(() => {
                                 const colors = ['#00f0ff', '#00ffaa', '#ffbb00', '#ff00aa', '#9900ff', '#3388ff'];
                                 return charSummary.map((char, index) => (
-                                    <div key={char.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                        <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '2px', backgroundColor: colors[index % colors.length] }}></span>
-                                        <span className="has-text-weight-semibold">{char.name}:</span>
-                                        <span className="text-muted">{formatISK(char.value)}</span>
+                                    <div key={char.name} className="flex items-center gap-1.5 text-xs text-[#ccc]">
+                                        <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[index % colors.length] }}></span>
+                                        <span className="font-semibold">{char.name}:</span>
+                                        <span className="text-eve-muted">{formatISK(char.value)}</span>
                                     </div>
                                 ));
                             })()}
                         </div>
                     </div>
                 ) : (
-                    <p className="text-muted is-size-7 mt-2">Keine Zuwächse für deine Charaktere in diesem Zeitraum verzeichnet.</p>
+                    <p className="text-eve-muted text-xs mt-2">Keine Zuwächse für deine Charaktere in diesem Zeitraum verzeichnet.</p>
                 )}
             </div>
 
             {/* Item breakdown table */}
-            <div className="viewer-stats-panel" style={{ marginBottom: 0 }}>
-                <h4 className="title is-6 mb-3" style={{ color: '#fff' }}>📦 Erzielter Loot & Wert</h4>
+            <div className="bg-black/15 border border-eve-border rounded-lg p-5">
+                <h4 className="text-sm font-semibold text-white mb-3">📦 Erzielter Loot & Wert</h4>
                 {analytics.itemBreakdown.length === 0 ? (
-                    <p className="text-muted is-size-7">Keine Gegenstände im gewählten Zeitraum gelootet.</p>
+                    <p className="text-eve-muted text-xs">Keine Gegenstände im gewählten Zeitraum gelootet.</p>
                 ) : (
-                    <div className="table-container">
-                        <table className="table is-striped is-fullwidth" style={{ background: 'transparent' }}>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
                             <thead>
-                                <tr>
-                                    <th className="is-size-7" style={{ width: '40px' }}></th>
-                                    <th className="is-size-7">Gegenstand</th>
-                                    <th className="has-text-right is-size-7">Menge</th>
-                                    <th className="has-text-right is-size-7">Gesamtwert</th>
+                                <tr className="border-b border-eve-border bg-[#0d121fe6]/50">
+                                    <th className="text-left font-semibold text-eve-muted p-2 text-xs w-10"></th>
+                                    <th className="text-left font-semibold text-eve-muted p-2 text-xs">Gegenstand</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2 text-xs">Menge</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2 text-xs">Gesamtwert</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-white/5">
                                 {analytics.itemBreakdown.map(item => {
                                     const percent = totalCalculatedValue > 0 ? (item.value / totalCalculatedValue) * 100 : 0;
                                     const isExpanded = activeItemTypeId === item.typeId;
                                     return (
                                         <React.Fragment key={item.typeId}>
                                             <tr 
-                                                style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' }}
+                                                className="hover:bg-white/2 cursor-pointer transition-colors"
                                                 onClick={() => setActiveItemTypeId(isExpanded ? null : item.typeId)}
-                                                className="item-row-hover"
                                             >
-                                                <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d' }}>
+                                                <td className="text-center p-2 text-xs text-[#6a737d] vertical-middle">
                                                     {isExpanded ? '▼' : '▶'}
                                                 </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <td className="p-2 text-xs text-[#ccc] vertical-middle">
+                                                    <div className="flex items-center gap-1.5">
                                                         <img 
                                                             src={`https://images.evetech.net/types/${item.typeId}/icon?size=32`} 
                                                             alt="" 
-                                                            style={{ width: '20px', height: '20px', borderRadius: '4px' }}
+                                                            className="w-5 h-5 rounded flex-shrink-0"
                                                             loading="lazy"
                                                         />
                                                         <div>
-                                                            <span className="has-text-weight-semibold" style={{ fontSize: '0.85rem' }}>{item.typeName}</span>
-                                                            <div className="viewer-progress-bar" style={{ width: '80px' }}>
-                                                                <div className="viewer-progress-fill" style={{ width: `${percent}%` }}></div>
+                                                            <span className="font-semibold text-white">{item.typeName}</span>
+                                                            <div className="bg-white/5 h-1 rounded-full overflow-hidden mt-1 w-20">
+                                                                <div className="bg-eve-primary h-full rounded-full" style={{ width: `${percent}%` }}></div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="has-text-right has-text-weight-semibold is-size-7" style={{ verticalAlign: 'middle' }}>
+                                                <td className="p-2 text-xs text-right text-white font-semibold vertical-middle font-mono">
                                                     {formatNumber(item.quantity)}
                                                 </td>
-                                                <td className="has-text-right has-text-weight-bold is-size-7" style={{ color: 'var(--theme-primary, #00f0ff)', verticalAlign: 'middle' }}>
+                                                <td className="p-2 text-xs text-right text-eve-primary font-bold vertical-middle font-mono">
                                                     {formatISK(item.value)}
                                                 </td>
                                             </tr>
                                             {isExpanded && (
                                                 <tr>
-                                                    <td colSpan={4} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
+                                                    <td colSpan={4} className="bg-black/25 p-3 border-b border-white/5">
                                                         <ItemChangesDetails 
                                                             listId={listId}
                                                             typeId={item.typeId}
@@ -613,41 +490,32 @@ function ItemChangesDetails({ listId, typeId, timeSelect, singleDate, formatNumb
     };
 
     if (loading) {
-        return <div className="is-size-7 text-muted">Lade Einzelbuchungen...</div>;
+        return <div className="text-xs text-eve-muted">Lade Einzelbuchungen...</div>;
     }
 
     if (error) {
-        return <div className="is-size-7 has-text-danger">{error}</div>;
+        return <div className="text-xs text-rose-400">{error}</div>;
     }
 
     if (changes.length === 0) {
-        return <div className="is-size-7 text-muted">Keine Einzelbuchungen (Zuwächse) in diesem Zeitraum vorhanden.</div>;
+        return <div className="text-xs text-eve-muted">Keine Einzelbuchungen (Zuwächse) in diesem Zeitraum vorhanden.</div>;
     }
 
     return (
         <div>
-            <h5 className="is-size-7 has-text-weight-bold mb-2" style={{ color: '#fff' }}>Detaillierte Einzelbuchungen (Zuwächse):</h5>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+            <h5 className="text-xs font-semibold text-white mb-2">Detaillierte Einzelbuchungen (Zuwächse):</h5>
+            <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto pr-1">
                 {changes.map(c => (
                     <div 
                         key={c.id} 
-                        style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center', 
-                            background: 'rgba(255, 255, 255, 0.02)', 
-                            padding: '6px 10px', 
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255,255,255,0.05)'
-                        }}
+                        className="flex justify-between items-center bg-white/2 p-2 px-2.5 rounded border border-white/5 hover:border-white/10 transition-colors"
                     >
-                        <span className="is-size-7" style={{ color: '#ccc' }}>
-                            <strong style={{ color: '#00ffaa' }}>{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk. 
-                            <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
+                        <span className="text-xs text-[#ccc]">
+                            <strong className="text-emerald-400">{c.characterName}</strong>: {c.quantity > 0 ? '+' : ''}{formatNumber(c.quantity)} Stk. 
+                            <span className="text-white/40 ml-2 text-[10px]">({c.loggedAt})</span>
                         </span>
                         <button 
-                            className="button is-danger is-small p-1" 
-                            style={{ height: '22px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            className="inline-flex items-center justify-center border border-transparent rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[10px] px-2 py-1 transition-all duration-200 cursor-pointer"
                             onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
                             disabled={deletingId === c.id}
                         >

@@ -18,28 +18,28 @@ details[open] .details-arrow {
 }
 </style>
 
-<div class="container mt-5 mb-6">
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
     {# Header & Combined Wallet Balance #}
-    <div class="box p-5 mb-5 assets-header-gradient" style="position: relative; overflow: hidden;">
+    <div class="p-6 mb-6 rounded-lg border border-eve-border backdrop-blur-md shadow-eve assets-header-gradient relative overflow-hidden">
         <div class="assets-header-bg-text">ISK</div>
-        <div class="columns is-vcentered">
-            <div class="column">
-                <span class="has-text-grey-light is-size-6 uppercase-tracking" style="letter-spacing: 1px;">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex-1 min-w-[280px]">
+                <span class="text-eve-muted text-sm uppercase tracking-wider">
                     GESAMTVERMÖGEN (Wallet + Assets)
                 </span>
-                <h1 class="title is-1 mt-1 mb-3 assets-header-title" style="font-size: 2.5rem; font-weight: 700;">
-                    {{ netWorth|number_format(2, ',', '.') }} <span class="is-size-3">ISK</span>
+                <h1 class="text-3xl font-extrabold mt-1 mb-3 text-[#00ffaa] font-mono">
+                    {{ netWorth|number_format(2, ',', '.') }} <span class="text-xl">ISK</span>
                 </h1>
-                <div style="display: flex; gap: 2rem; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+                <div class="flex gap-8 flex-wrap border-t border-white/8 pt-3">
                     <div>
-                        <span class="has-text-grey-light is-size-7 uppercase-tracking">Wallet</span>
-                        <p style="font-weight: 600; font-size: 1rem; color: var(--theme-text);">
+                        <span class="text-eve-muted text-xs uppercase tracking-wider">Wallet</span>
+                        <p class="font-semibold text-base text-white">
                             {{ totalWallet|number_format(2, ',', '.') }} ISK
                         </p>
                     </div>
                     <div>
-                        <span class="has-text-grey-light is-size-7 uppercase-tracking">Assets</span>
-                        <p style="font-weight: 600; font-size: 1rem; color: var(--theme-primary);">
+                        <span class="text-eve-muted text-xs uppercase tracking-wider">Assets</span>
+                        <p class="font-semibold text-base text-eve-primary">
                             {{ totalAssetVal|number_format(2, ',', '.') }} ISK
                         </p>
                     </div>
@@ -59,13 +59,14 @@ details[open] .details-arrow {
         }
     } %}
 
-    <details class="box mb-4" open>
-        <summary>
-            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mb-4 group" open>
+        <summary class="p-4 font-semibold cursor-pointer list-none flex justify-between items-center select-none bg-black/10">
+            <h3 class="text-sm font-semibold mb-0 text-eve-primary flex items-center gap-2">
                 📊 Ertragsjournal (Performance)
             </h3>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
         </summary>
-        <div class="details-content">
+        <div class="p-5 border-t border-eve-border bg-[#0a0f1d]/30">
             <div data-react-component="PerformanceLedger" data-react-props="{{ perfProps|json_encode|e('html_attr') }}"></div>
         </div>
     </details>
@@ -97,13 +98,14 @@ details[open] .details-arrow {
         jwtToken: jwt_token(app.user)
     } %}
 
-    <details class="box mb-4">
-        <summary>
-            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mb-4 group">
+        <summary class="p-4 font-semibold cursor-pointer list-none flex justify-between items-center select-none bg-black/10">
+            <h3 class="text-sm font-semibold mb-0 text-eve-primary flex items-center gap-2">
                 🎒 Gesamt-Inventar (Assets)
             </h3>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
         </summary>
-        <div class="details-content">
+        <div class="p-5 border-t border-eve-border bg-[#0a0f1d]/30">
             <div data-react-component="AssetsOverview" data-react-props="{{ assetsProps|json_encode|e('html_attr') }}"></div>
         </div>
     </details>
@@ -116,13 +118,14 @@ details[open] .details-arrow {
         omegaAccountCount: omegaAccountCount
     } %}
 
-    <details class="box mb-4">
-        <summary>
-            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mb-4 group">
+        <summary class="p-4 font-semibold cursor-pointer list-none flex justify-between items-center select-none bg-black/10">
+            <h3 class="text-sm font-semibold mb-0 text-eve-primary flex items-center gap-2">
                 📈 Vermögensverlauf (History)
             </h3>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
         </summary>
-        <div class="details-content">
+        <div class="p-5 border-t border-eve-border bg-[#0a0f1d]/30">
             <div data-react-component="ValueHistory" data-react-props="{{ historyProps|json_encode|e('html_attr') }}"></div>
         </div>
     </details>
@@ -133,13 +136,14 @@ details[open] .details-arrow {
         characters: charactersData
     } %}
 
-    <details class="box mb-4">
-        <summary>
-            <h3 class="title is-5 mb-0" style="color: var(--theme-primary); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mb-4 group">
+        <summary class="p-4 font-semibold cursor-pointer list-none flex justify-between items-center select-none bg-black/10">
+            <h3 class="text-sm font-semibold mb-0 text-eve-primary flex items-center gap-2">
                 💳 Persönliches Wallet (Journal)
             </h3>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
         </summary>
-        <div class="details-content">
+        <div class="p-5 border-t border-eve-border bg-[#0a0f1d]/30">
             <div data-react-component="WalletJournal" data-react-props="{{ walletProps|json_encode|e('html_attr') }}"></div>
         </div>
     </details>

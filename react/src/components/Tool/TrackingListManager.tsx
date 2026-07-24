@@ -245,105 +245,14 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
     const privateLists = lists.filter(l => !l.isTemplate);
 
     return (
-        <div className="columns">
-            <style>{`
-                .sidebar-card-prof {
-                    background: rgba(0, 0, 0, 0.15);
-                    border: 1px solid var(--theme-card-border, #333);
-                    border-radius: 8px;
-                    padding: 1rem;
-                    height: 100%;
-                }
-                .list-section-title-prof {
-                    font-size: 0.75rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    color: var(--theme-text-muted, #888);
-                    margin-top: 1rem;
-                    margin-bottom: 0.5rem;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
-                    padding-bottom: 2px;
-                }
-                .list-item-selector-prof {
-                    padding: 0.6rem 0.75rem;
-                    border-radius: 6px;
-                    border: 1px solid transparent;
-                    background: rgba(0, 0, 0, 0.2);
-                    cursor: pointer;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    transition: all 0.2s;
-                    margin-bottom: 0.4rem;
-                }
-                .list-item-selector-prof:hover {
-                    border-color: var(--theme-primary, #00f0ff);
-                }
-                .list-item-selector-prof.is-active {
-                    background: rgba(0, 240, 255, 0.06);
-                    border-color: var(--theme-primary, #00f0ff);
-                }
-                .tag-template-prof {
-                    background: rgba(0, 240, 255, 0.1);
-                    color: #00f0ff;
-                    font-size: 0.7rem;
-                    padding: 1px 4px;
-                    border-radius: 3px;
-                }
-                .tag-private-prof {
-                    background: rgba(0, 255, 170, 0.1);
-                    color: #00ffaa;
-                    font-size: 0.7rem;
-                    padding: 1px 4px;
-                    border-radius: 3px;
-                }
-                .panel-prof {
-                    background: rgba(0, 0, 0, 0.1);
-                    border: 1px solid var(--theme-card-border, #333);
-                    border-radius: 8px;
-                    padding: 1.25rem;
-                }
-                .suggestions-dropdown-prof {
-                    position: absolute;
-                    width: 100%;
-                    max-height: 200px;
-                    overflow-y: auto;
-                    z-index: 1000;
-                    background: rgba(13, 18, 31, 0.98);
-                    border: 1px solid var(--theme-card-border, #444);
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    backdrop-filter: blur(12px);
-                    margin-top: 4px;
-                }
-                .suggestion-entry-prof {
-                    padding: 6px 10px;
-                    cursor: pointer;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    transition: all 0.15s;
-                    font-size: 0.85rem;
-                }
-                .suggestion-entry-prof:hover {
-                    background: rgba(0, 240, 255, 0.15);
-                    color: var(--theme-primary, #00f0ff);
-                }
-                .input-dark-prof {
-                    background: rgba(0,0,0,0.3) !important;
-                    border: 1px solid var(--theme-card-border, #444) !important;
-                    color: #fff !important;
-                }
-            `}</style>
-
+        <div className="flex flex-wrap gap-6">
             {/* LEFT: Lists selection */}
-            <div className="column is-one-third">
-                <div className="sidebar-card-prof">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 className="title is-6 mb-0" style={{ color: '#fff' }}>Listen verwalten</h3>
+            <div className="w-full md:w-1/3 flex-none">
+                <div className="bg-[#00000026] border border-eve-border rounded-lg p-4 h-full">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-semibold text-white">Listen verwalten</h3>
                         <button 
-                            className="button is-small is-primary"
+                            className="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-bold text-xs px-2.5 py-1.5 shadow-eve transition-all duration-300 cursor-pointer"
                             onClick={() => setShowCreateForm(!showCreateForm)}
                         >
                             {showCreateForm ? 'Abbrechen' : 'Neu'}
@@ -351,56 +260,61 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                     </div>
 
                     {showCreateForm && (
-                        <form onSubmit={handleCreateList} className="mb-4 p-3" style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                            <div className="field">
-                                <label className="label is-small">Name</label>
+                        <form onSubmit={handleCreateList} className="mb-4 p-3 bg-black/20 rounded-lg border border-white/5">
+                            <div className="mb-3">
+                                <label className="block text-[10px] font-semibold text-eve-muted mb-1">Name</label>
                                 <input 
                                     type="text" 
-                                    className="input is-small input-dark-prof" 
+                                    className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full" 
                                     placeholder="z. B. Abyss Loot"
                                     value={newListName}
                                     onChange={(e) => setNewListName(e.target.value)}
                                     required
                                 />
                             </div>
-                            <div className="field">
-                                <label className="label is-small">Beschreibung</label>
+                            <div className="mb-3">
+                                <label className="block text-[10px] font-semibold text-eve-muted mb-1">Beschreibung</label>
                                 <input 
                                     type="text" 
-                                    className="input is-small input-dark-prof" 
+                                    className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full" 
                                     placeholder="Optionale Beschreibung"
                                     value={newListDesc}
                                     onChange={(e) => setNewListDesc(e.target.value)}
                                 />
                             </div>
-                            <button type="submit" className="button is-small is-success is-fullwidth mt-2">Erstellen</button>
+                            <button type="submit" className="inline-flex items-center justify-center border border-transparent rounded bg-emerald-500 hover:brightness-115 text-white font-semibold text-xs px-2.5 py-1.5 shadow-eve transition-all duration-300 cursor-pointer w-full mt-2">
+                                Erstellen
+                            </button>
                         </form>
                     )}
 
                     {loadingLists ? (
-                        <p className="text-muted is-size-7">Lade Listen...</p>
+                        <p className="text-eve-muted text-xs">Lade Listen...</p>
                     ) : listError ? (
-                        <p className="has-text-danger is-size-7">{listError}</p>
+                        <p className="text-rose-400 text-xs">{listError}</p>
                     ) : (
                         <div>
-                            <div className="list-section-title-prof">Meine Listen</div>
+                            <div className="text-[10px] uppercase tracking-wider text-eve-muted mt-4 mb-2 border-b border-white/5 pb-0.5">Meine Listen</div>
                             {privateLists.length === 0 ? (
-                                <p className="text-muted is-size-7 my-2">Keine eigenen Listen.</p>
+                                <p className="text-eve-muted text-xs my-2">Keine eigenen Listen.</p>
                             ) : (
                                 privateLists.map(list => (
                                     <div 
                                         key={list.id} 
-                                        className={`list-item-selector-prof ${selectedListId === list.id ? 'is-active' : ''}`}
+                                        className={`p-2.5 rounded-lg border cursor-pointer flex justify-between items-center transition-all duration-200 mb-1.5 hover:border-eve-primary ${
+                                            selectedListId === list.id 
+                                                ? 'bg-eve-primary/5 border-eve-primary' 
+                                                : 'border-transparent bg-black/20'
+                                        }`}
                                         onClick={() => setSelectedListId(list.id)}
                                     >
-                                        <div style={{ minWidth: 0 }}>
-                                            <div className="has-text-weight-bold is-size-7" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                        <div className="min-w-0">
+                                            <div className="font-bold text-xs truncate" title={list.name}>
                                                 {list.name}
                                             </div>
                                         </div>
                                         <button 
-                                            className="button is-small is-danger is-text"
-                                            style={{ padding: '0 4px', height: 'auto', fontSize: '0.75rem' }}
+                                            className="text-rose-400 hover:text-rose-300 transition-colors p-1 text-xs cursor-pointer ml-2"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleDeleteList(list.id);
@@ -413,17 +327,21 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                                 ))
                             )}
 
-                            <div className="list-section-title-prof">System-Vorlagen</div>
+                            <div className="text-[10px] uppercase tracking-wider text-eve-muted mt-4 mb-2 border-b border-white/5 pb-0.5">System-Vorlagen</div>
                             {templates.map(list => (
                                 <div 
                                     key={list.id} 
-                                    className={`list-item-selector-prof ${selectedListId === list.id ? 'is-active' : ''}`}
+                                    className={`p-2.5 rounded-lg border cursor-pointer flex justify-between items-center transition-all duration-200 mb-1.5 hover:border-eve-primary ${
+                                        selectedListId === list.id 
+                                            ? 'bg-eve-primary/5 border-eve-primary' 
+                                            : 'border-transparent bg-black/20'
+                                    }`}
                                     onClick={() => setSelectedListId(list.id)}
                                 >
-                                    <div className="has-text-weight-bold is-size-7" style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                    <div className="font-bold text-xs truncate" title={list.name}>
                                         {list.name}
                                     </div>
-                                    <span className="tag-template-prof">Kopierbar</span>
+                                    <span className="bg-eve-primary/10 text-eve-primary text-[10px] px-1 py-0.5 rounded ml-2 flex-shrink-0">Kopierbar</span>
                                 </div>
                             ))}
                         </div>
@@ -432,44 +350,44 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
             </div>
 
             {/* RIGHT: Selected list items editor */}
-            <div className="column is-two-thirds">
+            <div className="w-full md:w-2/3 flex-1">
                 {activeList ? (
-                    <div className="panel-prof">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
+                    <div className="bg-black/10 border border-eve-border rounded-lg p-5">
+                        <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-3">
                             <div>
-                                <h4 className="title is-5 mb-0" style={{ color: '#fff' }}>
+                                <h4 className="text-base font-semibold text-white">
                                     {activeList.name}
                                 </h4>
-                                <p className="is-size-7 text-muted mt-1">{activeList.description || 'Keine Beschreibung.'}</p>
+                                <p className="text-xs text-eve-muted mt-1">{activeList.description || 'Keine Beschreibung.'}</p>
                             </div>
                             
                             {activeList.isTemplate ? (
                                 <button 
-                                    className="button is-small is-info"
+                                    className="inline-flex items-center justify-center border border-transparent rounded bg-sky-600 hover:brightness-115 text-white font-semibold text-xs px-2.5 py-1.5 shadow-eve transition-all duration-300 cursor-pointer"
                                     onClick={() => activeList && handleCopyList(activeList.id)}
                                 >
                                     📋 Als eigene Liste kopieren
                                 </button>
                             ) : (
-                                <span className="tag-private-prof">Bearbeitbar</span>
+                                <span className="bg-emerald-500/10 text-emerald-400 text-[10px] px-1 py-0.5 rounded font-mono">Bearbeitbar</span>
                             )}
                         </div>
 
-                        <div className="columns">
+                        <div className="flex flex-wrap gap-6">
                             {/* Left (Add Items) */}
-                            <div className="column is-6">
-                                <h5 className="title is-6 mb-2" style={{ color: '#fff' }}>Items verwalten</h5>
+                            <div className="w-full md:w-1/2">
+                                <h5 className="text-sm font-semibold text-white mb-2">Items verwalten</h5>
                                 
                                 {activeList.isTemplate ? (
-                                    <div className="notification is-info is-light p-3 is-size-7" style={{ background: 'rgba(0,240,255,0.04)', border: '1px solid rgba(0,240,255,0.15)', color: 'var(--theme-text-muted)' }}>
+                                    <div className="p-3 rounded text-xs bg-sky-500/10 border border-sky-500/30 text-sky-400">
                                         Vorlagen können nicht direkt bearbeitet werden. Kopiere sie zuerst!
                                     </div>
                                 ) : (
                                     <>
-                                        <div ref={containerRef} style={{ position: 'relative', marginBottom: '1rem' }}>
+                                        <div ref={containerRef} className="relative mb-4">
                                             <input 
                                                 type="text" 
-                                                className="input is-small input-dark-prof"
+                                                className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                                                 placeholder="Item suchen und hinzufügen..."
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -479,21 +397,21 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                                                 autoComplete="off"
                                             />
                                             {searchingItems && (
-                                                <span style={{ position: 'absolute', right: '8px', top: '8px', fontSize: '0.75rem', color: '#888' }}>...</span>
+                                                <span className="absolute right-2.5 top-2 text-xs text-eve-muted">...</span>
                                             )}
 
                                             {showSuggestions && suggestions.length > 0 && (
-                                                <div className="suggestions-dropdown-prof">
+                                                <div className="absolute w-full max-h-[200px] overflow-y-auto z-50 bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md mt-1">
                                                     {suggestions.map(item => (
                                                         <div 
                                                             key={item.id} 
-                                                            className="suggestion-entry-prof"
+                                                            className="p-2.5 cursor-pointer border-b border-white/5 flex items-center gap-2 transition-all duration-150 text-xs hover:bg-eve-primary/15 hover:text-eve-primary"
                                                             onClick={() => handleAddItem(item.id)}
                                                         >
                                                             <img 
                                                                 src={`https://images.evetech.net/types/${item.id}/${item.variation || 'icon'}?size=32`} 
                                                                 alt="" 
-                                                                style={{ width: '18px', height: '18px', borderRadius: '3px' }}
+                                                                className="w-[18px] height-[18px] rounded"
                                                             />
                                                             <span>{item.name}</span>
                                                         </div>
@@ -502,10 +420,10 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                                             )}
                                         </div>
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '1rem 0', color: 'var(--theme-text-muted, #888)', fontSize: '0.75rem' }}>
-                                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+                                        <div className="flex items-center gap-2 my-4 text-eve-muted text-xs">
+                                            <div className="flex-1 h-[1px] bg-white/5"></div>
                                             <span>ODER</span>
-                                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.05)' }}></div>
+                                            <div className="flex-1 h-[1px] bg-white/5"></div>
                                         </div>
 
                                         <ItemPasteInput 
@@ -517,40 +435,31 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                             </div>
 
                             {/* Right (Tracked Items list) */}
-                            <div className="column is-6">
-                                <h5 className="title is-6 mb-2" style={{ color: '#888' }}>Gegenstände in der Liste ({activeList.items.length})</h5>
+                            <div className="w-full md:w-1/2">
+                                <h5 className="text-sm font-semibold text-eve-muted mb-2">Gegenstände in der Liste ({activeList.items.length})</h5>
                                 
                                 {activeList.items.length === 0 ? (
-                                    <p className="text-muted is-size-7">Keine Items vorhanden.</p>
+                                    <p className="text-eve-muted text-xs">Keine Items vorhanden.</p>
                                 ) : (
-                                    <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div className="max-h-[250px] overflow-y-auto flex flex-col gap-1 pr-1.5">
                                         {activeList.items.map(item => (
                                             <div 
                                                 key={item.id} 
-                                                style={{ 
-                                                    display: 'flex', 
-                                                    justifyContent: 'space-between', 
-                                                    alignItems: 'center', 
-                                                    padding: '5px 8px', 
-                                                    background: 'rgba(255,255,255,0.02)', 
-                                                    borderRadius: '4px',
-                                                    border: '1px solid rgba(255,255,255,0.04)'
-                                                }}
+                                                className="flex justify-between items-center p-1.5 px-2 bg-white/2 rounded border border-white/5 hover:border-white/10 transition-colors"
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, fontSize: '0.8rem' }}>
+                                                <div className="flex items-center gap-2 min-w-0 text-xs">
                                                     <img 
                                                         src={`https://images.evetech.net/types/${item.typeId}/icon?size=32`} 
                                                         alt="" 
-                                                        style={{ width: '18px', height: '18px', borderRadius: '3px' }}
+                                                        className="w-[18px] height-[18px] rounded"
                                                     />
-                                                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={item.typeName}>
+                                                    <span className="truncate text-white" title={item.typeName}>
                                                         {item.typeName}
                                                     </span>
                                                 </div>
                                                 {!activeList.isTemplate && (
                                                     <button 
-                                                        className="button is-small is-danger is-text" 
-                                                        style={{ height: 'auto', padding: '0 4px', fontSize: '0.75rem' }}
+                                                        className="text-rose-400 hover:text-rose-300 transition-colors p-1 text-xs cursor-pointer" 
                                                         onClick={() => handleRemoveItem(item.id)}
                                                         title="Entfernen"
                                                     >
@@ -565,8 +474,8 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                         </div>
                     </div>
                 ) : (
-                    <div className="has-text-centered p-5" style={{ background: 'rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px dashed #333' }}>
-                        <p className="text-muted is-size-7">Bitte wähle links eine Tracking-Liste aus.</p>
+                    <div className="text-center p-6 bg-black/10 rounded-lg border border-dashed border-eve-border">
+                        <p className="text-eve-muted text-xs">Bitte wähle links eine Tracking-Liste aus.</p>
                     </div>
                 )}
             </div>

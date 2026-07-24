@@ -285,7 +285,7 @@ export default function AssetsOverview({
         const isNodeExpanded = isSearching || isFiltering || !!expandedNodes[item.itemId];
 
         return (
-            <div className="asset-tree-node" data-item-name={item.name}>
+            <div className="ml-[2px]" data-item-name={item.name}>
                 <div
                     className={`py-1 asset-header-row ${hasChildren ? 'has-children' : ''}`}
                     onClick={() => hasChildren && toggleNode(item.itemId)}
@@ -313,7 +313,7 @@ export default function AssetsOverview({
                                 {item.customName ? (
                                     <>
                                         <strong>{item.customName}</strong>{' '}
-                                        <span className="has-text-grey">({item.name})</span>
+                                        <span className="text-eve-muted">({item.name})</span>
                                     </>
                                 ) : (
                                     item.name
@@ -323,25 +323,25 @@ export default function AssetsOverview({
                                 <span className="tags mb-0" style={{ display: 'inline-flex', gap: '4px' }}>
                                     {item.isBlueprintCopy ? (
                                         <>
-                                            <span className="asset-blueprint-tag bpc">Kopie</span>
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-purple-500/15 text-purple-400 border border-purple-500/30">Kopie</span>
                                             {item.runs !== undefined && item.runs !== null && item.runs >= 0 && (
-                                                <span className="asset-blueprint-tag runs">{item.runs} Runs</span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-amber-500/15 text-amber-400 border border-amber-500/30">{item.runs} Runs</span>
                                             )}
                                         </>
                                     ) : (
-                                        <span className="asset-blueprint-tag bpo">Original</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-orange-500/15 text-orange-400 border border-orange-500/30">Original</span>
                                     )}
                                     {item.materialEfficiency !== undefined && item.materialEfficiency !== null && (
-                                        <span className="asset-blueprint-tag me">ME: {item.materialEfficiency}%</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">ME: {item.materialEfficiency}</span>
                                     )}
                                     {item.timeEfficiency !== undefined && item.timeEfficiency !== null && (
-                                        <span className="asset-blueprint-tag te">TE: {item.timeEfficiency}%</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase inline-flex items-center bg-sky-500/15 text-sky-400 border border-sky-500/30">TE: {item.timeEfficiency}</span>
                                     )}
                                 </span>
                             ) : item.isBlueprintCopy ? (
-                                <span className="tag is-info is-light is-small asset-item-tag">Kopie</span>
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 asset-item-tag">Kopie</span>
                             ) : hasChildren ? (
-                                <span className="tag is-small asset-item-tag is-content-badge">
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-eve-muted border border-white/5 asset-item-tag is-content-badge">
                                     📦 {item.children.length} {item.children.length === 1 ? 'Inhalt' : 'Inhalte'}
                                 </span>
                             ) : null}
@@ -353,16 +353,16 @@ export default function AssetsOverview({
                             <span className="asset-item-flag">{item.locationFlag}</span>
                             {item.price && item.price > 0 ? (
                                 <>
-                                    <span style={{ color: 'var(--theme-text-muted)', fontSize: '0.85rem' }}>
+                                    <span className="text-eve-muted text-[11px]">
                                         Einzelwert: {item.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                     </span>
-                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                    <span className="text-eve-primary text-[11px] font-semibold">
                                         Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                     </span>
                                 </>
                             ) : (
                                 getAssetValue(item) > 0 && (
-                                    <span style={{ color: 'var(--theme-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                    <span className="text-eve-primary text-[11px] font-semibold">
                                         Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                     </span>
                                 )
@@ -372,7 +372,7 @@ export default function AssetsOverview({
                 </div>
 
                 {hasChildren && (
-                    <div className={`nested-children-container ${isNodeExpanded ? '' : 'is-hidden'}`}>
+                    <div className={`border-l border-dashed border-white/10 ml-1 mt-[2px] pl-3 ${isNodeExpanded ? '' : 'hidden'}`}>
                         {item.children.map((child, idx) => (
                             <RenderAssetNode key={`${child.itemId}-${idx}`} item={child} />
                         ))}
@@ -384,100 +384,66 @@ export default function AssetsOverview({
 
     return (
         <div>
-            <div className="columns is-vcentered mb-4">
-                <div className="column">
-                    <p className="is-size-7 has-text-grey-light">Filtere und durchsuche das Inventar all deiner Charaktere.</p>
+            <div className="flex justify-between items-center flex-wrap gap-4 mb-4">
+                <div className="flex-1 min-w-[250px]">
+                    <p className="text-xs text-eve-muted">Filtere und durchsuche das Inventar all deiner Charaktere.</p>
                 </div>
                 {hasCharacters && (
-                    <>
+                    <div className="flex gap-3 items-center ml-auto">
                         {allTags.length > 0 && (
-                            <div className="column is-narrow">
-                                <div className="field mb-0">
-                                    <div className="control select is-small">
-                                        <select
-                                            value={selectedTag}
-                                            onChange={(e) => setSelectedTag(e.target.value)}
-                                            style={{ background: '#101525', color: '#ccc', borderColor: '#444' }}
-                                        >
-                                            <option value="all">Alle Tags</option>
-                                            {allTags.map(tag => (
-                                                <option key={tag} value={tag}>{tag}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
+                            <div className="relative">
+                                <select
+                                    value={selectedTag}
+                                    onChange={(e) => setSelectedTag(e.target.value)}
+                                    className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
+                                >
+                                    <option value="all" style={{ background: '#101525' }}>Alle Tags</option>
+                                    {allTags.map(tag => (
+                                        <option key={tag} value={tag} style={{ background: '#101525' }}>{tag}</option>
+                                    ))}
+                                </select>
                             </div>
                         )}
-                        <div className="column is-narrow">
-                            <div className="field mb-0">
-                                <div className="control has-icons-left">
-                                    <input
-                                        id="global-asset-search"
-                                        className="input is-small assets-search-input assets-overview-search-input"
-                                        type="text"
-                                        placeholder="Gegenstände suchen..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                    <span className="icon is-small is-left">🔍</span>
-                                </div>
-                            </div>
+                        <div className="relative flex items-center">
+                            <span className="absolute left-2.5 text-xs text-eve-muted">🔍</span>
+                            <input
+                                id="global-asset-search"
+                                className="rounded pl-7 pr-3 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 min-w-[200px]"
+                                type="text"
+                                placeholder="Gegenstände suchen..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
 
             {/* Filter bar */}
             {hasCharacters && (
-                <div className="assets-filter-bar mb-5" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    <button
-                        className={`button is-small ${activeFilter === 'all' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('all')}
-                    >
-                        🌐 Alle
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'ship' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('ship')}
-                    >
-                        🚀 Schiffe
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'blueprint' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('blueprint')}
-                    >
-                        📄 Blueprints
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'mineral' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('mineral')}
-                    >
-                        💎 Mineralien
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'ore' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('ore')}
-                    >
-                        ☄️ Erze
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'gas' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('gas')}
-                    >
-                        💨 Gase
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'pi' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('pi')}
-                    >
-                        🪐 PI-Materialien
-                    </button>
-                    <button
-                        className={`button is-small ${activeFilter === 'highvalue' ? 'is-primary' : 'is-dark'}`}
-                        onClick={() => setActiveFilter('highvalue')}
-                    >
-                        💰 Wertvoll (ab 10M)
-                    </button>
+                <div className="mb-5 flex gap-2 flex-wrap bg-white/2 p-3 rounded-lg border border-white/5">
+                    {[
+                        { key: 'all', label: '🌐 Alle' },
+                        { key: 'ship', label: '🚀 Schiffe' },
+                        { key: 'blueprint', label: '📄 Blueprints' },
+                        { key: 'mineral', label: '💎 Mineralien' },
+                        { key: 'ore', label: '☄️ Erze' },
+                        { key: 'gas', label: '💨 Gase' },
+                        { key: 'pi', label: '🪐 PI-Materialien' },
+                        { key: 'highvalue', label: '💰 Wertvoll (ab 10M)' },
+                    ].map((btn) => (
+                        <button
+                            key={btn.key}
+                            className={`inline-flex items-center justify-center border rounded px-3 py-1 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                                activeFilter === btn.key
+                                    ? 'bg-eve-primary border-transparent text-[#060911]'
+                                    : 'border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent'
+                            }`}
+                            onClick={() => setActiveFilter(btn.key)}
+                        >
+                            {btn.label}
+                        </button>
+                    ))}
                 </div>
             )}
 
@@ -488,7 +454,7 @@ export default function AssetsOverview({
                     Bitte verknüpfe einen Charakter über EVE SSO auf deinem Profil.
                 </div>
             ) : processedCharacterData.length === 0 ? (
-                <div className="notification is-warning">
+                <div className="p-4 rounded-lg text-sm bg-amber-500/10 border border-amber-500/30 text-amber-400">
                     Keine Gegenstände oder Charaktere gefunden, die Ihrer Suche entsprechen.
                 </div>
             ) : (
@@ -499,34 +465,32 @@ export default function AssetsOverview({
                     return (
                         <div
                             key={charId}
-                            className="box mb-5 character-panel-box assets-character-panel"
-                            style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}
+                            className="bg-eve-card border border-eve-border shadow-eve p-4 rounded-lg mb-4 character-panel-box assets-character-panel"
                         >
                             {/* Panel Header */}
                             <div
-                                className="p-4 character-panel-header assets-character-header"
+                                className="p-4 character-panel-header assets-character-header flex justify-between items-center cursor-pointer border-b border-white/5 pb-3 mb-3"
                                 onClick={() => toggleCharacter(charId)}
-                                style={{ cursor: 'pointer' }}
                             >
-                                <div className="assets-character-header-left">
-                                    <figure className="image is-24x24 m-0">
+                                <div className="assets-character-header-left flex items-center gap-3">
+                                    <figure className="w-6 h-6 m-0 flex-shrink-0">
                                         <img
                                             src={getCharacterPortraitUrl(charId)}
                                             alt={data.character.name}
-                                            className="is-rounded assets-character-avatar"
+                                            className="rounded-full assets-character-avatar w-full h-full object-cover"
                                             loading="lazy"
                                         />
                                     </figure>
-                                    <div>
-                                        <span className="has-text-weight-bold assets-character-name">
+                                    <div className="flex items-center">
+                                        <span className="font-bold assets-character-name text-white text-sm">
                                             {data.character.name}
                                         </span>
-                                        <span className="has-text-grey ml-2 assets-character-id">
+                                        <span className="text-eve-muted ml-2 text-xs assets-character-id">
                                             ID: {charId}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="has-text-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <div className="text-right flex flex-col items-end">
                                     {(() => {
                                         const charAssetVal = data.locations.reduce((locSum, loc) => {
                                             return locSum + loc.items.reduce((itemSum, item) => itemSum + getAssetValue(item), 0);
@@ -535,17 +499,17 @@ export default function AssetsOverview({
 
                                         return (
                                             <>
-                                                <span className="has-text-weight-bold assets-character-wallet" style={{ fontSize: '1.05rem', color: 'var(--theme-text)' }}>
+                                                <span className="font-bold assets-character-wallet text-sm text-white">
                                                     Gesamt: {charTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                                 </span>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--theme-text-muted)', marginTop: '0.2rem' }}>
+                                                <div className="text-xs text-eve-muted mt-0.5">
                                                     Wallet: {data.walletBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK |
                                                     Assets: {charAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
                                                 </div>
                                             </>
                                         );
                                     })()}
-                                    <span className="has-text-grey block assets-character-wallet-block" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                                    <span className="text-eve-muted block text-[10px] mt-0.5 assets-character-wallet-block">
                                         Stand:{' '}
                                         {data.character.lastAssetsUpdate
                                             ? data.character.lastAssetsUpdate
@@ -556,13 +520,13 @@ export default function AssetsOverview({
 
                             {/* Panel Content (Asset List) */}
                             <div
-                                className={`character-panel-content character-assets-panel-content ${
-                                    isCharExpanded ? '' : 'is-hidden'
+                                className={`character-panel-content pt-3 pr-5 pb-3 pl-6 border-l border-dashed border-white/10 ml-9 ${
+                                    isCharExpanded ? '' : 'hidden'
                                 }`}
                                 id={`char-assets-${charId}`}
                             >
                                 {data.locations.length === 0 ? (
-                                    <p className="has-text-grey has-text-centered py-4">
+                                    <p className="text-eve-muted text-center py-4 text-xs">
                                         Bisher keine Inventar-Daten für diesen Charakter vorhanden. Der Cron-Job läuft im Hintergrund.
                                     </p>
                                 ) : (
@@ -574,23 +538,22 @@ export default function AssetsOverview({
                                         return (
                                             <div
                                                 key={locKey}
-                                                className="location-block"
+                                                className="mb-4 last:mb-0 border border-white/5 rounded-lg overflow-hidden bg-black/10"
                                                 data-location-name={displayName}
                                             >
                                                 <h3
-                                                    className="title is-6 location-header"
+                                                    className="text-xs font-semibold flex justify-between items-center cursor-pointer p-3 bg-white/2 hover:bg-white/5 border-b border-white/5"
                                                     onClick={(e) => { e.stopPropagation(); toggleLocation(locKey); }}
                                                 >
-                                                    <span className="location-header-title" style={{ flexGrow: 1, marginRight: '1rem' }}>
+                                                    <span className="flex-grow mr-4 text-white flex items-center">
                                                         {editingStructureId === location.id ? (
                                                             <div
-                                                                style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}
+                                                                className="flex gap-2 items-center flex-wrap w-full"
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 <input
                                                                     type="text"
-                                                                    className="input is-small"
-                                                                    style={{ width: '200px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                                    className="rounded px-2 py-1 text-xs border border-eve-border text-white bg-black/40 focus:outline-none focus:border-eve-primary w-[200px]"
                                                                     placeholder="Strukturname"
                                                                     value={editName}
                                                                     onChange={(e) => setEditName(e.target.value)}
@@ -598,26 +561,25 @@ export default function AssetsOverview({
                                                                 />
                                                                 <input
                                                                     type="text"
-                                                                    className="input is-small"
-                                                                    style={{ width: '130px', background: 'rgba(0,0,0,0.4)', color: 'white', border: '1px solid var(--theme-card-border)' }}
+                                                                    className="rounded px-2 py-1 text-xs border border-eve-border text-white bg-black/40 focus:outline-none focus:border-eve-primary w-[130px]"
                                                                     placeholder="Sonnensystem"
                                                                     value={editSystem}
                                                                     onChange={(e) => setEditSystem(e.target.value)}
                                                                 />
                                                                 <button
-                                                                    className={`button is-primary is-small ${isSaving ? 'is-loading' : ''}`}
+                                                                    className={`inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 cursor-pointer ${isSaving ? 'opacity-50 pointer-events-none' : ''}`}
                                                                     onClick={() => handleSave(location.id)}
                                                                 >
                                                                     Speichern
                                                                 </button>
                                                                 <button
-                                                                    className="button is-dark is-small"
+                                                                    className="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer"
                                                                     onClick={() => setEditingStructureId(null)}
                                                                 >
                                                                     Abbrechen
                                                                 </button>
                                                                 {editError && (
-                                                                    <span style={{ color: '#f14668', fontSize: '0.8rem', marginLeft: '0.5rem' }}>
+                                                                    <span className="text-rose-400 text-xs ml-2">
                                                                         ⚠️ {editError}
                                                                     </span>
                                                                 )}
@@ -627,8 +589,7 @@ export default function AssetsOverview({
                                                                 <span>📍 {displayName}</span>
                                                                 {location.id >= 1000000000000 && (displayName === 'Spieler-Struktur' || displayName.startsWith('Struktur #') || displayName.startsWith('Location #')) && (
                                                                     <button
-                                                                        className="button is-dark is-small p-1 ml-2"
-                                                                        style={{ border: 'none', background: 'transparent', opacity: 0.6 }}
+                                                                        className="inline-flex items-center justify-center border border-transparent bg-transparent text-eve-text opacity-60 hover:opacity-100 p-1 ml-2 text-xs transition-all duration-200 cursor-pointer"
                                                                         title="Struktur bearbeiten"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
@@ -641,14 +602,14 @@ export default function AssetsOverview({
                                                             </>
                                                         )}
                                                     </span>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                                        <span className="tag is-dark is-rounded is-small font-family-monospace location-header-tag">
+                                                    <div className="flex gap-2 items-center flex-shrink-0">
+                                                        <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-eve-muted border border-white/5 font-mono ">
                                                             {location.items.length} Top-Level
                                                         </span>
                                                         {(() => {
                                                             const locVal = location.items.reduce((sum, item) => sum + getAssetValue(item), 0);
                                                             return (
-                                                                <span className="tag is-info is-rounded is-small font-family-monospace location-header-tag" style={{ backgroundColor: 'rgba(0, 240, 255, 0.1)', border: '1px solid rgba(0, 240, 255, 0.2)', color: 'var(--theme-primary)' }}>
+                                                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20 font-mono ">
                                                                     {locVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                                                 </span>
                                                             );
@@ -657,8 +618,8 @@ export default function AssetsOverview({
                                                 </h3>
 
                                                 <div
-                                                    className={`asset-tree location-assets-container ${
-                                                        isLocExpanded ? '' : 'is-hidden'
+                                                    className={`asset-tree location-assets-container p-3 ${
+                                                        isLocExpanded ? '' : 'hidden'
                                                     }`}
                                                 >
                                                     {location.items.map((item, idx) => (

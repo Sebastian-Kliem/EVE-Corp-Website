@@ -167,90 +167,47 @@ function UnassignedPocoRow({
     };
 
     return (
-        <div style={{
-            padding: '0.75rem',
-            borderRadius: '4px',
-            backgroundColor: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.05)'
-        }}>
-            <div style={{
-                fontWeight: 'bold',
-                fontSize: '0.9rem',
-                marginBottom: '0.25rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '0.5rem'
-            }}>
-                <span>📍 {poco.name} <span style={{
-                    color: 'var(--theme-text-muted)',
-                    fontWeight: 'normal',
-                    fontSize: '0.8rem'
-                }}>(ID: {poco.location_id})</span></span>
-                <span style={{
-                    color: 'var(--theme-text-muted)',
-                    fontSize: '0.8rem'
-                }}>System: {poco.solar_system_name}</span>
+        <div className="p-3 rounded bg-white/5 border border-white/5">
+            <div className="font-bold text-sm mb-1 flex justify-between flex-wrap gap-2">
+                <span>
+                    📍 {poco.name}{" "}
+                    <span className="text-eve-muted font-normal text-xs">
+                        (ID: {poco.location_id})
+                    </span>
+                </span>
+                <span className="text-eve-muted text-xs">
+                    System: {poco.solar_system_name}
+                </span>
             </div>
-            <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                flexWrap: 'wrap',
-                marginTop: '0.25rem',
-                marginBottom: '0.75rem'
-            }}>
+            <div className="flex gap-2 flex-wrap mt-1 mb-3">
                 {poco.contents.map((item) => (
-                    <span key={item.type_id} style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        fontSize: '0.8rem',
-                        padding: '0.1rem 0.4rem',
-                        borderRadius: '3px',
-                        backgroundColor: 'rgba(255,255,255,0.08)'
-                    }}>
-                        <img src={getTypeIconUrl(item.type_id)}
-                             alt={item.name} style={{
-                            width: '16px',
-                            height: '16px'
-                        }}/>
+                    <span
+                        key={item.type_id}
+                        className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-white/8"
+                    >
+                        <img
+                            src={getTypeIconUrl(item.type_id)}
+                            alt={item.name}
+                            className="w-4 h-4"
+                        />
                         {item.quantity.toLocaleString()}x {item.name}
                         {item.container && (
-                            <span style={{
-                                color: 'var(--theme-text-muted)',
-                                fontSize: '0.75rem',
-                                marginLeft: '0.25rem'
-                            }}>
+                            <span className="text-eve-muted text-[10px] ml-1">
                                 ({item.container})
                             </span>
                         )}
                     </span>
                 ))}
             </div>
-            <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                alignItems: 'center',
-                marginTop: '0.5rem',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                paddingTop: '0.5rem'
-            }}>
+            <div className="flex gap-2 items-center mt-2 border-t border-white/5 pt-2">
                 <select
                     value={mappingPlanetId}
                     onChange={(e) => setMappingPlanetId(e.target.value)}
                     disabled={mappingLoading}
-                    style={{
-                        padding: '0.3rem 0.5rem',
-                        borderRadius: '4px',
-                        backgroundColor: 'var(--theme-bg-dark, #1e1e24)',
-                        color: 'var(--theme-text, #ffffff)',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        fontSize: '0.85rem',
-                        flex: '1'
-                    }}
+                    className="px-2 py-1 rounded bg-[#0f172a59] text-white border border-white/15 text-xs flex-1 focus:outline-none focus:border-eve-primary"
                 >
                     <option value="">-- Planeten auswählen --</option>
-                    {planets.map(planet => (
+                    {planets.map((planet) => (
                         <option key={planet.planet_id} value={planet.planet_id}>
                             {planet.name} ({planet.type})
                         </option>
@@ -259,18 +216,13 @@ function UnassignedPocoRow({
                 <button
                     onClick={handleMapPoco}
                     disabled={!mappingPlanetId || mappingLoading}
-                    style={{
-                        padding: '0.3rem 0.75rem',
-                        borderRadius: '4px',
-                        backgroundColor: 'var(--theme-primary, #007bff)',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        opacity: (!mappingPlanetId || mappingLoading) ? 0.6 : 1
-                    }}
+                    className={`px-3 py-1 rounded bg-eve-primary text-black font-semibold text-xs cursor-pointer ${
+                        !mappingPlanetId || mappingLoading
+                            ? "opacity-60 cursor-not-allowed"
+                            : ""
+                    }`}
                 >
-                    {mappingLoading ? 'Verknüpfe...' : 'Verknüpfen'}
+                    {mappingLoading ? "Verknüpfe..." : "Verknüpfen"}
                 </button>
             </div>
         </div>
@@ -475,36 +427,36 @@ export default function PIOverview({
     });
 
     return (
-        <div className="pi-dashboard">
+        <div className="p-6">
             {/* Header section with styling matching app.css variables */}
-            <div className="pi-header">
-                <div className="pi-title-block">
-                    <h1>Planetary Interaction (PI)</h1>
-                    <p className="subtitle">Übersicht deiner planetaren Produktionslinien und Lagerbestände</p>
+            <div className="flex justify-between items-center flex-wrap gap-6 mb-8 bg-gradient-to-br from-eve-primary/5 to-black/40 border border-eve-border rounded-lg p-6">
+                <div className="flex-grow">
+                    <h1 className="text-3xl font-extrabold text-eve-primary mb-2">Planetary Interaction (PI)</h1>
+                    <p className="text-eve-muted text-sm m-0">Übersicht deiner planetaren Produktionslinien und Lagerbestände</p>
                 </div>
 
-                <div className="pi-stats-grid">
-                    <div className="stat-card">
-                        <div className="stat-label">Planeten Gesamt</div>
-                        <div className="stat-value">{totalPlanetsCount}</div>
+                <div className="flex gap-4 flex-wrap">
+                    <div className="bg-black/30 border border-white/5 rounded-md py-3 px-5 min-w-[120px] text-center">
+                        <div className="text-xs text-eve-muted uppercase tracking-wider mb-1">Planeten Gesamt</div>
+                        <div className="text-2xl font-bold text-white">{totalPlanetsCount}</div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Aktive Extraktoren</div>
-                        <div className="stat-value text-success">{activeExtractors}</div>
+                    <div className="bg-black/30 border border-white/5 rounded-md py-3 px-5 min-w-[120px] text-center">
+                        <div className="text-xs text-eve-muted uppercase tracking-wider mb-1">Aktive Extraktoren</div>
+                        <div className="text-2xl font-bold text-emerald-400">{activeExtractors}</div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Inaktive Extraktoren</div>
-                        <div className="stat-value text-warning">{idleExtractors}</div>
+                    <div className="bg-black/30 border border-white/5 rounded-md py-3 px-5 min-w-[120px] text-center">
+                        <div className="text-xs text-eve-muted uppercase tracking-wider mb-1">Inaktive Extraktoren</div>
+                        <div className="text-2xl font-bold text-amber-400">{idleExtractors}</div>
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Fabriken</div>
-                        <div className="stat-value">{factoriesCount}</div>
+                    <div className="bg-black/30 border border-white/5 rounded-md py-3 px-5 min-w-[120px] text-center">
+                        <div className="text-xs text-eve-muted uppercase tracking-wider mb-1">Fabriken</div>
+                        <div className="text-2xl font-bold text-white">{factoriesCount}</div>
                     </div>
                 </div>
             </div>
 
             {/* Filter and control panel */}
-            <div className="pi-filter-bar">
+            <div className="flex gap-4 mb-8 flex-wrap items-center">
                 <div className="filter-item search-input-wrapper">
                     <span className="search-icon">🔍</span>
                     <input
@@ -512,7 +464,7 @@ export default function PIOverview({
                         placeholder="Filter nach Planet, System, Material, Fabrik..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="form-control input-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     />
                 </div>
 
@@ -521,7 +473,7 @@ export default function PIOverview({
                         <select
                             value={selectedTag}
                             onChange={(e) => setSelectedTag(e.target.value)}
-                            className="form-control select-dark"
+                            className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                         >
                             <option value="all">-- Alle Tags --</option>
                             {allTags.map(tag => (
@@ -535,7 +487,7 @@ export default function PIOverview({
                     <select
                         value={selectedSystem}
                         onChange={(e) => setSelectedSystem(e.target.value)}
-                        className="form-control select-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     >
                         <option value="">-- Alle Systeme --</option>
                         {uniqueSystems.map((sys) => (
@@ -550,7 +502,7 @@ export default function PIOverview({
                     <select
                         value={selectedMaterial}
                         onChange={(e) => setSelectedMaterial(e.target.value)}
-                        className="form-control select-dark"
+                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                     >
                         <option value="">-- Alle Materialien --</option>
                         {uniqueMaterials.map((mat) => (
@@ -568,7 +520,7 @@ export default function PIOverview({
                             setSelectedSystem('');
                             setSelectedMaterial('');
                         }}
-                        className="btn btn-secondary btn-sm"
+                        className="inline-flex items-center justify-center border border-white/10 hover:border-eve-primary text-eve-text hover:text-eve-primary bg-white/5 hover:bg-white/10 rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer"
                     >
                         Zurücksetzen
                     </button>
@@ -577,23 +529,23 @@ export default function PIOverview({
 
             {/* Loading / Error states */}
             {loading && (
-                <div className="pi-loading-state">
-                    <div className="spinner"></div>
+                <div className="flex flex-col items-center justify-center p-16 text-eve-muted gap-4">
+                    <div className="w-10 h-10 border-4 border-eve-primary/10 border-t-eve-primary rounded-full animate-spin"></div>
                     <p>Lade Planeten und API-Daten von ESI...</p>
                 </div>
             )}
 
             {error && (
-                <div className="pi-error-state message-danger">
+                <div className="p-4 rounded-md mb-8 bg-rose-500/10 border border-rose-500/30 text-rose-400">
                     <strong>Fehler:</strong> {error}
                 </div>
             )}
 
             {/* Main content grid */}
             {!loading && !error && (
-                <div className="pi-content">
+                <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
                     {/* Account configuration hierarchy info */}
-                    <div className="pi-accounts-sidebar card-dark">
+                    <div className="bg-eve-card border border-eve-border rounded-lg p-5">
                         <h3>Charakter-Gruppen</h3>
                         <div className="sidebar-group-list">
                             {Object.entries(groupedAccounts).map(([groupName, accounts]) => (
@@ -615,7 +567,7 @@ export default function PIOverview({
                                                             />
                                                             <span className="char-name">{char.name}</span>
                                                             <span
-                                                                className="badge badge-secondary">{planetCount} P</span>
+                                                                className="px-2 py-0.5 text-xs font-semibold rounded bg-white/10 text-eve-muted border border-white/5">{planetCount} P</span>
                                                         </div>
                                                     );
                                                 })}
@@ -627,28 +579,28 @@ export default function PIOverview({
                         </div>
                     </div>
 
-                    <div className="pi-planets-list">
+                    <div className="flex flex-col gap-6">
                         {filteredPiData.length === 0 ? (
-                            <div className="pi-empty-state card-dark">
+                            <div className="bg-eve-card border border-eve-border rounded-lg p-6 text-center text-eve-muted">
                                 <p>Keine Planeten entsprechen deinen Filterkriterien.</p>
                             </div>
                         ) : (
                             filteredPiData.map((charData) => (
-                                <div key={charData.character_id} className="character-block card-dark">
+                                <div key={charData.character_id} className="bg-eve-card border border-eve-border rounded-lg overflow-hidden">
                                     <div
-                                        className="character-header"
+                                        className="flex justify-between items-center p-4 bg-black/20 border-b border-white/5 cursor-pointer select-none"
                                         onClick={() => toggleCharacter(charData.character_id)}
                                     >
                                         <div className="char-info">
                                             <img
                                                 src={getCharacterPortraitUrl(charData.character_id)}
                                                 alt={charData.character_name}
-                                                className="char-portrait"
+                                                className="w-8 h-8 rounded-full border border-eve-primary"
                                             />
                                             <h2>{charData.character_name}</h2>
-                                            <span className="badge badge-primary">
+                                             <span className="px-2 py-0.5 text-xs font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20">
                                                 {charData.planets.length} Planeten
-                                            </span>
+                                             </span>
                                         </div>
                                         <span className="collapse-arrow">
                                             {collapsedCharacters[charData.character_id] ? '▶' : '▼'}
@@ -656,7 +608,7 @@ export default function PIOverview({
                                     </div>
 
                                     {charData.error && (
-                                        <div className="char-error message-warning">
+                                        <div className="char-error p-4 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400">
                                             {charData.error}
                                         </div>
                                     )}
@@ -736,7 +688,7 @@ export default function PIOverview({
                                                         </div>
                                                     );
                                                 })()}
-                                            <div className="character-planets-grid">
+                                            <div className="p-6 grid grid-cols-1 gap-6">
                                                 {charData.planets.map((planet) => {
                                                     const isCollapsed = collapsedPlanets[planet.planet_id] !== false;
 
@@ -911,72 +863,72 @@ export default function PIOverview({
                                                             }
                                                         });
 
-                                                        if (hasConsumption) {
-                                                            if (minDurationHours === Infinity) {
-                                                                statusText = 'Unbekannt';
-                                                                statusClass = 'badge-secondary';
-                                                            } else if (minDurationHours === 0) {
-                                                                statusText = 'Vorrat LEER!';
-                                                                statusClass = 'badge-danger';
-                                                            } else {
-                                                                const totalHours = minDurationHours;
-                                                                if (totalHours >= 24) {
-                                                                    const days = Math.floor(totalHours / 24);
-                                                                    const hours = Math.round(totalHours % 24);
-                                                                    statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                if (hasConsumption) {
+                                                                    if (minDurationHours === Infinity) {
+                                                                        statusText = 'Unbekannt';
+                                                                        statusClass = 'bg-white/10 text-eve-muted border border-white/5';
+                                                                    } else if (minDurationHours === 0) {
+                                                                        statusText = 'Vorrat LEER!';
+                                                                        statusClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                                                                    } else {
+                                                                        const totalHours = minDurationHours;
+                                                                        if (totalHours >= 24) {
+                                                                            const days = Math.floor(totalHours / 24);
+                                                                            const hours = Math.round(totalHours % 24);
+                                                                            statusText = `Vorrat: ${days}d ${hours}h`;
+                                                                        } else {
+                                                                            statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                        }
+                                                                        statusClass = totalHours < 6 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : (totalHours < 24 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30');
+                                                                    }
                                                                 } else {
-                                                                    statusText = `Vorrat: ${Math.round(totalHours)}h`;
+                                                                    statusText = 'Kein Verbrauch';
+                                                                    statusClass = 'bg-white/10 text-eve-muted border border-white/5';
                                                                 }
-                                                                statusClass = totalHours < 6 ? 'badge-danger' : (totalHours < 24 ? 'badge-warning' : 'badge-success');
-                                                            }
-                                                        } else {
-                                                            statusText = 'Kein Verbrauch';
-                                                            statusClass = 'badge-secondary';
-                                                        }
-                                                    } else if (extractors.length > 0) {
-                                                        // Pure extractor planet: calculate extraction time remaining
-                                                        if (hasActiveExtractor && maxRemainingMs > 0) {
-                                                            const totalHours = maxRemainingMs / (1000 * 60 * 60);
-                                                            if (totalHours >= 24) {
-                                                                const days = Math.floor(totalHours / 24);
-                                                                const hours = Math.round(totalHours % 24);
-                                                                statusText = `Abbau: ${days}d ${hours}h`;
+                                                            } else if (extractors.length > 0) {
+                                                                // Pure extractor planet: calculate extraction time remaining
+                                                                if (hasActiveExtractor && maxRemainingMs > 0) {
+                                                                    const totalHours = maxRemainingMs / (1000 * 60 * 60);
+                                                                    if (totalHours >= 24) {
+                                                                        const days = Math.floor(totalHours / 24);
+                                                                        const hours = Math.round(totalHours % 24);
+                                                                        statusText = `Abbau: ${days}d ${hours}h`;
+                                                                    } else {
+                                                                        const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
+                                                                        statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
+                                                                    }
+                                                                    statusClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30';
+                                                                } else {
+                                                                    statusText = 'Abbau beendet!';
+                                                                    statusClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/30';
+                                                                }
                                                             } else {
-                                                                const mins = Math.round((maxRemainingMs / (1000 * 60)) % 60);
-                                                                statusText = `Abbau: ${Math.floor(totalHours)}h ${mins}m`;
+                                                                statusText = 'Inaktiv';
+                                                                statusClass = 'bg-white/10 text-eve-muted border border-white/5';
                                                             }
-                                                            statusClass = 'badge-success';
-                                                        } else {
-                                                            statusText = 'Abbau beendet!';
-                                                            statusClass = 'badge-danger';
-                                                        }
-                                                    } else {
-                                                        statusText = 'Inaktiv';
-                                                        statusClass = 'badge-secondary';
-                                                    }
 
                                                     return (
                                                         <div key={planet.planet_id}
                                                              className={`planet-card planet-type-${planet.type}`}>
                                                             <div
-                                                                className="planet-card-header"
+                                                                className="flex justify-between items-center py-3 px-4 bg-white/[0.02] border-b border-white/5 cursor-pointer select-none"
                                                                 onClick={() => togglePlanet(planet.planet_id)}
                                                             >
-                                                                <div className="planet-meta">
+                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                 <span
                                                                     className={`planet-type-badge type-${planet.type}`}>
                                                                     {planet.type}
                                                                 </span>
-                                                                    <h3 className="planet-title">{planet.name}</h3>
+                                                                    <h3 className="text-lg font-bold text-[#eee] m-0">{planet.name}</h3>
                                                                     <span
-                                                                        className="planet-system">({planet.solar_system_name})</span>
+                                                                        className="text-eve-muted text-sm">({planet.solar_system_name})</span>
                                                                 </div>
 
-                                                                <div className="planet-summary-badges">
+                                                                <div className="flex items-center gap-2">
                                                                     {producedMaterials.map((mat) => (
                                                                         <span
                                                                             key={mat.typeId}
-                                                                            className="planet-output-badge"
+                                                                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-eve-text"
                                                                             title={`${mat.name} (Hergestellt)`}
                                                                             style={{ borderStyle: 'dashed' }}
                                                                         >
@@ -988,13 +940,13 @@ export default function PIOverview({
                                                                     ))}
                                                                     {launchpadCapacity > 0 && (
                                                                         <span
-                                                                            className={`badge ${launchpadPercent >= 90 ? 'badge-danger' : (launchpadPercent >= 75 ? 'badge-warning' : 'badge-success')}`}
+                                                                            className={`px-2 py-0.5 text-xs font-semibold rounded ${launchpadPercent >= 90 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : (launchpadPercent >= 75 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')}`}
                                                                             title={`Launchpad-Auslastung: ${Math.round(launchpadVolumeUsed).toLocaleString()} / ${launchpadCapacity.toLocaleString()} m³ (${Math.round(launchpadPercent)}%)`}
                                                                         >
                                                                         🚀 {Math.round(launchpadPercent)}%
                                                                     </span>
                                                                     )}
-                                                                    <span className={`badge ${statusClass}`}>
+                                                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded ${statusClass}`}>
                                                                     {statusText}
                                                                 </span>
                                                                     <span className="collapse-arrow">
@@ -1005,15 +957,15 @@ export default function PIOverview({
 
 
                                                             {!isCollapsed && (
-                                                                <div className="planet-card-body">
+                                                                <div className="p-4 flex flex-col gap-6">
 
                                                                     {/* Extractors (P0) section */}
                                                                     {extractors.length > 0 && (
-                                                                        <div className="pi-section extractor-section">
+                                                                        <div className="border-b border-dashed border-white/5 pb-5">
                                                                             <div className="section-title">
                                                                                 <h4>⛏️ Extraktion (P0-Material)</h4>
                                                                             </div>
-                                                                            <div className="storage-list">
+                                                                            <div className="flex flex-col gap-3">
                                                                                 {extractors.map((pin) => {
                                                                                     if (!pin.extractor_info) return null;
                                                                                     const cycleTimeHours = pin.extractor_info.cycle_time / 3600;
@@ -1040,8 +992,8 @@ export default function PIOverview({
                                                                                     }
 
                                                                                     return (
-                                                                                        <div key={pin.pin_id} className="storage-card" style={{ padding: '0.75rem' }}>
-                                                                                            <div className="storage-card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                                                                                        <div key={pin.pin_id} className="bg-white/[0.01] border border-white/[0.04] rounded-md p-3" style={{ padding: '0.75rem' }}>
+                                                                                            <div className="flex justify-between items-center mb-2 border-b border-white/[0.02] pb-1" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                                                                                                 <h5 style={{ margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                                                     <img
                                                                                                         src={getTypeIconUrl(typeId)}
@@ -1050,7 +1002,7 @@ export default function PIOverview({
                                                                                                     />
                                                                                                     {pin.extractor_info.product_name}
                                                                                                 </h5>
-                                                                                                <span className="storage-type-badge" style={{ fontSize: '0.8rem' }}>
+                                                                                                <span className="text-xs text-eve-muted" style={{ fontSize: '0.8rem' }}>
                                                                                                     ~{Math.round(rate).toLocaleString()}/h ({pin.extractor_info.heads_count} Köpfe)
                                                                                                 </span>
                                                                                             </div>
@@ -1065,13 +1017,13 @@ export default function PIOverview({
                                                                     )}
 
                                                                     {/* Custom Office (POCO) section */}
-                                                                    <div className="pi-section poco-section">
+                                                                    <div className="border-b border-dashed border-white/5 pb-5">
                                                                         <div className="section-title">
                                                                             <h4>🪐 Zollamt
                                                                                 (POCO): {planet.poco.name}</h4>
                                                                             {planet.poco.resolved ? (
                                                                                 <span
-                                                                                    className="resolved-status text-success">✓ Verbunden</span>
+                                                                                    className="resolved-status text-emerald-400">✓ Verbunden</span>
                                                                             ) : (
                                                                                 <span
                                                                                     className="resolved-status text-muted">⚠ Unverbunden</span>
@@ -1081,18 +1033,18 @@ export default function PIOverview({
                                                                             <p className="empty-text">Keine Materialien
                                                                                 im Zollamt gelagert.</p>
                                                                         ) : (
-                                                                            <div className="materials-grid">
+                                                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                                                                 {planet.poco.contents.map((item) => (
                                                                                     <div key={item.type_id}
-                                                                                         className="material-item">
+                                                                                         className="flex items-center gap-1.5 bg-white/[0.03] border border-white/[0.05] p-1.5 px-2 rounded text-xs">
                                                                                         <img
                                                                                             src={getTypeIconUrl(item.type_id)}
                                                                                             alt={item.name}
                                                                                             className="item-icon"/>
                                                                                         <span
-                                                                                            className="item-qty">{item.quantity.toLocaleString()}x</span>
+                                                                                            className="text-amber-400 font-bold font-mono">{item.quantity.toLocaleString()}x</span>
                                                                                         <span
-                                                                                            className="item-name">{item.name}</span>
+                                                                                            className="text-[#ccc] truncate">{item.name}</span>
                                                                                     </div>
                                                                                 ))}
                                                                             </div>
@@ -1100,13 +1052,13 @@ export default function PIOverview({
                                                                     </div>
 
                                                                     {/* Launchpads and Storage Silos */}
-                                                                    <div className="pi-section storage-section">
+                                                                    <div className="border-b border-dashed border-white/5 pb-5">
                                                                         <h4>📦 Startrampen & Lager</h4>
                                                                         {[...launchpads, ...storages].length === 0 ? (
                                                                             <p className="empty-text">Keine Startrampen
                                                                                 oder Lagerhallen gefunden.</p>
                                                                         ) : (
-                                                                            <div className="storage-list">
+                                                                            <div className="flex flex-col gap-3">
                                                                                 {[...launchpads, ...storages].map((pin) => {
                                                                                     const capacity = pin.category === 'launchpad' ? 10000 : 40000;
                                                                                     let usedVolume = 0;
@@ -1117,21 +1069,21 @@ export default function PIOverview({
 
                                                                                     return (
                                                                                         <div key={pin.pin_id}
-                                                                                             className="storage-card">
+                                                                                             className="bg-white/[0.01] border border-white/[0.04] rounded-md p-3">
                                                                                             <div
-                                                                                                className="storage-card-header">
+                                                                                                className="flex justify-between items-center mb-2 border-b border-white/[0.02] pb-1">
                                                                                                 <h5>{pin.name}</h5>
                                                                                                 <span
-                                                                                                    className="storage-type-badge">
+                                                                                                    className="text-xs text-eve-muted">
                                                                                                 {pin.category === 'launchpad' ? 'Startrampe' : 'Lagersilo'}
                                                                                                     {` (${Math.round(usedVolume).toLocaleString()} / ${capacity.toLocaleString()} m³ - ${Math.round(percent)}%)`}
                                                                                             </span>
                                                                                             </div>
 
                                                                                             <div
-                                                                                                className="pi-progress-bar-container">
+                                                                                                className="h-1 bg-white/5 rounded-sm overflow-hidden my-2">
                                                                                                 <div
-                                                                                                    className={`pi-progress-bar ${percent >= 90 ? 'bg-danger' : (percent >= 75 ? 'bg-warning' : 'bg-success')}`}
+                                                                                                    className={`pi-progress-bar ${percent >= 90 ? 'bg-rose-500' : (percent >= 75 ? 'bg-amber-500' : 'bg-emerald-500')}`}
                                                                                                     style={{width: `${Math.min(percent, 100)}%`}}
                                                                                                 />
                                                                                             </div>
@@ -1145,15 +1097,15 @@ export default function PIOverview({
                                                                                                     {pin.contents.map((item) => (
                                                                                                         <div
                                                                                                             key={item.type_id}
-                                                                                                            className="material-item">
+                                                                                                            className="flex items-center gap-1.5 bg-white/[0.03] border border-white/[0.05] p-1.5 px-2 rounded text-xs">
                                                                                                             <img
                                                                                                                 src={getTypeIconUrl(item.type_id)}
                                                                                                                 alt={item.name}
                                                                                                                 className="item-icon"/>
                                                                                                             <span
-                                                                                                                className="item-qty">{item.quantity.toLocaleString()}x</span>
+                                                                                                                className="text-amber-400 font-bold font-mono">{item.quantity.toLocaleString()}x</span>
                                                                                                             <span
-                                                                                                                className="item-name">{item.name}</span>
+                                                                                                                className="text-[#ccc] truncate">{item.name}</span>
                                                                                                         </div>
                                                                                                     ))}
                                                                                                 </div>

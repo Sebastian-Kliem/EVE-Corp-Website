@@ -3,10 +3,10 @@
 {% block title %}Asset-Verlauf & Custom Tracking{% endblock %}
 
 {% block body %}
-<section class="section">
-    <div class="container">
-        <h1 class="title">Asset-Tracking</h1>
-        <p class="subtitle">Verwalte eigene Tracking-Listen (z. B. für Abyss-Loot) und verfolge die Zuwächse deiner Charaktere.</p>
+<section class="py-12">
+    <div class="w-full max-w-[1200px] mx-auto px-6">
+        <h1 class="text-3xl font-semibold mb-4 text-white">Asset-Tracking</h1>
+        <p class="text-eve-muted mb-4">Verwalte eigene Tracking-Listen (z. B. für Abyss-Loot) und verfolge die Zuwächse deiner Charaktere.</p>
 
         {# React Island mount point #}
         <div data-react-component="TrackingViewer" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>

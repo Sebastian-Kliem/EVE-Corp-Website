@@ -3,56 +3,56 @@
 {% block title %}Log in!{% endblock %}
 
 {% block body %}
-<main class="auth-container">
-    <div class="box">
-        <h1 class="title is-3 has-text-centered">Sign In</h1>
+<main class="flex justify-center items-center my-16 px-6">
+    <div class="w-full max-w-[480px] bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg transition-all duration-300 hover:border-eve-primary hover:shadow-[0_10px_40px_rgba(0,240,255,0.15)]">
+        <h1 class="text-2xl font-semibold text-center mb-6 text-white">Sign In</h1>
 
         <form action="{{ path('app_login') }}" method="post" id="login-form" data-turbo="false">
             {% for label, messages in app.flashes %}
                 {% for message in messages %}
-                    <div class="notification is-success">
+                    <div class="border border-green-500/30 bg-green-500/10 text-green-400 rounded-lg p-5 mb-5">
                         {{ message }}
                     </div>
                 {% endfor %}
             {% endfor %}
 
             {% if error %}
-                <div class="notification is-danger">
+                <div class="border border-red-500/30 bg-red-500/10 text-red-400 rounded-lg p-5 mb-5">
                     {{ error.messageKey|trans(error.messageData, 'security') }}
                 </div>
             {% endif %}
 
             {% if app.user %}
-                <div class="notification is-info">
-                    You are logged in as {{ app.user.displayName }}, <a href="{{ path('app_logout') }}">Logout</a>
+                <div class="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 rounded-lg p-5 mb-5">
+                    You are logged in as {{ app.user.displayName }}, <a href="{{ path('app_logout') }}" class="underline text-eve-primary font-semibold">Logout</a>
                 </div>
             {% endif %}
 
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" required autofocus>
+            <div class="flex flex-col gap-2 mb-5">
+                <label for="username" class="text-sm font-semibold text-white">Username</label>
+                <input type="text" value="{{ last_username }}" name="username" id="username" autocomplete="username" class="rounded-lg w-full px-3 py-2.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" required autofocus>
             </div>
             
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" name="password" id="password" autocomplete="current-password" required>
+            <div class="flex flex-col gap-2 mb-5">
+                <label for="password" class="text-sm font-semibold text-white">Password</label>
+                <input type="password" name="password" id="password" autocomplete="current-password" class="rounded-lg w-full px-3 py-2.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" required>
             </div>
             
             <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
 
-            <div class="form-checkbox">
-                <label>
-                    <input type="checkbox" name="_remember_me">
+            <div class="flex items-center mb-5">
+                <label class="cursor-pointer text-eve-text flex items-center gap-2 font-medium">
+                    <input type="checkbox" name="_remember_me" class="cursor-pointer accent-eve-primary w-4 h-4">
                     Remember me
                 </label>
             </div>
 
-            <button class="button is-primary is-fullwidth mt-4" type="submit">
+            <button class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-base py-2.5 mt-4 shadow-[0_4px_15px_rgba(0,240,255,0.2)] hover:shadow-[0_6px_20px_rgba(0,240,255,0.45)] transition-all duration-300 hover:-translate-y-0.5 inline-flex justify-center items-center cursor-pointer" type="submit">
                 Sign in
             </button>
 
-            <div class="mt-4 has-text-centered">
-                <p>Don't have an account yet? <a href="{{ path('app_register') }}" class="has-text-primary is-underlined" data-turbo="false">Register here</a></p>
+            <div class="mt-6 text-center text-sm text-eve-muted">
+                <p>Don't have an account yet? <a href="{{ path('app_register') }}" class="text-eve-primary hover:text-eve-primary-hover underline font-semibold" data-turbo="false">Register here</a></p>
             </div>
         </form>
     </div>

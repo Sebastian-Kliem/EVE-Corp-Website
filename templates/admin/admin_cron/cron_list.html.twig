@@ -3,16 +3,16 @@
 {% block title %}Cron-Job-Verwaltung{% endblock %}
 
 {% block body %}
-<div class="container container-wide mt-5 mb-6">
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
     <!-- Headline -->
-    <div class="level">
-        <div class="level-left">
-            <h1 class="title is-2 text-gradient">
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-semibold text-white text-gradient">
                 ⏱️ Cron-Job-Verwaltung
             </h1>
         </div>
-        <div class="level-right">
-            <a href="{{ path('app_profile') }}" class="button">
+        <div class="flex items-center gap-3">
+            <a href="{{ path('app_profile') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-4 py-2 font-medium transition-all duration-300 cursor-pointer">
                 Zurück zum Profil
             </a>
         </div>
@@ -21,107 +21,107 @@
     <!-- Flash Messages -->
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="notification is-{{ label == 'error' ? 'danger' : (label == 'success' ? 'success' : 'info') }} mt-4 mb-4">
+            <div class="py-5 px-6 rounded-lg mt-4 mb-4 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% elseif label == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% else %}bg-sky-500/10 border-sky-500/30 text-sky-400{% endif %}">
                 {{ message|raw }}
             </div>
         {% endfor %}
     {% endfor %}
 
     <!-- Info Banner -->
-    <div class="notification cron-info-banner mb-5">
+    <div class="py-5 px-6 rounded-lg bg-black/20 border border-eve-border mb-6">
         💡 <strong>System-Konfiguration:</strong> Richte auf dem Server einen Cron-Job ein, der alle 5 Minuten das folgende Command triggert:
-        <div class="box mt-2 mb-2 p-3 cron-code-box monospace-code has-text-primary">
+        <div class="p-3 mt-2 mb-2 bg-black border border-[#222] font-mono text-eve-primary rounded-lg">
             */5 * * * * cd {{ app.request.server.get('DOCUMENT_ROOT')|default('/var/www/html')|replace({'/public': ''}) }} && php bin/console app:cron:run &gt;/dev/null 2&gt;&amp;1
         </div>
         Der Scheduler läuft vollautomatisch im Hintergrund. Daten werden durch die integrierte Cache-Optimierung nur dann von EVE Online geladen, wenn sie nicht mehr im ESI-Cache liegen.
     </div>
 
     <!-- Cron Jobs Table -->
-    <div class="box mb-5">
-        <div class="level mb-4">
-            <div class="level-left">
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+        <div class="flex justify-between items-center flex-wrap gap-4 mb-4">
+            <div class="flex items-center gap-3">
                 <div>
-                    <h3 class="title is-5 mb-1">
+                    <h3 class="text-lg font-semibold mb-1 text-white">
                         📋 Registrierte Hintergrund-Jobs
                     </h3>
-                    <p class="is-size-7 has-text-grey-light">Übersicht aller automatischen Synchronisations-Aufgaben</p>
+                    <p class="text-xs text-eve-muted">Übersicht aller automatischen Synchronisations-Aufgaben</p>
                 </div>
             </div>
-            <div class="level-right">
-                <form action="{{ path('app_admin_cron_run_all') }}" method="POST" class="cron-action-form">
+            <div class="flex items-center gap-3">
+                <form action="{{ path('app_admin_cron_run_all') }}" method="POST" class="inline-block m-0">
                     <input type="hidden" name="_token" value="{{ csrf_token('cron_run_all') }}">
-                    <button type="submit" class="button is-primary">
+                    <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
                         🔄 Alle fälligen Jobs synchronisieren
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="cron-table-container">
-            <table class="table is-striped">
+        <div class="overflow-x-auto mb-8">
+            <table class="w-full border-collapse text-left bg-transparent text-eve-text">
                 <thead>
-                    <tr>
-                        <th>Job-Name / Command</th>
-                        <th>Intervall</th>
-                        <th>Status</th>
-                        <th>Letzter Lauf</th>
-                        <th>Nächster Lauf</th>
-                        <th>Aktionen</th>
+                    <tr class="border-b border-eve-border bg-[#0d121fe6]/50">
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Job-Name / Command</th>
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Intervall</th>
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Status</th>
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Letzter Lauf</th>
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Nächster Lauf</th>
+                        <th class="font-semibold text-eve-muted p-3 text-xs border-b border-eve-border">Aktionen</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-white/5">
                     {% for job in cronJobs %}
                         <tr>
-                            <td>
+                            <td class="p-3 text-xs text-eve-text align-middle">
                                 <strong>{{ job.name }}</strong>
                                 <br>
-                                <small class="has-text-grey-light">{{ job.command }}</small>
+                                <small class="text-eve-muted">{{ job.command }}</small>
                             </td>
-                            <td>
-                                <span class="tag monospace-code">{{ job.cronExpression }}</span>
+                            <td class="p-3 text-xs text-eve-text align-middle">
+                                <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-white border border-white/10 font-mono">{{ job.cronExpression }}</span>
                             </td>
-                            <td>
-                                <span class="cron-status-badge {{ job.isActive ? 'cron-status-active' : 'cron-status-inactive' }}">
+                            <td class="p-3 text-xs text-eve-text align-middle">
+                                <span class="inline-block px-2 py-0.5 text-xs font-semibold rounded uppercase {{ job.isActive ? 'bg-emerald-500/15 text-[#48c78e] border border-emerald-500/30' : 'bg-rose-500/15 text-[#f14668] border border-rose-500/30' }}">
                                     {{ job.isActive ? 'Aktiv' : 'Inaktiv' }}
                                 </span>
                                 <br>
                                 {% if job.lastStatus == 'success' %}
-                                    <span class="tag is-success mt-1">Erfolgreich</span>
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mt-1 inline-block">Erfolgreich</span>
                                 {% elseif job.lastStatus == 'error' %}
-                                    <span class="tag is-danger mt-1">Fehlgeschlagen</span>
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30 mt-1 inline-block">Fehlgeschlagen</span>
                                 {% else %}
-                                    <span class="tag is-info mt-1">Ausstehend</span>
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 mt-1 inline-block">Ausstehend</span>
                                 {% endif %}
                             </td>
-                            <td class="is-size-7">
+                            <td class="p-3 text-xs text-eve-text align-middle">
                                 {% if job.lastRunAt %}
                                     {{ job.lastRunAt|date('d.m.Y H:i:s') }}
                                     {% if job.lastExecutionTime %}
                                         <br>
-                                        <span class="has-text-grey-light">Dauer: {{ job.lastExecutionTime|number_format(2) }}s</span>
+                                        <span class="text-eve-muted">Dauer: {{ job.lastExecutionTime|number_format(2) }}s</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="has-text-grey-light">Nie</span>
+                                    <span class="text-eve-muted">Nie</span>
                                 {% endif %}
                             </td>
-                            <td class="is-size-7">
+                            <td class="p-3 text-xs text-eve-text align-middle">
                                 {% if job.nextRunAt %}
                                     {{ job.nextRunAt|date('d.m.Y H:i:s') }}
                                 {% else %}
-                                    <span class="has-text-grey-light">-</span>
+                                    <span class="text-eve-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <div class="buttons">
-                                    <form action="{{ path('app_admin_cron_toggle', {id: job.id}) }}" method="POST" class="cron-action-form">
+                            <td class="p-3 text-xs text-eve-text align-middle">
+                                <div class="flex flex-wrap gap-2">
+                                    <form action="{{ path('app_admin_cron_toggle', {id: job.id}) }}" method="POST" class="inline-block m-0">
                                         <input type="hidden" name="_token" value="{{ csrf_token('cron_toggle_' ~ job.id) }}">
-                                        <button type="submit" class="button is-small">
+                                        <button type="submit" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer">
                                             {{ job.isActive ? 'Deaktivieren' : 'Aktivieren' }}
                                         </button>
                                     </form>
-                                    <form action="{{ path('app_admin_cron_run_single', {id: job.id}) }}" method="POST" class="cron-action-form">
+                                    <form action="{{ path('app_admin_cron_run_single', {id: job.id}) }}" method="POST" class="inline-block m-0">
                                         <input type="hidden" name="_token" value="{{ csrf_token('cron_run_' ~ job.id) }}">
-                                        <button type="submit" class="button is-small is-primary">
+                                        <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
                                             Ausführen
                                         </button>
                                     </form>
@@ -132,10 +132,10 @@
                             <tr>
                                 <td colspan="6" class="p-0">
                                     <details class="mb-3 ml-2 mr-2">
-                                        <summary class="is-size-7 has-text-danger p-2" style="cursor: pointer; font-weight: bold;">
+                                        <summary class="text-xs text-red-500 p-2 cursor-pointer font-bold select-none outline-none">
                                             ❌ Fehlermeldung anzeigen
                                         </summary>
-                                        <div class="cron-error-details">
+                                        <div class="mt-2 p-3 bg-rose-500/5 border border-rose-500/20 rounded font-mono text-xs text-rose-400 whitespace-pre-wrap break-all">
                                             {{ job.lastError }}
                                         </div>
                                     </details>
@@ -144,7 +144,7 @@
                         {% endif %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="has-text-centered has-text-grey-light">
+                            <td colspan="6" class="text-center text-eve-muted p-4">
                                 Keine registrierten Cron-Jobs gefunden.
                             </td>
                         </tr>
@@ -155,28 +155,28 @@
     </div>
 
     <!-- Logs Section -->
-    <div class="box cron-log-section">
-        <div class="level mb-4">
-            <div class="level-left">
+    <div class="p-6 bg-black/15 border border-eve-border rounded-lg shadow-eve">
+        <div class="flex justify-between items-center flex-wrap gap-4 mb-4">
+            <div class="flex items-center gap-3">
                 <div>
-                    <h3 class="title is-5 mb-1">
+                    <h3 class="text-lg font-semibold mb-1 text-white">
                         📄 Letzte Log-Aktivitäten
                     </h3>
-                    <p class="is-size-7 has-text-grey-light">Speicherschonende Live-Vorschau der letzten Protokolleinträge</p>
+                    <p class="text-xs text-eve-muted">Speicherschonende Live-Vorschau der letzten Protokolleinträge</p>
                 </div>
             </div>
-            <div class="level-right">
+            <div class="flex items-center gap-3">
                 {% if logFileExists %}
-                    <a href="{{ path('app_admin_cron_download_log') }}" class="button is-small">
+                    <a href="{{ path('app_admin_cron_download_log') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer">
                         📥 Gesamtes Log herunterladen
                     </a>
                 {% endif %}
             </div>
         </div>
 
-        <div class="cron-terminal-box">
-            <div class="cron-terminal-container">
-                <div class="cron-terminal-text">{{ logContent|raw }}</div>
+        <div class="bg-[#070708] border border-eve-border rounded shadow-[inset_0_2px_10px_rgba(0,0,0,0.8)] p-4">
+            <div class="overflow-y-auto max-h-[300px] bg-transparent">
+                <div class="bg-transparent text-[#abb2bf] font-mono text-[0.85rem] border-none p-0 whitespace-pre-wrap break-all leading-relaxed">{{ logContent|raw }}</div>
             </div>
         </div>
     </div>
