@@ -76,6 +76,9 @@ class AdminCronController extends AbstractController
     #[Route('/run', name: 'app_admin_cron_run_all', methods: ['POST'])]
     public function runAll(Request $request, KernelInterface $kernel): Response
     {
+        // Disable execution time limit for long-running imports/syncs
+        set_time_limit(0);
+
         if (!$this->isCsrfTokenValid('cron_run_all', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_admin_cron_index');
@@ -108,6 +111,9 @@ class AdminCronController extends AbstractController
     #[Route('/{id}/run', name: 'app_admin_cron_run_single', methods: ['POST'])]
     public function runSingle(CronJob $job, Request $request, KernelInterface $kernel): Response
     {
+        // Disable execution time limit for long-running imports/syncs
+        set_time_limit(0);
+
         if (!$this->isCsrfTokenValid('cron_run_' . $job->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_admin_cron_index');
