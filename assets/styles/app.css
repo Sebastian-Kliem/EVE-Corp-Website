@@ -2284,15 +2284,7 @@ input[type="number"] {
 }
 
 .pi-content {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 1.5rem;
-    align-items: start;
-}
-@media screen and (max-width: 1024px) {
-    .pi-content {
-        grid-template-columns: 1fr;
-    }
+    display: block;
 }
 
 .pi-accounts-sidebar {

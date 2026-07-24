@@ -373,19 +373,7 @@ export default function PIOverview({
     const uniqueSystems = Array.from(systemsSet).sort();
     const uniqueMaterials = Array.from(materialsSet).sort();
 
-    // Group the characters in characterList by account group/name for sidebar or select
-    const groupedAccounts: Record<string, Record<string, CharacterListItem[]>> = {};
-    charactersList.forEach((char) => {
-        const group = char.accountGroup;
-        const account = char.accountName;
-        if (!groupedAccounts[group]) {
-            groupedAccounts[group] = {};
-        }
-        if (!groupedAccounts[group][account]) {
-            groupedAccounts[group][account] = [];
-        }
-        groupedAccounts[group][account].push(char);
-    });
+
 
     // Filtering logic
     const filteredPiData = piData.map((charData) => {
@@ -592,40 +580,7 @@ export default function PIOverview({
             {/* Main content grid */}
             {!loading && !error && (
                 <div className="pi-content">
-                    {/* Account configuration hierarchy info */}
-                    <div className="pi-accounts-sidebar card-dark">
-                        <h3>Charakter-Gruppen</h3>
-                        <div className="sidebar-group-list">
-                            {Object.entries(groupedAccounts).map(([groupName, accounts]) => (
-                                <div key={groupName} className="sidebar-group">
-                                    <h4 className="group-title">{groupName}</h4>
-                                    {Object.entries(accounts).map(([accountName, chars]) => (
-                                        <div key={accountName} className="sidebar-account">
-                                            <div className="account-title">{accountName}</div>
-                                            <div className="sidebar-chars">
-                                                {chars.map((char) => {
-                                                    const characterData = piData.find(c => c.character_id === char.id);
-                                                    const planetCount = characterData?.planets.length ?? 0;
-                                                    return (
-                                                        <div key={char.id} className="sidebar-char-item">
-                                                            <img
-                                                                src={getCharacterPortraitUrl(char.id)}
-                                                                alt={char.name}
-                                                                className="char-icon"
-                                                            />
-                                                            <span className="char-name">{char.name}</span>
-                                                            <span
-                                                                className="badge badge-secondary">{planetCount} P</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+
 
                     <div className="pi-planets-list">
                         {filteredPiData.length === 0 ? (

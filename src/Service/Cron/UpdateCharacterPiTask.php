@@ -335,6 +335,7 @@ class UpdateCharacterPiTask implements CronTaskInterface
                 'num_pins' => (int)$p['num_pins'],
                 'last_update' => $p['last_update'],
                 'pins' => array_values($processedPins),
+                'routes' => $routes,
                 'poco' => [
                     'name' => $pocoName,
                     'contents' => $pocoMaterials,
