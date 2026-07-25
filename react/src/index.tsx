@@ -7,6 +7,7 @@ import AssetsOverview from './components/Assets/AssetsOverview';
 import CorpAssetsOverview from './components/Assets/CorpAssetsOverview';
 import CorpAssetsVisibilityManager from './components/Admin/CorpAssetsVisibilityManager';
 import PIOverview from './components/Profile/PIOverview';
+import MarketOrdersOverview from './components/Profile/MarketOrdersOverview';
 import MiningLedger from './components/Profile/MiningLedger';
 import PerformanceLedger from './components/Profile/PerformanceLedger';
 import TrackingListManager from './components/Tool/TrackingListManager';
@@ -26,6 +27,7 @@ const components: Record<string, React.ComponentType<any>> = {
     CorpAssetsOverview,
     CorpAssetsVisibilityManager,
     PIOverview,
+    MarketOrdersOverview,
     MiningLedger,
     PerformanceLedger,
     TrackingListManager,
