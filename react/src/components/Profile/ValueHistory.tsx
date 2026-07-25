@@ -214,7 +214,11 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             polylinePoints,
             areaPath,
             yGridLines,
-            xLabels
+            xLabels,
+            chartWidth,
+            chartHeight,
+            paddingTop,
+            step: chartWidth / (list.length - 1)
         };
     }, [processedData.historyList]);
 
@@ -321,25 +325,43 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                                     fill="none" stroke="var(--theme-primary)" strokeWidth="2.5" 
                                 />
 
-                                {/* Dots & Interactivity */}
+                                {/* Visual dots */}
                                 {chartSvg.points.map((p, index) => (
                                     <g key={index}>
                                         <circle 
                                             cx={p.x} cy={p.y} r="5" 
                                             fill="var(--theme-bg)" stroke="var(--theme-primary)" strokeWidth="2"
-                                            style={{ cursor: 'pointer' }}
-                                            onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, date: p.data.date, total: p.data.total })}
-                                            onMouseLeave={() => setHoveredPoint(null)}
+                                            style={{ pointerEvents: 'none' }}
                                         />
                                         {/* Glow circle on hover */}
                                         {hoveredPoint?.date === p.data.date && (
                                             <circle 
                                                 cx={p.x} cy={p.y} r="8" 
                                                 fill="var(--theme-primary)" fillOpacity="0.3"
+                                                style={{ pointerEvents: 'none' }}
                                             />
                                         )}
                                     </g>
                                 ))}
+
+                                {/* Invisible vertical hover zones for smooth interactivity */}
+                                {chartSvg.points.map((p, index) => {
+                                    const rectWidth = chartSvg.step;
+                                    const rectX = p.x - rectWidth / 2;
+                                    return (
+                                        <rect
+                                            key={`hover-${index}`}
+                                            x={rectX}
+                                            y={chartSvg.paddingTop}
+                                            width={rectWidth}
+                                            height={chartSvg.chartHeight}
+                                            fill="transparent"
+                                            style={{ cursor: 'pointer' }}
+                                            onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, date: p.data.date, total: p.data.total })}
+                                            onMouseLeave={() => setHoveredPoint(null)}
+                                        />
+                                    );
+                                })}
 
                                 {/* X Axis Labels */}
                                 {chartSvg.xLabels.map((lbl, i) => (
