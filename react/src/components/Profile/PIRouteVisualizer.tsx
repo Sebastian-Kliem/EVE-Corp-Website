@@ -41,6 +41,21 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
     });
 
     const renderTooltipDetails = (pin: any) => {
+        // Find destination for extractor
+        let extractorDest = 'Kein Ziel';
+        if (pin.category === 'extractor' && pin.extractor_info) {
+            const route = routes.find(r => 
+                r.source_pin_id.toString() === pin.pin_id.toString() && 
+                r.content_type_id === pin.extractor_info.product_type_id
+            );
+            if (route) {
+                const dstPin = pins.find(p => p.pin_id.toString() === route.destination_pin_id.toString());
+                if (dstPin) extractorDest = getCleanName(dstPin.name);
+            }
+        }
+
+        const cycleTimeHours = pin.factory_info ? pin.factory_info.cycle_time / 3600 : 1;
+
         return (
             <div>
                 {/* 1. Extraction info */}
@@ -49,6 +64,7 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
                         <div style={{ color: '#00d8ff', fontWeight: 600, marginBottom: '2px' }}>⛏️ Extraktion:</div>
                         <div style={{ paddingLeft: '8px' }}>
                             <div>Rate: {Math.round(pin.extractor_info.qty_per_cycle / (pin.extractor_info.cycle_time / 3600)).toLocaleString()} / Std.</div>
+                            <div style={{ fontSize: '0.75rem', color: '#8892b0' }}>Ziel: {extractorDest}</div>
                             <div style={{ fontSize: '0.75rem', color: '#8892b0' }}>Zyklus: {Math.round(pin.extractor_info.cycle_time / 60)} Min.</div>
                             {pin.expiry_time && (
                                 <div style={{ fontSize: '0.75rem', color: '#ff7c00', marginTop: '2px' }}>
@@ -59,18 +75,67 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
                     </div>
                 )}
 
-                {/* 2. Factory info */}
-                {pin.category === 'factory' && pin.factory_info && (
+                {/* 2. Factory inputs (Verbrauch) */}
+                {pin.category === 'factory' && pin.factory_info && pin.factory_info.inputs && pin.factory_info.inputs.length > 0 && (
                     <div style={{ marginBottom: '8px' }}>
-                        <div style={{ color: '#ff7c00', fontWeight: 600, marginBottom: '2px' }}>⚙️ Rezept: {pin.factory_info.name}</div>
-                        <div style={{ paddingLeft: '8px' }}>
-                            <div>Produktion: {Math.round(pin.factory_info.outputs[0]?.quantity / (pin.factory_info.cycle_time / 3600)).toLocaleString()} / Std.</div>
-                            <div style={{ fontSize: '0.75rem', color: '#8892b0' }}>Zykluszeit: {Math.round(pin.factory_info.cycle_time / 60)} Min.</div>
-                        </div>
+                        <div style={{ color: '#e06c75', fontWeight: 600, marginBottom: '2px' }}>📉 Verbrauch (Inputs):</div>
+                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
+                            {pin.factory_info.inputs.map((inp: any, idx: number) => {
+                                const hourlyRate = Math.round(inp.quantity / cycleTimeHours);
+                                
+                                // Find source for this input
+                                let sourceName = 'Unbekannt';
+                                const route = routes.find(r => 
+                                    r.destination_pin_id.toString() === pin.pin_id.toString() && 
+                                    r.content_type_id === inp.type_id
+                                );
+                                if (route) {
+                                    const srcPin = pins.find(p => p.pin_id.toString() === route.source_pin_id.toString());
+                                    if (srcPin) sourceName = getCleanName(srcPin.name);
+                                }
+
+                                return (
+                                    <li key={idx}>
+                                        {inp.name}: {hourlyRate.toLocaleString()} / Std.
+                                        <div style={{ fontSize: '0.7rem', color: '#8892b0' }}>Quelle: {sourceName}</div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     </div>
                 )}
 
-                {/* 3. Contents / Storage */}
+                {/* 3. Factory outputs (Produktion) */}
+                {pin.category === 'factory' && pin.factory_info && pin.factory_info.outputs && pin.factory_info.outputs.length > 0 && (
+                    <div style={{ marginBottom: '8px' }}>
+                        <div style={{ color: '#98c379', fontWeight: 600, marginBottom: '2px' }}>📈 Produktion:</div>
+                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
+                            {pin.factory_info.outputs.map((out: any, idx: number) => {
+                                const hourlyRate = Math.round(out.quantity / cycleTimeHours);
+                                
+                                // Find destination for this output
+                                let destName = 'Kein Ziel';
+                                const route = routes.find(r => 
+                                    r.source_pin_id.toString() === pin.pin_id.toString() && 
+                                    r.content_type_id === out.type_id
+                                );
+                                if (route) {
+                                    const dstPin = pins.find(p => p.pin_id.toString() === route.destination_pin_id.toString());
+                                    if (dstPin) destName = getCleanName(dstPin.name);
+                                }
+
+                                return (
+                                    <li key={idx}>
+                                        {out.name}: {hourlyRate.toLocaleString()} / Std.
+                                        <div style={{ fontSize: '0.7rem', color: '#8892b0' }}>Ziel: {destName}</div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
+
+                {/* 4. Contents / Storage */}
                 {pin.contents && pin.contents.length > 0 ? (
                     <div>
                         <div style={{ color: '#98c379', fontWeight: 600, marginBottom: '2px' }}>📦 Inhalt:</div>
@@ -83,7 +148,10 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
                         </ul>
                     </div>
                 ) : (
-                    <div style={{ color: '#8892b0', fontStyle: 'italic' }}>Kein Inhalt gelagert</div>
+                    // Only show empty text if it's not a factory/extractor
+                    pin.category !== 'factory' && pin.category !== 'extractor' && (
+                        <div style={{ color: '#8892b0', fontStyle: 'italic' }}>Kein Inhalt gelagert</div>
+                    )
                 )}
             </div>
         );
@@ -147,36 +215,10 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
             };
         });
 
-        // 2. Build unique edges from routes (representing links)
-        const uniqueLinks = new Set<string>();
-        const edges: any[] = [];
-        if (Array.isArray(routes)) {
-            routes.forEach(route => {
-                const src = route.source_pin_id.toString();
-                const dst = route.destination_pin_id.toString();
-                
-                // Only include route if both source and destination are valid nodes (not command centers)
-                if (validPinIds.has(src) && validPinIds.has(dst)) {
-                    // Sort IDs to avoid duplicate connections
-                    const key = [src, dst].sort().join('-');
-                    if (!uniqueLinks.has(key)) {
-                        uniqueLinks.add(key);
-                        edges.push({
-                            data: {
-                                id: `edge-${key}`,
-                                source: src,
-                                target: dst
-                            }
-                        });
-                    }
-                }
-            });
-        }
-
-        // Initialize Cytoscape.js
+        // Initialize Cytoscape.js with nodes only (no link lines needed as tooltip maps dependencies)
         const cy = cytoscape({
             container: containerRef.current,
-            elements: [...nodes, ...edges],
+            elements: nodes,
             style: [
                 {
                     selector: 'node',
@@ -244,15 +286,6 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
                     style: {
                         'border-color': '#ff7c00',      // Orange
                         'background-color': '#291807'
-                    }
-                },
-                {
-                    selector: 'edge',
-                    style: {
-                        'width': 2,
-                        'line-color': '#425866',        // Muted blue-grey connection line
-                        'line-style': 'dashed',         // Dashed link representation matching EVE Online
-                        'curve-style': 'haystack'
                     }
                 }
             ],

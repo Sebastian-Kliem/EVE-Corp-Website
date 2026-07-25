@@ -660,11 +660,39 @@ export default function PIOverview({
                                                     const launchpadCapacity = launchpads.length * 10000; // 10,000 m3 per Launchpad
                                                     let launchpadVolumeUsed = 0;
                                                     launchpads.forEach((pin) => {
-                                                        pin.contents.forEach((item) => {
-                                                            launchpadVolumeUsed += item.quantity * (item.volume ?? 0);
-                                                        });
+                                                        if (pin.contents) {
+                                                            pin.contents.forEach((item) => {
+                                                                launchpadVolumeUsed += item.quantity * (item.volume ?? 0);
+                                                            });
+                                                        }
                                                     });
                                                     const launchpadPercent = launchpadCapacity > 0 ? (launchpadVolumeUsed / launchpadCapacity) * 100 : 0;
+
+                                                    // Collect launchpad items for hover tooltip
+                                                    const launchpadItems: Record<string, number> = {};
+                                                    launchpads.forEach((pin) => {
+                                                        if (pin.contents) {
+                                                            pin.contents.forEach((item) => {
+                                                                if (!launchpadItems[item.name]) {
+                                                                    launchpadItems[item.name] = 0;
+                                                                }
+                                                                launchpadItems[item.name] += item.quantity;
+                                                            });
+                                                        }
+                                                    });
+                                                    const launchpadTooltipLines = [
+                                                        `Launchpad-Auslastung: ${Math.round(launchpadVolumeUsed).toLocaleString()} / ${launchpadCapacity.toLocaleString()} m³ (${Math.round(launchpadPercent)}%)`
+                                                    ];
+                                                    const launchpadItemsList = Object.entries(launchpadItems);
+                                                    if (launchpadItemsList.length > 0) {
+                                                        launchpadTooltipLines.push('\nInhalt:');
+                                                        launchpadItemsList.forEach(([name, qty]) => {
+                                                            launchpadTooltipLines.push(`- ${name}: ${qty.toLocaleString()}`);
+                                                        });
+                                                    } else {
+                                                        launchpadTooltipLines.push('\nInhalt: (leer)');
+                                                    }
+                                                    const launchpadTooltip = launchpadTooltipLines.join('\n');
 
                                                     // Calculate remaining extractor program time
                                                     let maxRemainingMs = -1;
@@ -764,13 +792,25 @@ export default function PIOverview({
                                                             }
                                                         });
 
+                                                        // Filter out intermediate materials (those that are consumed as inputs by any factory on the same planet)
+                                                        const consumedTypeIds = new Set<number>();
+                                                        factories.forEach((pin) => {
+                                                            if (pin.factory_info && pin.factory_info.inputs) {
+                                                                pin.factory_info.inputs.forEach((inp) => {
+                                                                    consumedTypeIds.add(inp.type_id);
+                                                                });
+                                                            }
+                                                        });
+
                                                         Object.entries(factoryOutputs).forEach(([typeIdStr, data]) => {
                                                             const typeId = parseInt(typeIdStr, 10);
-                                                            producedMaterials.push({
-                                                                typeId,
-                                                                name: data.name,
-                                                                ratePerHour: data.ratePerHour,
-                                                            });
+                                                            if (!consumedTypeIds.has(typeId)) {
+                                                                producedMaterials.push({
+                                                                    typeId,
+                                                                    name: data.name,
+                                                                    ratePerHour: data.ratePerHour,
+                                                                });
+                                                            }
                                                         });
                                                     }
 
@@ -886,19 +926,20 @@ export default function PIOverview({
                                                                         <span
                                                                             key={mat.typeId}
                                                                             className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs text-eve-text"
-                                                                            title={`${mat.name} (Hergestellt)`}
+                                                                            title={`${mat.name} (Hergestellt: ${Math.round(mat.ratePerHour * 10) / 10} / Std.)`}
                                                                             style={{ borderStyle: 'dashed' }}
                                                                         >
                                                                             <img
                                                                                 src={getTypeIconUrl(mat.typeId)}
                                                                                 alt={mat.name}
+                                                                                style={{ width: '16px', height: '16px' }}
                                                                             />
                                                                         </span>
                                                                     ))}
                                                                     {launchpadCapacity > 0 && (
                                                                         <span
                                                                             className={`px-2 py-0.5 text-xs font-semibold rounded ${launchpadPercent >= 90 ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' : (launchpadPercent >= 75 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30')}`}
-                                                                            title={`Launchpad-Auslastung: ${Math.round(launchpadVolumeUsed).toLocaleString()} / ${launchpadCapacity.toLocaleString()} m³ (${Math.round(launchpadPercent)}%)`}
+                                                                            title={launchpadTooltip}
                                                                         >
                                                                         🚀 {Math.round(launchpadPercent)}%
                                                                     </span>
