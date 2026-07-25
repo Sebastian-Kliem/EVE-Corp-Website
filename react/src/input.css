@@ -3235,5 +3235,102 @@ input[type="number"] {
     margin: 0 !important;
 }
 
+/* ==========================================================================
+   11. NAVIGATION ACTIVE STATES & BREADCRUMBS
+   ========================================================================== */
+
+/* Custom active states for navigation */
+.nav-trigger {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.7); /* Slightly muted white for normal state */
+    background-color: transparent;
+    user-select: none;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.nav-trigger:hover,
+.nav-trigger.is-active {
+    color: var(--color-eve-primary) !important;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+.nav-dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    color: var(--color-eve-muted);
+    padding: 0.5rem 1.25rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.nav-dropdown-item:hover {
+    color: var(--color-eve-primary) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.nav-dropdown-item.is-active {
+    color: var(--color-eve-primary) !important;
+    background-color: rgba(0, 240, 255, 0.05) !important;
+    border-left: 2px solid var(--color-eve-primary) !important;
+    padding-left: calc(1.25rem - 2px) !important;
+    font-weight: 600 !important;
+}
+
+/* Breadcrumbs Styling */
+.breadcrumb-container {
+    padding: 0.75rem 0;
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+}
+
+.breadcrumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    list-style: none;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumb-link {
+    color: var(--color-eve-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--color-eve-primary);
+}
+
+.breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.2);
+    user-select: none;
+    font-size: 0.75rem;
+}
+
+.breadcrumb-text {
+    color: var(--color-eve-text);
+    font-weight: 500;
+}
+
+.breadcrumb-item.is-active .breadcrumb-text {
+    color: var(--color-eve-primary);
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+}
+
+
 
 

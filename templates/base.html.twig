@@ -26,6 +26,12 @@
         </header>
 
         {% if app.user %}
+            <div class="w-full max-w-[1200px] mx-auto px-6 mt-4">
+                {% include 'breadcrumbs.html.twig' %}
+            </div>
+        {% endif %}
+
+        {% if app.user %}
             {% set invalid_chars = get_sso_warnings() %}
             {% if invalid_chars is not empty %}
                 <div class="w-full max-w-[1200px] mx-auto px-6 mt-6">
