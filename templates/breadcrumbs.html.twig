@@ -1,0 +1,106 @@
+{# templates/breadcrumbs.html.twig #}
+{% set current_route = app.request.attributes.get('_route') %}
+
+{# Only render if we are logged in and not on the homepage #}
+{% if current_route and current_route != 'home' and app.user %}
+    {% set breadcrumbs_config = {
+        'link_collection': [
+            { 'label': 'Allgemein' },
+            { 'label': 'Linksammlung', 'path': 'link_collection' }
+        ],
+        'app_suggestions': [
+            { 'label': 'Allgemein' },
+            { 'label': 'Vorschläge', 'path': 'app_suggestions' }
+        ],
+        'app_general_reactions': [
+            { 'label': 'Allgemein' },
+            { 'label': 'Wurmloch-Reaktionen', 'path': 'app_general_reactions' }
+        ],
+        'app_order_list': [
+            { 'label': 'Corp' },
+            { 'label': 'Orders', 'path': 'app_order_list' }
+        ],
+        'app_dashboard_corp_assets_overview': [
+            { 'label': 'Corp' },
+            { 'label': 'Corp-Inventar', 'path': 'app_dashboard_corp_assets_overview' }
+        ],
+        'app_corp_blueprints': [
+            { 'label': 'Corp' },
+            { 'label': 'Blueprint-Tresor', 'path': 'app_corp_blueprints' }
+        ],
+        'app_tracking_index': [
+            { 'label': 'Corp' },
+            { 'label': 'Tracking-Listen', 'path': 'app_tracking_index' }
+        ],
+        'app_profile': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Mein Profil', 'path': 'app_profile' }
+        ],
+        'app_profile_characters': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Charakterübersicht', 'path': 'app_profile_characters' }
+        ],
+        'app_profile_skill_farm': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Skill-Farmen', 'path': 'app_profile_skill_farm' }
+        ],
+        'app_dashboard_pi_overview': [
+            { 'label': 'Persönlich' },
+            { 'label': 'PI-Planung', 'path': 'app_dashboard_pi_overview' }
+        ],
+        'app_dashboard_mining_ledger': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Bergbautagebuch', 'path': 'app_dashboard_mining_ledger' }
+        ],
+        'app_dashboard_industry_overview': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Industrie-Aufträge', 'path': 'app_dashboard_industry_overview' }
+        ],
+        'app_dashboard_assets_overview': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Inventar & Wallet', 'path': 'app_dashboard_assets_overview' }
+        ],
+        'app_admin_users': [
+            { 'label': 'Admin-Panel' },
+            { 'label': 'Benutzerverwaltung', 'path': 'app_admin_users' }
+        ],
+        'app_admin_corp_assets_visibility': [
+            { 'label': 'Admin-Panel' },
+            { 'label': 'Hangar-Sichtbarkeit', 'path': 'app_admin_corp_assets_visibility' }
+        ],
+        'app_admin_cron_index': [
+            { 'label': 'Admin-Panel' },
+            { 'label': 'Cron-Jobs', 'path': 'app_admin_cron_index' }
+        ],
+        'app_dashboard_eve_character_assets': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Charakterübersicht', 'path': 'app_profile_characters' },
+            { 'label': 'Charakter-Assets' }
+        ],
+        'app_dashboard_eve_character_details': [
+            { 'label': 'Persönlich' },
+            { 'label': 'Charakterübersicht', 'path': 'app_profile_characters' },
+            { 'label': 'Charakter-Details' }
+        ]
+    } %}
+
+    {% if breadcrumbs_config[current_route] is defined %}
+        <nav class="breadcrumb-container" aria-label="breadcrumb">
+            <ol class="breadcrumb-list">
+                <li class="breadcrumb-item">
+                    <a href="{{ path('home') }}" class="breadcrumb-link">Home</a>
+                </li>
+                {% for crumb in breadcrumbs_config[current_route] %}
+                    <li class="breadcrumb-separator">&gt;</li>
+                    <li class="breadcrumb-item {% if loop.last %}is-active{% endif %}">
+                        {% if crumb.path is defined and not loop.last %}
+                            <a href="{{ path(crumb.path) }}" class="breadcrumb-link">{{ crumb.label }}</a>
+                        {% else %}
+                            <span class="breadcrumb-text">{{ crumb.label }}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        </nav>
+    {% endif %}
+{% endif %}
