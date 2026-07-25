@@ -28,6 +28,8 @@
 # React & TypeScript Islands
 /react/node_modules/
 /assets/react.js.map
-# /assets/react.js (einkommentieren, falls du die kompilierte JS-Datei nicht im Git haben willst)
-/.gemini/cron.log
+/assets/styles/app.css
+/assets/react.js
+
 /.gemini/
+
