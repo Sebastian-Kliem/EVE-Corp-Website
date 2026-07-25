@@ -520,6 +520,50 @@ class LocationService
             $this->entityManager->flush();
         }
     }
+
+    /**
+     * Resolves the Region ID for a given Location ID (Station or Structure).
+     */
+    public function getRegionIdForLocation(int $locationId, ?EveCharacter $character = null): ?int
+    {
+        if ($locationId >= 60000000 && $locationId < 64000000) {
+            try {
+                $regionId = $this->sdeConnection->fetchOne(
+                    'SELECT s.regionID 
+                     FROM staStations st 
+                     JOIN mapSolarSystems s ON st.solarSystemID = s.solarSystemID 
+                     WHERE st.stationID = :id LIMIT 1',
+                    ['id' => $locationId]
+                );
+                return $regionId !== false ? (int)$regionId : null;
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        if ($locationId >= 1000000000000) {
+            $structure = $this->entityManager->getRepository(EveStructure::class)->find((string)$locationId);
+            
+            if (!$structure) {
+                $this->resolveLocation($locationId, $character);
+                $structure = $this->entityManager->getRepository(EveStructure::class)->find((string)$locationId);
+            }
+
+            if ($structure && $structure->getSolarSystemId() > 0) {
+                try {
+                    $regionId = $this->sdeConnection->fetchOne(
+                        'SELECT regionID FROM mapSolarSystems WHERE solarSystemID = :id LIMIT 1',
+                        ['id' => $structure->getSolarSystemId()]
+                    );
+                    return $regionId !== false ? (int)$regionId : null;
+                } catch (\Exception $e) {
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
 }
 
 
