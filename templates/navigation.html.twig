@@ -7,7 +7,7 @@
 
 <nav class="relative z-30 bg-[#0d121fe6] border-b border-eve-border backdrop-blur-md mb-8" role="navigation" aria-label="main navigation" data-controller="navbar">
     <div class="w-full max-w-[1200px] mx-auto px-6">
-        
+
         <!-- Brand & Burger (Mobile only) -->
         <div class="flex items-center justify-between lg:hidden w-full h-13">
             <a class="uppercase tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-eve-primary to-purple-400 text-lg font-bold no-underline" href="{{ path('home') }}">
@@ -30,7 +30,7 @@
         <div class="hidden lg:flex lg:items-center lg:justify-between w-full bg-[#0d121ffa] lg:bg-transparent border border-eve-border lg:border-none shadow-eve lg:shadow-none rounded-lg lg:rounded-none p-4 lg:p-0 absolute lg:static left-6 right-6 top-full [&.is-active]:block" data-navbar-target="menu">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-6 w-full lg:w-auto">
                 {% if is_granted('ROLE_MEMBER') %}
-                    
+
                     <!-- Allgemein Dropdown -->
                     <div class="relative group" data-controller="dropdown">
                         <a class="nav-trigger {{ is_allgemein_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
@@ -71,7 +71,7 @@
                         </div>
                     </div>
 
-                    {% if is_granted('ROLE_CEO') %}
+                    {% if is_granted('ROLE_OFFICER') %}
                     <!-- Admin Panel Dropdown -->
                     <div class="relative group" data-controller="dropdown">
                         <a class="nav-trigger {{ is_admin_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
@@ -79,8 +79,10 @@
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
                             <a class="nav-dropdown-item {{ current_route == 'app_admin_users' ? 'is-active' : '' }}" href="{{ path('app_admin_users') }}" data-turbo="false">Benutzerverwaltung</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_admin_corp_assets_visibility' ? 'is-active' : '' }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_admin_cron_index' ? 'is-active' : '' }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
+                            {% if is_granted('ROLE_CEO') %}
+                                <a class="nav-dropdown-item {{ current_route == 'app_admin_corp_assets_visibility' ? 'is-active' : '' }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
+                                <a class="nav-dropdown-item {{ current_route == 'app_admin_cron_index' ? 'is-active' : '' }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
+                            {% endif %}
                         </div>
                     </div>
                     {% endif %}
