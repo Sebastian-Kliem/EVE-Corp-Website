@@ -338,16 +338,6 @@ const analyzePlanet = (planet: PlanetData, routes: any[] = []): Bottleneck[] => 
                     recommendation: 'Baue eine weitere Basic-Fabrik oder reduziere Extraktionsköpfe, um CPU/PG zu sparen.'
                 });
             }
-        } else if (extractionRate < processingRate && extractionRate > 0) {
-            const underQty = processingRate - extractionRate;
-            const percent = Math.round((underQty / processingRate) * 100);
-            if (percent >= 15) {
-                bottlenecks.push({
-                    type: 'info',
-                    message: `Rohstoff-Mangel: Abbau deckt nur ${Math.round(100 - percent)}% des Fabrik-Bedarfs von "${ext.product_name}" (-${Math.round(underQty)}/h).`,
-                    recommendation: 'Füge dem Extraktor mehr Köpfe hinzu oder pausiere ungenutzte Fabriken, um Strom zu sparen.'
-                });
-            }
         }
     });
 
@@ -509,7 +499,6 @@ export default function PIOverview({
     const [selectedSystem, setSelectedSystem] = useState('');
     const [selectedMaterial, setSelectedMaterial] = useState('');
     const [selectedTag, setSelectedTag] = useState<string>('all');
-    const [hideNoPi, setHideNoPi] = useState(true);
 
     // Collect all unique tags
     const allTags = React.useMemo(() => {
@@ -523,6 +512,7 @@ export default function PIOverview({
     }, [charactersList]);
 
     // Collapse states
+    const [collapsedAccounts, setCollapsedAccounts] = useState<Record<string, boolean>>({});
     const [collapsedCharacters, setCollapsedCharacters] = useState<Record<number, boolean>>({});
     const [collapsedPlanets, setCollapsedPlanets] = useState<Record<number, boolean>>({});
 
@@ -554,6 +544,13 @@ export default function PIOverview({
         return imagePaths.types.replace('12345', typeId.toString());
     };
 
+    const toggleAccount = (accountKey: string) => {
+        setCollapsedAccounts((prev) => ({
+            ...prev,
+            [accountKey]: prev[accountKey] === false ? true : false,
+        }));
+    };
+
     const toggleCharacter = (charId: number) => {
         setCollapsedCharacters((prev) => ({
             ...prev,
@@ -568,121 +565,25 @@ export default function PIOverview({
         }));
     };
 
-    // Extract all unique solar systems and produced/extracted materials for filters
-    const systemsSet = new Set<string>();
-    const materialsSet = new Set<string>();
-
-    piData.forEach((charData) => {
-        charData.planets.forEach((planet) => {
-            if (planet.solar_system_name) {
-                systemsSet.add(planet.solar_system_name);
-            }
-            planet.pins.forEach((pin) => {
-                if (pin.extractor_info?.product_name) {
-                    materialsSet.add(pin.extractor_info.product_name);
-                }
-                if (pin.factory_info?.outputs) {
-                    pin.factory_info.outputs.forEach((out) => materialsSet.add(out.name));
-                }
-            });
-        });
-    });
-
-    const uniqueSystems = Array.from(systemsSet).sort();
-    const uniqueMaterials = Array.from(materialsSet).sort();
-
-
-
     const strcasecmp = (a: string, b: string) => {
         return a.localeCompare(b, undefined, { sensitivity: 'base' });
     };
 
     // Filter and group logic
     const groupedAccounts = React.useMemo(() => {
-        // 1. Filter characters
-        const filtered = piData.map((charData) => {
-            // Tag check
-            if (selectedTag !== 'all') {
-                const charObj = charactersList.find(c => c.id === charData.character_id);
-                if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
-                    return null;
-                }
-            }
+        // 1. Filter out characters without PI (always) unless they have a "PI" tag
+        const piCharacters = piData.filter((charData) => {
+            const charListItem = charactersList.find(c => c.id === charData.character_id);
+            const hasPiTag = charListItem?.tags?.some(t => t.toUpperCase() === 'PI') || false;
 
-            const filteredPlanets = charData.planets.filter((planet) => {
-                // Solar System filter
-                if (selectedSystem && planet.solar_system_name !== selectedSystem) {
-                    return false;
-                }
-
-                // Search query filter (matches planet name, system name, or item names on planet)
-                const matchesQuery =
-                    planet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    planet.solar_system_name.toLowerCase().includes(searchQuery.toLowerCase());
-
-                // Check if planet has selected material (if material filter active)
-                let matchesMaterial = !selectedMaterial;
-                if (selectedMaterial) {
-                    planet.pins.forEach((pin) => {
-                        if (pin.extractor_info && pin.extractor_info.product_name === selectedMaterial) {
-                            matchesMaterial = true;
-                        }
-                        if (pin.factory_info && pin.factory_info.outputs.some(out => out.name === selectedMaterial)) {
-                            matchesMaterial = true;
-                        }
-                        if (pin.factory_info && pin.factory_info.inputs.some(inp => inp.name === selectedMaterial)) {
-                            matchesMaterial = true;
-                        }
-                    });
-                }
-
-                // If query is active, check if any pin has matching items
-                let matchesQueryOrItems = matchesQuery;
-                if (!matchesQueryOrItems && searchQuery) {
-                    planet.pins.forEach((pin) => {
-                        if (pin.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                            matchesQueryOrItems = true;
-                        }
-                        if (pin.factory_info?.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                            matchesQueryOrItems = true;
-                        }
-                        pin.contents.forEach((item) => {
-                            if (item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                                matchesQueryOrItems = true;
-                            }
-                        });
-                    });
-                }
-
-                return matchesQueryOrItems && matchesMaterial;
-            });
-
-            // If we are filtering by search query/system/material, and the character has no matching planets, return null
-            const hasMatchingContent = filteredPlanets.length > 0 || 
-                (searchQuery === '' && !selectedSystem && !selectedMaterial);
-
-            if (!hasMatchingContent) {
-                return null;
-            }
-
-            return {
-                ...charData,
-                planets: filteredPlanets,
-            };
-        }).filter((charData): charData is CharacterPiData => charData !== null);
-
-        // 2. Filter out characters without PI if hideNoPi is true
-        const piCharacters = filtered.filter((charData) => {
-            if (!hideNoPi) return true;
-            
             const hasPlanets = charData.planets.length > 0;
             const hasUnassignedPocos = charData.unassigned_pocos && charData.unassigned_pocos.length > 0;
             const hasErrorOrWarning = charData.error !== undefined || (charData as any).warning !== undefined;
 
-            return hasPlanets || hasUnassignedPocos || hasErrorOrWarning;
+            return hasPlanets || hasUnassignedPocos || hasErrorOrWarning || hasPiTag;
         });
 
-        // 3. Group by Account
+        // 2. Group by Account
         const groups: Record<string, { accountName: string; accountGroup: string; characters: any[] }> = {};
 
         piCharacters.forEach((charData) => {
@@ -709,7 +610,7 @@ export default function PIOverview({
             });
         });
 
-        // 4. Convert to array and sort
+        // 3. Convert to array and sort
         const sortedGroups = Object.values(groups);
         sortedGroups.sort((a, b) => {
             const grpCmp = strcasecmp(a.accountGroup, b.accountGroup);
@@ -723,7 +624,7 @@ export default function PIOverview({
         });
 
         return sortedGroups;
-    }, [piData, charactersList, searchQuery, selectedSystem, selectedMaterial, selectedTag, hideNoPi]);
+    }, [piData, charactersList]);
 
     // Summary calculation
     let totalPlanetsCount = 0;
@@ -779,91 +680,7 @@ export default function PIOverview({
                 </div>
             </div>
 
-            {/* Filter and control panel */}
-            <div className="flex gap-4 mb-8 flex-wrap items-center">
-                <div className="filter-item search-input-wrapper">
-                    <span className="search-icon">🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Filter nach Planet, System, Material, Fabrik..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    />
-                </div>
 
-                {allTags.length > 0 && (
-                    <div className="filter-item">
-                        <select
-                            value={selectedTag}
-                            onChange={(e) => setSelectedTag(e.target.value)}
-                            className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                        >
-                            <option value="all">-- Alle Tags --</option>
-                            {allTags.map(tag => (
-                                <option key={tag} value={tag}>{tag}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                <div className="filter-item">
-                    <select
-                        value={selectedSystem}
-                        onChange={(e) => setSelectedSystem(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    >
-                        <option value="">-- Alle Systeme --</option>
-                        {uniqueSystems.map((sys) => (
-                            <option key={sys} value={sys}>
-                                {sys}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="filter-item">
-                    <select
-                        value={selectedMaterial}
-                        onChange={(e) => setSelectedMaterial(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    >
-                        <option value="">-- Alle Materialien --</option>
-                        {uniqueMaterials.map((mat) => (
-                            <option key={mat} value={mat}>
-                                {mat}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="filter-item flex items-center gap-2 bg-[#0f172a59] border border-eve-border rounded px-3 py-1.5 transition-all duration-300">
-                    <input
-                        type="checkbox"
-                        id="hideNoPi"
-                        checked={hideNoPi}
-                        onChange={(e) => setHideNoPi(e.target.checked)}
-                        className="rounded accent-eve-primary border-eve-border text-eve-primary focus:ring-eve-primary h-4 w-4 cursor-pointer"
-                    />
-                    <label htmlFor="hideNoPi" className="text-xs text-eve-text cursor-pointer select-none">
-                        Charaktere ohne PI ausblenden
-                    </label>
-                </div>
-
-                {(searchQuery || selectedSystem || selectedMaterial || !hideNoPi) && (
-                    <button
-                        onClick={() => {
-                            setSearchQuery('');
-                            setSelectedSystem('');
-                            setSelectedMaterial('');
-                            setHideNoPi(true);
-                        }}
-                        className="inline-flex items-center justify-center border border-white/10 hover:border-eve-primary text-eve-text hover:text-eve-primary bg-white/5 hover:bg-white/10 rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer"
-                    >
-                        Zurücksetzen
-                    </button>
-                )}
-            </div>
 
             {/* Loading / Error states */}
             {loading && (
@@ -888,23 +705,70 @@ export default function PIOverview({
                                 <p>Keine Planeten entsprechen deinen Filterkriterien.</p>
                             </div>
                         ) : (
-                            groupedAccounts.map((account) => (
-                                <div key={`${account.accountGroup}:::${account.accountName}`} className="flex flex-col gap-4">
-                                    <div className="flex items-center gap-2 px-1 border-b border-eve-border/20 pb-2">
-                                        <span className="text-xs text-eve-primary font-bold uppercase tracking-wider">Account:</span>
-                                        <span className="text-lg font-bold text-white">{account.accountName}</span>
-                                        {account.accountGroup && account.accountGroup !== 'Ungruppiert' && (
-                                            <span className="px-2 py-0.5 text-xs font-semibold rounded bg-white/5 border border-white/10 text-eve-muted">
-                                                {account.accountGroup}
-                                            </span>
-                                        )}
-                                        <span className="text-xs text-eve-muted ml-auto">
-                                            {account.characters.length} Charakter(e)
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col gap-6 pl-0 sm:pl-4">
-                                        {account.characters.map((charData) => (
-                                            <div key={charData.character_id} className="bg-eve-card border border-eve-border rounded-lg overflow-hidden">
+                            groupedAccounts.map((account) => {
+                                const accountKey = `${account.accountGroup}:::${account.accountName}`;
+                                const isAccountCollapsed = collapsedAccounts[accountKey] !== false;
+
+                                // Sum up bottlenecks for all characters of this account
+                                let accountBottlenecksCount = 0;
+                                let accountHasCritical = false;
+                                let accountHasWarning = false;
+
+                                account.characters.forEach((char: any) => {
+                                    char.planets.forEach((planet: any) => {
+                                        const planetBottlenecks = analyzePlanet(planet, planet.routes || []);
+                                        accountBottlenecksCount += planetBottlenecks.length;
+                                        if (planetBottlenecks.some(b => b.type === 'error')) {
+                                            accountHasCritical = true;
+                                        }
+                                        if (planetBottlenecks.some(b => b.type === 'warning')) {
+                                            accountHasWarning = true;
+                                        }
+                                    });
+                                });
+
+                                return (
+                                    <div key={accountKey} className="bg-eve-card border border-eve-border rounded-lg overflow-hidden">
+                                        <div 
+                                            className="flex justify-between items-center p-4 bg-black/30 border-b border-white/5 cursor-pointer select-none"
+                                            onClick={() => toggleAccount(accountKey)}
+                                        >
+                                            <div className="flex items-center gap-2.5 flex-wrap">
+                                                <span className="text-xs text-eve-primary font-bold uppercase tracking-wider font-mono">Account:</span>
+                                                <span className="text-lg font-bold text-white">{account.accountName}</span>
+                                                {account.accountGroup && account.accountGroup !== 'Ungruppiert' && (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded bg-white/5 border border-white/10 text-eve-muted">
+                                                        {account.accountGroup}
+                                                    </span>
+                                                )}
+                                                <span className="px-2 py-0.5 text-xs font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20">
+                                                    {account.characters.length} Charakter(e)
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {accountBottlenecksCount > 0 && (
+                                                    <span 
+                                                        className={`px-2 py-0.5 text-xs font-semibold rounded flex items-center gap-1 ${
+                                                            accountHasCritical 
+                                                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold' 
+                                                                : (accountHasWarning 
+                                                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold' 
+                                                                    : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30')
+                                                        }`}
+                                                        title={`${accountBottlenecksCount} Hinweis(e) in diesem Account`}
+                                                    >
+                                                        ⚠️ {accountBottlenecksCount}
+                                                    </span>
+                                                )}
+                                                <span className="collapse-arrow">
+                                                    {isAccountCollapsed ? '▶' : '▼'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {!isAccountCollapsed && (
+                                            <div className="p-4 flex flex-col gap-6 bg-black/10">
+                                                {account.characters.map((charData) => (
+                                                    <div key={charData.character_id} className="bg-eve-card border border-eve-border/60 rounded-lg overflow-hidden">
                                     <div
                                         className="flex justify-between items-center p-4 bg-black/20 border-b border-white/5 cursor-pointer select-none"
                                         onClick={() => toggleCharacter(charData.character_id)}
@@ -1546,11 +1410,13 @@ export default function PIOverview({
                                             </div>
                                         </>
                                     )}
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
