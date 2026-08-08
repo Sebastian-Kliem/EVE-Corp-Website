@@ -61,7 +61,6 @@ class CronRunCommand extends Command
         // 1. Auto-seed default cron jobs if database is empty or missing them
         $this->seedDefaultJobs();
 
-        // 2. Fetch all active cron jobs
         $cronJobRepository = $this->entityManager->getRepository(CronJob::class);
         $activeJobs = $cronJobRepository->findBy(['isActive' => true]);
 
@@ -70,6 +69,22 @@ class CronRunCommand extends Command
             $writeLog('Keine aktiven Cronjobs in der Datenbank gefunden.');
             return Command::SUCCESS;
         }
+
+        // Sort jobs to ensure optimal execution order (e.g. contracts sync before wallet & assets sync)
+        $executionOrder = [
+            'character:sync-contracts' => 1,
+            'character:sync-wallet-assets' => 2,
+            'character:sync-killmails' => 3,
+            'character:sync-mining-ledger' => 4,
+            'character:sync-industry-jobs' => 5,
+            'structure:update-cache' => 6,
+            'character:sync-pi' => 7,
+        ];
+        usort($activeJobs, function(CronJob $a, CronJob $b) use ($executionOrder) {
+            $orderA = $executionOrder[$a->getCommand()] ?? 99;
+            $orderB = $executionOrder[$b->getCommand()] ?? 99;
+            return $orderA <=> $orderB;
+        });
 
         $dueJobsCount = 0;
         foreach ($activeJobs as $job) {
@@ -167,6 +182,11 @@ class CronRunCommand extends Command
         
         $defaultJobs = [
             [
+                'name' => 'Charakter-Verträge synchronisieren (Contracts)',
+                'command' => 'character:sync-contracts',
+                'expression' => '*/5 * * * *', // every 5 minutes
+            ],
+            [
                 'name' => 'Charakter-Daten synchronisieren (Wallet & Inventar)',
                 'command' => 'character:sync-wallet-assets',
                 'expression' => '*/5 * * * *', // every 5 minutes
@@ -184,11 +204,6 @@ class CronRunCommand extends Command
             [
                 'name' => 'Charakter-Industrieaufträge synchronisieren (Industry Jobs)',
                 'command' => 'character:sync-industry-jobs',
-                'expression' => '*/5 * * * *', // every 5 minutes
-            ],
-            [
-                'name' => 'Charakter-Verträge synchronisieren (Contracts)',
-                'command' => 'character:sync-contracts',
                 'expression' => '*/5 * * * *', // every 5 minutes
             ],
             [
