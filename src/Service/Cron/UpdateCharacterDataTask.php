@@ -458,6 +458,17 @@ class UpdateCharacterDataTask implements CronTaskInterface
                             $collectDescendants($root, $corpNestedAssets, $personalAssets);
                         }
 
+                        $uniquePersonalAssets = [];
+                        $seenItemIds = [];
+                        foreach ($personalAssets as $ca) {
+                            $itemId = $ca->getItemId();
+                            if (!isset($seenItemIds[$itemId])) {
+                                $uniquePersonalAssets[] = $ca;
+                                $seenItemIds[$itemId] = true;
+                            }
+                        }
+                        $personalAssets = $uniquePersonalAssets;
+
                         foreach ($personalAssets as $ca) {
                             $allAssets[] = [
                                 'item_id' => $ca->getItemId(),

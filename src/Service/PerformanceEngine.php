@@ -318,6 +318,11 @@ class PerformanceEngine
         $contractRecAgg = [];
         /** @var EveCharacterContract $contract */
         foreach ($contracts as $contract) {
+            // Skip internal contracts between user's own characters to avoid false receipt offsets
+            if (in_array((int)$contract->getAcceptorId(), $characterIds, true) && in_array((int)$contract->getIssuerId(), $characterIds, true)) {
+                continue;
+            }
+
             $charId = $contract->getCharacter()->getId();
             $cutoff = $effectiveCutoffs[$charId] ?? null;
             if ($cutoff !== null && $contract->getDateCompleted() < $cutoff) {
