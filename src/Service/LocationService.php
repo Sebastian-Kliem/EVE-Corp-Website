@@ -166,6 +166,33 @@ class LocationService
         $structure = $structureRepo->find((string)$locationId);
 
         $now = new \DateTimeImmutable();
+
+        // If ESI is offline (downtime or circuit breaker), return cached or fallback info without persisting or updating expiration
+        if ($this->esiClient->isOffline()) {
+            if ($structure) {
+                $structureName = $structure->getName();
+                $solarSystemName = $structure->getSolarSystemName() ?? $inferredSolarSystemName;
+                $formattedName = $structureName;
+                if ($solarSystemName && $solarSystemName !== 'Unbekannt') {
+                    $escapedSystem = preg_quote($solarSystemName, '/');
+                    if (!preg_match('/^\s*' . $escapedSystem . '\b/i', $structureName)) {
+                        $formattedName = $solarSystemName . ' - ' . $structureName;
+                    }
+                }
+                return [
+                    'name' => $formattedName,
+                    'systemName' => $solarSystemName,
+                    'rawName' => $structureName,
+                ];
+            }
+
+            return [
+                'name' => $inferredSolarSystemName !== 'Unbekannt' ? $inferredSolarSystemName . ' - Spieler-Struktur' : 'Spieler-Struktur',
+                'systemName' => $inferredSolarSystemName,
+                'rawName' => 'Spieler-Struktur',
+            ];
+        }
+
         // Fallbacks expire in 1 day, successfully resolved structures in 30 days
         $cacheExpiryDays = ($structure && $structure->getName() === 'Spieler-Struktur') ? 1 : 30;
 

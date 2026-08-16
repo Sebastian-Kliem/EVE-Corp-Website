@@ -27,6 +27,7 @@ class CronRunCommand extends Command
      */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly \App\Service\Esi\EsiClient $esiClient,
         private readonly KernelInterface $kernel,
         #[TaggedIterator('app.cron_task')] iterable $tasks
     ) {
@@ -57,6 +58,13 @@ class CronRunCommand extends Command
         };
 
         $writeLog('Starte Cronjob-Runner Ausführung...');
+
+        if ($this->esiClient->isOffline()) {
+            $writeLog('ESI ist offline (Downtime oder Circuit Breaker aktiv). Ausführung aller Cronjobs übersprungen.', 'WARNING');
+            $io->warning('ESI is offline. Skipping cron job execution.');
+            $writeLog('Cronjob-Runner Ausführung beendet.');
+            return Command::SUCCESS;
+        }
 
         // 1. Auto-seed default cron jobs if database is empty or missing them
         $this->seedDefaultJobs();
