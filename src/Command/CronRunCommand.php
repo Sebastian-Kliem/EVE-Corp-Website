@@ -71,6 +71,22 @@ class CronRunCommand extends Command
             return Command::SUCCESS;
         }
 
+        // Sort jobs to ensure optimal execution order (e.g. contracts sync before wallet & assets sync)
+        $executionOrder = [
+            'character:sync-contracts' => 1,
+            'character:sync-wallet-assets' => 2,
+            'character:sync-killmails' => 3,
+            'character:sync-mining-ledger' => 4,
+            'character:sync-industry-jobs' => 5,
+            'structure:update-cache' => 6,
+            'character:sync-pi' => 7,
+            'corporation:sync-structures' => 8,
+        ];
+        usort($activeJobs, function(CronJob $a, CronJob $b) use ($executionOrder) {
+            $orderA = $executionOrder[$a->getCommand()] ?? 99;
+            $orderB = $executionOrder[$b->getCommand()] ?? 99;
+            return $orderA <=> $orderB;
+        });
         $dueJobsCount = 0;
         foreach ($activeJobs as $job) {
             // If nextRunAt is null, initialize it and skip execution for this turn (or run if now is past it)
@@ -200,6 +216,11 @@ class CronRunCommand extends Command
                 'name' => 'Charakter-PI-Daten synchronisieren (Planetary Industry)',
                 'command' => 'character:sync-pi',
                 'expression' => '0 */2 * * *', // every 2 hours
+            ],
+            [
+                'name' => 'Corporation-Strukturen synchronisieren (Upwell & Starbases)',
+                'command' => 'corporation:sync-structures',
+                'expression' => '0 */4 * * *', // every 4 hours
             ]
         ];
 
