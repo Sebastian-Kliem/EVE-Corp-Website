@@ -93,6 +93,257 @@ interface CharacterPiData {
     error?: string;
 }
 
+interface Bottleneck {
+    type: 'error' | 'warning' | 'info';
+    message: string;
+    recommendation: string;
+}
+
+const analyzePlanet = (planet: PlanetData, routes: any[] = []): Bottleneck[] => {
+    const bottlenecks: Bottleneck[] = [];
+    const pins = planet.pins;
+    
+    // 1. Check for basic things:
+    // Extractors inactive
+    const extractors = pins.filter(p => p.category === 'extractor');
+    extractors.forEach(pin => {
+        let isInactive = true;
+        if (pin.expiry_time) {
+            const expiryTime = new Date(pin.expiry_time).getTime();
+            if (expiryTime > Date.now()) {
+                isInactive = false;
+            }
+        }
+        if (isInactive) {
+            bottlenecks.push({
+                type: 'warning',
+                message: `Extraktor "${pin.name}" ist inaktiv oder das Programm ist beendet.`,
+                recommendation: 'Starte das Abbauprogramm am In-Game-Terminal neu.'
+            });
+        }
+    });
+
+    // POCO resolved?
+    if (planet.poco && !planet.poco.resolved) {
+        bottlenecks.push({
+            type: 'info',
+            message: `Das Zollamt (POCO) "${planet.poco.name}" ist nicht mit einem Planeten verknüpft.`,
+            recommendation: 'Ordne das Zollamt in der Übersicht oben einem Planeten zu, um die Steuern und Bestände korrekt zu erfassen.'
+        });
+    }
+
+    // Unassigned POCO items?
+    if (planet.poco && planet.poco.contents && planet.poco.contents.length > 0 && !planet.poco.resolved) {
+        bottlenecks.push({
+            type: 'warning',
+            message: `Materialien liegen im unverbundenen Zollamt (POCO).`,
+            recommendation: 'Verbinde das Zollamt, damit diese Bestände in die Simulation und Routen einfließen.'
+        });
+    }
+
+    // 2. Storage pin overflow check
+    const storagePins = pins.filter(p => p.category === 'launchpad' || p.category === 'storage' || p.category === 'command_center');
+    
+    const getPinRate = (pinId: string, typeId: number, isIncoming: boolean): number => {
+        let rate = 0;
+        routes.forEach(route => {
+            const isMatch = isIncoming 
+                ? (route.destination_pin_id.toString() === pinId && route.content_type_id === typeId)
+                : (route.source_pin_id.toString() === pinId && route.content_type_id === typeId);
+            
+            if (isMatch) {
+                const partnerPinId = isIncoming ? route.source_pin_id.toString() : route.destination_pin_id.toString();
+                const partnerPin = pins.find(p => p.pin_id.toString() === partnerPinId);
+                if (partnerPin) {
+                    if (partnerPin.category === 'extractor' && partnerPin.extractor_info) {
+                        const ext = partnerPin.extractor_info;
+                        const expiryTime = partnerPin.expiry_time ? new Date(partnerPin.expiry_time).getTime() : 0;
+                        const isActive = expiryTime > Date.now();
+                        if (isActive) {
+                            rate += ext.cycle_time > 0 ? (ext.qty_per_cycle / (ext.cycle_time / 3600)) : 0;
+                        }
+                    } else if (partnerPin.category === 'factory' && partnerPin.factory_info) {
+                        const fact = partnerPin.factory_info;
+                        const cycleTime = fact.cycle_time;
+                        if (isIncoming) {
+                            const out = fact.outputs.find((o: any) => o.type_id === typeId);
+                            if (out) {
+                                rate += cycleTime > 0 ? (out.quantity / (cycleTime / 3600)) : 0;
+                            }
+                        } else {
+                            const inp = fact.inputs.find((i: any) => i.type_id === typeId);
+                            if (inp) {
+                                rate += cycleTime > 0 ? (inp.quantity / (cycleTime / 3600)) : 0;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        return rate;
+    };
+
+    storagePins.forEach(pin => {
+        const capacity = pin.category === 'launchpad' ? 10000 : (pin.category === 'storage' ? 40000 : 10000);
+        let occupiedVolume = 0;
+        const items = pin.contents || [];
+        
+        items.forEach((item: any) => {
+            occupiedVolume += item.quantity * (item.volume ?? 0);
+        });
+
+        const allTypeIds = new Set<number>();
+        items.forEach((item: any) => allTypeIds.add(item.type_id));
+        routes.forEach(r => {
+            if (r.source_pin_id.toString() === pin.pin_id.toString() || r.destination_pin_id.toString() === pin.pin_id.toString()) {
+                allTypeIds.add(r.content_type_id);
+            }
+        });
+
+        let netVolumeRate = 0;
+
+        allTypeIds.forEach(typeId => {
+            const incRate = getPinRate(pin.pin_id.toString(), typeId, true);
+            const outRate = getPinRate(pin.pin_id.toString(), typeId, false);
+            const netRate = incRate - outRate;
+
+            const item = items.find((i: any) => i.type_id === typeId);
+            const volume = item ? (item.volume ?? 0) : 0.38; // Default to P1
+            
+            netVolumeRate += netRate * volume;
+        });
+
+        if (netVolumeRate > 0) {
+            const freeVolume = capacity - occupiedVolume;
+            const hoursToOverflow = freeVolume / netVolumeRate;
+
+            if (hoursToOverflow <= 48) {
+                const timeStr = hoursToOverflow < 1 
+                    ? 'weniger als einer Stunde' 
+                    : `${Math.round(hoursToOverflow * 10) / 10} Stunden`;
+                
+                bottlenecks.push({
+                    type: 'error',
+                    message: `Speicher "${pin.name}" läuft in ca. ${timeStr} voll (Netto-Zufluss: +${Math.round(netVolumeRate * 10) / 10} m³/h).`,
+                    recommendation: 'Leere die Startrampe/das Silo oder leite die Rohstoffe in Fabriken um.'
+                });
+            }
+        }
+    });
+
+    // 3. Factory input bottleneck
+    const factories = pins.filter(p => p.category === 'factory');
+    const factoryInputsMap: Record<number, { name: string; requiredPerHour: number; stock: number }> = {};
+
+    factories.forEach(pin => {
+        if (!pin.factory_info) return;
+        const cycleTime = pin.factory_info.cycle_time;
+        const inputs = pin.factory_info.inputs || [];
+        inputs.forEach((inp: any) => {
+            const qtyPerHour = cycleTime > 0 ? (inp.quantity / (cycleTime / 3600)) : 0;
+            if (!factoryInputsMap[inp.type_id]) {
+                let totalStock = 0;
+                storagePins.forEach(sp => {
+                    const item = sp.contents?.find((i: any) => i.type_id === inp.type_id);
+                    if (item) {
+                        totalStock += item.quantity;
+                    }
+                });
+
+                factoryInputsMap[inp.type_id] = {
+                    name: inp.name,
+                    requiredPerHour: 0,
+                    stock: totalStock
+                };
+            }
+            factoryInputsMap[inp.type_id].requiredPerHour += qtyPerHour;
+        });
+    });
+
+    Object.entries(factoryInputsMap).forEach(([typeIdStr, data]) => {
+        const typeId = parseInt(typeIdStr, 10);
+        
+        let localProductionRate = 0;
+        factories.forEach(pin => {
+            if (!pin.factory_info) return;
+            const cycleTime = pin.factory_info.cycle_time;
+            const outputs = pin.factory_info.outputs || [];
+            const out = outputs.find((o: any) => o.type_id === typeId);
+            if (out) {
+                localProductionRate += cycleTime > 0 ? (out.quantity / (cycleTime / 3600)) : 0;
+            }
+        });
+
+        extractors.forEach(pin => {
+            if (!pin.extractor_info) return;
+            const ext = pin.extractor_info;
+            if (ext.product_type_id === typeId) {
+                const expiryTime = pin.expiry_time ? new Date(pin.expiry_time).getTime() : 0;
+                const isActive = expiryTime > Date.now();
+                if (isActive) {
+                    localProductionRate += ext.cycle_time > 0 ? (ext.qty_per_cycle / (ext.cycle_time / 3600)) : 0;
+                }
+            }
+        });
+
+        const netConsumption = data.requiredPerHour - localProductionRate;
+        if (netConsumption > 0) {
+            const hoursToStarvation = data.stock / netConsumption;
+            if (hoursToStarvation <= 24) {
+                const timeStr = hoursToStarvation <= 0 
+                    ? 'ist bereits leer!' 
+                    : `geht in ${Math.round(hoursToStarvation * 10) / 10} Stunden aus`;
+                
+                bottlenecks.push({
+                    type: hoursToStarvation <= 0 ? 'error' : 'warning',
+                    message: `Material-Engpass: "${data.name}" ${timeStr}.`,
+                    recommendation: hoursToStarvation <= 0 
+                        ? `Importiere ${data.name} über die Startrampe, um die Produktion wieder zu starten.`
+                        : `Importiere ${data.name} demnächst, um einen Produktionsstopp zu verhindern.`
+                });
+            }
+        }
+    });
+
+    // 4. Overproduction / Underproduction
+    extractors.forEach(extPin => {
+        if (!extPin.extractor_info) return;
+        const ext = extPin.extractor_info;
+        const typeId = ext.product_type_id;
+        
+        const expiryTime = extPin.expiry_time ? new Date(extPin.expiry_time).getTime() : 0;
+        const isActive = expiryTime > Date.now();
+        if (!isActive) return;
+
+        const extractionRate = ext.cycle_time > 0 ? (ext.qty_per_cycle / (ext.cycle_time / 3600)) : 0;
+
+        let processingRate = 0;
+        factories.forEach(factPin => {
+            if (!factPin.factory_info) return;
+            const cycleTime = factPin.factory_info.cycle_time;
+            const inputs = factPin.factory_info.inputs || [];
+            const inp = inputs.find((i: any) => i.type_id === typeId);
+            if (inp) {
+                processingRate += cycleTime > 0 ? (inp.quantity / (cycleTime / 3600)) : 0;
+            }
+        });
+
+        if (extractionRate > processingRate && processingRate > 0) {
+            const overQty = extractionRate - processingRate;
+            const percent = Math.round((overQty / processingRate) * 100);
+            if (percent >= 15) {
+                bottlenecks.push({
+                    type: 'info',
+                    message: `Überproduktion: Abbau von "${ext.product_name}" übersteigt die Fabrik-Verarbeitung um +${percent}% (+${Math.round(overQty)}/h).`,
+                    recommendation: 'Baue eine weitere Basic-Fabrik oder reduziere Extraktionsköpfe, um CPU/PG zu sparen.'
+                });
+            }
+        }
+    });
+
+    return bottlenecks;
+};
+
 interface PIOverviewProps {
     charactersList: CharacterListItem[];
     apiDataUrl: string;
@@ -261,6 +512,7 @@ export default function PIOverview({
     }, [charactersList]);
 
     // Collapse states
+    const [collapsedAccounts, setCollapsedAccounts] = useState<Record<string, boolean>>({});
     const [collapsedCharacters, setCollapsedCharacters] = useState<Record<number, boolean>>({});
     const [collapsedPlanets, setCollapsedPlanets] = useState<Record<number, boolean>>({});
 
@@ -292,6 +544,13 @@ export default function PIOverview({
         return imagePaths.types.replace('12345', typeId.toString());
     };
 
+    const toggleAccount = (accountKey: string) => {
+        setCollapsedAccounts((prev) => ({
+            ...prev,
+            [accountKey]: prev[accountKey] === false ? true : false,
+        }));
+    };
+
     const toggleCharacter = (charId: number) => {
         setCollapsedCharacters((prev) => ({
             ...prev,
@@ -306,94 +565,66 @@ export default function PIOverview({
         }));
     };
 
-    // Extract all unique solar systems and produced/extracted materials for filters
-    const systemsSet = new Set<string>();
-    const materialsSet = new Set<string>();
+    const strcasecmp = (a: string, b: string) => {
+        return a.localeCompare(b, undefined, { sensitivity: 'base' });
+    };
 
-    piData.forEach((charData) => {
-        charData.planets.forEach((planet) => {
-            if (planet.solar_system_name) {
-                systemsSet.add(planet.solar_system_name);
+    // Filter and group logic
+    const groupedAccounts = React.useMemo(() => {
+        // 1. Filter out characters without PI (always) unless they have a "PI" tag
+        const piCharacters = piData.filter((charData) => {
+            const charListItem = charactersList.find(c => c.id === charData.character_id);
+            const hasPiTag = charListItem?.tags?.some(t => t.toUpperCase() === 'PI') || false;
+
+            const hasPlanets = charData.planets.length > 0;
+            const hasUnassignedPocos = charData.unassigned_pocos && charData.unassigned_pocos.length > 0;
+            const hasErrorOrWarning = charData.error !== undefined || (charData as any).warning !== undefined;
+
+            return hasPlanets || hasUnassignedPocos || hasErrorOrWarning || hasPiTag;
+        });
+
+        // 2. Group by Account
+        const groups: Record<string, { accountName: string; accountGroup: string; characters: any[] }> = {};
+
+        piCharacters.forEach((charData) => {
+            const charListItem = charactersList.find(c => c.id === charData.character_id);
+            const accountName = charListItem?.accountName || 'Ungruppiert';
+            const accountGroup = charListItem?.accountGroup || 'Ungruppiert';
+            const tags = charListItem?.tags || [];
+
+            const key = `${accountGroup}:::${accountName}`;
+
+            if (!groups[key]) {
+                groups[key] = {
+                    accountName,
+                    accountGroup,
+                    characters: []
+                };
             }
-            planet.pins.forEach((pin) => {
-                if (pin.extractor_info?.product_name) {
-                    materialsSet.add(pin.extractor_info.product_name);
-                }
-                if (pin.factory_info?.outputs) {
-                    pin.factory_info.outputs.forEach((out) => materialsSet.add(out.name));
-                }
+
+            groups[key].characters.push({
+                ...charData,
+                accountName,
+                accountGroup,
+                tags
             });
         });
-    });
 
-    const uniqueSystems = Array.from(systemsSet).sort();
-    const uniqueMaterials = Array.from(materialsSet).sort();
-
-
-
-    // Filtering logic
-    const filteredPiData = piData.map((charData) => {
-        // Tag check
-        if (selectedTag !== 'all') {
-            const charObj = charactersList.find(c => c.id === charData.character_id);
-            if (!charObj || !charObj.tags || !charObj.tags.includes(selectedTag)) {
-                return null;
-            }
-        }
-
-        const filteredPlanets = charData.planets.filter((planet) => {
-            // Solar System filter
-            if (selectedSystem && planet.solar_system_name !== selectedSystem) {
-                return false;
-            }
-
-            // Search query filter (matches planet name, system name, or item names on planet)
-            const matchesQuery =
-                planet.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                planet.solar_system_name.toLowerCase().includes(searchQuery.toLowerCase());
-
-            // Check if planet has selected material (if material filter active)
-            let matchesMaterial = !selectedMaterial;
-            if (selectedMaterial) {
-                planet.pins.forEach((pin) => {
-                    if (pin.extractor_info && pin.extractor_info.product_name === selectedMaterial) {
-                        matchesMaterial = true;
-                    }
-                    if (pin.factory_info && pin.factory_info.outputs.some(out => out.name === selectedMaterial)) {
-                        matchesMaterial = true;
-                    }
-                    if (pin.factory_info && pin.factory_info.inputs.some(inp => inp.name === selectedMaterial)) {
-                        matchesMaterial = true;
-                    }
-                });
-            }
-
-            // If query is active, check if any pin has matching items
-            let matchesQueryOrItems = matchesQuery;
-            if (!matchesQueryOrItems && searchQuery) {
-                planet.pins.forEach((pin) => {
-                    if (pin.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                        matchesQueryOrItems = true;
-                    }
-                    if (pin.factory_info?.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                        matchesQueryOrItems = true;
-                    }
-                    pin.contents.forEach((item) => {
-                        if (item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-                            matchesQueryOrItems = true;
-                        }
-                    });
-                });
-            }
-
-            return matchesQueryOrItems && matchesMaterial;
+        // 3. Convert to array and sort
+        const sortedGroups = Object.values(groups);
+        sortedGroups.sort((a, b) => {
+            const grpCmp = strcasecmp(a.accountGroup, b.accountGroup);
+            if (grpCmp !== 0) return grpCmp;
+            return strcasecmp(a.accountName, b.accountName);
         });
 
-        return {
-            ...charData,
-            planets: filteredPlanets,
-        };
-    }).filter((charData): charData is CharacterPiData => charData !== null && (charData.planets.length > 0 || searchQuery === ''));
+        // Sort characters within each group by character_name
+        sortedGroups.forEach(group => {
+            group.characters.sort((a, b) => strcasecmp(a.character_name, b.character_name));
+        });
+
+        return sortedGroups;
+    }, [piData, charactersList]);
 
     // Summary calculation
     let totalPlanetsCount = 0;
@@ -401,19 +632,21 @@ export default function PIOverview({
     let idleExtractors = 0;
     let factoriesCount = 0;
 
-    filteredPiData.forEach((c) => {
-        c.planets.forEach((p) => {
-            totalPlanetsCount++;
-            p.pins.forEach((pin) => {
-                if (pin.category === 'extractor') {
-                    if (pin.extractor_info && pin.extractor_info.qty_per_cycle > 0) {
-                        activeExtractors++;
-                    } else {
-                        idleExtractors++;
+    groupedAccounts.forEach((group) => {
+        group.characters.forEach((c) => {
+            c.planets.forEach((p) => {
+                totalPlanetsCount++;
+                p.pins.forEach((pin) => {
+                    if (pin.category === 'extractor') {
+                        if (pin.extractor_info && pin.extractor_info.qty_per_cycle > 0) {
+                            activeExtractors++;
+                        } else {
+                            idleExtractors++;
+                        }
+                    } else if (pin.category === 'factory') {
+                        factoriesCount++;
                     }
-                } else if (pin.category === 'factory') {
-                    factoriesCount++;
-                }
+                });
             });
         });
     });
@@ -447,77 +680,7 @@ export default function PIOverview({
                 </div>
             </div>
 
-            {/* Filter and control panel */}
-            <div className="flex gap-4 mb-8 flex-wrap items-center">
-                <div className="filter-item search-input-wrapper">
-                    <span className="search-icon">🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Filter nach Planet, System, Material, Fabrik..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    />
-                </div>
 
-                {allTags.length > 0 && (
-                    <div className="filter-item">
-                        <select
-                            value={selectedTag}
-                            onChange={(e) => setSelectedTag(e.target.value)}
-                            className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                        >
-                            <option value="all">-- Alle Tags --</option>
-                            {allTags.map(tag => (
-                                <option key={tag} value={tag}>{tag}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-
-                <div className="filter-item">
-                    <select
-                        value={selectedSystem}
-                        onChange={(e) => setSelectedSystem(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    >
-                        <option value="">-- Alle Systeme --</option>
-                        {uniqueSystems.map((sys) => (
-                            <option key={sys} value={sys}>
-                                {sys}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="filter-item">
-                    <select
-                        value={selectedMaterial}
-                        onChange={(e) => setSelectedMaterial(e.target.value)}
-                        className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
-                    >
-                        <option value="">-- Alle Materialien --</option>
-                        {uniqueMaterials.map((mat) => (
-                            <option key={mat} value={mat}>
-                                {mat}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {(searchQuery || selectedSystem || selectedMaterial) && (
-                    <button
-                        onClick={() => {
-                            setSearchQuery('');
-                            setSelectedSystem('');
-                            setSelectedMaterial('');
-                        }}
-                        className="inline-flex items-center justify-center border border-white/10 hover:border-eve-primary text-eve-text hover:text-eve-primary bg-white/5 hover:bg-white/10 rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer"
-                    >
-                        Zurücksetzen
-                    </button>
-                )}
-            </div>
 
             {/* Loading / Error states */}
             {loading && (
@@ -536,14 +699,76 @@ export default function PIOverview({
             {!loading && !error && (
                 <div className="pi-content">
 
-                    <div className="flex flex-col gap-6">
-                        {filteredPiData.length === 0 ? (
+                    <div className="flex flex-col gap-8">
+                        {groupedAccounts.length === 0 ? (
                             <div className="bg-eve-card border border-eve-border rounded-lg p-6 text-center text-eve-muted">
                                 <p>Keine Planeten entsprechen deinen Filterkriterien.</p>
                             </div>
                         ) : (
-                            filteredPiData.map((charData) => (
-                                <div key={charData.character_id} className="bg-eve-card border border-eve-border rounded-lg overflow-hidden">
+                            groupedAccounts.map((account) => {
+                                const accountKey = `${account.accountGroup}:::${account.accountName}`;
+                                const isAccountCollapsed = collapsedAccounts[accountKey] !== false;
+
+                                // Sum up bottlenecks for all characters of this account
+                                let accountBottlenecksCount = 0;
+                                let accountHasCritical = false;
+                                let accountHasWarning = false;
+
+                                account.characters.forEach((char: any) => {
+                                    char.planets.forEach((planet: any) => {
+                                        const planetBottlenecks = analyzePlanet(planet, planet.routes || []);
+                                        accountBottlenecksCount += planetBottlenecks.length;
+                                        if (planetBottlenecks.some(b => b.type === 'error')) {
+                                            accountHasCritical = true;
+                                        }
+                                        if (planetBottlenecks.some(b => b.type === 'warning')) {
+                                            accountHasWarning = true;
+                                        }
+                                    });
+                                });
+
+                                return (
+                                    <div key={accountKey} className="bg-eve-card border border-eve-border rounded-lg overflow-hidden">
+                                        <div 
+                                            className="flex justify-between items-center p-4 bg-black/30 border-b border-white/5 cursor-pointer select-none"
+                                            onClick={() => toggleAccount(accountKey)}
+                                        >
+                                            <div className="flex items-center gap-2.5 flex-wrap">
+                                                <span className="text-xs text-eve-primary font-bold uppercase tracking-wider font-mono">Account:</span>
+                                                <span className="text-lg font-bold text-white">{account.accountName}</span>
+                                                {account.accountGroup && account.accountGroup !== 'Ungruppiert' && (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded bg-white/5 border border-white/10 text-eve-muted">
+                                                        {account.accountGroup}
+                                                    </span>
+                                                )}
+                                                <span className="px-2 py-0.5 text-xs font-semibold rounded bg-eve-primary/10 text-eve-primary border border-eve-primary/20">
+                                                    {account.characters.length} Charakter(e)
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {accountBottlenecksCount > 0 && (
+                                                    <span 
+                                                        className={`px-2 py-0.5 text-xs font-semibold rounded flex items-center gap-1 ${
+                                                            accountHasCritical 
+                                                                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold' 
+                                                                : (accountHasWarning 
+                                                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold' 
+                                                                    : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30')
+                                                        }`}
+                                                        title={`${accountBottlenecksCount} Hinweis(e) in diesem Account`}
+                                                    >
+                                                        ⚠️ {accountBottlenecksCount}
+                                                    </span>
+                                                )}
+                                                <span className="collapse-arrow">
+                                                    {isAccountCollapsed ? '▶' : '▼'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {!isAccountCollapsed && (
+                                            <div className="p-4 flex flex-col gap-6 bg-black/10">
+                                                {account.characters.map((charData) => (
+                                                    <div key={charData.character_id} className="bg-eve-card border border-eve-border/60 rounded-lg overflow-hidden">
                                     <div
                                         className="flex justify-between items-center p-4 bg-black/20 border-b border-white/5 cursor-pointer select-none"
                                         onClick={() => toggleCharacter(charData.character_id)}
@@ -904,6 +1129,10 @@ export default function PIOverview({
                                                                 statusClass = 'bg-white/10 text-eve-muted border border-white/5';
                                                             }
 
+                                                    const bottlenecks = analyzePlanet(planet, planet.routes || []);
+                                                    const hasCriticalBottleneck = bottlenecks.some(b => b.type === 'error');
+                                                    const hasWarningBottleneck = bottlenecks.some(b => b.type === 'warning');
+
                                                     return (
                                                         <div key={planet.planet_id}
                                                              className={`planet-card planet-type-${planet.type}`}>
@@ -944,6 +1173,20 @@ export default function PIOverview({
                                                                         🚀 {Math.round(launchpadPercent)}%
                                                                     </span>
                                                                     )}
+                                                                    {bottlenecks.length > 0 && (
+                                                                        <span 
+                                                                            className={`px-2 py-0.5 text-xs font-semibold rounded flex items-center gap-1 ${
+                                                                                hasCriticalBottleneck 
+                                                                                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold' 
+                                                                                    : (hasWarningBottleneck 
+                                                                                        ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold' 
+                                                                                        : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30')
+                                                                            }`}
+                                                                            title={`${bottlenecks.length} Hinweis(e) zur Produktion`}
+                                                                        >
+                                                                            ⚠️ {bottlenecks.length}
+                                                                        </span>
+                                                                    )}
                                                                     <span className={`px-2 py-0.5 text-xs font-semibold rounded ${statusClass}`}>
                                                                     {statusText}
                                                                 </span>
@@ -956,6 +1199,42 @@ export default function PIOverview({
 
                                                             {!isCollapsed && (
                                                                 <div className="planet-card-body">
+                                                                    {bottlenecks.length > 0 && (
+                                                                        <div className="mb-5 border border-white/5 rounded bg-black/20 p-4">
+                                                                            <h4 className="text-sm font-bold text-eve-primary mb-3 flex items-center gap-2">
+                                                                                📊 System-Analyse & Empfehlungen
+                                                                            </h4>
+                                                                            <div className="flex flex-col gap-2.5">
+                                                                                {bottlenecks.map((b, idx) => {
+                                                                                    const borderClass = b.type === 'error' 
+                                                                                        ? 'border-rose-500/20 bg-rose-500/5 text-rose-300' 
+                                                                                        : (b.type === 'warning' 
+                                                                                            ? 'border-amber-500/20 bg-amber-500/5 text-amber-300' 
+                                                                                            : 'border-cyan-500/20 bg-cyan-500/5 text-cyan-300');
+                                                                                    const badgeText = b.type === 'error' 
+                                                                                        ? 'Kritisch' 
+                                                                                        : (b.type === 'warning' ? 'Warnung' : 'Info');
+                                                                                    const badgeClass = b.type === 'error'
+                                                                                        ? 'bg-rose-500/20 text-rose-400'
+                                                                                        : (b.type === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-cyan-500/20 text-cyan-400');
+                                                                                    
+                                                                                    return (
+                                                                                        <div key={idx} className={`border rounded p-3 text-xs flex flex-col gap-1.5 ${borderClass}`}>
+                                                                                            <div className="flex items-center gap-2 font-bold">
+                                                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase ${badgeClass}`}>
+                                                                                                    {badgeText}
+                                                                                                </span>
+                                                                                                <span>{b.message}</span>
+                                                                                            </div>
+                                                                                            <div className="opacity-80">
+                                                                                                <strong>Empfehlung:</strong> {b.recommendation}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                     {planet.routes && planet.routes.length > 0 && (
                                                                         <PIRouteVisualizer
                                                                             pins={planet.pins}
@@ -1131,8 +1410,13 @@ export default function PIOverview({
                                             </div>
                                         </>
                                     )}
-                                </div>
-                            ))
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
                 </div>

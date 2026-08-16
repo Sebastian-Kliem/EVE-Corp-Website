@@ -166,6 +166,33 @@ class LocationService
         $structure = $structureRepo->find((string)$locationId);
 
         $now = new \DateTimeImmutable();
+
+        // If ESI is offline (downtime or circuit breaker), return cached or fallback info without persisting or updating expiration
+        if ($this->esiClient->isOffline()) {
+            if ($structure) {
+                $structureName = $structure->getName();
+                $solarSystemName = $structure->getSolarSystemName() ?? $inferredSolarSystemName;
+                $formattedName = $structureName;
+                if ($solarSystemName && $solarSystemName !== 'Unbekannt') {
+                    $escapedSystem = preg_quote($solarSystemName, '/');
+                    if (!preg_match('/^\s*' . $escapedSystem . '\b/i', $structureName)) {
+                        $formattedName = $solarSystemName . ' - ' . $structureName;
+                    }
+                }
+                return [
+                    'name' => $formattedName,
+                    'systemName' => $solarSystemName,
+                    'rawName' => $structureName,
+                ];
+            }
+
+            return [
+                'name' => $inferredSolarSystemName !== 'Unbekannt' ? $inferredSolarSystemName . ' - Spieler-Struktur' : 'Spieler-Struktur',
+                'systemName' => $inferredSolarSystemName,
+                'rawName' => 'Spieler-Struktur',
+            ];
+        }
+
         // Fallbacks expire in 1 day, successfully resolved structures in 30 days
         $cacheExpiryDays = ($structure && $structure->getName() === 'Spieler-Struktur') ? 1 : 30;
 
@@ -519,6 +546,50 @@ class LocationService
             $this->entityManager->persist($structure);
             $this->entityManager->flush();
         }
+    }
+
+    /**
+     * Resolves the Region ID for a given Location ID (Station or Structure).
+     */
+    public function getRegionIdForLocation(int $locationId, ?EveCharacter $character = null): ?int
+    {
+        if ($locationId >= 60000000 && $locationId < 64000000) {
+            try {
+                $regionId = $this->sdeConnection->fetchOne(
+                    'SELECT s.regionID 
+                     FROM staStations st 
+                     JOIN mapSolarSystems s ON st.solarSystemID = s.solarSystemID 
+                     WHERE st.stationID = :id LIMIT 1',
+                    ['id' => $locationId]
+                );
+                return $regionId !== false ? (int)$regionId : null;
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        if ($locationId >= 1000000000000) {
+            $structure = $this->entityManager->getRepository(EveStructure::class)->find((string)$locationId);
+            
+            if (!$structure) {
+                $this->resolveLocation($locationId, $character);
+                $structure = $this->entityManager->getRepository(EveStructure::class)->find((string)$locationId);
+            }
+
+            if ($structure && $structure->getSolarSystemId() > 0) {
+                try {
+                    $regionId = $this->sdeConnection->fetchOne(
+                        'SELECT regionID FROM mapSolarSystems WHERE solarSystemID = :id LIMIT 1',
+                        ['id' => $structure->getSolarSystemId()]
+                    );
+                    return $regionId !== false ? (int)$regionId : null;
+                } catch (\Exception $e) {
+                    return null;
+                }
+            }
+        }
+
+        return null;
     }
 }
 

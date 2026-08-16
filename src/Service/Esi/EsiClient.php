@@ -151,6 +151,25 @@ class EsiClient
     }
 
     /**
+     * Checks if ESI is offline (circuit breaker active or scheduled downtime).
+     */
+    public function isOffline(): bool
+    {
+        if (self::$esiOffline) {
+            return true;
+        }
+
+        // Scheduled downtime window: 10:50 - 11:30 UTC
+        $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $timeStr = $nowUtc->format('H:i');
+        if ($timeStr >= '10:50' && $timeStr <= '11:30') {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Performs a request to the ESI API.
      */
     public function request(string $method, string $path, array $options = [], ?EveCharacter $character = null): mixed
@@ -163,8 +182,9 @@ class EsiClient
     {
         $method = strtoupper($method);
 
-        if (self::$esiOffline) {
-            throw new \RuntimeException('ESI is offline (circuit breaker active)');
+        if ($this->isOffline()) {
+            $reason = self::$esiOffline ? 'circuit breaker active' : 'scheduled downtime (10:50 - 11:30 UTC)';
+            throw new \RuntimeException('ESI is offline (' . $reason . ')');
         }
 
         // Cache only GET requests

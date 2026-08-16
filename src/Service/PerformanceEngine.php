@@ -151,13 +151,15 @@ class PerformanceEngine
             $startDate = $earliestCutoff;
         }
 
+        $queryStartDate = $earliestCutoff !== null ? $earliestCutoff : $startDate;
+
         // 2. Fetch all asset changes in the range
         $assetChanges = $this->entityManager->getRepository(EveCharacterAssetChange::class)->createQueryBuilder('c')
             ->where('c.character IN (:characters)')
             ->andWhere('c.loggedAt >= :start')
             ->andWhere('c.loggedAt <= :end')
             ->setParameter('characters', $characters)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->orderBy('c.loggedAt', 'ASC')
             ->getQuery()
@@ -169,7 +171,7 @@ class PerformanceEngine
             ->andWhere('t.date >= :start')
             ->andWhere('t.date <= :end')
             ->setParameter('characters', $characters)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->getQuery()
             ->getResult();
@@ -181,7 +183,7 @@ class PerformanceEngine
             ->andWhere('c.dateCompleted <= :end')
             ->andWhere('c.status = :status')
             ->setParameter('characters', $characters)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->setParameter('status', 'finished')
             ->getQuery()
@@ -194,7 +196,7 @@ class PerformanceEngine
             ->andWhere('j.date <= :end')
             ->andWhere('j.refType IN (:refTypes)')
             ->setParameter('characters', $characters)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->setParameter('refTypes', ['bounty_payout', 'agent_mission_reward'])
             ->getQuery()
@@ -207,7 +209,7 @@ class PerformanceEngine
             ->andWhere('k.killmailTime >= :start')
             ->andWhere('k.killmailTime <= :end')
             ->setParameter('characters', $characters)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->getQuery()
             ->getResult();
@@ -218,7 +220,7 @@ class PerformanceEngine
             ->andWhere('m.date >= :start')
             ->andWhere('m.date <= :end')
             ->setParameter('user', $user)
-            ->setParameter('start', $startDate)
+            ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
             ->getQuery()
             ->getResult();
@@ -316,6 +318,11 @@ class PerformanceEngine
         $contractRecAgg = [];
         /** @var EveCharacterContract $contract */
         foreach ($contracts as $contract) {
+            // Skip internal contracts between user's own characters to avoid false receipt offsets
+            if (in_array((int)$contract->getAcceptorId(), $characterIds, true) && in_array((int)$contract->getIssuerId(), $characterIds, true)) {
+                continue;
+            }
+
             $charId = $contract->getCharacter()->getId();
             $cutoff = $effectiveCutoffs[$charId] ?? null;
             if ($cutoff !== null && $contract->getDateCompleted() < $cutoff) {
@@ -417,11 +424,16 @@ class PerformanceEngine
         $dates = array_unique(array_merge(
             array_keys($assetChangeAgg),
             array_keys($marketBuyAgg),
+            array_keys($marketSellAgg),
             array_keys($contractRecAgg),
             array_keys($manualEntryAgg),
             $killmailDates
         ));
         sort($dates);
+
+        $carryOverBuy = [];
+        $carryOverContract = [];
+        $carryOverSell = [];
 
         foreach ($dates as $dateStr) {
             $dayData = [
@@ -572,8 +584,55 @@ class PerformanceEngine
                 $sellQty = $marketSellAgg[$dateStr][$rawTid] ?? 0;
                 $contractQty = $contractRecAgg[$dateStr][$rawTid] ?? 0;
 
-                // Net quantity acquired (user-level): total changes MINUS what was bought/contracted PLUS what was sold
-                $netQty = $changeQty - $buyQty - $contractQty + $sellQty;
+                $availableBuy = $buyQty + ($carryOverBuy[$rawTid] ?? 0);
+                $availableContract = $contractQty + ($carryOverContract[$rawTid] ?? 0);
+                $availableSell = $sellQty + ($carryOverSell[$rawTid] ?? 0);
+
+                $netQty = 0;
+
+                if ($changeQty > 0) {
+                    $offset = $availableBuy + $availableContract;
+                    if ($offset >= $changeQty) {
+                        $remainingOffset = $offset - $changeQty;
+                        if ($remainingOffset > 0) {
+                            if ($availableBuy >= $remainingOffset) {
+                                $carryOverBuy[$rawTid] = $remainingOffset;
+                                $carryOverContract[$rawTid] = 0;
+                            } else {
+                                $carryOverBuy[$rawTid] = $availableBuy;
+                                $carryOverContract[$rawTid] = $remainingOffset - $availableBuy;
+                            }
+                        } else {
+                            $carryOverBuy[$rawTid] = 0;
+                            $carryOverContract[$rawTid] = 0;
+                        }
+                        $carryOverSell[$rawTid] = $availableSell;
+                        $netQty = 0;
+                    } else {
+                        $netQty = $changeQty - $offset;
+                        $carryOverBuy[$rawTid] = 0;
+                        $carryOverContract[$rawTid] = 0;
+                        $carryOverSell[$rawTid] = $availableSell;
+                    }
+                } elseif ($changeQty < 0) {
+                    $absChange = abs($changeQty);
+                    if ($availableSell >= $absChange) {
+                        $carryOverSell[$rawTid] = $availableSell - $absChange;
+                        $carryOverBuy[$rawTid] = $availableBuy;
+                        $carryOverContract[$rawTid] = $availableContract;
+                        $netQty = 0;
+                    } else {
+                        $carryOverSell[$rawTid] = 0;
+                        $carryOverBuy[$rawTid] = $availableBuy;
+                        $carryOverContract[$rawTid] = $availableContract;
+                        $netQty = 0;
+                    }
+                } else {
+                    $carryOverBuy[$rawTid] = $availableBuy;
+                    $carryOverContract[$rawTid] = $availableContract;
+                    $carryOverSell[$rawTid] = $availableSell;
+                    $netQty = 0;
+                }
 
                 if ($netQty <= 0) {
                     continue;
@@ -706,9 +765,19 @@ class PerformanceEngine
             }
         }
 
+        $startStr = $startDate->format('Y-m-d');
+        $endStr = $endDate->format('Y-m-d');
+
+        $filteredLedger = [];
+        foreach ($dailyLedger as $dateStr => $dayData) {
+            if ($dateStr >= $startStr && $dateStr <= $endStr) {
+                $filteredLedger[$dateStr] = $dayData;
+            }
+        }
+
         // Return sorted descending by date
-        krsort($dailyLedger);
-        return $dailyLedger;
+        krsort($filteredLedger);
+        return $filteredLedger;
     }
 
     /**

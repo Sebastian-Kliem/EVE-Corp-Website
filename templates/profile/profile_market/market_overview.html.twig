@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Marktaufträge & Marktstand{% endblock %}
+
+{% block body %}
+{% set reactProps = {
+    apiDataUrl: path('app_dashboard_market_data'),
+    imagePaths: {
+        types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+        characters: path('app_eve_image_proxy', { category: 'characters', id: 12345, action: 'portrait' })
+    }
+} %}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Eigene Marktaufträge</h1>
+            <p class="text-muted">Übersicht deiner aktiven Kauf- und Verkaufsaufträge im Vergleich zum aktuellen Marktstand an der jeweiligen Station.</p>
+        </div>
+    </div>
+
+    <div data-react-component="MarketOrdersOverview" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}

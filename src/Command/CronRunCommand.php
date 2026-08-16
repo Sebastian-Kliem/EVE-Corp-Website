@@ -27,6 +27,7 @@ class CronRunCommand extends Command
      */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly \App\Service\Esi\EsiClient $esiClient,
         private readonly KernelInterface $kernel,
         #[TaggedIterator('app.cron_task')] iterable $tasks
     ) {
@@ -58,10 +59,16 @@ class CronRunCommand extends Command
 
         $writeLog('Starte Cronjob-Runner Ausführung...');
 
+        if ($this->esiClient->isOffline()) {
+            $writeLog('ESI ist offline (Downtime oder Circuit Breaker aktiv). Ausführung aller Cronjobs übersprungen.', 'WARNING');
+            $io->warning('ESI is offline. Skipping cron job execution.');
+            $writeLog('Cronjob-Runner Ausführung beendet.');
+            return Command::SUCCESS;
+        }
+
         // 1. Auto-seed default cron jobs if database is empty or missing them
         $this->seedDefaultJobs();
 
-        // 2. Fetch all active cron jobs
         $cronJobRepository = $this->entityManager->getRepository(CronJob::class);
         $activeJobs = $cronJobRepository->findBy(['isActive' => true]);
 
@@ -87,6 +94,7 @@ class CronRunCommand extends Command
             $orderB = $executionOrder[$b->getCommand()] ?? 99;
             return $orderA <=> $orderB;
         });
+
         $dueJobsCount = 0;
         foreach ($activeJobs as $job) {
             // If nextRunAt is null, initialize it and skip execution for this turn (or run if now is past it)
@@ -183,6 +191,11 @@ class CronRunCommand extends Command
         
         $defaultJobs = [
             [
+                'name' => 'Charakter-Verträge synchronisieren (Contracts)',
+                'command' => 'character:sync-contracts',
+                'expression' => '*/5 * * * *', // every 5 minutes
+            ],
+            [
                 'name' => 'Charakter-Daten synchronisieren (Wallet & Inventar)',
                 'command' => 'character:sync-wallet-assets',
                 'expression' => '*/5 * * * *', // every 5 minutes
@@ -200,11 +213,6 @@ class CronRunCommand extends Command
             [
                 'name' => 'Charakter-Industrieaufträge synchronisieren (Industry Jobs)',
                 'command' => 'character:sync-industry-jobs',
-                'expression' => '*/5 * * * *', // every 5 minutes
-            ],
-            [
-                'name' => 'Charakter-Verträge synchronisieren (Contracts)',
-                'command' => 'character:sync-contracts',
                 'expression' => '*/5 * * * *', // every 5 minutes
             ],
             [

@@ -145,7 +145,7 @@ class SdeService
                 $category = 'mineral';
             } elseif ($categoryId === 25) {
                 $category = 'ore';
-            } elseif ($groupId === 711) {
+            } elseif ($groupId === 711 || $groupId === 4168) {
                 $category = 'gas';
             } elseif ($categoryId === 43 || in_array($groupId, [1031, 1034, 1042], true) || preg_match('/planetary/i', $groupName)) {
                 $category = 'pi';

@@ -785,20 +785,20 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
                                         {/* Details Table */}
                                         <div className="w-full overflow-x-auto mt-2 rounded">
-                                            <table className="w-full border-collapse text-sm min-w-[750px]">
+                                            <table className="w-full border-collapse min-w-[750px]">
                                                 <thead>
-                                                    <tr>
-                                                        <th style={{ width: '30px' }}></th>
-                                                        <th style={{ width: '40px' }}></th>
-                                                        <th>Gegenstand / Aktivität</th>
-                                                        <th>Kategorie</th>
-                                                        <th>Charakter</th>
-                                                        <th className="text-right">Menge</th>
-                                                        <th className="text-right">Jita-Preis</th>
-                                                        <th className="text-right">Gesamtwert</th>
+                                                    <tr className="border-b border-eve-border">
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-left" style={{ width: '45px' }}></th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-left" style={{ width: '45px' }}></th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-left">Gegenstand / Aktivität</th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-left">Kategorie</th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-left">Charakter</th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-right">Menge</th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-right">Jita-Preis</th>
+                                                        <th className="p-3 text-xs font-semibold uppercase tracking-wider text-eve-muted text-right">Gesamtwert</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody>
+                                                <tbody className="divide-y divide-white/5">
                                                     {day.details.map((item, idx) => {
                                                         const itemKey = item.manualEntryId ? `manual_${item.manualEntryId}` : `${day.date}_${item.typeId}_${idx}`;
                                                         const isExpanded = expandedItemKey === itemKey;
@@ -807,46 +807,31 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                             <React.Fragment key={idx}>
                                                                 <tr
                                                                     onClick={() => !item.isWallet && !item.manualEntryId && setExpandedItemKey(isExpanded ? null : itemKey)}
-                                                                    style={{ cursor: (!item.isWallet && !item.manualEntryId) ? 'pointer' : 'default' }}
-                                                                    className={(!item.isWallet && !item.manualEntryId) ? 'item-row-hover' : ''}
+                                                                    className={`group transition-colors duration-150 ${(!item.isWallet && !item.manualEntryId) ? 'hover:bg-white/5 cursor-pointer' : ''}`}
                                                                 >
-                                                                    <td className="has-text-centered" style={{ verticalAlign: 'middle', color: '#6a737d', fontSize: '0.75rem' }}>
+                                                                    <td className="p-3 text-center text-xs text-eve-muted align-middle">
                                                                         {item.manualEntryId ? (
                                                                             <button
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
                                                                                     handleDeleteManualEntry(item.manualEntryId!, item.typeName, item.totalValue);
                                                                                 }}
-                                                                                style={{
-                                                                                    background: 'none',
-                                                                                    border: 'none',
-                                                                                    color: '#ff4444',
-                                                                                    cursor: 'pointer',
-                                                                                    padding: 0,
-                                                                                    fontSize: '0.9rem'
-                                                                                }}
+                                                                                className="text-red-700/80 hover:text-red-500 hover:scale-110 transition-all duration-150 bg-transparent border-none p-0 text-sm cursor-pointer inline-flex items-center justify-center"
                                                                                 title="Manuelle Buchung löschen"
                                                                             >
                                                                                 🗑️
                                                                             </button>
                                                                         ) : (
-                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                                                                            <div className="flex items-center gap-2 justify-center">
                                                                                 {!item.isWallet && (
-                                                                                    <span style={{ fontSize: '0.7rem' }}>{isExpanded ? '▼' : '▶'}</span>
+                                                                                    <span className={`inline-block text-[10px] text-eve-muted transition-transform duration-200 ease-out select-none ${isExpanded ? 'rotate-90 text-eve-primary' : ''}`}>▶</span>
                                                                                 )}
                                                                                 <button
                                                                                     onClick={(e) => {
                                                                                         e.stopPropagation();
                                                                                         handleExcludeEntry(day.date, item);
                                                                                     }}
-                                                                                    style={{
-                                                                                        background: 'none',
-                                                                                        border: 'none',
-                                                                                        color: '#888',
-                                                                                        cursor: 'pointer',
-                                                                                        padding: 0,
-                                                                                        fontSize: '0.85rem'
-                                                                                    }}
+                                                                                    className="text-eve-muted hover:text-amber-600 hover:scale-110 transition-all duration-150 bg-transparent border-none p-0 text-sm cursor-pointer inline-flex items-center justify-center"
                                                                                     title="Eintrag ausblenden (wird von der Berechnung abgezogen)"
                                                                                 >
                                                                                     🗑️
@@ -854,28 +839,29 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                             </div>
                                                                         )}
                                                                     </td>
-                                                                    <td>
+                                                                    <td className="p-3 align-middle">
                                                                         {!item.isWallet && !item.manualEntryId && (
-                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10">
+                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10 transition-all duration-150 group-hover:border-eve-primary/40 group-hover:scale-105 group-hover:shadow-[0_0_8px_rgba(0,240,255,0.25)]">
                                                                                 <img
                                                                                     src={imagePaths.types.replace('12345', item.typeId.toString())}
                                                                                     onError={(e) => {
                                                                                         (e.target as HTMLImageElement).src = `https://images.evetech.net/types/${item.typeId}/icon`;
                                                                                     }}
                                                                                     alt=""
+                                                                                    className="w-full h-full object-cover"
                                                                                 />
                                                                             </div>
                                                                         )}
                                                                         {item.manualEntryId && (
-                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.03)' }}>
+                                                                            <div className="w-8 h-8 rounded overflow-hidden bg-black/40 flex items-center justify-center border border-white/10 text-[1.1rem] bg-white/[0.03] transition-all duration-150 group-hover:border-eve-primary/40 group-hover:scale-105 group-hover:shadow-[0_0_8px_rgba(0,240,255,0.25)]">
                                                                                 ✍️
                                                                             </div>
                                                                         )}
                                                                     </td>
-                                                                    <td style={{ fontWeight: 600 }}>{item.typeName}</td>
-                                                                    <td>
+                                                                    <td className="p-3 font-semibold align-middle text-eve-text text-sm">{item.typeName}</td>
+                                                                    <td className="p-3 align-middle text-sm">
                                                                         <span
-                                                                            className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase"
+                                                                            className="text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase whitespace-nowrap"
                                                                             style={{
                                                                                 backgroundColor: `${CATEGORY_COLORS[item.category]}20`,
                                                                                 color: CATEGORY_COLORS[item.category],
@@ -885,14 +871,14 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                             {CATEGORY_NAMES[item.category] || item.category}
                                                                         </span>
                                                                     </td>
-                                                                    <td>{item.character}</td>
-                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                    <td className="p-3 align-middle text-eve-text text-sm">{item.character}</td>
+                                                                    <td className="p-3 align-middle text-right font-mono text-sm text-eve-text">
                                                                         {item.manualEntryId ? '-' : formatNumber(item.quantity)}
                                                                     </td>
-                                                                    <td className="text-right" style={{ fontFamily: 'monospace' }}>
+                                                                    <td className="p-3 align-middle text-right font-mono text-sm text-eve-text">
                                                                         {item.price > 0 && !item.manualEntryId ? formatISK(item.price) : '-'}
                                                                     </td>
-                                                                    <td className="text-right" style={{ fontWeight: 700, color: item.totalValue > 0 ? 'var(--theme-text)' : 'inherit', fontFamily: 'monospace' }}>
+                                                                    <td className="p-3 align-middle text-right font-mono font-bold text-sm text-eve-primary" style={{ color: item.totalValue > 0 ? 'var(--color-eve-primary)' : 'inherit' }}>
                                                                         {formatISK(item.totalValue)}
                                                                     </td>
                                                                 </tr>
@@ -1012,41 +998,34 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
             {/* Hidden Entries Exclusions List */}
             {exclusions.length > 0 && (
-                <div className="manual-entry-panel mt-5" style={{ background: 'rgba(255, 68, 68, 0.03)', borderColor: 'rgba(255, 68, 68, 0.15)' }}>
-                    <div className="text-xs uppercase text-eve-muted font-bold mb-3 tracking-wider" style={{ fontSize: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid rgba(255, 68, 68, 0.15)', paddingBottom: '0.5rem', color: '#ff6b8b' }}>
-                        👁️ Ausgeblendete automatische Buchungen ({exclusions.length})
-                    </div>
-                    <p className="text-xs text-eve-muted mb-3">
-                        Diese automatisch erfassten Buchungen wurden ausgeblendet und werden nicht mehr in die Ertragsberechnungen einbezogen.
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
-                        {exclusions.map(ex => (
-                            <div
-                                key={ex.id}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    background: 'rgba(0, 0, 0, 0.2)',
-                                    padding: '6px 12px',
-                                    borderRadius: '4px',
-                                    border: '1px solid rgba(255,255,255,0.05)'
-                                }}
-                            >
-                                <span className="text-xs" style={{ color: '#ccc' }}>
-                                    <strong style={{ color: '#ff6b8b' }}>{ex.characterName}</strong> ({new Date(ex.date).toLocaleDateString('de-DE')}): {ex.typeName} — <strong style={{ color: ex.amount < 0 ? '#ff4444' : '#00ffaa' }}>{formatISK(ex.amount)}</strong>
-                                </span>
-                                <button
-                                    className="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 cursor-pointer"
-                                    style={{ height: '22px', fontSize: '0.7rem' }}
-                                    onClick={() => handleRemoveExclusion(ex.id)}
+                <details className="box mt-5" style={{ background: 'rgba(255, 68, 68, 0.02)', borderColor: 'rgba(255, 68, 68, 0.12)' }}>
+                    <summary className="text-xs uppercase text-eve-muted font-bold tracking-wider" style={{ color: '#ff6b8b', fontSize: '0.85rem', padding: '1rem 1.25rem' }}>
+                        <span>👁️ Ausgeblendete automatische Buchungen ({exclusions.length})</span>
+                    </summary>
+                    <div className="details-content" style={{ borderTop: '1px solid rgba(255, 68, 68, 0.12)', padding: '1.25rem' }}>
+                        <p className="text-xs text-eve-muted mb-3">
+                            Diese automatisch erfassten Buchungen wurden ausgeblendet und werden nicht mehr in die Ertragsberechnungen einbezogen.
+                        </p>
+                        <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto">
+                            {exclusions.map(ex => (
+                                <div
+                                    key={ex.id}
+                                    className="flex justify-between items-center bg-black/20 p-2.5 rounded border border-white/5"
                                 >
-                                    🔄 Wieder einblenden
-                                </button>
-                            </div>
-                        ))}
+                                    <span className="text-xs text-[#ccc]">
+                                        <strong className="text-[#ff6b8b]">{ex.characterName}</strong> ({new Date(ex.date).toLocaleDateString('de-DE')}): {ex.typeName} — <strong style={{ color: ex.amount < 0 ? '#ff4444' : '#00ffaa' }}>{formatISK(ex.amount)}</strong>
+                                    </span>
+                                    <button
+                                        className="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-110 text-[#060911] font-semibold text-xs px-2.5 py-1 shadow transition-all duration-200 cursor-pointer h-[22px]"
+                                        onClick={() => handleRemoveExclusion(ex.id)}
+                                    >
+                                        🔄 Wieder einblenden
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                </details>
             )}
         </div>
     );
@@ -1153,7 +1132,7 @@ function ItemChangesDetails({ dateStr, typeId, formatNumber, onDeleteSuccess }: 
                             <span style={{ color: '#7a7a7a', marginLeft: '8px', fontSize: '0.7rem' }}>({c.loggedAt})</span>
                         </span>
                         <button
-                            className="inline-flex items-center justify-center border border-transparent rounded bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs px-2 py-1 transition-all duration-300 cursor-pointer"
+                            className="inline-flex items-center justify-center border border-red-950/40 rounded bg-red-900/40 hover:bg-red-800/60 text-red-200 font-semibold text-xs px-2 py-1 transition-all duration-300 cursor-pointer"
                             style={{ height: '22px', fontSize: '0.7rem' }}
                             onClick={() => handleDelete(c.id, c.characterName, c.quantity, c.loggedAt)}
                             disabled={deletingId === c.id}

@@ -36,14 +36,6 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
     public function execute(): void
     {
-        // Skip execution during EVE Online downtime window (10:50 - 11:30 UTC / Eve Time)
-        $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        $timeStr = $nowUtc->format('H:i');
-        if ($timeStr >= '10:50' && $timeStr <= '11:30') {
-            $this->logger->info(sprintf('[Cron] Skipping sync-wallet-assets: Current EVE time %s is within downtime window (10:50 - 11:30 UTC).', $timeStr));
-            return;
-        }
-
         $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
         /** @var EveCharacter[] $characters */
         $characters = $characterRepository->findAll();
@@ -457,6 +449,17 @@ class UpdateCharacterDataTask implements CronTaskInterface
                         foreach ($personalRoots as $root) {
                             $collectDescendants($root, $corpNestedAssets, $personalAssets);
                         }
+
+                        $uniquePersonalAssets = [];
+                        $seenItemIds = [];
+                        foreach ($personalAssets as $ca) {
+                            $itemId = $ca->getItemId();
+                            if (!isset($seenItemIds[$itemId])) {
+                                $uniquePersonalAssets[] = $ca;
+                                $seenItemIds[$itemId] = true;
+                            }
+                        }
+                        $personalAssets = $uniquePersonalAssets;
 
                         foreach ($personalAssets as $ca) {
                             $allAssets[] = [

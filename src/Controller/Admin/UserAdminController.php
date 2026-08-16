@@ -13,7 +13,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[Route('/admin')]
-#[IsGranted('ROLE_CEO')]
+#[IsGranted('ROLE_OFFICER')]
 class UserAdminController extends AbstractController
 {
     public function __construct(
