@@ -385,8 +385,9 @@ class PerformanceEngine
         }
 
         // Process asset changes (net change per user aggregated by day): [date][rawTypeId] => quantity
-        // Sum all changes of the day across all characters of the user to cancel out transfers
-        $dayAgg = [];
+        // Track positive gains and negative changes separately to handle sales and internal transfers properly
+        $posChangeAgg = [];
+        $negChangeAgg = [];
         /** @var EveCharacterAssetChange $change */
         foreach ($assetChanges as $change) {
             $charId = $change->getCharacter()->getId();
@@ -405,20 +406,16 @@ class PerformanceEngine
             $rawTid = $comp['typeId'];
             $ratio = $comp['ratio'];
 
-            if (!isset($dayAgg[$dateStr][$rawTid])) {
-                $dayAgg[$dateStr][$rawTid] = 0;
-            }
-            $dayAgg[$dateStr][$rawTid] += ($qty * $ratio);
-        }
-
-        // Map all net changes per day (allowing negatives to offset sales and manual deletes)
-        $assetChangeAgg = [];
-        foreach ($dayAgg as $dateStr => $items) {
-            foreach ($items as $rawTid => $netQty) {
-                if (!isset($assetChangeAgg[$dateStr][$rawTid])) {
-                    $assetChangeAgg[$dateStr][$rawTid] = 0;
+            if ($qty > 0) {
+                if (!isset($posChangeAgg[$dateStr][$rawTid])) {
+                    $posChangeAgg[$dateStr][$rawTid] = 0;
                 }
-                $assetChangeAgg[$dateStr][$rawTid] += $netQty;
+                $posChangeAgg[$dateStr][$rawTid] += ($qty * $ratio);
+            } elseif ($qty < 0) {
+                if (!isset($negChangeAgg[$dateStr][$rawTid])) {
+                    $negChangeAgg[$dateStr][$rawTid] = 0;
+                }
+                $negChangeAgg[$dateStr][$rawTid] += (abs($qty) * $ratio);
             }
         }
 
@@ -465,7 +462,8 @@ class PerformanceEngine
 
         // 11. Combine and calculate net items gained
         $dates = array_unique(array_merge(
-            array_keys($assetChangeAgg),
+            array_keys($posChangeAgg),
+            array_keys($negChangeAgg),
             array_keys($marketBuyAgg),
             array_keys($marketSellAgg),
             array_keys($contractRecAgg),
@@ -644,7 +642,8 @@ class PerformanceEngine
 
             // B. Process net item changes (user-level)
             $tidsForDate = array_unique(array_merge(
-                isset($assetChangeAgg[$dateStr]) ? array_keys($assetChangeAgg[$dateStr]) : [],
+                isset($posChangeAgg[$dateStr]) ? array_keys($posChangeAgg[$dateStr]) : [],
+                isset($negChangeAgg[$dateStr]) ? array_keys($negChangeAgg[$dateStr]) : [],
                 isset($marketBuyAgg[$dateStr]) ? array_keys($marketBuyAgg[$dateStr]) : [],
                 isset($marketSellAgg[$dateStr]) ? array_keys($marketSellAgg[$dateStr]) : [],
                 isset($contractRecAgg[$dateStr]) ? array_keys($contractRecAgg[$dateStr]) : []
@@ -685,7 +684,8 @@ class PerformanceEngine
                     }
                 }
 
-                $changeQty = $assetChangeAgg[$dateStr][$rawTid] ?? 0;
+                $posChange = $posChangeAgg[$dateStr][$rawTid] ?? 0;
+                $negChange = $negChangeAgg[$dateStr][$rawTid] ?? 0;
                 $buyQty = $marketBuyAgg[$dateStr][$rawTid] ?? 0;
                 $sellQty = $marketSellAgg[$dateStr][$rawTid] ?? 0;
                 $contractQty = $contractRecAgg[$dateStr][$rawTid] ?? 0;
@@ -694,50 +694,39 @@ class PerformanceEngine
                 $availableContract = $contractQty + ($carryOverContract[$rawTid] ?? 0);
                 $availableSell = $sellQty + ($carryOverSell[$rawTid] ?? 0);
 
-                $netQty = 0;
-
-                if ($changeQty > 0) {
-                    $offset = $availableBuy + $availableContract;
-                    if ($offset >= $changeQty) {
-                        $remainingOffset = $offset - $changeQty;
-                        if ($remainingOffset > 0) {
-                            if ($availableBuy >= $remainingOffset) {
-                                $carryOverBuy[$rawTid] = $remainingOffset;
-                                $carryOverContract[$rawTid] = 0;
-                            } else {
-                                $carryOverBuy[$rawTid] = $availableBuy;
-                                $carryOverContract[$rawTid] = $remainingOffset - $availableBuy;
-                            }
-                        } else {
-                            $carryOverBuy[$rawTid] = 0;
-                            $carryOverContract[$rawTid] = 0;
-                        }
-                        $carryOverSell[$rawTid] = $availableSell;
-                        $netQty = 0;
-                    } else {
-                        $netQty = $changeQty - $offset;
-                        $carryOverBuy[$rawTid] = 0;
-                        $carryOverContract[$rawTid] = 0;
-                        $carryOverSell[$rawTid] = $availableSell;
-                    }
-                } elseif ($changeQty < 0) {
-                    $absChange = abs($changeQty);
-                    if ($availableSell >= $absChange) {
-                        $carryOverSell[$rawTid] = $availableSell - $absChange;
-                        $carryOverBuy[$rawTid] = $availableBuy;
-                        $carryOverContract[$rawTid] = $availableContract;
-                        $netQty = 0;
-                    } else {
-                        $carryOverSell[$rawTid] = 0;
-                        $carryOverBuy[$rawTid] = $availableBuy;
-                        $carryOverContract[$rawTid] = $availableContract;
-                        $netQty = 0;
-                    }
+                // 1. Negative changes represent items leaving the inventory.
+                // If items were sold on the market, the market sale explains the negative change.
+                // Any negative change NOT explained by market sales is unexplained (e.g. internal transfers between characters).
+                if ($availableSell >= $negChange) {
+                    $carryOverSell[$rawTid] = $availableSell - $negChange;
+                    $unexplainedNeg = 0;
                 } else {
-                    $carryOverBuy[$rawTid] = $availableBuy;
-                    $carryOverContract[$rawTid] = $availableContract;
-                    $carryOverSell[$rawTid] = $availableSell;
+                    $unexplainedNeg = $negChange - $availableSell;
+                    $carryOverSell[$rawTid] = 0;
+                }
+
+                // 2. Positive changes represent items entering the inventory (loot drops, market buys, contract receives, or internal transfers).
+                // We offset incoming items by purchases, contracts, and unexplained negatives (internal transfers).
+                $totalIncomingOffset = $availableBuy + $availableContract + $unexplainedNeg;
+
+                if ($posChange > $totalIncomingOffset) {
+                    $netQty = $posChange - $totalIncomingOffset;
+                    $carryOverBuy[$rawTid] = 0;
+                    $carryOverContract[$rawTid] = 0;
+                } else {
                     $netQty = 0;
+                    // PosChange is absorbed by unexplainedNeg first, then contracts, then buys
+                    $remainingPos = $posChange;
+
+                    $usedUnexplained = min($remainingPos, $unexplainedNeg);
+                    $remainingPos -= $usedUnexplained;
+
+                    $usedContract = min($remainingPos, $availableContract);
+                    $carryOverContract[$rawTid] = $availableContract - $usedContract;
+                    $remainingPos -= $usedContract;
+
+                    $usedBuy = min($remainingPos, $availableBuy);
+                    $carryOverBuy[$rawTid] = $availableBuy - $usedBuy;
                 }
 
                 if ($netQty <= 0) {

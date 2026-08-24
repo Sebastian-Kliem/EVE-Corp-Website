@@ -343,6 +343,7 @@ class TrackingListController extends AbstractController
             ->andWhere('c.loggedAt >= :cutoff')
             ->andWhere('c.loggedAt <= :endDate')
             ->andWhere('char.user = :currentUser') // Strict user check
+            ->andWhere('c.quantity > 0')
             ->setParameter('typeIds', $typeIds)
             ->setParameter('cutoff', $cutoffDate)
             ->setParameter('endDate', $endDate)
@@ -465,6 +466,7 @@ class TrackingListController extends AbstractController
             ->andWhere('c.loggedAt >= :cutoff')
             ->andWhere('c.loggedAt <= :endDate')
             ->andWhere('char.user = :currentUser')
+            ->andWhere('c.quantity > 0')
             ->setParameter('typeId', $typeId)
             ->setParameter('cutoff', $cutoffDate)
             ->setParameter('endDate', $endDate)
