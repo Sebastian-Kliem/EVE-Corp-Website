@@ -98,8 +98,10 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $globalStructureRepo = $this->entityManager->getRepository(EveStructure::class);
         $now = new \DateTimeImmutable();
 
+        $syncedStructureIds = [];
         foreach ($structuresData as $sData) {
             $structureId = (string)$sData['structure_id'];
+            $syncedStructureIds[] = $structureId;
             $typeId = (int)$sData['type_id'];
             $systemId = (int)$sData['system_id'];
             $name = $sData['name'] ?? null;
@@ -169,6 +171,14 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             }
         }
 
+        // Clean up structures that no longer exist for this corp in ESI
+        $existingStructures = $structureRepo->findBy(['corporationId' => (string)$corpId]);
+        foreach ($existingStructures as $existing) {
+            if (!in_array($existing->getId(), $syncedStructureIds, true)) {
+                $this->entityManager->remove($existing);
+            }
+        }
+
         $this->entityManager->flush();
         $this->logger->info(sprintf('[Cron] Successfully updated %d Upwell structures for corp %d.', count($structuresData), $corpId));
     }
@@ -190,8 +200,10 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $starbaseRepo = $this->entityManager->getRepository(EveCorporationStarbase::class);
         $now = new \DateTimeImmutable();
 
+        $syncedStarbaseIds = [];
         foreach ($starbasesData as $sData) {
             $starbaseId = (string)$sData['starbase_id'];
+            $syncedStarbaseIds[] = $starbaseId;
             $typeId = (int)$sData['type_id'];
             $systemId = (int)$sData['system_id'];
             $state = $sData['state'] ?? 'offline';
@@ -258,7 +270,15 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             $this->entityManager->persist($starbase);
         }
 
+        // Clean up starbases that no longer exist for this corp in ESI
+        $existingStarbases = $starbaseRepo->findBy(['corporationId' => (string)$corpId]);
+        foreach ($existingStarbases as $existing) {
+            if (!in_array($existing->getId(), $syncedStarbaseIds, true)) {
+                $this->entityManager->remove($existing);
+            }
+        }
+
         $this->entityManager->flush();
-        $this->logger->info(sprintf('[Cron] Successfully updated %d starbases for corp %d.', count($starbasesData), $corpId));
+        $this->logger->info(sprintf('[Cron] Successfully updated %d starbases for corp %d.', count($structuresData), $corpId));
     }
 }

@@ -20,6 +20,63 @@
 
     </head>
     <body>
+        {% if app.user %}
+            {% set invalid_chars = get_sso_warnings() %}
+            {% if invalid_chars is not empty %}
+                <a href="{{ path('app_profile') }}" class="group block w-full bg-red-950/50 hover:bg-red-900/60 border-b border-red-500/40 text-red-200 transition-colors py-2 px-4 no-underline relative z-50">
+                    <div class="w-full max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/25 text-red-300 border border-red-500/40 shrink-0">
+                                SSO-Warnung
+                            </span>
+                            <span class="text-eve-muted font-normal">Re-Auth erforderlich für:</span>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {% for char in invalid_chars %}
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <strong class="font-semibold text-white group-hover:text-red-200 transition-colors">{{ char.name }}</strong>
+                                        <span class="text-xs text-red-400 font-medium">(Zugriff abgelaufen)</span>
+                                        {% if not loop.last %}<span class="text-white/20">•</span>{% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span class="text-xs text-red-400/80 group-hover:text-white font-medium inline-flex items-center gap-1 transition-colors shrink-0 ml-auto sm:ml-0">
+                            Zum Profil (Re-Auth) →
+                        </span>
+                    </div>
+                </a>
+            {% endif %}
+
+            {% set fuel_warnings = get_fuel_warnings() %}
+            {% if fuel_warnings is not empty %}
+                <a href="{{ path('app_corp_structures') }}" class="group block w-full bg-red-950/40 hover:bg-red-900/50 border-b border-red-500/30 text-red-200 transition-colors py-2 px-4 no-underline relative z-50">
+                    <div class="w-full max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
+                                Treibstoff-Warnung
+                            </span>
+                            <span class="text-eve-muted font-normal">Stationen &lt; 30 Tage:</span>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {% for warning in fuel_warnings %}
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <strong class="font-semibold text-white group-hover:text-red-200 transition-colors">{{ warning.name }}</strong>
+                                        <span class="text-eve-muted text-xs">({{ warning.solarSystemName }})</span>
+                                        <span class="font-medium {{ warning.isExpired or warning.daysRemaining < 7 ? 'text-red-400' : 'text-amber-300' }}">
+                                            {{ warning.isExpired ? 'Treibstoff abgelaufen' : warning.formattedTime }}
+                                        </span>
+                                        {% if not loop.last %}<span class="text-white/20">•</span>{% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span class="text-xs text-red-400/80 group-hover:text-white font-medium inline-flex items-center gap-1 transition-colors shrink-0 ml-auto sm:ml-0">
+                            Zur Stationsübersicht →
+                        </span>
+                    </div>
+                </a>
+            {% endif %}
+        {% endif %}
+
         <header>
             {# Hier wird das Partial-Template der Navigation eingebunden #}
             {% include 'navigation.html.twig' %}
@@ -29,32 +86,6 @@
             <div class="w-full max-w-[1200px] mx-auto px-6 mt-4">
                 {% include 'breadcrumbs.html.twig' %}
             </div>
-        {% endif %}
-
-        {% if app.user %}
-            {% set invalid_chars = get_sso_warnings() %}
-            {% if invalid_chars is not empty %}
-                <div class="w-full max-w-[1200px] mx-auto px-6 mt-6">
-                    <div class="border border-red-500/30 bg-red-500/10 text-red-400 rounded-lg p-5 relative">
-                        <button class="absolute top-4 right-4 text-red-400 hover:text-white cursor-pointer text-xl leading-none" onclick="this.parentElement.style.display='none'">&times;</button>
-                        <div class="flex items-start gap-3">
-                            <span class="text-xl">⚠️</span>
-                            <span>
-                                <strong class="font-bold text-white">SSO-Authentifizierung erforderlich:</strong> Die folgenden Charaktere haben keinen gültigen Zugriff mehr (z. B. durch Passwortänderung). Bitte führe ein Re-Auth im Profil durch:
-                                <ul class="list-disc list-inside mt-2 space-y-1">
-                                    {% for char in invalid_chars %}
-                                        <li>
-                                            <strong class="font-bold text-white">{{ char.name }}</strong> 
-                                            (<a href="{{ path('app_profile') }}" class="font-bold text-eve-primary hover:text-eve-primary-hover underline">Zum Profil</a> / 
-                                            <a href="{{ path('app_eve_sso_login') }}" class="font-bold text-eve-primary hover:text-eve-primary-hover underline">Direkt Re-Auth</a>)
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
         {% endif %}
 
         {% set flash_classes = {
