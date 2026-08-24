@@ -12,6 +12,7 @@ use App\Entity\PerformanceExclusion;
 use App\Entity\TrackingList;
 use App\Entity\TrackingListItem;
 use App\Entity\User;
+use App\Entity\EveCharacterMiningRecord;
 use Doctrine\ORM\EntityManagerInterface;
 
 class PerformanceEngine
@@ -225,11 +226,26 @@ class PerformanceEngine
             ->getQuery()
             ->getResult();
 
+        // 5c. Fetch mining records in the range
+        $miningRecords = $this->entityManager->getRepository(EveCharacterMiningRecord::class)->createQueryBuilder('m')
+            ->where('m.character IN (:characters)')
+            ->andWhere('m.date >= :start')
+            ->andWhere('m.date <= :end')
+            ->setParameter('characters', $characters)
+            ->setParameter('start', $queryStartDate)
+            ->setParameter('end', $endDate)
+            ->getQuery()
+            ->getResult();
+
         // 6. Gather all unique type IDs to resolve names and metadata in bulk
         $typeIds = [];
         /** @var EveCharacterAssetChange $change */
         foreach ($assetChanges as $change) {
             $typeIds[] = $change->getTypeId();
+        }
+        /** @var EveCharacterMiningRecord $record */
+        foreach ($miningRecords as $record) {
+            $typeIds[] = $record->getTypeId();
         }
         /** @var EveCharacterMarketTransaction $tx */
         foreach ($marketTransactions as $tx) {
@@ -414,6 +430,33 @@ class PerformanceEngine
             $manualEntryAgg[$dateStr][] = $entry;
         }
 
+        // Aggregate mining records: [date][rawTypeId][characterName] => quantity
+        $miningAgg = [];
+        $miningDates = [];
+        /** @var EveCharacterMiningRecord $record */
+        foreach ($miningRecords as $record) {
+            $charId = $record->getCharacter()->getId();
+            $cutoff = $effectiveCutoffs[$charId] ?? null;
+            if ($cutoff !== null && $record->getDate() < $cutoff) {
+                continue;
+            }
+
+            $dateStr = $record->getDate()->format('Y-m-d');
+            $miningDates[] = $dateStr;
+            $rawTid = $record->getTypeId();
+            
+            $comp = $compressionMap[$rawTid] ?? ['typeId' => $rawTid, 'ratio' => 1];
+            $rawTid = $comp['typeId'];
+            $qty = (int)$record->getQuantity() * $comp['ratio'];
+
+            $charName = $record->getCharacter()->getName();
+
+            if (!isset($miningAgg[$dateStr][$rawTid][$charName])) {
+                $miningAgg[$dateStr][$rawTid][$charName] = 0;
+            }
+            $miningAgg[$dateStr][$rawTid][$charName] += $qty;
+        }
+
         $killmailDates = [];
         /** @var EveKillmail $km */
         foreach ($killmails as $km) {
@@ -427,7 +470,8 @@ class PerformanceEngine
             array_keys($marketSellAgg),
             array_keys($contractRecAgg),
             array_keys($manualEntryAgg),
-            $killmailDates
+            $killmailDates,
+            $miningDates
         ));
         sort($dates);
 
@@ -546,6 +590,58 @@ class PerformanceEngine
                 }
             }
 
+            // C. Process mining records
+            if (isset($miningAgg[$dateStr])) {
+                foreach ($miningAgg[$dateStr] as $rawTid => $charMap) {
+                    $meta = $itemMetadata[$rawTid] ?? [
+                        'name' => 'Item #' . $rawTid,
+                        'categoryId' => 0,
+                        'groupId' => 0,
+                        'groupName' => 'Other'
+                    ];
+
+                    $category = 'other';
+                    if ($meta['groupId'] === 711 || $meta['groupId'] === 4168) {
+                        $category = 'gas';
+                    } elseif ($meta['categoryId'] === 25) {
+                        $category = 'ore_ice';
+                    }
+
+                    $price = $globalPrices[$rawTid] ?? 0.0;
+
+                    foreach ($charMap as $charName => $qty) {
+                        if ($qty <= 0) {
+                            continue;
+                        }
+
+                        $exKey = sprintf('%s_%s_%s_%s', $dateStr, $category, $meta['name'], $charName);
+                        if (isset($exclusionMap[$exKey])) {
+                            continue;
+                        }
+
+                        $totalValue = $qty * $price;
+
+                        if (isset($dayData['summary']['byCategory'][$category])) {
+                            $dayData['summary']['byCategory'][$category] += $totalValue;
+                        } else {
+                            $dayData['summary']['byCategory']['other'] += $totalValue;
+                        }
+                        $dayData['summary']['totalValue'] += $totalValue;
+
+                        $dayData['details'][] = [
+                            'character' => $charName,
+                            'category' => $category,
+                            'typeName' => $meta['name'],
+                            'quantity' => $qty,
+                            'price' => $price,
+                            'totalValue' => $totalValue,
+                            'isWallet' => false,
+                            'typeId' => $rawTid
+                        ];
+                    }
+                }
+            }
+
             // B. Process net item changes (user-level)
             $tidsForDate = array_unique(array_merge(
                 isset($assetChangeAgg[$dateStr]) ? array_keys($assetChangeAgg[$dateStr]) : [],
@@ -579,6 +675,16 @@ class PerformanceEngine
             };
 
             foreach ($tidsForDate as $rawTid) {
+                // Skip gas and ore_ice items since they are processed via mining records
+                $meta = $itemMetadata[$rawTid] ?? null;
+                if ($meta) {
+                    $isGas = ($meta['groupId'] === 711 || $meta['groupId'] === 4168);
+                    $isOreIce = ($meta['categoryId'] === 25);
+                    if ($isGas || $isOreIce) {
+                        continue;
+                    }
+                }
+
                 $changeQty = $assetChangeAgg[$dateStr][$rawTid] ?? 0;
                 $buyQty = $marketBuyAgg[$dateStr][$rawTid] ?? 0;
                 $sellQty = $marketSellAgg[$dateStr][$rawTid] ?? 0;

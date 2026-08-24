@@ -6,6 +6,15 @@
 <div class="w-full max-w-[1200px] mx-auto px-6 mt-12 mb-16">
     <h2 class="text-2xl font-semibold border-b border-eve-border pb-2 mb-6 text-white">Linksammlung</h2>
 
+    <!-- Flash Messages -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="border border-eve-border bg-eve-card rounded-lg p-4 mb-6 relative {{ label == 'error' or label == 'danger' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-green-500/10 border-green-500/30 text-green-400' }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
     {% if categories|length == 0 %}
         <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg">
             <p class="text-lg font-normal text-eve-muted">Es sind noch keine Einträge enthalten.</p>
@@ -13,68 +22,189 @@
     {% else %}
         {% for category in categories %}
             {# Finde die Links dieser Kategorie #}
-            {% set categoryLinks = groupedLinks[category.name] ?? [] %}
-            
-            <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg mb-6 relative">
-                
-                <div class="flex justify-between items-center mb-4 border-b border-eve-border/30 pb-2">
-                    <h3 class="text-xl font-bold text-eve-primary mb-0">
-                        {{ category.name }}
-                    </h3>
-                    
-                    {% if is_granted('ROLE_OFFICER') %}
-                        {# Einklappbares Formular zum Erstellen eines Links direkt in dieser Kategorie #}
-                        <details class="relative max-w-[600px] m-0 group">
-                            <summary class="cursor-pointer select-none rounded p-1.5 hover:bg-white/5 transition-colors duration-200 inline-flex items-center" title="Link in „{{ category.name }}“ hinzufügen">
-                                <img src="{{ asset('images/add_button.png') }}" class="w-7 h-7 cursor-pointer transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_6px_var(--theme-primary)]" alt="Hinzufügen">
-                            </summary>
-                            <div class="absolute right-0 w-[320px] text-left z-50 border border-eve-primary bg-[#0f172af2] rounded-lg p-5 mt-3 shadow-eve">
-                                <h4 class="text-lg font-semibold mb-4 text-white">Neuen Link hinzufügen</h4>
-                                <form method="post" action="{{ path('link_create_link') }}">
-                                    <input type="hidden" name="Category" value="{{ category.id }}">
-                                    
-                                    <div class="flex flex-col gap-2 mb-4">
-                                        <label class="text-sm font-semibold text-white" for="Name_{{ category.id }}">Name:</label>
-                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="Name_{{ category.id }}" name="Name" required>
-                                    </div>
+            {% set categoryLinks = groupedLinks[category.id] ?? groupedLinks[category.name] ?? [] %}
 
-                                    <div class="flex flex-col gap-2 mb-4">
-                                        <label class="text-sm font-semibold text-white" for="URL_{{ category.id }}">URL:</label>
-                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="url" id="URL_{{ category.id }}" name="URL" placeholder="https://" required>
-                                    </div>
+            <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg mb-6">
 
-                                    <div class="flex flex-col gap-2 mb-4">
-                                        <label class="text-sm font-semibold text-white" for="Description_{{ category.id }}">Beschreibung:</label>
-                                        <textarea class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 resize-y" id="Description_{{ category.id }}" name="Description" rows="2"></textarea>
-                                    </div>
+                {# Kategorie-Header #}
+                <div class="flex justify-between items-center mb-4 border-b border-eve-border/30 pb-3">
+                    <div class="flex items-center gap-3 flex-1">
+                        {% if editing_category and editing_category.id == category.id %}
+                            {# Inline Kategorie-Bearbeiten #}
+                            <form method="post" action="{{ path('link_edit_category', {'id': category.id}) }}" class="flex items-center gap-2 flex-wrap m-0 flex-1">
+                                <input type="hidden" name="_token" value="{{ csrf_token('edit_category_' ~ category.id) }}">
+                                <input class="rounded-lg px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary flex-1 max-w-[300px]" type="text" name="CategoryName" value="{{ category.name }}" required>
+                                <button type="submit" class="rounded bg-green-500 hover:bg-green-600 text-white font-medium text-xs px-3 py-1.5 cursor-pointer transition-colors duration-200">
+                                    Speichern
+                                </button>
+                                <a href="{{ path('link_collection') }}" class="rounded bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3 py-1.5 cursor-pointer no-underline transition-colors duration-200">
+                                    Abbrechen
+                                </a>
+                            </form>
+                        {% else %}
+                            <h3 class="text-xl font-bold text-eve-primary mb-0">
+                                {{ category.name }}
+                            </h3>
 
-                                    <div class="mt-4">
-                                        <input class="w-full text-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" type="submit" value="Link speichern">
-                                    </div>
-                                </form>
-                            </div>
-                        </details>
-                    {% endif %}
+                            {% if is_granted('ROLE_OFFICER') %}
+                                <a href="{{ path('link_collection', {edit_category: category.id}) }}" class="cursor-pointer select-none rounded p-1.5 text-eve-muted hover:text-eve-primary hover:bg-white/5 transition-colors duration-200 inline-flex items-center justify-center no-underline" title="Kategorie umbenennen">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </a>
+
+                                {% if categoryLinks|length == 0 %}
+                                    {# Löschen-Button für leere Kategorien #}
+                                    <form method="post" action="{{ path('link_delete_category', {'id': category.id}) }}" onsubmit="return confirm('Möchtest du die leere Kategorie „{{ category.name|e('js') }}“ wirklich löschen?');" class="m-0 inline-flex items-center">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_category_' ~ category.id) }}">
+                                        <button type="submit" class="cursor-pointer select-none rounded p-1.5 text-eve-muted hover:text-eve-primary hover:bg-white/5 transition-colors duration-200 inline-flex items-center justify-center bg-transparent border-0" title="Leere Kategorie löschen">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
-                
-                <div class="border-l-2 border-eve-border/30 pl-4 mt-4 mb-2">
+
+                {# Links Liste #}
+                <div class="border-l-2 border-eve-border/30 pl-4 my-4 space-y-4">
                     {% if categoryLinks|length == 0 %}
                         <p class="text-eve-muted italic mb-0">Keine Links in dieser Kategorie vorhanden.</p>
                     {% else %}
                         {% for link in categoryLinks %}
-                            <div class="mb-4 last:mb-0">
-                                <h4 class="text-base font-semibold mb-1">
-                                    <a href="{{ link.url }}" target="_blank" class="text-eve-primary hover:text-eve-primary-hover underline transition-colors duration-150">
-                                        {{ link.name }}
-                                    </a>
-                                </h4>
-                                {% if link.description %}
-                                    <p class="text-sm text-eve-muted ml-2">{{ link.description }}</p>
-                                {% endif %}
-                            </div>
+                            {% if editing_link and editing_link.id == link.id %}
+                                {# Inline-Bearbeiten des Links direkt in der Karte #}
+                                <div class="border border-eve-primary/50 bg-[#0f172a80] rounded-lg p-5 my-3 shadow-eve">
+                                    <h4 class="text-sm font-semibold mb-3 text-eve-primary">Link bearbeiten</h4>
+                                    <form method="post" action="{{ path('link_edit_link', {'id': link.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('edit_link_' ~ link.id) }}">
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                            <div class="flex flex-col gap-1">
+                                                <label class="text-xs font-semibold text-white" for="Edit_Name_{{ link.id }}">Name:</label>
+                                                <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="Edit_Name_{{ link.id }}" name="Name" value="{{ link.name }}" required>
+                                            </div>
+
+                                            <div class="flex flex-col gap-1">
+                                                <label class="text-xs font-semibold text-white" for="Edit_URL_{{ link.id }}">URL:</label>
+                                                <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="url" id="Edit_URL_{{ link.id }}" name="URL" value="{{ link.url }}" placeholder="https://" required>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                            <div class="flex flex-col gap-1">
+                                                <label class="text-xs font-semibold text-white" for="Edit_Category_{{ link.id }}">Kategorie:</label>
+                                                <select class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" id="Edit_Category_{{ link.id }}" name="Category" required>
+                                                    {% for cat in categories %}
+                                                        <option value="{{ cat.id }}" class="bg-[#0f172a] text-white" {% if cat.id == category.id %}selected{% endif %}>{{ cat.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="flex flex-col gap-1">
+                                                <label class="text-xs font-semibold text-white" for="Edit_Description_{{ link.id }}">Beschreibung (optional):</label>
+                                                <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="Edit_Description_{{ link.id }}" name="Description" value="{{ link.description }}">
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-3 mt-4">
+                                            <button type="submit" class="border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-4 py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                                                Speichern
+                                            </button>
+                                            <a href="{{ path('link_collection') }}" class="rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold text-xs px-4 py-2 cursor-pointer no-underline transition-colors duration-200">
+                                                Abbrechen
+                                            </a>
+                                        </div>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <div class="flex items-start justify-between gap-4 group/item">
+                                    <div class="flex-1">
+                                        <h4 class="text-base font-semibold mb-1 flex items-center gap-2">
+                                            <a href="{{ link.url }}" target="_blank" rel="noopener noreferrer" class="text-eve-primary hover:text-eve-primary-hover underline transition-colors duration-150">
+                                                {{ link.name }}
+                                            </a>
+                                        </h4>
+                                        {% if link.description %}
+                                            <p class="text-sm text-eve-muted ml-2 mb-0">{{ link.description }}</p>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if is_granted('ROLE_OFFICER') %}
+                                        <div class="flex items-center gap-1.5 shrink-0">
+                                            {# Bearbeiten Link #}
+                                            <a href="{{ path('link_collection', {edit_link: link.id}) }}" class="cursor-pointer select-none rounded p-1.5 text-eve-muted hover:text-eve-primary hover:bg-white/5 transition-colors duration-200 inline-flex items-center justify-center no-underline" title="Link bearbeiten">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                </svg>
+                                            </a>
+
+                                            {# Löschen-Button für den Link #}
+                                            <form method="post" action="{{ path('link_delete_link', {'id': link.id}) }}" onsubmit="return confirm('Möchtest du den Link „{{ link.name|e('js') }}“ wirklich löschen?');" class="m-0 inline-flex items-center">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_link_' ~ link.id) }}">
+                                                <button type="submit" class="cursor-pointer select-none rounded p-1.5 text-eve-muted hover:text-eve-primary hover:bg-white/5 transition-colors duration-200 inline-flex items-center justify-center bg-transparent border-0" title="Link löschen">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     {% endif %}
                 </div>
+
+                {# Neuer Link direkt unten in der Karte ausklappbar (im Dokumentenfluss, kein Popover!) #}
+                {% if is_granted('ROLE_OFFICER') %}
+                    <details class="mt-4 pt-3 border-t border-eve-border/20 group/add">
+                        <summary class="cursor-pointer select-none text-xs font-semibold text-eve-muted hover:text-eve-primary flex items-center gap-1.5 transition-colors duration-200 list-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform duration-200 group-open/add:rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Link hinzufügen</span>
+                        </summary>
+                        <div class="mt-3 bg-[#0f172a59] border border-eve-border/30 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold mb-3 text-white">Neuen Link zu „{{ category.name }}“ hinzufügen</h4>
+                            <form method="post" action="{{ path('link_create_link') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('create_link') }}">
+                                <input type="hidden" name="Category" value="{{ category.id }}">
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-semibold text-white" for="Name_{{ category.id }}">Name:</label>
+                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="Name_{{ category.id }}" name="Name" required>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1">
+                                        <label class="text-xs font-semibold text-white" for="URL_{{ category.id }}">URL:</label>
+                                        <input class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="url" id="URL_{{ category.id }}" name="URL" placeholder="https://" required>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-1 mb-3">
+                                    <label class="text-xs font-semibold text-white" for="Description_{{ category.id }}">Beschreibung (optional):</label>
+                                    <textarea class="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 resize-y" id="Description_{{ category.id }}" name="Description" rows="2"></textarea>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button class="border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-4 py-2 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer" type="submit">
+                                        Link speichern
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </details>
+                {% endif %}
 
             </div>
         {% endfor %}
@@ -84,11 +214,18 @@
     {% if is_granted('ROLE_OFFICER') %}
         <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[600px] mt-12 group">
             <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
-                <span>+ Neue Kategorie erstellen</span>
+                <span class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-eve-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Neue Kategorie erstellen</span>
+                </span>
                 <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
             </summary>
             <div class="border-t border-eve-border p-6 bg-black/15">
                 <form method="post" action="{{ path('link_create_category') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('create_category') }}">
                     <div class="flex flex-col gap-2 mb-4">
                         <label class="text-sm font-semibold text-white" for="CategoryName">Name der neuen Kategorie:</label>
                         <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" id="CategoryName" name="CategoryName" required>
