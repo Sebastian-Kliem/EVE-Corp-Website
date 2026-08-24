@@ -23,7 +23,7 @@
         <!-- Menu -->
         {% set current_route = app.request.attributes.get('_route') %}
         {% set is_allgemein_active = current_route in ['link_collection', 'app_suggestions', 'app_general_reactions'] %}
-        {% set is_corp_active = current_route in ['app_order_list', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_tracking_index'] %}
+        {% set is_corp_active = current_route in ['app_order_list', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_corp_structures', 'app_tracking_index'] %}
         {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview'] %}
         {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index'] %}
 
@@ -52,6 +52,7 @@
                             <a class="nav-dropdown-item {{ current_route == 'app_order_list' ? 'is-active' : '' }}" href="{{ path('app_order_list') }}">Orders</a>
                             <a class="nav-dropdown-item {{ current_route == 'app_dashboard_corp_assets_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
                             <a class="nav-dropdown-item {{ current_route == 'app_corp_blueprints' ? 'is-active' : '' }}" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>
+                            <a class="nav-dropdown-item {{ current_route == 'app_corp_structures' ? 'is-active' : '' }}" href="{{ path('app_corp_structures') }}" data-turbo="false">Stationen</a>
                         </div>
                     </div>
 

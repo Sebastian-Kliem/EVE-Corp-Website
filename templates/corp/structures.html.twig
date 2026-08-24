@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Corp-Stationen & Strukturen{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+    <div class="flex flex-wrap gap-6 items-center mb-8">
+        <div class="flex-1">
+            <h1 class="text-3xl font-semibold mb-2 text-white text-gradient">
+                🛰️ Corp-Stationen & Strukturen
+            </h1>
+            <p class="text-sm text-eve-muted">
+                Übersicht aller verankerten Upwell-Strukturen, POS-Türme, aktiven Dienste und Module deiner Corporations.
+            </p>
+        </div>
+    </div>
+
+    {% set reactProps = {
+        corpsData: corpsData,
+        imagePaths: {
+            types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+            corporations: path('app_eve_image_proxy', { category: 'corporations', id: 12345, action: 'logo' }),
+            renders: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'render' })
+        }
+    } %}
+
+    <div data-react-component="CorpStructuresOverview" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}
