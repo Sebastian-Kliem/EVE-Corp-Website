@@ -6,6 +6,7 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCorporationStructure;
 use App\Entity\EveCorporationStarbase;
 use App\Entity\EveStructure;
+use App\Service\Discord\StructureAlertService;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -17,6 +18,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         private readonly EntityManagerInterface $entityManager,
         private readonly EsiClient $esiClient,
         private readonly SdeService $sdeService,
+        private readonly StructureAlertService $structureAlertService,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -153,6 +155,9 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             $structure->setReinforceHour($reinforceHour);
             $structure->setLastUpdated($now);
 
+            // Check fuel warnings and state transitions
+            $this->structureAlertService->checkUpwellStructure($structure);
+
             $this->entityManager->persist($structure);
 
             // Also populate the global location cache (EveStructure) so this known location is available
@@ -273,6 +278,9 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             // We can search the database for EveCorporationAsset objects in this corporation
             // that are POS modules and located in the same solarSystemId.
             // For now, we leave the modules field empty or allow it to be hydrated later.
+
+            // Check fuel warnings and state transitions
+            $this->structureAlertService->checkStarbase($starbase);
 
             $this->entityManager->persist($starbase);
         }

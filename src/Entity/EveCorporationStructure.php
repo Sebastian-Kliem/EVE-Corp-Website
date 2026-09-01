@@ -42,6 +42,15 @@ class EveCorporationStructure
     #[ORM\Column(nullable: true)]
     private ?int $reinforceHour = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $lastFuelAlertDays = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $previousFuelExpires = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $previousState = null;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $lastUpdated = null;
 
@@ -163,6 +172,39 @@ class EveCorporationStructure
     public function setReinforceHour(?int $reinforceHour): static
     {
         $this->reinforceHour = $reinforceHour;
+        return $this;
+    }
+
+    public function getLastFuelAlertDays(): ?int
+    {
+        return $this->lastFuelAlertDays;
+    }
+
+    public function setLastFuelAlertDays(?int $lastFuelAlertDays): static
+    {
+        $this->lastFuelAlertDays = $lastFuelAlertDays;
+        return $this;
+    }
+
+    public function getPreviousFuelExpires(): ?\DateTimeImmutable
+    {
+        return $this->previousFuelExpires;
+    }
+
+    public function setPreviousFuelExpires(?\DateTimeImmutable $previousFuelExpires): static
+    {
+        $this->previousFuelExpires = $previousFuelExpires;
+        return $this;
+    }
+
+    public function getPreviousState(): ?string
+    {
+        return $this->previousState;
+    }
+
+    public function setPreviousState(?string $previousState): static
+    {
+        $this->previousState = $previousState;
         return $this;
     }
 
