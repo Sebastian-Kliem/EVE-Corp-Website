@@ -4,6 +4,15 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(DISCORD_WEBHOOK_DEFAULT): ''
+    env(DISCORD_WEBHOOK_STRUCTURES): ''
+    env(DISCORD_WEBHOOK_FUEL): ''
+    env(DISCORD_WEBHOOK_COMBAT): ''
+    env(DISCORD_WEBHOOK_USER_ALERTS): ''
+    env(DISCORD_WEBHOOK_INDUSTRY): ''
+    env(DISCORD_WEBHOOK_MARKET): ''
+    env(DISCORD_PING_ROLE_STRUCTURE_DEFENSE): ''
+    env(DISCORD_PING_ROLE_FUEL): ''
 
 services:
     # default configuration for services in *this* file
@@ -21,5 +30,14 @@ services:
     App\:
         resource: '../src/'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    App\Service\Discord\DiscordWebhookService:
+        arguments:
+            $defaultWebhook: '%env(DISCORD_WEBHOOK_DEFAULT)%'
+            $structuresWebhook: '%env(DISCORD_WEBHOOK_STRUCTURES)%'
+            $fuelWebhook: '%env(DISCORD_WEBHOOK_FUEL)%'
+            $combatWebhook: '%env(DISCORD_WEBHOOK_COMBAT)%'
+            $userAlertsWebhook: '%env(DISCORD_WEBHOOK_USER_ALERTS)%'
+            $industryWebhook: '%env(DISCORD_WEBHOOK_INDUSTRY)%'
+            $marketWebhook: '%env(DISCORD_WEBHOOK_MARKET)%'
+            $structureDefensePingRole: '%env(DISCORD_PING_ROLE_STRUCTURE_DEFENSE)%'
+            $fuelPingRole: '%env(DISCORD_PING_ROLE_FUEL)%'
