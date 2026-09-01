@@ -25,7 +25,7 @@
         {% set is_allgemein_active = current_route in ['link_collection', 'app_suggestions', 'app_general_reactions'] %}
         {% set is_corp_active = current_route in ['app_order_list', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_corp_structures', 'app_tracking_index'] %}
         {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview'] %}
-        {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index'] %}
+        {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index', 'app_admin_discord_index'] %}
 
         <div class="hidden lg:flex lg:items-center lg:justify-between w-full bg-[#0d121ffa] lg:bg-transparent border border-eve-border lg:border-none shadow-eve lg:shadow-none rounded-lg lg:rounded-none p-4 lg:p-0 absolute lg:static left-6 right-6 top-full [&.is-active]:block" data-navbar-target="menu">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-6 w-full lg:w-auto">
@@ -84,6 +84,7 @@
                             {% if is_granted('ROLE_CEO') %}
                                 <a class="nav-dropdown-item {{ current_route == 'app_admin_corp_assets_visibility' ? 'is-active' : '' }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
                                 <a class="nav-dropdown-item {{ current_route == 'app_admin_cron_index' ? 'is-active' : '' }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
+                                <a class="nav-dropdown-item {{ current_route == 'app_admin_discord_index' ? 'is-active' : '' }}" href="{{ path('app_admin_discord_index') }}" data-turbo="false">Discord-Webhooks</a>
                             {% endif %}
                         </div>
                     </div>

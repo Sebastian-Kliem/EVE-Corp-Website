@@ -1,0 +1,270 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Discord-Konfiguration{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+    <!-- Headline -->
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-semibold text-white text-gradient">
+                🤖 Discord-Webhooks & Benachrichtigungen
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{{ path('app_profile') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-4 py-2 font-medium transition-all duration-300 cursor-pointer">
+                Zurück zum Profil
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="py-4 px-6 rounded-lg mt-4 mb-6 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% elseif label == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% else %}bg-sky-500/10 border-sky-500/30 text-sky-400{% endif %}">
+                {{ message|raw }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Info Banner -->
+    <div class="py-5 px-6 rounded-lg bg-black/20 border border-eve-border mb-8">
+        <div class="flex items-start gap-3">
+            <span class="text-xl">💡</span>
+            <div class="text-sm leading-relaxed text-eve-text">
+                <strong>So funktioniert das Multi-Channel-System:</strong>
+                <ul class="list-disc list-inside mt-2 space-y-1 text-eve-muted">
+                    <li>Trage unter <strong>Standard-Webhook</strong> die URL eures Discord-Kanals ein. Wenn spezifische Kanäle (wie Treibstoff oder Kampf) leer bleiben, wird automatisch dieser Standardkanal genutzt.</li>
+                    <li>Möchtet ihr Benachrichtigungen aufteilen (z.B. ein separater Alarm-Kanal für Angriffe und ein Logistik-Kanal für Treibstoff), tragt einfach die jeweiligen Webhook-URLs in die entsprechenden Felder ein.</li>
+                    <li>Treibstoff-Warnungen werden bei <strong>≤ 30d, ≤ 14d, ≤ 7d, ≤ 3d, ≤ 1d</strong> automatisch gesendet. Beim Nachtanken erfolgt eine automatische Entwarnung.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webhook Form Card -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-8">
+        <h3 class="text-lg font-semibold mb-2 text-white flex items-center gap-2">
+            ⚙️ Webhook-Kanäle & Routing
+        </h3>
+        <p class="text-xs text-eve-muted mb-6">Passe hier die Discord-Webhook-URLs und Ping-Rollen für eure Corporation an.</p>
+
+        <form action="{{ path('app_admin_discord_save') }}" method="POST">
+            <input type="hidden" name="_token" value="{{ csrf_token('discord_settings_save') }}">
+
+            <div class="space-y-6">
+                <!-- 1. Default Webhook -->
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                        <label for="discord_webhook_default" class="text-sm font-medium text-white flex items-center gap-2">
+                            📢 Standard / Fallback-Kanal <span class="text-xs text-eve-primary">(Empfohlen)</span>
+                        </label>
+                        {% if settings.discord_webhook_default %}
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-emerald-400">● Aktiv</span>
+                            </div>
+                        {% else %}
+                            <span class="text-xs text-eve-muted">○ Nicht konfiguriert</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="url" id="discord_webhook_default" name="discord_webhook_default" value="{{ settings.discord_webhook_default }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    </div>
+                    <p class="text-xs text-eve-muted mt-1.5">Fängt alle Benachrichtigungen auf, für die kein eigener Kanal hinterlegt ist.</p>
+                </div>
+
+                <!-- 2. Fuel Webhook -->
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                        <label for="discord_webhook_fuel" class="text-sm font-medium text-white flex items-center gap-2">
+                            ⛽ Treibstoff & Betankung <span class="text-xs text-amber-400">#fuel-alerts</span>
+                        </label>
+                        {% if settings.discord_webhook_fuel %}
+                            <span class="text-xs text-emerald-400">● Eigener Kanal aktiv</span>
+                        {% else %}
+                            <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
+                        {% endif %}
+                    </div>
+                    <input type="url" id="discord_webhook_fuel" name="discord_webhook_fuel" value="{{ settings.discord_webhook_fuel }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    <p class="text-xs text-eve-muted mt-1.5">Meldungen bei niedrigem Treibstoffstand (≤ 30d, 14d, 7d, 3d, 1d) und Bestätigung bei Betankung.</p>
+                </div>
+
+                <!-- 3. Combat / Defense Webhook -->
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                        <label for="discord_webhook_combat" class="text-sm font-medium text-white flex items-center gap-2">
+                            🚨 Angriffe & Verteidigung <span class="text-xs text-rose-400">#structure-defense</span>
+                        </label>
+                        {% if settings.discord_webhook_combat %}
+                            <span class="text-xs text-emerald-400">● Eigener Kanal aktiv</span>
+                        {% else %}
+                            <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
+                        {% endif %}
+                    </div>
+                    <input type="url" id="discord_webhook_combat" name="discord_webhook_combat" value="{{ settings.discord_webhook_combat }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    <p class="text-xs text-eve-muted mt-1.5">Station unter Beschuss, Schild-/Armor-Verlust, Reinforce-Timer, POS- und POCO-Angriffe.</p>
+                </div>
+
+                <!-- 4. Structures Webhook -->
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                        <label for="discord_webhook_structures" class="text-sm font-medium text-white flex items-center gap-2">
+                            🏢 Strukturstatus & Dienste <span class="text-xs text-sky-400">#structures</span>
+                        </label>
+                        {% if settings.discord_webhook_structures %}
+                            <span class="text-xs text-emerald-400">● Eigener Kanal aktiv</span>
+                        {% else %}
+                            <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
+                        {% endif %}
+                    </div>
+                    <input type="url" id="discord_webhook_structures" name="discord_webhook_structures" value="{{ settings.discord_webhook_structures }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    <p class="text-xs text-eve-muted mt-1.5">Low-Power, High-Power, ausgefallene Service-Module, Unanchoring.</p>
+                </div>
+
+                <!-- 5. User Alerts Webhook -->
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                        <label for="discord_webhook_user_alerts" class="text-sm font-medium text-white flex items-center gap-2">
+                            👤 Benutzer-Benachrichtigungen <span class="text-xs text-purple-400">#user-alerts</span>
+                        </label>
+                        {% if settings.discord_webhook_user_alerts %}
+                            <span class="text-xs text-emerald-400">● Eigener Kanal aktiv</span>
+                        {% else %}
+                            <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
+                        {% endif %}
+                    </div>
+                    <input type="url" id="discord_webhook_user_alerts" name="discord_webhook_user_alerts" value="{{ settings.discord_webhook_user_alerts }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    <p class="text-xs text-eve-muted mt-1.5">Für allgemeine Benachrichtigungen aus persönlichen Modulen.</p>
+                </div>
+
+                <!-- Role Ping Configuration Section -->
+                <div class="border-t border-eve-border/60 pt-6 mt-6">
+                    <h4 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                        🔔 Rollen-Erwähnungen (Pings)
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="discord_ping_role_structure_defense" class="block text-xs font-medium text-eve-text mb-1">
+                                Angriffs- & Verteidigungsping
+                            </label>
+                            <input type="text" id="discord_ping_role_structure_defense" name="discord_ping_role_structure_defense" value="{{ settings.discord_ping_role_structure_defense }}" placeholder="@here oder Rollen-ID (z.B. 123456789...)" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                            <span class="text-[11px] text-eve-muted">Wird bei Angriffen (`StructureUnderAttack` & finale Rumpf-Timer) gepingt.</span>
+                        </div>
+                        <div>
+                            <label for="discord_ping_role_fuel" class="block text-xs font-medium text-eve-text mb-1">
+                                Treibstoff-Ping (Kritisch ≤ 7d)
+                            </label>
+                            <input type="text" id="discord_ping_role_fuel" name="discord_ping_role_fuel" value="{{ settings.discord_ping_role_fuel }}" placeholder="z.B. Logistik-Rollen-ID" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                            <span class="text-[11px] text-eve-muted">Wird gepingt, sobald der Treibstoff unter 7 Tage Restlaufzeit fällt.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="mt-8 flex items-center justify-end gap-3">
+                <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-6 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                    💾 Einstellungen speichern
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Quick Test Panel -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-8">
+        <h3 class="text-lg font-semibold mb-2 text-white flex items-center gap-2">
+            🧪 Webhooks testen
+        </h3>
+        <p class="text-xs text-eve-muted mb-4">Sende mit einem Klick eine Testnachricht an den jeweiligen Kanal, um die Verbindung zu überprüfen.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <form action="{{ path('app_admin_discord_test', {'channel': 'default'}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('discord_test_default') }}">
+                <button type="submit" class="w-full py-2.5 px-3 border border-eve-border hover:border-eve-primary text-xs font-medium rounded-lg text-white hover:text-eve-primary transition-colors bg-black/40 hover:bg-black/60 cursor-pointer flex items-center justify-center gap-1.5">
+                    📢 Test: Standard
+                </button>
+            </form>
+            <form action="{{ path('app_admin_discord_test', {'channel': 'fuel'}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('discord_test_fuel') }}">
+                <button type="submit" class="w-full py-2.5 px-3 border border-eve-border hover:border-amber-400 text-xs font-medium rounded-lg text-white hover:text-amber-400 transition-colors bg-black/40 hover:bg-black/60 cursor-pointer flex items-center justify-center gap-1.5">
+                    ⛽ Test: Treibstoff
+                </button>
+            </form>
+            <form action="{{ path('app_admin_discord_test', {'channel': 'combat'}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('discord_test_combat') }}">
+                <button type="submit" class="w-full py-2.5 px-3 border border-eve-border hover:border-rose-400 text-xs font-medium rounded-lg text-white hover:text-rose-400 transition-colors bg-black/40 hover:bg-black/60 cursor-pointer flex items-center justify-center gap-1.5">
+                    🚨 Test: Verteidigung
+                </button>
+            </form>
+            <form action="{{ path('app_admin_discord_test', {'channel': 'structures'}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('discord_test_structures') }}">
+                <button type="submit" class="w-full py-2.5 px-3 border border-eve-border hover:border-sky-400 text-xs font-medium rounded-lg text-white hover:text-sky-400 transition-colors bg-black/40 hover:bg-black/60 cursor-pointer flex items-center justify-center gap-1.5">
+                    🏢 Test: Strukturen
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Log History Table -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg">
+        <h3 class="text-lg font-semibold mb-2 text-white flex items-center gap-2">
+            📜 Zuletzt gesendete Benachrichtigungen
+        </h3>
+        <p class="text-xs text-eve-muted mb-4">Übersicht der letzten Ereignisse, die über das System an Discord übermittelt wurden.</p>
+
+        {% if recentLogs|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-eve-border text-eve-muted">
+                            <th class="py-2.5 px-3">Zeitpunkt (EVE)</th>
+                            <th class="py-2.5 px-3">Typ</th>
+                            <th class="py-2.5 px-3">Kanal</th>
+                            <th class="py-2.5 px-3">Objekt / Details</th>
+                            <th class="py-2.5 px-3 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-eve-border/40">
+                        {% for log in recentLogs %}
+                            <tr class="hover:bg-white/[0.02] transition-colors">
+                                <td class="py-2.5 px-3 font-mono text-eve-muted">
+                                    {{ log.createdAt|date('d.m.Y H:i:s') }}
+                                </td>
+                                <td class="py-2.5 px-3">
+                                    <span class="font-medium {% if 'Attack' in log.type or 'Lost' in log.type %}text-rose-400{% elseif 'Fuel' in log.type %}text-amber-400{% elseif 'Refueled' in log.type %}text-emerald-400{% else %}text-sky-400{% endif %}">
+                                        {{ log.type }}
+                                    </span>
+                                </td>
+                                <td class="py-2.5 px-3">
+                                    <span class="px-2 py-0.5 rounded bg-black/40 border border-eve-border text-eve-text text-[11px]">
+                                        #{{ log.channel }}
+                                    </span>
+                                </td>
+                                <td class="py-2.5 px-3 text-eve-text">
+                                    {% if log.metadata.name is defined %}
+                                        <strong>{{ log.metadata.name }}</strong>
+                                        {% if log.metadata.system is defined %}
+                                            <span class="text-eve-muted">({{ log.metadata.system }})</span>
+                                        {% endif %}
+                                    {% elseif log.entityType and log.entityId %}
+                                        {{ log.entityType }} #{{ log.entityId }}
+                                    {% else %}
+                                        <span class="text-eve-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-2.5 px-3 text-right">
+                                    <span class="text-emerald-400 font-semibold">✓ Übertragen</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="py-8 text-center text-eve-muted text-xs">
+                Noch keine Benachrichtigungen im Log protokolliert.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
