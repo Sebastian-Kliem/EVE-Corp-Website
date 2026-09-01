@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
@@ -38,10 +39,16 @@ class CronRunCommand extends Command
         }
     }
 
+    protected function configure(): void
+    {
+        $this->addOption('job', null, InputOption::VALUE_OPTIONAL, 'Only execute a specific cron job command');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $now = new \DateTimeImmutable();
+        $jobOption = $input->getOption('job');
 
         $logFile = $this->kernel->getProjectDir() . '/var/log/cron.log';
         $writeLog = function(string $message, string $level = 'INFO') use ($logFile) {
@@ -97,6 +104,10 @@ class CronRunCommand extends Command
 
         $dueJobsCount = 0;
         foreach ($activeJobs as $job) {
+            if ($jobOption && $job->getCommand() !== $jobOption) {
+                continue;
+            }
+
             // If nextRunAt is null, initialize it and skip execution for this turn (or run if now is past it)
             if ($job->getNextRunAt() === null) {
                 try {

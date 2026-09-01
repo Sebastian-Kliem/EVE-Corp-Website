@@ -129,7 +129,10 @@ class AdminCronController extends AbstractController
         $application = new Application($kernel);
         $application->setAutoExit(false);
 
-        $input = new ArrayInput(['command' => 'app:cron:run']);
+        $input = new ArrayInput([
+            'command' => 'app:cron:run',
+            '--job' => $job->getCommand(),
+        ]);
         $output = new BufferedOutput();
 
         try {

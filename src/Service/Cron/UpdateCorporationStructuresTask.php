@@ -101,6 +101,13 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $syncedStructureIds = [];
         foreach ($structuresData as $sData) {
             $structureId = (string)$sData['structure_id'];
+            $structIdInt = (int)$structureId;
+
+            // Skip NPC stations (typically IDs between 60000000 and 64000000, or < 1000000000000) where offices might be rented
+            if ($structIdInt < 1000000000000) {
+                continue;
+            }
+
             $syncedStructureIds[] = $structureId;
             $typeId = (int)$sData['type_id'];
             $systemId = (int)$sData['system_id'];
@@ -279,6 +286,6 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         }
 
         $this->entityManager->flush();
-        $this->logger->info(sprintf('[Cron] Successfully updated %d starbases for corp %d.', count($structuresData), $corpId));
+        $this->logger->info(sprintf('[Cron] Successfully updated %d starbases for corp %d.', count($starbasesData), $corpId));
     }
 }

@@ -40,8 +40,10 @@ class CorpStructureController extends AbstractController
 
         $corpIds = [];
         foreach ($characters as $char) {
-            if ($char->getCorporationId()) {
-                $corpIds[] = $char->getCorporationId();
+            $corpId = (int)$char->getCorporationId();
+            // Skip NPC corporations (typically IDs < 2000000)
+            if ($corpId >= 2000000) {
+                $corpIds[] = $corpId;
             }
         }
         $corpIds = array_values(array_unique($corpIds));
