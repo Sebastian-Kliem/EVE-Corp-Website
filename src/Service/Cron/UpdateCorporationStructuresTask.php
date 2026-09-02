@@ -10,17 +10,23 @@ use App\Service\Discord\StructureAlertService;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 class UpdateCorporationStructuresTask implements CronTaskInterface
 {
+    private EntityManagerInterface $entityManager;
+
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
+        private readonly ManagerRegistry $doctrine,
+        EntityManagerInterface $entityManager,
         private readonly EsiClient $esiClient,
         private readonly SdeService $sdeService,
         private readonly StructureAlertService $structureAlertService,
         private readonly LoggerInterface $logger
-    ) {}
+    ) {
+        $this->entityManager = $entityManager;
+    }
 
     public function getCommandName(): string
     {
@@ -49,6 +55,8 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d corporations with directors.', count($directorsByCorp)));
 
         foreach ($directorsByCorp as $corpId => $directors) {
+            $this->ensureEntityManagerOpen();
+
             // Use the first director character to fetch data
             $director = $directors[0];
 
@@ -66,6 +74,8 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
                 ));
             }
 
+            $this->ensureEntityManagerOpen();
+
             // B. Sync Starbases (POS)
             try {
                 $this->syncStarbases($corpId, $director);
@@ -80,6 +90,13 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         }
 
         $this->logger->info('[Cron] Finished corporation structures sync execution.');
+    }
+
+    private function ensureEntityManagerOpen(): void
+    {
+        if (!$this->entityManager->isOpen()) {
+            $this->entityManager = $this->doctrine->resetManager();
+        }
     }
 
     private function syncUpwellStructures(int $corpId, EveCharacter $director): void

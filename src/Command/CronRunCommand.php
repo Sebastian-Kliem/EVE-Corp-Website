@@ -114,22 +114,8 @@ class CronRunCommand extends Command
                 continue;
             }
 
-            // If nextRunAt is null, initialize it and skip execution for this turn (or run if now is past it)
-            if ($job->getNextRunAt() === null) {
-                try {
-                    $cron = new CronExpression($job->getCronExpression());
-                    $nextRun = \DateTimeImmutable::createFromInterface($cron->getNextRunDate());
-                    $job->setNextRunAt($nextRun);
-                    $this->entityManager->flush();
-                } catch (\Exception $e) {
-                    $io->error(sprintf('Invalid cron expression for job "%s": %s', $job->getName(), $e->getMessage()));
-                    $writeLog(sprintf('Ungültiger Cron-Ausdruck für Job "%s": %s', $job->getName(), $e->getMessage()), 'ERROR');
-                }
-                continue;
-            }
-
-            // Check if job is due
-            if ($now >= $job->getNextRunAt()) {
+            // Check if job is due or forced via --job
+            if ($jobOption !== null || $job->getNextRunAt() === null || $now >= $job->getNextRunAt()) {
                 $dueJobsCount++;
                 $io->info(sprintf('Executing cron job: %s (%s)', $job->getName(), $job->getCommand()));
                 $writeLog(sprintf('Führe Cronjob aus: %s (%s)', $job->getName(), $job->getCommand()));
@@ -260,7 +246,7 @@ class CronRunCommand extends Command
             [
                 'name' => 'Corporation-Strukturen synchronisieren (Upwell & Starbases)',
                 'command' => 'corporation:sync-structures',
-                'expression' => '0 * * * *', // every 1 hour
+                'expression' => '*/10 * * * *', // every 10 minutes
             ],
             [
                 'name' => 'Corporation-Benachrichtigungen synchronisieren (Defense & Alerts)',

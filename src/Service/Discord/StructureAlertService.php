@@ -47,33 +47,46 @@ class StructureAlertService
 
         if ($fuelExpires !== null) {
             $daysRemainingFloat = ($fuelExpires->getTimestamp() - $now->getTimestamp()) / 86400.0;
-            $daysRemaining = max(0, (int) round($daysRemainingFloat));
 
             // 1. Detect Refueling (Fuel expiry extended by >= 6 hours)
+            $isRefueled = false;
+            $gainedDays = 0.0;
+            $gainedHours = 0.0;
+
             if ($previousFuelExpires !== null) {
                 $diffSeconds = $fuelExpires->getTimestamp() - $previousFuelExpires->getTimestamp();
-
                 if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
+                    $isRefueled = true;
                     $gainedDays = round($diffSeconds / 86400.0, 1);
                     $gainedHours = round($diffSeconds / 3600.0, 1);
-
-                    $this->sendRefueledNotification(
-                        $structureName,
-                        $typeName,
-                        $systemName,
-                        $daysRemaining,
-                        $fuelExpires,
-                        $gainedDays,
-                        $gainedHours,
-                        $structure->getId(),
-                        'structure'
-                    );
-
-                    // Reset alert threshold based on new fuel level
-                    $newThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
-                    $structure->setLastFuelAlertDays($newThreshold);
-                    $lastAlertDays = $newThreshold;
                 }
+            } elseif ($previousState !== null && $fuelExpires > $now) {
+                // Previously had no fuel expiration recorded, but now has valid future fuel
+                $diffSeconds = $fuelExpires->getTimestamp() - $now->getTimestamp();
+                if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
+                    $isRefueled = true;
+                    $gainedDays = round($diffSeconds / 86400.0, 1);
+                    $gainedHours = round($diffSeconds / 3600.0, 1);
+                }
+            }
+
+            if ($isRefueled) {
+                $this->sendRefueledNotification(
+                    $structureName,
+                    $typeName,
+                    $systemName,
+                    $daysRemainingFloat,
+                    $fuelExpires,
+                    $gainedDays,
+                    $gainedHours,
+                    $structure->getId(),
+                    'structure'
+                );
+
+                // Reset alert threshold based on new fuel level
+                $newThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
+                $structure->setLastFuelAlertDays($newThreshold);
+                $lastAlertDays = $newThreshold;
             }
 
             // 2. Check Fuel Level Threshold Alerts (<= 30d, 14d, 7d, 3d, 1d, 0d)
@@ -157,30 +170,42 @@ class StructureAlertService
             $previousFuelExpires = $starbase->getPreviousFuelExpires();
 
             // Refuel detection
+            $isRefueled = false;
+            $gainedDays = 0.0;
+            $gainedHours = 0.0;
+
             if ($previousFuelExpires !== null) {
                 $diffSeconds = $fuelExpiresApprox->getTimestamp() - $previousFuelExpires->getTimestamp();
-
                 if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
+                    $isRefueled = true;
                     $gainedDays = round($diffSeconds / 86400.0, 1);
                     $gainedHours = round($diffSeconds / 3600.0, 1);
-                    $daysRemaining = (int) round($daysLeftFloat);
-
-                    $this->sendRefueledNotification(
-                        $starbaseName,
-                        $typeName,
-                        $systemName,
-                        $daysRemaining,
-                        $fuelExpiresApprox,
-                        $gainedDays,
-                        $gainedHours,
-                        $starbase->getId(),
-                        'starbase'
-                    );
-
-                    $newThreshold = $this->resolveCurrentThreshold($daysLeftFloat);
-                    $starbase->setLastFuelAlertDays($newThreshold);
-                    $lastAlertDays = $newThreshold;
                 }
+            } elseif ($previousState !== null && $fuelExpiresApprox > $now) {
+                $diffSeconds = $fuelExpiresApprox->getTimestamp() - $now->getTimestamp();
+                if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
+                    $isRefueled = true;
+                    $gainedDays = round($diffSeconds / 86400.0, 1);
+                    $gainedHours = round($diffSeconds / 3600.0, 1);
+                }
+            }
+
+            if ($isRefueled) {
+                $this->sendRefueledNotification(
+                    $starbaseName,
+                    $typeName,
+                    $systemName,
+                    $daysLeftFloat,
+                    $fuelExpiresApprox,
+                    $gainedDays,
+                    $gainedHours,
+                    $starbase->getId(),
+                    'starbase'
+                );
+
+                $newThreshold = $this->resolveCurrentThreshold($daysLeftFloat);
+                $starbase->setLastFuelAlertDays($newThreshold);
+                $lastAlertDays = $newThreshold;
             }
 
             // Check Fuel Thresholds
@@ -248,7 +273,8 @@ class StructureAlertService
         string $entityType
     ): void {
         $color = match (true) {
-            $threshold <= 1 => DiscordColor::DARK_RED,
+            $threshold <= 0 => DiscordColor::DARK_RED,
+            $threshold <= 1 => DiscordColor::RED,
             $threshold <= 3 => DiscordColor::RED,
             $threshold <= 7 => DiscordColor::ORANGE,
             $threshold <= 14 => DiscordColor::YELLOW,
@@ -256,20 +282,29 @@ class StructureAlertService
         };
 
         $urgencyPrefix = match (true) {
+            $threshold <= 0 => '💀 [ABGELAUFEN / LOW POWER]',
             $threshold <= 1 => '🚨 [KRITISCH]',
             $threshold <= 3 => '⚠️ [DRINGEND]',
             $threshold <= 7 => '⚠️ [WARNUNG]',
             default => '⛽ [TREIBSTOFF]',
         };
 
-        $daysText = $daysLeftFloat < 1.0
-            ? sprintf('%.1f Stunden', max(0, $daysLeftFloat * 24))
-            : sprintf('%.1f Tage (%d Tage)', $daysLeftFloat, (int)floor($daysLeftFloat));
+        if ($threshold <= 0 || $daysLeftFloat <= 0) {
+            $daysText = '⚠️ Treibstoff abgelaufen!';
+            $description = sprintf('Der Treibstoff für **%s** ist aufgebraucht! Die Struktur wechselt in den Low-Power-Modus.', $name);
+        } else {
+            $daysInt = (int)floor($daysLeftFloat);
+            $hoursInt = (int)round(($daysLeftFloat - $daysInt) * 24);
+            $daysText = $daysInt > 0
+                ? sprintf('%d Tage %d Std. (%.1f Tage)', $daysInt, $hoursInt, $daysLeftFloat)
+                : sprintf('%d Stunden', max(1, (int)round($daysLeftFloat * 24)));
+            $description = sprintf('Der Treibstoff für **%s** neigt sich dem Ende zu und hat den Schwellenwert von **≤ %d Tagen** erreicht.', $name, $threshold);
+        }
 
         $embed = (new DiscordEmbed())
             ->setTitle(sprintf('%s Treibstoff-Warnung: %s', $urgencyPrefix, $name))
             ->setColor($color)
-            ->setDescription(sprintf('Der Treibstoff für **%s** neigt sich dem Ende zu und hat den Schwellenwert von **≤ %d Tagen** erreicht.', $name, $threshold))
+            ->setDescription($description)
             ->addField('🏢 Struktur', sprintf('%s (%s)', $name, $typeName), true)
             ->addField('🌌 Sonnensystem', $systemName, true)
             ->addField('⏳ Verbleibende Zeit', $daysText, true)
@@ -310,26 +345,32 @@ class StructureAlertService
         string $name,
         string $typeName,
         string $systemName,
-        int $daysRemaining,
+        float $daysRemainingFloat,
         \DateTimeImmutable $fuelExpires,
         float $gainedDays,
         float $gainedHours,
         string $entityId,
         string $entityType
     ): void {
+        $daysInt = (int)floor(max(0, $daysRemainingFloat));
+        $hoursInt = (int)round((max(0, $daysRemainingFloat) - $daysInt) * 24);
+        $remainingText = $daysInt > 0
+            ? sprintf('%d Tage %d Std.', $daysInt, $hoursInt)
+            : sprintf('%d Stunden', max(1, (int)round($daysRemainingFloat * 24)));
+
         $gainedText = $gainedDays >= 1.0
             ? sprintf('+%.1f Tage (+%d Std.)', $gainedDays, (int)round($gainedHours))
             : sprintf('+%.1f Std.', $gainedHours);
 
         $embed = (new DiscordEmbed())
-            ->setTitle(sprintf('✅ [BETANKT] Treibstoff aufgefüllt: %s', $name))
+            ->setTitle(sprintf('✅ [AUFGETANKT] Treibstoff aufgefüllt: %s', $name))
             ->setColor(DiscordColor::GREEN)
-            ->setDescription(sprintf('**%s** wurde erfolgreich nachgetankt!', $name))
+            ->setDescription(sprintf('**%s** wurde erfolgreich aufgetankt!', $name))
             ->addField('🏢 Struktur', sprintf('%s (%s)', $name, $typeName), true)
             ->addField('🌌 Sonnensystem', $systemName, true)
             ->addField('📈 Nachgetankt', $gainedText, true)
-            ->addField('⏳ Neue Restlaufzeit', sprintf('~%d Tage', $daysRemaining), true)
-            ->addField('📅 Läuft ab am', $fuelExpires->format('d.m.Y H:i') . ' EVE Time', true)
+            ->addField('⏳ Neue Restlaufzeit', $remainingText, true)
+            ->addField('📅 Hält bis', $fuelExpires->format('d.m.Y H:i') . ' EVE Time', true)
             ->setFooter('Keepers of Duat • Structure Fuel Monitor')
             ->setTimestamp(new \DateTimeImmutable());
 
@@ -349,7 +390,7 @@ class StructureAlertService
             $log->setMetadata([
                 'name' => $name,
                 'system' => $systemName,
-                'days_remaining' => $daysRemaining,
+                'days_remaining' => $daysRemainingFloat,
                 'gained_days' => $gainedDays,
                 'expires_at' => $fuelExpires->format(\DateTimeInterface::ATOM),
             ]);
