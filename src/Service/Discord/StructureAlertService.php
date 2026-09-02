@@ -19,9 +19,9 @@ class StructureAlertService
     private const FUEL_THRESHOLDS = [30, 14, 7, 3, 1, 0];
 
     /**
-     * Minimum change in seconds (3 hours) to trigger a Refuel or Defuel notification.
+     * Minimum gain in seconds (6 hours) to trigger a Refuel notification.
      */
-    private const FUEL_CHANGE_THRESHOLD_SECONDS = 10800; // 3 hours
+    private const REFUEL_THRESHOLD_SECONDS = 21600; // 6 hours
 
     public function __construct(
         private readonly DiscordWebhookService $discordWebhookService,
@@ -49,12 +49,11 @@ class StructureAlertService
             $daysRemainingFloat = ($fuelExpires->getTimestamp() - $now->getTimestamp()) / 86400.0;
             $daysRemaining = max(0, (int) round($daysRemainingFloat));
 
-            // 1. Detect Fuel Changes (Refueling vs Fuel Removal)
+            // 1. Detect Refueling (Fuel expiry extended by >= 6 hours)
             if ($previousFuelExpires !== null) {
                 $diffSeconds = $fuelExpires->getTimestamp() - $previousFuelExpires->getTimestamp();
 
-                // A. Refuel detected (Fuel expiry moved forward by >= 3 hours)
-                if ($diffSeconds >= self::FUEL_CHANGE_THRESHOLD_SECONDS) {
+                if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
                     $gainedDays = round($diffSeconds / 86400.0, 1);
                     $gainedHours = round($diffSeconds / 3600.0, 1);
 
@@ -74,31 +73,6 @@ class StructureAlertService
                     $newThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
                     $structure->setLastFuelAlertDays($newThreshold);
                     $lastAlertDays = $newThreshold;
-                }
-                // B. Fuel Removal detected (Fuel expiry moved earlier by >= 3 hours)
-                elseif ($diffSeconds <= -self::FUEL_CHANGE_THRESHOLD_SECONDS) {
-                    $lostSeconds = abs($diffSeconds);
-                    $lostDays = round($lostSeconds / 86400.0, 1);
-                    $lostHours = round($lostSeconds / 3600.0, 1);
-
-                    $this->sendFuelRemovedNotification(
-                        $structureName,
-                        $typeName,
-                        $systemName,
-                        $daysRemaining,
-                        $fuelExpires,
-                        $lostDays,
-                        $lostHours,
-                        $structure->getId(),
-                        'structure'
-                    );
-
-                    // If fuel dropped significantly, adjust lastAlertDays so that the current threshold warning can still trigger if applicable
-                    $currentThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
-                    if ($currentThreshold !== null && $lastAlertDays !== null && $lastAlertDays < $currentThreshold) {
-                        $lastAlertDays = null;
-                        $structure->setLastFuelAlertDays(null);
-                    }
                 }
             }
 
@@ -121,6 +95,9 @@ class StructureAlertService
 
                     $structure->setLastFuelAlertDays($currentThreshold);
                 }
+            } else {
+                // Above 30 days -> ensure alert state is cleared
+                $structure->setLastFuelAlertDays(null);
             }
         }
 
@@ -179,11 +156,11 @@ class StructureAlertService
             $lastAlertDays = $starbase->getLastFuelAlertDays();
             $previousFuelExpires = $starbase->getPreviousFuelExpires();
 
+            // Refuel detection
             if ($previousFuelExpires !== null) {
                 $diffSeconds = $fuelExpiresApprox->getTimestamp() - $previousFuelExpires->getTimestamp();
 
-                // Refuel
-                if ($diffSeconds >= self::FUEL_CHANGE_THRESHOLD_SECONDS) {
+                if ($diffSeconds >= self::REFUEL_THRESHOLD_SECONDS) {
                     $gainedDays = round($diffSeconds / 86400.0, 1);
                     $gainedHours = round($diffSeconds / 3600.0, 1);
                     $daysRemaining = (int) round($daysLeftFloat);
@@ -204,31 +181,6 @@ class StructureAlertService
                     $starbase->setLastFuelAlertDays($newThreshold);
                     $lastAlertDays = $newThreshold;
                 }
-                // Defuel / Fuel Removal
-                elseif ($diffSeconds <= -self::FUEL_CHANGE_THRESHOLD_SECONDS) {
-                    $lostSeconds = abs($diffSeconds);
-                    $lostDays = round($lostSeconds / 86400.0, 1);
-                    $lostHours = round($lostSeconds / 3600.0, 1);
-                    $daysRemaining = (int) round($daysLeftFloat);
-
-                    $this->sendFuelRemovedNotification(
-                        $starbaseName,
-                        $typeName,
-                        $systemName,
-                        $daysRemaining,
-                        $fuelExpiresApprox,
-                        $lostDays,
-                        $lostHours,
-                        $starbase->getId(),
-                        'starbase'
-                    );
-
-                    $currentThreshold = $this->resolveCurrentThreshold($daysLeftFloat);
-                    if ($currentThreshold !== null && $lastAlertDays !== null && $lastAlertDays < $currentThreshold) {
-                        $lastAlertDays = null;
-                        $starbase->setLastFuelAlertDays(null);
-                    }
-                }
             }
 
             // Check Fuel Thresholds
@@ -248,6 +200,8 @@ class StructureAlertService
                     );
                     $starbase->setLastFuelAlertDays($currentThreshold);
                 }
+            } else {
+                $starbase->setLastFuelAlertDays(null);
             }
 
             $starbase->setPreviousFuelExpires($fuelExpiresApprox);
@@ -397,57 +351,6 @@ class StructureAlertService
                 'system' => $systemName,
                 'days_remaining' => $daysRemaining,
                 'gained_days' => $gainedDays,
-                'expires_at' => $fuelExpires->format(\DateTimeInterface::ATOM),
-            ]);
-            $this->entityManager->persist($log);
-        }
-    }
-
-    private function sendFuelRemovedNotification(
-        string $name,
-        string $typeName,
-        string $systemName,
-        int $daysRemaining,
-        \DateTimeImmutable $fuelExpires,
-        float $lostDays,
-        float $lostHours,
-        string $entityId,
-        string $entityType
-    ): void {
-        $lostText = $lostDays >= 1.0
-            ? sprintf('-%.1f Tage (-%d Std.)', $lostDays, (int)round($lostHours))
-            : sprintf('-%.1f Std.', $lostHours);
-
-        $embed = (new DiscordEmbed())
-            ->setTitle(sprintf('📦 [ENTNAHME] Treibstoff entnommen: %s', $name))
-            ->setColor(DiscordColor::ORANGE)
-            ->setDescription(sprintf('Aus der Struktur **%s** wurde Treibstoff entnommen.', $name))
-            ->addField('🏢 Struktur', sprintf('%s (%s)', $name, $typeName), true)
-            ->addField('🌌 Sonnensystem', $systemName, true)
-            ->addField('📉 Entnommen', $lostText, true)
-            ->addField('⏳ Neue Restlaufzeit', sprintf('~%d Tage', $daysRemaining), true)
-            ->addField('📅 Läuft ab am', $fuelExpires->format('d.m.Y H:i') . ' EVE Time', true)
-            ->setFooter('Keepers of Duat • Structure Fuel Monitor')
-            ->setTimestamp(new \DateTimeImmutable());
-
-        $message = DiscordMessage::create()
-            ->setUsername('Structure Fuel Monitor')
-            ->addEmbed($embed);
-
-        $sent = $this->discordWebhookService->send($message, DiscordWebhookService::CHANNEL_FUEL);
-
-        if ($sent) {
-            $log = new DiscordNotificationLog();
-            $log->setChannel(DiscordWebhookService::CHANNEL_FUEL);
-            $log->setType('FuelRemoved');
-            $log->setEntityType($entityType);
-            $log->setEntityId($entityId);
-            $log->setAlertLevel('removed');
-            $log->setMetadata([
-                'name' => $name,
-                'system' => $systemName,
-                'days_remaining' => $daysRemaining,
-                'lost_days' => $lostDays,
                 'expires_at' => $fuelExpires->format(\DateTimeInterface::ATOM),
             ]);
             $this->entityManager->persist($log);
