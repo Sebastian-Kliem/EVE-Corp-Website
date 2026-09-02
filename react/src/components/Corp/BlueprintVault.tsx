@@ -72,18 +72,10 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
     }, [blueprints]);
 
     const filteredBlueprints = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        const queryTerms = query ? query.split(/\s+/).filter(Boolean) : [];
+
         return blueprints.filter((bp) => {
-            // Search filter
-            const query = searchQuery.toLowerCase().trim();
-            const matchesSearch =
-                query === '' ||
-                bp.name.toLowerCase().includes(query) ||
-                bp.ownerCharacterName.toLowerCase().includes(query) ||
-                bp.locationName.toLowerCase().includes(query) ||
-                bp.systemName.toLowerCase().includes(query);
-
-            if (!matchesSearch) return false;
-
             // Tab filter
             if (filterType === 'bpo' && !bp.isBpo) return false;
             if (filterType === 'bpc' && bp.isBpo) return false;
@@ -91,6 +83,43 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
 
             // Category filter
             if (selectedCategory !== 'all' && bp.category !== selectedCategory) return false;
+
+            // Search filter
+            if (queryTerms.length > 0) {
+                const activityText = bp.activeJob
+                    ? (bp.activeJob.activityId === 4
+                        ? 'materialforschung me research'
+                        : bp.activeJob.activityId === 3
+                        ? 'zeiteffizienz te research'
+                        : bp.activeJob.activityId === 5
+                        ? 'kopieren copy bpc'
+                        : 'forschung job in arbeit')
+                    : 'bereit hangar';
+
+                const bpoBpcText = bp.isBpo ? 'original bpo originale' : 'kopie bpc kopien copy';
+
+                const searchableText = [
+                    bp.name || '',
+                    bp.category || '',
+                    bp.ownerCharacterName || '',
+                    bp.ownerUserName || '',
+                    bp.locationName || '',
+                    bp.systemName || '',
+                    bpoBpcText,
+                    activityText,
+                    `me:${bp.me ?? 0}`,
+                    `te:${bp.te ?? 0}`,
+                    `me ${bp.me ?? 0}`,
+                    `te ${bp.te ?? 0}`,
+                    `me${bp.me ?? 0}`,
+                    `te${bp.te ?? 0}`,
+                ].join(' ').toLowerCase();
+
+                const matchesAllTerms = queryTerms.every((term) => searchableText.includes(term));
+                if (!matchesAllTerms) {
+                    return false;
+                }
+            }
 
             return true;
         });
@@ -197,13 +226,23 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                     <div className="mb-0">
                         <div className="relative">
                             <input
-                                className="rounded-lg text-xs pl-8 pr-3 py-1.5 w-[250px] border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
+                                className="rounded-lg text-xs pl-8 pr-8 py-1.5 w-[250px] border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                                 type="text"
                                 placeholder="Blueprints suchen..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-eve-muted pointer-events-none">🔍</span>
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-eve-muted hover:text-white transition-colors"
+                                    title="Suche zurücksetzen"
+                                >
+                                    ✕
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
