@@ -117,6 +117,7 @@ function formatThousandsInputElement(input) {
     const formatted = (isNegative ? '-' : '') + digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     input.value = formatted;
 }
+window.formatThousandsInputElement = formatThousandsInputElement;
 
 document.addEventListener('input', function(e) {
     if (e.target && (e.target.classList.contains('format-thousands') || e.target.dataset.format === 'thousands')) {
