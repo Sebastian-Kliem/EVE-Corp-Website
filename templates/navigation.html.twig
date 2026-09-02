@@ -23,7 +23,7 @@
         <!-- Menu -->
         {% set current_route = app.request.attributes.get('_route') %}
         {% set is_allgemein_active = current_route in ['link_collection', 'app_suggestions', 'app_general_reactions'] %}
-        {% set is_corp_active = current_route in ['app_order_list', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_corp_structures', 'app_tracking_index'] %}
+        {% set is_corp_active = current_route in ['app_order_list', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_corp_structures', 'app_tracking_index', 'app_corp_defense_doctrine'] %}
         {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview'] %}
         {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index', 'app_admin_discord_index'] %}
 
@@ -49,6 +49,7 @@
                             Corp <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
+                            <a class="nav-dropdown-item {{ current_route == 'app_corp_defense_doctrine' ? 'is-active' : '' }}" href="{{ path('app_corp_defense_doctrine') }}" data-turbo="false">Verteidigungsdoktrin</a>
                             <a class="nav-dropdown-item {{ current_route == 'app_order_list' ? 'is-active' : '' }}" href="{{ path('app_order_list') }}">Orders</a>
                             <a class="nav-dropdown-item {{ current_route == 'app_dashboard_corp_assets_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
                             <a class="nav-dropdown-item {{ current_route == 'app_corp_blueprints' ? 'is-active' : '' }}" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>

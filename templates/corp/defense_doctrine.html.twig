@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Verteidigungsdoktrin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+    <div class="flex flex-wrap gap-6 items-center mb-8">
+        <div class="flex-1">
+            <h1 class="text-3xl font-semibold mb-2 text-white text-gradient">
+                🛡️ Verteidigungsdoktrin
+            </h1>
+            <p class="text-sm text-eve-muted">
+                Offizielle Flotten- und Verteidigungsdoktrin der Corporation. Hier findest du taktische Anmerkungen, Standard-Fits und Richtlinien für den Ernstfall.
+            </p>
+        </div>
+    </div>
+
+    {% set doctrineProps = {
+        initialNotes: notes,
+        initialNotesUpdatedAt: notesUpdatedAt,
+        initialFits: fits,
+        imagePaths: {
+            types: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' }),
+            renders: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'render' })
+        },
+        apiEndpoints: {
+            saveNotes: path('app_corp_defense_doctrine_save_notes'),
+            createFit: path('app_corp_defense_doctrine_create_fit'),
+            updateFit: path('app_corp_defense_doctrine_update_fit', { id: 123456789 }),
+            deleteFit: path('app_corp_defense_doctrine_delete_fit', { id: 123456789 })
+        }
+    } %}
+
+    <div data-react-component="DefenseDoctrine" data-react-props="{{ doctrineProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}
