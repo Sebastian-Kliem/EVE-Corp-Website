@@ -260,7 +260,7 @@ class CronRunCommand extends Command
             [
                 'name' => 'Corporation-Strukturen synchronisieren (Upwell & Starbases)',
                 'command' => 'corporation:sync-structures',
-                'expression' => '0 */2 * * *', // every 2 hours
+                'expression' => '0 * * * *', // every 1 hour
             ],
             [
                 'name' => 'Corporation-Benachrichtigungen synchronisieren (Defense & Alerts)',
