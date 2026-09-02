@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface JournalEntry {
     characterId: number;
@@ -28,8 +29,8 @@ export default function WalletJournal({ journalEntries, characters }: WalletJour
             const descriptionLower = (entry.description || '').toLowerCase();
             const reasonLower = (entry.reason || '').toLowerCase();
             const typeLower = (entry.refType || '').toLowerCase();
-            const queryLower = walletSearchQuery.toLowerCase();
-            const matchesQuery = walletSearchQuery === '' || 
+            const queryLower = cleanItemSearch(walletSearchQuery).toLowerCase().trim();
+            const matchesQuery = queryLower === '' || 
                 descriptionLower.includes(queryLower) || 
                 reasonLower.includes(queryLower) ||
                 typeLower.includes(queryLower);
@@ -51,7 +52,7 @@ export default function WalletJournal({ journalEntries, characters }: WalletJour
                             type="text" 
                             placeholder="Beschreibung suchen..." 
                             value={walletSearchQuery} 
-                            onChange={(e) => setWalletSearchQuery(e.target.value)} 
+                            onChange={(e) => setWalletSearchQuery(cleanItemSearch(e.target.value))} 
                         />
                     </div>
                     <div>

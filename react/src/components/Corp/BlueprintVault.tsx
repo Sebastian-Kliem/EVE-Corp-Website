@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface ActiveJob {
     activityId: number; // 3 = TE, 4 = ME, 5 = Copying
@@ -72,7 +73,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
     }, [blueprints]);
 
     const filteredBlueprints = useMemo(() => {
-        const query = searchQuery.trim().toLowerCase();
+        const query = cleanItemSearch(searchQuery).trim().toLowerCase();
         const queryTerms = query ? query.split(/\s+/).filter(Boolean) : [];
 
         return blueprints.filter((bp) => {
@@ -230,7 +231,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                 type="text"
                                 placeholder="Blueprints suchen..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                             />
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-eve-muted pointer-events-none">🔍</span>
                             {searchQuery && (

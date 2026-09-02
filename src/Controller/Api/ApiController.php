@@ -129,7 +129,7 @@ class ApiController extends AbstractController
     #[IsGranted('ROLE_MEMBER')]
     public function searchSdeItems(Request $request, SdeService $sdeService): JsonResponse
     {
-        $query = $request->query->get('q', '');
+        $query = trim(str_replace('*', '', (string) $request->query->get('q', '')));
 
         if (strlen($query) < 2) {
             return new JsonResponse([]);

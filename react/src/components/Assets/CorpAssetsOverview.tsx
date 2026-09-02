@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface AssetNode {
     itemId: number;
@@ -225,7 +226,7 @@ export default function CorpAssetsOverview({
         return { node: null, hasMatch: false };
     };
 
-    const query = searchQuery.trim().toLowerCase();
+    const query = cleanItemSearch(searchQuery).trim().toLowerCase();
     const isSearching = query.length > 0;
     const isFiltering = activeFilter !== 'all';
 
@@ -387,7 +388,7 @@ export default function CorpAssetsOverview({
                                 type="text"
                                 placeholder="Gegenstände suchen..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                             />
                         </div>
                     )}

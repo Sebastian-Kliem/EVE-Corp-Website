@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ItemPasteInput from '../Form/ItemPasteInput';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface TrackingListItem {
     id: number;
@@ -63,14 +64,15 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
 
     // Debounce SDE Item Search
     useEffect(() => {
-        if (searchQuery.trim().length < 2) {
+        const cleanQuery = cleanItemSearch(searchQuery).trim();
+        if (cleanQuery.length < 2) {
             setSuggestions([]);
             return;
         }
 
         setSearchingItems(true);
         const timer = setTimeout(() => {
-            fetch(`/api/sde/items?q=${encodeURIComponent(searchQuery.trim())}`, {
+            fetch(`/api/sde/items?q=${encodeURIComponent(cleanQuery)}`, {
                 headers: {
                     'Authorization': `Bearer ${jwtToken}`,
                     'Accept': 'application/json'
@@ -390,7 +392,7 @@ export default function TrackingListManager({ jwtToken }: TrackingListManagerPro
                                                 className="rounded px-2.5 py-1.5 text-xs border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                                                 placeholder="Item suchen und hinzufügen..."
                                                 value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                                                 onFocus={() => {
                                                     if (suggestions.length > 0) setShowSuggestions(true);
                                                 }}

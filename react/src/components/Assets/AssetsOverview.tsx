@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface AssetNode {
     itemId: number;
@@ -246,7 +247,7 @@ export default function AssetsOverview({
     };
 
     // Filter characters, locations and items based on search query and active filter
-    const queryNormalized = searchQuery.toLowerCase().trim();
+    const queryNormalized = cleanItemSearch(searchQuery).toLowerCase().trim();
     const isSearching = queryNormalized !== '';
     const isFiltering = activeFilter !== 'all';
 
@@ -412,7 +413,7 @@ export default function AssetsOverview({
                                 type="text"
                                 placeholder="Gegenstände suchen..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                             />
                         </div>
                     </div>

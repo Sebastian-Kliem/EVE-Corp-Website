@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface Item {
     id: number;
@@ -51,13 +52,14 @@ export default function ItemAutocomplete({
 
     // Fetch autocomplete suggestions with debounce
     useEffect(() => {
-        if (query.trim().length < 2 || selectedId) {
+        const cleanQuery = cleanItemSearch(query).trim();
+        if (cleanQuery.length < 2 || selectedId) {
             setSuggestions([]);
             return;
         }
 
         const timer = setTimeout(() => {
-            fetch(`/api/sde/items?q=${encodeURIComponent(query.trim())}`, {
+            fetch(`/api/sde/items?q=${encodeURIComponent(cleanQuery)}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${jwtToken}`,
@@ -95,7 +97,7 @@ export default function ItemAutocomplete({
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
+        const val = cleanItemSearch(e.target.value);
         setQuery(val);
         setSelectedId(''); // Clear selection when user starts typing again
     };

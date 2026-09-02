@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface Material {
     typeId: number;
@@ -285,8 +286,9 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
     }, [calcData, selectedHub, rigBonus, structureCostModifier, systemCostIndex, taxRate, useCompressedGas]);
 
     const filteredReactions = useMemo(() => {
+        const cleanQuery = cleanItemSearch(searchQuery).toLowerCase().trim();
         return calculatedReactions.filter(r =>
-            r.polymerName.toLowerCase().includes(searchQuery.toLowerCase())
+            !cleanQuery || r.polymerName.toLowerCase().includes(cleanQuery)
         );
     }, [calculatedReactions, searchQuery]);
 
@@ -459,7 +461,7 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
                         className="rounded-lg text-xs px-2.5 py-1.5 w-[250px] border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                         placeholder="Reaktion filtern..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                     />
                 </div>
             </div>

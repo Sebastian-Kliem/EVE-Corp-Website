@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface FittingCharge {
     itemId: number;
@@ -168,7 +169,7 @@ export default function CorpStructuresOverview({
                 return true;
             })
             .map(cData => {
-                const query = searchQuery.toLowerCase().trim();
+                const query = cleanItemSearch(searchQuery).toLowerCase().trim();
                 const structures = cData.structures || [];
                 const starbases = cData.starbases || [];
 
@@ -404,7 +405,7 @@ export default function CorpStructuresOverview({
                     <input
                         type="text"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                         placeholder="Suche nach Name, System, Typ, Fitting..."
                         className="w-full pl-10 pr-4 py-2 bg-[#080d1a] border border-white/10 rounded-lg text-sm text-white placeholder-eve-muted focus:outline-none focus:border-eve-primary/60 focus:shadow-[0_0_10px_rgba(0,240,255,0.2)] transition-all duration-300"
                     />

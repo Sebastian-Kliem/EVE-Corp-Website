@@ -102,7 +102,8 @@ final class OrderListController extends AbstractController
                 return $this->redirectToRoute('app_order_list');
             }
 
-            $amount = $request->get('amount');
+            $rawAmount = (string)$request->get('amount');
+            $amount = preg_replace('/[^\d]/', '', $rawAmount);
             if (!is_numeric($amount) || (int)$amount <= 0) {
                 $this->addFlash('error', 'Die Menge muss eine Zahl größer als 0 sein.');
                 return $this->redirectToRoute('app_order_list');
@@ -147,7 +148,8 @@ final class OrderListController extends AbstractController
                 return $this->redirectToRoute('app_order_list');
             }
 
-            $amount = $request->get('amount');
+            $rawAmount = (string)$request->get('amount');
+            $amount = preg_replace('/[^\d]/', '', $rawAmount);
             if (!is_numeric($amount) || (int)$amount <= 0) {
                 $this->addFlash('error', 'Die Menge muss eine Zahl größer als 0 sein.');
                 return $this->redirectToRoute('app_order_list');
@@ -224,7 +226,8 @@ final class OrderListController extends AbstractController
                 return $this->redirectToRoute('app_order_list');
             }
 
-            $amount = $request->get('amount');
+            $rawAmount = (string)$request->get('amount');
+            $amount = preg_replace('/[^\d]/', '', $rawAmount);
             if (!is_numeric($amount) || (int)$amount <= 0) {
                 $this->addFlash('error', 'Die Menge muss eine Zahl größer als 0 sein.');
                 return $this->redirectToRoute('app_order_list');
@@ -269,7 +272,8 @@ final class OrderListController extends AbstractController
                 return $this->redirectToRoute('app_order_list');
             }
 
-            $amount = $request->get('amount');
+            $rawAmount = (string)$request->get('amount');
+            $amount = preg_replace('/[^\d]/', '', $rawAmount);
             if (!is_numeric($amount) || (int)$amount <= 0) {
                 $this->addFlash('error', 'Die Menge muss eine Zahl größer als 0 sein.');
                 return $this->redirectToRoute('app_order_list');

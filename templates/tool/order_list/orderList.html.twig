@@ -30,7 +30,7 @@
                         <div class="flex-1 min-w-[150px]">
                             <div class="flex flex-col gap-2 mb-4">
                                 <label class="text-sm font-semibold text-white" for="amount_buy">Menge:</label>
-                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="amount_buy" name="amount" min="1" step="1" required>
+                                <input class="format-thousands rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" inputmode="numeric" id="amount_buy" name="amount" placeholder="z. B. 1.000.000" required>
                             </div>
                         </div>
                         <div class="flex-1 min-w-[150px]">
@@ -100,7 +100,7 @@
                                 </div>
                             </td>
                             <td class="p-3 text-sm" data-label="Menge">
-                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="amount" value="{{ buy_order.amount }}" min="1" step="1" form="edit_buy_form_{{ buy_order.id }}" required>
+                                <input class="format-thousands rounded-lg max-w-[120px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="text" inputmode="numeric" name="amount" value="{{ buy_order.amount|number_format(0, ',', '.') }}" form="edit_buy_form_{{ buy_order.id }}" required>
                             </td>
                             <td class="p-3 text-sm" data-label="% zu Jita-Buy">
                                 <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="jita_buy" value="{{ buy_order.percentToJitaBuy }}" form="edit_buy_form_{{ buy_order.id }}" required>
@@ -237,7 +237,7 @@
                         <div class="flex-1 min-w-[150px]">
                             <div class="flex flex-col gap-2 mb-4">
                                 <label class="text-sm font-semibold text-white" for="amount_sell">Menge:</label>
-                                <input class="rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="number" id="amount_sell" name="amount" min="1" step="1" required>
+                                <input class="format-thousands rounded-lg w-full px-3 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300" type="text" inputmode="numeric" id="amount_sell" name="amount" placeholder="z. B. 1.000.000" required>
                             </div>
                         </div>
                         <div class="flex-1 min-w-[150px]">
@@ -307,7 +307,7 @@
                                 </div>
                             </td>
                             <td class="p-3 text-sm" data-label="Menge">
-                                <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="amount" value="{{ sell_order.amount }}" min="1" step="1" form="edit_sell_form_{{ sell_order.id }}" required>
+                                <input class="format-thousands rounded-lg max-w-[120px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="text" inputmode="numeric" name="amount" value="{{ sell_order.amount|number_format(0, ',', '.') }}" form="edit_sell_form_{{ sell_order.id }}" required>
                             </td>
                             <td class="p-3 text-sm" data-label="% zu Jita-Sell">
                                 <input class="rounded-lg max-w-[100px] px-3 py-1.5 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary" type="number" name="jita_sell" value="{{ sell_order.percentToJitaSell }}" form="edit_sell_form_{{ sell_order.id }}" required>

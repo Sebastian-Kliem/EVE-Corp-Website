@@ -104,6 +104,50 @@ function restoreDetailsAndScroll() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', restoreDetailsAndScroll);
-document.addEventListener('turbo:load', restoreDetailsAndScroll);
+// Thousands separator live formatter for numeric inputs
+function formatThousandsInputElement(input) {
+    const oldVal = input.value;
+    if (!oldVal) return;
+    const isNegative = oldVal.trim().startsWith('-');
+    const digitsOnly = oldVal.replace(/\D/g, '');
+    if (!digitsOnly) {
+        input.value = isNegative ? '-' : '';
+        return;
+    }
+    const formatted = (isNegative ? '-' : '') + digitsOnly.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    input.value = formatted;
+}
+
+document.addEventListener('input', function(e) {
+    if (e.target && (e.target.classList.contains('format-thousands') || e.target.dataset.format === 'thousands')) {
+        const input = e.target;
+        const oldPos = input.selectionStart;
+        const oldLen = input.value.length;
+
+        formatThousandsInputElement(input);
+
+        const newLen = input.value.length;
+        if (oldPos !== null) {
+            const newPos = Math.max(0, oldPos + (newLen - oldLen));
+            input.setSelectionRange(newPos, newPos);
+        }
+    }
+});
+
+function initThousandsInputs() {
+    document.querySelectorAll('.format-thousands, [data-format="thousands"]').forEach(function(input) {
+        if (input.value) {
+            formatThousandsInputElement(input);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    restoreDetailsAndScroll();
+    initThousandsInputs();
+});
+document.addEventListener('turbo:load', function() {
+    restoreDetailsAndScroll();
+    initThousandsInputs();
+});
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
+import { formatThousands, parseThousands } from '../../utils/numberFormat';
 
 interface CharacterListEntry {
     id: number;
@@ -158,7 +160,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             setManualError('Beschreibung fehlt.');
             return;
         }
-        const amt = parseFloat(manualAmount);
+        const amt = parseThousands(manualAmount);
         if (isNaN(amt) || amt === 0) {
             setManualError('Betrag darf nicht 0 sein.');
             return;
@@ -418,7 +420,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     return false;
                 }
                 // Search term check
-                return !(searchTerm && !item.typeName.toLowerCase().includes(searchTerm.toLowerCase()));
+                const cleanSearch = cleanItemSearch(searchTerm).toLowerCase().trim();
+                return !(cleanSearch && !item.typeName.toLowerCase().includes(cleanSearch));
 
             });
 
@@ -514,7 +517,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 if (!selectedCategories.includes(item.category)) {
                     return false;
                 }
-                return !(searchTerm && !item.typeName.toLowerCase().includes(searchTerm.toLowerCase()));
+                const cleanSearch = cleanItemSearch(searchTerm).toLowerCase().trim();
+                return !(cleanSearch && !item.typeName.toLowerCase().includes(cleanSearch));
             });
 
             filteredDetails.forEach(item => {
@@ -697,7 +701,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
                             placeholder="z.B. Fullerite..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(cleanItemSearch(e.target.value))}
                         />
                     </div>
 
@@ -974,11 +978,12 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                             <input
                                 id="manual-amount"
                                 name="amount"
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 className="w-full bg-[#0a0f19e6] border border-eve-border text-eve-text p-2 rounded text-sm focus:border-eve-primary focus:outline-none"
-                                placeholder="Betrag in ISK"
+                                placeholder="z. B. 100.000.000"
                                 value={manualAmount}
-                                onChange={(e) => setManualAmount(e.target.value)}
+                                onChange={(e) => setManualAmount(formatThousands(e.target.value))}
                                 required
                             />
                         </div>

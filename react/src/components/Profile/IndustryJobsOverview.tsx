@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useMemo} from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface CharacterListEntry {
     id: number;
@@ -420,7 +421,7 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                             className="rounded px-3 py-1.5 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 w-full"
                             placeholder="Nach Gegenstand oder Blueprint suchen..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(cleanItemSearch(e.target.value))}
                         />
                     </div>
                     <div className="w-full md:w-1/4 min-w-[200px]">
@@ -592,10 +593,11 @@ export default function IndustryJobsOverview({charactersList, apiDataUrl, imageP
                     }
 
                     // Apply global search & filters
+                    const cleanTerm = cleanItemSearch(searchTerm).toLowerCase().trim();
                     const filteredJobs = activeJobs.filter(job => {
-                        const matchesSearch =
-                            job.blueprintName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (job.productName && job.productName.toLowerCase().includes(searchTerm.toLowerCase()));
+                        const matchesSearch = !cleanTerm ||
+                            job.blueprintName.toLowerCase().includes(cleanTerm) ||
+                            (job.productName && job.productName.toLowerCase().includes(cleanTerm));
 
                         const matchesActivity =
                             filterActivity === 'all' ||

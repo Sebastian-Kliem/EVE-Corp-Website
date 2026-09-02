@@ -129,7 +129,12 @@ class PerformanceController extends AbstractController
         $dateStr = $data['date'] ?? null;
         $category = $data['category'] ?? 'other';
         $description = trim($data['description'] ?? '');
-        $amount = (float)($data['amount'] ?? 0);
+        $amountRaw = $data['amount'] ?? 0;
+        if (is_string($amountRaw)) {
+            $amountRaw = str_replace('.', '', $amountRaw);
+            $amountRaw = str_replace(',', '.', $amountRaw);
+        }
+        $amount = (float)$amountRaw;
         $characterId = isset($data['characterId']) ? (int)$data['characterId'] : null;
 
         if (!$dateStr) {

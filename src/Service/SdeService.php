@@ -181,6 +181,11 @@ class SdeService
      */
     public function searchItems(string $query, int $limit = 20): array
     {
+        $query = trim(str_replace('*', '', $query));
+        if (strlen($query) < 2) {
+            return [];
+        }
+
         try {
             $results = $this->connection->fetchAllAssociative(
                 'SELECT t.typeID as id, t.typeName as name, g.groupName FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.published = 1 AND t.typeName LIKE :query ORDER BY t.typeName ASC LIMIT :limit',
@@ -218,7 +223,7 @@ class SdeService
         }
 
         // Clean names
-        $names = array_unique(array_filter(array_map('trim', $names)));
+        $names = array_unique(array_filter(array_map(fn($n) => trim(str_replace('*', '', (string)$n)), $names)));
         if (empty($names)) {
             return [];
         }

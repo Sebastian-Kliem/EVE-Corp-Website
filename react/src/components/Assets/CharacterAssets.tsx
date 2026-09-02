@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface Character {
     id: number;
@@ -119,11 +120,12 @@ export default function CharacterAssets({
     };
 
     // Filter the grouped assets based on the search query
+    const cleanQuery = cleanItemSearch(searchQuery).toLowerCase().trim();
     const filteredGroupedAssets = Object.entries(groupedAssets)
         .map(([locationId, group]) => {
             const filteredItems = group.items.filter((item) =>
-                item.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
-                (item.customName && item.customName.toLowerCase().includes(searchQuery.toLowerCase().trim()))
+                item.name.toLowerCase().includes(cleanQuery) ||
+                (item.customName && item.customName.toLowerCase().includes(cleanQuery))
             );
 
             return {
@@ -187,7 +189,7 @@ export default function CharacterAssets({
                                 type="text"
                                 placeholder="Inventar durchsuchen..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
                             />
                         </div>
                     )}
