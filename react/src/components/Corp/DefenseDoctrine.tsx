@@ -17,6 +17,7 @@ interface DefenseDoctrineProps {
     initialNotes: string;
     initialNotesUpdatedAt: string | null;
     initialFits: FitItem[];
+    canManage?: boolean;
     imagePaths: {
         types: string;
         renders: string;
@@ -44,6 +45,7 @@ export default function DefenseDoctrine({
     initialNotes,
     initialNotesUpdatedAt,
     initialFits,
+    canManage = false,
     imagePaths,
     apiEndpoints,
 }: DefenseDoctrineProps) {
@@ -336,37 +338,39 @@ export default function DefenseDoctrine({
                         </div>
                     </div>
 
-                    {!isEditingNotes ? (
-                        <button
-                            onClick={() => {
-                                setNotesDraft(notes);
-                                setIsEditingNotes(true);
-                            }}
-                            className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3.5 py-2 cursor-pointer transition-colors duration-200"
-                        >
-                            ✏️ Anmerkungen bearbeiten
-                        </button>
-                    ) : (
-                        <div className="flex items-center gap-2">
+                    {canManage && (
+                        !isEditingNotes ? (
                             <button
-                                onClick={handleSaveNotes}
-                                disabled={isSavingNotes}
-                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs px-3.5 py-2 cursor-pointer transition-colors duration-200 disabled:opacity-50"
-                            >
-                                {isSavingNotes ? 'Speichern...' : '💾 Speichern'}
-                            </button>
-                            <button
-                                onClick={() => setIsEditingNotes(false)}
-                                disabled={isSavingNotes}
+                                onClick={() => {
+                                    setNotesDraft(notes);
+                                    setIsEditingNotes(true);
+                                }}
                                 className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3.5 py-2 cursor-pointer transition-colors duration-200"
                             >
-                                Abbrechen
+                                ✏️ Anmerkungen bearbeiten
                             </button>
-                        </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleSaveNotes}
+                                    disabled={isSavingNotes}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-xs px-3.5 py-2 cursor-pointer transition-colors duration-200 disabled:opacity-50"
+                                >
+                                    {isSavingNotes ? 'Speichern...' : '💾 Speichern'}
+                                </button>
+                                <button
+                                    onClick={() => setIsEditingNotes(false)}
+                                    disabled={isSavingNotes}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-3.5 py-2 cursor-pointer transition-colors duration-200"
+                                >
+                                    Abbrechen
+                                </button>
+                            </div>
+                        )
                     )}
                 </div>
 
-                {isEditingNotes ? (
+                {isEditingNotes && canManage ? (
                     <div className="flex flex-col gap-3">
                         <textarea
                             value={notesDraft}
@@ -387,7 +391,9 @@ export default function DefenseDoctrine({
                             </div>
                         ) : (
                             <div className="text-sm text-eve-muted italic bg-white/[0.02] border border-dashed border-white/10 rounded-lg p-6 text-center">
-                                Noch keine allgemeinen Anmerkungen hinterlegt. Klicke auf "Anmerkungen bearbeiten", um taktische Notizen hinzuzufügen.
+                                {canManage
+                                    ? 'Noch keine allgemeinen Anmerkungen hinterlegt. Klicke auf "Anmerkungen bearbeiten", um taktische Notizen hinzuzufügen.'
+                                    : 'Aktuell sind keine allgemeinen Doktrin-Anmerkungen hinterlegt.'}
                             </div>
                         )}
                         {notesUpdatedAt && (
@@ -415,12 +421,14 @@ export default function DefenseDoctrine({
                         </div>
                     </div>
 
-                    <button
-                        onClick={handleOpenCreateForm}
-                        className="inline-flex items-center gap-2 border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
-                    >
-                        ➕ Neuen Fit hinzufügen
-                    </button>
+                    {canManage && (
+                        <button
+                            onClick={handleOpenCreateForm}
+                            className="inline-flex items-center gap-2 border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
+                        >
+                            ➕ Neuen Fit hinzufügen
+                        </button>
+                    )}
                 </div>
 
                 {/* Filters & Search */}
@@ -481,13 +489,19 @@ export default function DefenseDoctrine({
                 {/* Fits Grid */}
                 {filteredFits.length === 0 ? (
                     <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-dashed border-white/10">
-                        <p className="text-eve-muted mb-3">Keine Verteidigungsfits gefunden.</p>
-                        <button
-                            onClick={handleOpenCreateForm}
-                            className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-4 py-2 cursor-pointer transition-colors duration-200"
-                        >
-                            ➕ Ersten Fit erstellen
-                        </button>
+                        <p className="text-eve-muted mb-3">
+                            {fits.length === 0
+                                ? 'Aktuell sind noch keine Verteidigungsfits hinterlegt.'
+                                : 'Keine passenden Verteidigungsfits für diesen Filter/Suchbegriff gefunden.'}
+                        </p>
+                        {canManage && (
+                            <button
+                                onClick={handleOpenCreateForm}
+                                className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-4 py-2 cursor-pointer transition-colors duration-200"
+                            >
+                                ➕ Ersten Fit erstellen
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -564,21 +578,25 @@ export default function DefenseDoctrine({
                                                 {isExpanded ? '▲' : '👁️'}
                                             </button>
 
-                                            <button
-                                                onClick={() => handleOpenEditForm(fit)}
-                                                title="Fit bearbeiten"
-                                                className="inline-flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-white/5"
-                                            >
-                                                ✏️
-                                            </button>
+                                            {canManage && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleOpenEditForm(fit)}
+                                                        title="Fit bearbeiten"
+                                                        className="inline-flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-white/5"
+                                                    >
+                                                        ✏️
+                                                    </button>
 
-                                            <button
-                                                onClick={() => handleDeleteFit(fit)}
-                                                title="Fit löschen"
-                                                className="inline-flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-red-500/20"
-                                            >
-                                                🗑️
-                                            </button>
+                                                    <button
+                                                        onClick={() => handleDeleteFit(fit)}
+                                                        title="Fit löschen"
+                                                        className="inline-flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-red-500/20"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
 
                                         {/* Expanded EFT Fitting Raw View */}
@@ -616,7 +634,7 @@ export default function DefenseDoctrine({
             </div>
 
             {/* Modal: Fit erstellen / bearbeiten */}
-            {isFormOpen && (
+            {isFormOpen && canManage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
                     <div className="bg-[#0f1523] border border-eve-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] w-full max-w-[650px] overflow-hidden my-8">
                         <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#141b2d]">

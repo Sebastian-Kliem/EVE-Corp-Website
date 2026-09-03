@@ -53,10 +53,12 @@ class DefenseDoctrineController extends AbstractController
             'notes' => $notesSetting ? ($notesSetting->getValue() ?? '') : '',
             'notesUpdatedAt' => $notesSetting ? $notesSetting->getUpdatedAt()->format('d.m.Y H:i') : null,
             'fits' => $fitsData,
+            'canManage' => $this->isGranted('ROLE_OFFICER'),
         ]);
     }
 
     #[Route('/api/notes', name: 'app_corp_defense_doctrine_save_notes', methods: ['POST'])]
+    #[IsGranted('ROLE_OFFICER')]
     public function saveNotes(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -82,6 +84,7 @@ class DefenseDoctrineController extends AbstractController
     }
 
     #[Route('/api/fits', name: 'app_corp_defense_doctrine_create_fit', methods: ['POST'])]
+    #[IsGranted('ROLE_OFFICER')]
     public function createFit(Request $request): JsonResponse
     {
         $currentUser = $this->getUser();
@@ -157,6 +160,7 @@ class DefenseDoctrineController extends AbstractController
     }
 
     #[Route('/api/fits/{id}', name: 'app_corp_defense_doctrine_update_fit', methods: ['PUT', 'POST'])]
+    #[IsGranted('ROLE_OFFICER')]
     public function updateFit(int $id, Request $request): JsonResponse
     {
         $fit = $this->fitRepository->find($id);
@@ -227,6 +231,7 @@ class DefenseDoctrineController extends AbstractController
     }
 
     #[Route('/api/fits/{id}', name: 'app_corp_defense_doctrine_delete_fit', methods: ['DELETE'])]
+    #[IsGranted('ROLE_OFFICER')]
     public function deleteFit(int $id): JsonResponse
     {
         $fit = $this->fitRepository->find($id);
