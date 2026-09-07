@@ -159,7 +159,10 @@
                 {% endif %}
 
                 <!-- Corp Containers Section -->
-                <h3 class="text-sm font-semibold mb-2 text-white text-gradient">📦 Container in Corp-Hangaren</h3>
+                <h3 class="text-sm font-semibold mb-1 text-white text-gradient">📦 Container in Corp-Hangaren</h3>
+                <p class="text-xs text-eve-muted mb-3">
+                    Hinweis: Container in oben bereits als privat ausgewählten Corp-Hangaren werden automatisch berücksichtigt und müssen nicht zusätzlich ausgewählt werden (eine Doppelauswahl wird vom System automatisch bereinigt).
+                </p>
                 {% if availableContainers is not empty %}
                     <div class="mb-5 max-h-[200px] overflow-y-auto bg-black/20 p-3 rounded-md border border-eve-border">
                         {% for container in availableContainers %}

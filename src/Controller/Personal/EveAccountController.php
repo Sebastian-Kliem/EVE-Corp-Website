@@ -11,6 +11,7 @@ use App\Entity\EveCorporationAsset;
 use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
 use App\Service\LocationService;
+use App\Service\PersonalCorpAssetService;
 use App\Service\SdeService;
 use App\Service\JitaPriceService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -327,7 +328,8 @@ class EveAccountController extends AbstractController
     public function assetsOverview(
         LocationService $locationService,
         SdeService $sdeService,
-        \App\Service\Esi\EsiClient $esiClient
+        \App\Service\Esi\EsiClient $esiClient,
+        PersonalCorpAssetService $personalCorpAssetService
     ): Response {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
@@ -471,42 +473,16 @@ class EveAccountController extends AbstractController
                         'corporationId' => $corpId
                     ]);
 
-                    $corpAssetsByItemId = [];
-                    foreach ($corpAssets as $asset) {
-                        $corpAssetsByItemId[$asset->getItemId()] = $asset;
-                    }
+                    $resolvedCorp = $personalCorpAssetService->resolvePersonalCorpAssets(
+                        $corpId,
+                        $corpAssets,
+                        $personalHangars,
+                        $personalContainers
+                    );
 
-                    $corpNestedAssets = [];
-                    foreach ($corpAssets as $asset) {
-                        $parentId = $asset->getLocationId();
-                        if (isset($corpAssetsByItemId[$parentId])) {
-                            $corpNestedAssets[$parentId][] = $asset;
-                        }
-                    }
-
-                    $personalRoots = [];
-                    // Hangars
-                    foreach ($personalHangars as $h) {
-                        if ((int)$h['corporationId'] === $corpId) {
-                            $locId = (int)$h['locationId'];
-                            $flag = $h['locationFlag'];
-                            foreach ($corpAssets as $asset) {
-                                if ($asset->getLocationId() === $locId && $asset->getLocationFlag() === $flag) {
-                                    $personalRoots[] = $asset;
-                                }
-                            }
-                        }
-                    }
-
-                    // Containers
-                    foreach ($personalContainers as $c) {
-                        if ((int)$c['corporationId'] === $corpId) {
-                            $itemId = (int)$c['itemId'];
-                            if (isset($corpAssetsByItemId[$itemId])) {
-                                $personalRoots[] = $corpAssetsByItemId[$itemId];
-                            }
-                        }
-                    }
+                    $personalRoots = $resolvedCorp['roots'];
+                    $corpAssetsByItemId = $resolvedCorp['byItemId'];
+                    $corpNestedAssets = $resolvedCorp['nested'];
 
                     // Try to find the sync character for this corp to resolve structure locations
                     $syncCharacter = $this->entityManager->getRepository(EveCharacter::class)->createQueryBuilder('c')
@@ -525,17 +501,17 @@ class EveAccountController extends AbstractController
                     }
 
                     foreach ($personalRootsByLocation as $locationId => $roots) {
+                        $resolved = $locationService->resolveLocation($locationId, $syncCharacter ?? $character);
+                        $locationName = $resolved['name'];
+                        $systemName = $resolved['systemName'];
+
                         $locIndex = -1;
                         foreach ($locations as $idx => $loc) {
-                            if ($loc['id'] === $locationId) {
+                            if ($loc['id'] === $locationId || $loc['name'] === $locationName) {
                                 $locIndex = $idx;
                                 break;
                             }
                         }
-
-                        $resolved = $locationService->resolveLocation($locationId, $syncCharacter ?? $character);
-                        $locationName = $resolved['name'];
-                        $systemName = $resolved['systemName'];
 
                         $items = [];
                         foreach ($roots as $root) {

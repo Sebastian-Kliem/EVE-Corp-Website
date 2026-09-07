@@ -14,6 +14,7 @@ use App\Repository\EveCorporationAssetRepository;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use App\Service\JitaPriceService;
+use App\Service\PersonalCorpAssetService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -26,7 +27,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
         private readonly EveCorporationAssetRepository $corpAssetRepository,
         private readonly SdeService $sdeService,
         private readonly LoggerInterface $logger,
-        private readonly JitaPriceService $jitaPriceService
+        private readonly JitaPriceService $jitaPriceService,
+        private readonly PersonalCorpAssetService $personalCorpAssetService
     ) {}
 
     public function getCommandName(): string
@@ -400,40 +402,15 @@ class UpdateCharacterDataTask implements CronTaskInterface
                             'corporationId' => $character->getCorporationId()
                         ]);
 
-                        $corpAssetsByItemId = [];
-                        foreach ($corpAssets as $ca) {
-                            $corpAssetsByItemId[$ca->getItemId()] = $ca;
-                        }
+                        $resolvedCorp = $this->personalCorpAssetService->resolvePersonalCorpAssets(
+                            (int)$character->getCorporationId(),
+                            $corpAssets,
+                            $personalHangars,
+                            $personalContainers
+                        );
 
-                        $corpNestedAssets = [];
-                        foreach ($corpAssets as $ca) {
-                            $parentId = $ca->getLocationId();
-                            if (isset($corpAssetsByItemId[$parentId])) {
-                                $corpNestedAssets[$parentId][] = $ca;
-                            }
-                        }
-
-                        $personalRoots = [];
-                        foreach ($personalHangars as $h) {
-                            if ((int)$h['corporationId'] === $character->getCorporationId()) {
-                                $locId = (int)$h['locationId'];
-                                $flag = $h['locationFlag'];
-                                foreach ($corpAssets as $ca) {
-                                    if ($ca->getLocationId() === $locId && $ca->getLocationFlag() === $flag) {
-                                        $personalRoots[] = $ca;
-                                    }
-                                }
-                            }
-                        }
-
-                        foreach ($personalContainers as $c) {
-                            if ((int)$c['corporationId'] === $character->getCorporationId()) {
-                                $itemId = (int)$c['itemId'];
-                                if (isset($corpAssetsByItemId[$itemId])) {
-                                    $personalRoots[] = $corpAssetsByItemId[$itemId];
-                                }
-                            }
-                        }
+                        $personalRoots = $resolvedCorp['roots'];
+                        $corpNestedAssets = $resolvedCorp['nested'];
 
                         $collectDescendants = null;
                         $collectDescendants = function($ca, $nested, &$collected) use (&$collectDescendants) {
