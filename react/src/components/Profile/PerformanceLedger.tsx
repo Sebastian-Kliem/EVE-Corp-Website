@@ -745,8 +745,8 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             {/* Ledger list */}
             <div className="flex flex-col gap-4">
                 {filteredLedger.length === 0 ? (
-                    <div className="box has-text-centered p-5">
-                        <p className="text-muted">Keine Ertragsdatensätze für die gewählten Filter gefunden.</p>
+                    <div className="bg-eve-card border border-eve-border shadow-eve text-center p-5 rounded-lg">
+                        <p className="text-eve-muted text-sm">Keine Ertragsdatensätze für die gewählten Filter gefunden.</p>
                     </div>
                 ) : (
                     filteredLedger.map(day => {
@@ -1003,7 +1003,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
             {/* Hidden Entries Exclusions List */}
             {exclusions.length > 0 && (
-                <details className="box mt-5" style={{ background: 'rgba(255, 68, 68, 0.02)', borderColor: 'rgba(255, 68, 68, 0.12)' }}>
+                <details className="rounded-lg border mt-5 overflow-hidden" style={{ background: 'rgba(255, 68, 68, 0.02)', borderColor: 'rgba(255, 68, 68, 0.12)' }}>
                     <summary className="text-xs uppercase text-eve-muted font-bold tracking-wider" style={{ color: '#ff6b8b', fontSize: '0.85rem', padding: '1rem 1.25rem' }}>
                         <span>👁️ Ausgeblendete automatische Buchungen ({exclusions.length})</span>
                     </summary>

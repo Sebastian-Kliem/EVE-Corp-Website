@@ -450,7 +450,7 @@ export default function AssetsOverview({
 
             {/* Character Accordion Panels */}
             {!hasCharacters ? (
-                <div className="notification is-info">
+                <div className="p-4 rounded-lg text-sm bg-sky-500/10 border border-sky-500/30 text-sky-400">
                     Bisher sind keine EVE Online Charaktere mit diesem Account verknüpft.
                     Bitte verknüpfe einen Charakter über EVE SSO auf deinem Profil.
                 </div>

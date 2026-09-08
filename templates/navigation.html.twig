@@ -27,65 +27,70 @@
         {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview'] %}
         {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index', 'app_admin_discord_index'] %}
 
+        {% set nav_trigger_base = "cursor-pointer flex items-center gap-2 py-2 font-semibold select-none no-underline transition-all duration-200 " %}
+        {% set nav_item_base = "block w-full text-left py-2 px-5 no-underline transition-all duration-200 text-sm " %}
+        {% set nav_item_normal = nav_item_base ~ "text-eve-muted hover:text-eve-primary hover:bg-white/5" %}
+        {% set nav_item_active = nav_item_base ~ "text-eve-primary bg-eve-primary/5 border-l-2 border-eve-primary pl-[18px] font-semibold" %}
+
         <div class="hidden lg:flex lg:items-center lg:justify-between w-full bg-[#0d121ffa] lg:bg-transparent border border-eve-border lg:border-none shadow-eve lg:shadow-none rounded-lg lg:rounded-none p-4 lg:p-0 absolute lg:static left-6 right-6 top-full [&.is-active]:block" data-navbar-target="menu">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-6 w-full lg:w-auto">
                 {% if is_granted('ROLE_MEMBER') %}
 
                     <!-- Allgemein Dropdown -->
                     <div class="relative group" data-controller="dropdown">
-                        <a class="nav-trigger {{ is_allgemein_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
+                        <a class="{{ nav_trigger_base }} {{ is_allgemein_active ? 'text-eve-primary [text-shadow:0_0_8px_rgba(0,240,255,0.4)]' : 'text-white/70 hover:text-eve-primary hover:[text-shadow:0_0_8px_rgba(0,240,255,0.4)]' }}" data-action="click->dropdown#toggle">
                             Allgemein <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
-                            <a class="nav-dropdown-item {{ current_route == 'link_collection' ? 'is-active' : '' }}" href="{{ path('link_collection') }}">Linksammlung</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_suggestions' ? 'is-active' : '' }}" href="{{ path('app_suggestions') }}">Vorschläge</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_general_reactions' ? 'is-active' : '' }}" href="{{ path('app_general_reactions') }}">Wurmloch-Reaktionen</a>
+                            <a class="{{ current_route == 'link_collection' ? nav_item_active : nav_item_normal }}" href="{{ path('link_collection') }}">Linksammlung</a>
+                            <a class="{{ current_route == 'app_suggestions' ? nav_item_active : nav_item_normal }}" href="{{ path('app_suggestions') }}">Vorschläge</a>
+                            <a class="{{ current_route == 'app_general_reactions' ? nav_item_active : nav_item_normal }}" href="{{ path('app_general_reactions') }}">Wurmloch-Reaktionen</a>
                         </div>
                     </div>
 
                     <!-- Corp Dropdown -->
                     <div class="relative group" data-controller="dropdown">
-                        <a class="nav-trigger {{ is_corp_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
+                        <a class="{{ nav_trigger_base }} {{ is_corp_active ? 'text-eve-primary [text-shadow:0_0_8px_rgba(0,240,255,0.4)]' : 'text-white/70 hover:text-eve-primary hover:[text-shadow:0_0_8px_rgba(0,240,255,0.4)]' }}" data-action="click->dropdown#toggle">
                             Corp <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
-                            <a class="nav-dropdown-item {{ current_route == 'app_corp_defense_doctrine' ? 'is-active' : '' }}" href="{{ path('app_corp_defense_doctrine') }}" data-turbo="false">Verteidigungsdoktrin</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_order_list' ? 'is-active' : '' }}" href="{{ path('app_order_list') }}">Orders</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_corp_assets_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_corp_blueprints' ? 'is-active' : '' }}" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_corp_structures' ? 'is-active' : '' }}" href="{{ path('app_corp_structures') }}" data-turbo="false">Stationen</a>
+                            <a class="{{ current_route == 'app_corp_defense_doctrine' ? nav_item_active : nav_item_normal }}" href="{{ path('app_corp_defense_doctrine') }}" data-turbo="false">Verteidigungsdoktrin</a>
+                            <a class="{{ current_route == 'app_order_list' ? nav_item_active : nav_item_normal }}" href="{{ path('app_order_list') }}">Orders</a>
+                            <a class="{{ current_route == 'app_dashboard_corp_assets_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_corp_assets_overview') }}" data-turbo="false">Corp-Inventar</a>
+                            <a class="{{ current_route == 'app_corp_blueprints' ? nav_item_active : nav_item_normal }}" href="{{ path('app_corp_blueprints') }}" data-turbo="false">Blueprint-Tresor</a>
+                            <a class="{{ current_route == 'app_corp_structures' ? nav_item_active : nav_item_normal }}" href="{{ path('app_corp_structures') }}" data-turbo="false">Stationen</a>
                         </div>
                     </div>
 
                     <!-- Persönlich Dropdown -->
                     <div class="relative group" data-controller="dropdown">
-                        <a class="nav-trigger {{ is_personlich_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
+                        <a class="{{ nav_trigger_base }} {{ is_personlich_active ? 'text-eve-primary [text-shadow:0_0_8px_rgba(0,240,255,0.4)]' : 'text-white/70 hover:text-eve-primary hover:[text-shadow:0_0_8px_rgba(0,240,255,0.4)]' }}" data-action="click->dropdown#toggle">
                             Persönlich <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
-                            <a class="nav-dropdown-item {{ current_route == 'app_profile' ? 'is-active' : '' }}" href="{{ path('app_profile') }}" data-turbo="false">Mein Profil</a>
-                            <a class="nav-dropdown-item {{ current_route in ['app_profile_characters', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details'] ? 'is-active' : '' }}" href="{{ path('app_profile_characters') }}" data-turbo="false">Charakterübersicht</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_profile_skill_farm' ? 'is-active' : '' }}" href="{{ path('app_profile_skill_farm') }}" data-turbo="false">Skill-Farmen</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_pi_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_pi_overview') }}" data-turbo="false">PI-Planung</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_mining_ledger' ? 'is-active' : '' }}" href="{{ path('app_dashboard_mining_ledger') }}" data-turbo="false">Bergbautagebuch</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_industry_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_industry_overview') }}" data-turbo="false">Industrie-Aufträge</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_assets_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_assets_overview') }}" data-turbo="false">Inventar & Wallet</a>
-                            <a class="nav-dropdown-item {{ current_route == 'app_dashboard_market_overview' ? 'is-active' : '' }}" href="{{ path('app_dashboard_market_overview') }}" data-turbo="false">Marktaufträge</a>
+                            <a class="{{ current_route == 'app_profile' ? nav_item_active : nav_item_normal }}" href="{{ path('app_profile') }}" data-turbo="false">Mein Profil</a>
+                            <a class="{{ current_route in ['app_profile_characters', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details'] ? nav_item_active : nav_item_normal }}" href="{{ path('app_profile_characters') }}" data-turbo="false">Charakterübersicht</a>
+                            <a class="{{ current_route == 'app_profile_skill_farm' ? nav_item_active : nav_item_normal }}" href="{{ path('app_profile_skill_farm') }}" data-turbo="false">Skill-Farmen</a>
+                            <a class="{{ current_route == 'app_dashboard_pi_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_pi_overview') }}" data-turbo="false">PI-Planung</a>
+                            <a class="{{ current_route == 'app_dashboard_mining_ledger' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_mining_ledger') }}" data-turbo="false">Bergbautagebuch</a>
+                            <a class="{{ current_route == 'app_dashboard_industry_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_industry_overview') }}" data-turbo="false">Industrie-Aufträge</a>
+                            <a class="{{ current_route == 'app_dashboard_assets_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_assets_overview') }}" data-turbo="false">Inventar & Wallet</a>
+                            <a class="{{ current_route == 'app_dashboard_market_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_market_overview') }}" data-turbo="false">Marktaufträge</a>
                         </div>
                     </div>
 
                     {% if is_granted('ROLE_OFFICER') %}
                     <!-- Admin Panel Dropdown -->
                     <div class="relative group" data-controller="dropdown">
-                        <a class="nav-trigger {{ is_admin_active ? 'is-active' : '' }}" data-action="click->dropdown#toggle">
+                        <a class="{{ nav_trigger_base }} {{ is_admin_active ? 'text-eve-primary [text-shadow:0_0_8px_rgba(0,240,255,0.4)]' : 'text-white/70 hover:text-eve-primary hover:[text-shadow:0_0_8px_rgba(0,240,255,0.4)]' }}" data-action="click->dropdown#toggle">
                             ⚙️ Admin-Panel <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
                         </a>
                         <div class="hidden group-[.is-active]:block lg:group-hover:block absolute lg:absolute top-full right-0 lg:left-0 lg:right-auto bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[180px] py-2 z-20">
-                            <a class="nav-dropdown-item {{ current_route == 'app_admin_users' ? 'is-active' : '' }}" href="{{ path('app_admin_users') }}" data-turbo="false">Benutzerverwaltung</a>
+                            <a class="{{ current_route == 'app_admin_users' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_users') }}" data-turbo="false">Benutzerverwaltung</a>
                             {% if is_granted('ROLE_CEO') %}
-                                <a class="nav-dropdown-item {{ current_route == 'app_admin_corp_assets_visibility' ? 'is-active' : '' }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
-                                <a class="nav-dropdown-item {{ current_route == 'app_admin_cron_index' ? 'is-active' : '' }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
-                                <a class="nav-dropdown-item {{ current_route == 'app_admin_discord_index' ? 'is-active' : '' }}" href="{{ path('app_admin_discord_index') }}" data-turbo="false">Discord-Webhooks</a>
+                                <a class="{{ current_route == 'app_admin_corp_assets_visibility' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
+                                <a class="{{ current_route == 'app_admin_cron_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
+                                <a class="{{ current_route == 'app_admin_discord_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_discord_index') }}" data-turbo="false">Discord-Webhooks</a>
                             {% endif %}
                         </div>
                     </div>

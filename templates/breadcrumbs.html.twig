@@ -89,18 +89,20 @@
     } %}
 
     {% if breadcrumbs_config[current_route] is defined %}
-        <nav class="breadcrumb-container" aria-label="breadcrumb">
-            <ol class="breadcrumb-list">
-                <li class="breadcrumb-item">
-                    <a href="{{ path('home') }}" class="breadcrumb-link">Home</a>
+        <nav class="py-3 mb-6 text-sm" aria-label="breadcrumb">
+            <ol class="flex flex-wrap items-center gap-2 list-none p-0 m-0">
+                <li class="flex items-center">
+                    <a href="{{ path('home') }}" class="text-eve-muted hover:text-eve-primary no-underline transition-colors duration-200">Home</a>
                 </li>
                 {% for crumb in breadcrumbs_config[current_route] %}
-                    <li class="breadcrumb-separator">&gt;</li>
-                    <li class="breadcrumb-item {% if loop.last %}is-active{% endif %}">
+                    <li class="text-white/20 select-none text-xs" aria-hidden="true">&gt;</li>
+                    <li class="flex items-center">
                         {% if crumb.path is defined and not loop.last %}
-                            <a href="{{ path(crumb.path) }}" class="breadcrumb-link">{{ crumb.label }}</a>
+                            <a href="{{ path(crumb.path) }}" class="text-eve-muted hover:text-eve-primary no-underline transition-colors duration-200">{{ crumb.label }}</a>
+                        {% elseif not loop.last %}
+                            <span class="text-eve-muted font-medium">{{ crumb.label }}</span>
                         {% else %}
-                            <span class="breadcrumb-text">{{ crumb.label }}</span>
+                            <span class="text-eve-primary font-medium [text-shadow:0_0_8px_rgba(0,240,255,0.3)]">{{ crumb.label }}</span>
                         {% endif %}
                     </li>
                 {% endfor %}

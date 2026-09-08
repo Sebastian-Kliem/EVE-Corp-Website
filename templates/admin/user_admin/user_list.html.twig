@@ -13,20 +13,18 @@
         </div>
         <div class="flex items-center gap-3">
             <!-- Search bar -->
-            <form action="{{ path('app_admin_users') }}" method="GET" class="search-form {% if search is not empty %}is-active{% endif %}">
-                <div class="search-wrapper">
-                    <input class="search-input" type="text" name="search" placeholder="Benutzer suchen..." value="{{ search }}" data-user-search-target="input" data-action="input->user-search#filter">
-                    <button type="button" class="search-toggle-btn" onclick="let f=this.closest('.search-form'); let i=f.querySelector('.search-input'); if(f.classList.contains('is-active') && i.value.trim()!==''){f.submit();}else{f.classList.toggle('is-active'); if(f.classList.contains('is-active')){i.focus();}}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
+            <form action="{{ path('app_admin_users') }}" method="GET" class="relative flex items-center">
+                <div class="relative flex items-center">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-eve-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                    </button>
-                    <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-xs px-2.5 py-1 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer search-submit-btn">
-                        Suchen
-                    </button>
+                    </div>
+                    <input type="text" name="search" placeholder="Benutzer suchen..." value="{{ search }}" data-user-search-target="input" data-action="input->user-search#filter"
+                           class="pl-9 pr-8 py-1.5 w-44 sm:w-60 focus:w-72 transition-all duration-300 rounded-full text-xs bg-[#0f172a]/50 border border-eve-border text-eve-text placeholder-eve-muted/60 focus:outline-none focus:border-eve-primary focus:ring-1 focus:ring-eve-primary/40">
                     {% if search is not empty %}
-                        <a href="{{ path('app_admin_users') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded px-2.5 py-1 text-xs font-medium transition-all duration-300 cursor-pointer search-clear-btn" title="Suche zurücksetzen">✕</a>
+                        <a href="{{ path('app_admin_users') }}" class="absolute right-2.5 text-eve-muted hover:text-rose-400 text-xs transition-colors p-0.5" title="Suche zurücksetzen">✕</a>
                     {% endif %}
                 </div>
             </form>
@@ -141,7 +139,7 @@
                     </tr>
                     
                     <!-- Live-Search No Results Row -->
-                    <tr data-user-search-target="noResultsRow" style="display: none;">
+                    <tr data-user-search-target="noResultsRow" class="hidden">
                         <td colspan="3" class="text-center text-eve-muted py-5">
                             <span>Keine Benutzer mit diesem Namen gefunden.</span>
                         </td>
