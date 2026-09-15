@@ -114,8 +114,27 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
     private function syncRoles(EveCharacter $character): void
     {
-        $this->logger->debug(sprintf('[Cron] Syncing roles for character %s...', $character->getName()));
+        $this->logger->debug(sprintf('[Cron] Syncing roles and affiliation for character %s...', $character->getName()));
         
+        // Refresh public character affiliation (corporation and alliance)
+        try {
+            $charData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/', $character->getId())
+            );
+            if (is_array($charData) && !empty($charData['corporation_id'])) {
+                $character->setCorporationId($charData['corporation_id']);
+                $character->setAllianceId($charData['alliance_id'] ?? null);
+            }
+        } catch (\Exception $e) {
+            $this->logger->warning(sprintf(
+                '[Cron] Could not refresh public affiliation for character %s (%d): %s',
+                $character->getName(),
+                $character->getId(),
+                $e->getMessage()
+            ));
+        }
+
         try {
             $rolesData = $this->esiClient->request(
                 'GET',
