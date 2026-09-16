@@ -86,6 +86,18 @@ class EveCharacter
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $tags = [];
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isOnline = false;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastOnlineCheck = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastLogin = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $lastLogout = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -396,5 +408,53 @@ class EveCharacter
     public function isDirector(): bool
     {
         return in_array('Director', $this->getRoles(), true);
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->isOnline;
+    }
+
+    public function setIsOnline(bool $isOnline): static
+    {
+        $this->isOnline = $isOnline;
+
+        return $this;
+    }
+
+    public function getLastOnlineCheck(): ?\DateTimeImmutable
+    {
+        return $this->lastOnlineCheck;
+    }
+
+    public function setLastOnlineCheck(?\DateTimeImmutable $lastOnlineCheck): static
+    {
+        $this->lastOnlineCheck = $lastOnlineCheck;
+
+        return $this;
+    }
+
+    public function getLastLogin(): ?\DateTimeImmutable
+    {
+        return $this->lastLogin;
+    }
+
+    public function setLastLogin(?\DateTimeImmutable $lastLogin): static
+    {
+        $this->lastLogin = $lastLogin;
+
+        return $this;
+    }
+
+    public function getLastLogout(): ?\DateTimeImmutable
+    {
+        return $this->lastLogout;
+    }
+
+    public function setLastLogout(?\DateTimeImmutable $lastLogout): static
+    {
+        $this->lastLogout = $lastLogout;
+
+        return $this;
     }
 }

@@ -92,6 +92,7 @@ class CronRunCommand extends Command
 
         // Sort jobs to ensure optimal execution order (e.g. contracts sync before wallet & assets sync)
         $executionOrder = [
+            'character:sync-online-status' => 0,
             'character:sync-contracts' => 1,
             'character:sync-wallet-assets' => 2,
             'character:sync-killmails' => 3,
@@ -208,6 +209,11 @@ class CronRunCommand extends Command
         $repo = $this->entityManager->getRepository(CronJob::class);
         
         $defaultJobs = [
+            [
+                'name' => 'Charakter-Online-Status synchronisieren (Online Check)',
+                'command' => 'character:sync-online-status',
+                'expression' => '*/5 * * * *', // every 5 minutes
+            ],
             [
                 'name' => 'Charakter-Verträge synchronisieren (Contracts)',
                 'command' => 'character:sync-contracts',

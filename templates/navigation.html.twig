@@ -97,6 +97,65 @@
 
             <div class="flex items-center gap-4 mt-4 lg:mt-0">
                 {% if app.user %}
+                    <!-- Online Users Indicator (links neben Logout) -->
+                    {% set online_status = get_online_status() %}
+                    <div class="relative group" data-controller="dropdown online-status" data-online-status-url-value="{{ path('app_online_status') }}">
+                        <a class="nav-trigger cursor-pointer no-underline py-2 lg:py-0" 
+                           data-action="click->dropdown#toggle" 
+                           title="Eingeloggte Spieler in EVE Online">
+                            <span class="relative flex h-2 w-2 mr-0.5">
+                                <span data-online-status-target="ping" class="{{ online_status.userCount > 0 ? 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75' : 'hidden' }}"></span>
+                                <span data-online-status-target="dot" class="relative inline-flex rounded-full h-2 w-2 {{ online_status.userCount > 0 ? 'bg-emerald-400' : 'bg-slate-500' }}"></span>
+                            </span>
+                            <span class="whitespace-nowrap flex items-center gap-1 text-sm font-semibold">
+                                <span data-online-status-target="count" class="font-bold">{{ online_status.userCount }}</span>
+                                <span data-online-status-target="label">{{ online_status.userCount == 1 ? 'User' : 'User' }} online</span>
+                            </span>
+                            <span class="text-[0.75rem] transition-transform duration-200 group-[.is-active]:rotate-180">▼</span>
+                        </a>
+                        
+                        <!-- Dropdown showing online pilots / users -->
+                        <div class="hidden group-[.is-active]:block lg:group-hover:block absolute top-full right-0 mt-2 bg-[#0d121ff2] border border-eve-border rounded-lg shadow-eve backdrop-blur-md min-w-[260px] max-w-[340px] p-3 z-30 text-xs">
+                            <div class="flex items-center justify-between pb-2 mb-2 border-b border-eve-border/40 font-semibold text-eve-text">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    <span>EVE Online Status</span>
+                                </span>
+                                <span data-online-status-target="charCount" class="text-[0.7rem] px-1.5 py-0.5 rounded bg-white/5 text-eve-text font-semibold">
+                                    {{ online_status.characterCount }} {{ online_status.characterCount == 1 ? 'Charakter' : 'Charaktere' }}
+                                </span>
+                            </div>
+                            
+                            <div data-online-status-target="list" class="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                                {% if online_status.users is empty %}
+                                    <div class="text-eve-muted py-2 text-center italic">
+                                        Keine verknüpften Spieler online
+                                    </div>
+                                {% else %}
+                                    {% for u in online_status.users %}
+                                        <div class="p-2 rounded bg-white/[0.03] border border-eve-border/30">
+                                            <div class="font-bold text-eve-text flex items-center justify-between">
+                                                <span>{{ u.username }}</span>
+                                                <span class="text-[0.7rem] text-emerald-400 font-medium">online</span>
+                                            </div>
+                                            <div class="mt-1.5 pl-2 border-l border-eve-primary/40 space-y-0.5 text-[0.8rem]">
+                                                {% for c in u.characters %}
+                                                    <div class="py-0.5 text-slate-300 font-medium truncate">
+                                                        {{ c.name }}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mt-2 pt-2 border-t border-eve-border/30 text-[0.7rem] text-eve-muted text-center flex items-center justify-center gap-1">
+                                <span>⏱ Aktualisierung: alle 5 Min.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <a class="cursor-pointer py-2 lg:py-0 font-medium text-eve-muted hover:text-eve-primary no-underline transition-colors duration-200" href="{{ path('app_logout') }}">
                         🚪 Logout
                     </a>
