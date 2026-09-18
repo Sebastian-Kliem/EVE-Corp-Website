@@ -23,6 +23,7 @@ interface BlueprintData {
     runs: number;
     quantity: number;
     productId: number;
+    productName?: string;
     activeJob: ActiveJob | null;
 }
 
@@ -55,6 +56,67 @@ const getTeTagClass = (te: number) => {
     return `${base} bg-black/40 border border-white/10 text-emerald-400`;
 };
 
+const ROMAN_NUMERAL_EQUIVALENTS: Record<string, string[]> = {
+    '1': ['1', 'i'],
+    '2': ['2', 'ii'],
+    '3': ['3', 'iii'],
+    '4': ['4', 'iv'],
+    '5': ['5', 'v'],
+    'i': ['i', '1'],
+    'ii': ['ii', '2'],
+    'iii': ['iii', '3'],
+    'iv': ['iv', '4'],
+    'v': ['v', '5'],
+};
+
+function checkTermMatch(searchableText: string, wordTokens: string[], term: string): boolean {
+    if (searchableText.includes(term)) {
+        return true;
+    }
+    const equivs = ROMAN_NUMERAL_EQUIVALENTS[term];
+    if (equivs) {
+        return equivs.some(eq => wordTokens.includes(eq));
+    }
+    return false;
+}
+
+function matchesBlueprint(bp: BlueprintData, terms: string[]): boolean {
+    if (terms.length === 0) return true;
+
+    const activityText = bp.activeJob
+        ? (bp.activeJob.activityId === 4
+            ? 'materialforschung me research'
+            : bp.activeJob.activityId === 3
+            ? 'zeiteffizienz te research'
+            : bp.activeJob.activityId === 5
+            ? 'kopieren copy bpc'
+            : 'forschung job in arbeit')
+        : 'bereit hangar';
+
+    const bpoBpcText = bp.isBpo ? 'original bpo originale' : 'kopie bpc kopien copy';
+
+    const searchableText = [
+        bp.name || '',
+        bp.productName || '',
+        bp.category || '',
+        bp.ownerCharacterName || '',
+        bp.ownerUserName || '',
+        bp.locationName || '',
+        bp.systemName || '',
+        bpoBpcText,
+        activityText,
+        `me:${bp.me ?? 0}`,
+        `te:${bp.te ?? 0}`,
+        `me ${bp.me ?? 0}`,
+        `te ${bp.te ?? 0}`,
+        `me${bp.me ?? 0}`,
+        `te${bp.te ?? 0}`,
+    ].join(' ').toLowerCase();
+
+    const wordTokens = searchableText.split(/[\s,.:;()\/\[\]"'\-_]+/);
+    return terms.every(term => checkTermMatch(searchableText, wordTokens, term));
+}
+
 export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaultProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<'all' | 'bpo' | 'bpc' | 'job'>('all');
@@ -72,11 +134,17 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
         return Array.from(cats).sort();
     }, [blueprints]);
 
-    const filteredBlueprints = useMemo(() => {
+    // All blueprints matching the search query regardless of type or category filters
+    const matchingBlueprints = useMemo(() => {
         const query = cleanItemSearch(searchQuery).trim().toLowerCase();
         const queryTerms = query ? query.split(/\s+/).filter(Boolean) : [];
+        if (queryTerms.length === 0) return blueprints;
+        return blueprints.filter(bp => matchesBlueprint(bp, queryTerms));
+    }, [blueprints, searchQuery]);
 
-        return blueprints.filter((bp) => {
+    // Blueprints filtered by active tab and category
+    const filteredBlueprints = useMemo(() => {
+        return matchingBlueprints.filter((bp) => {
             // Tab filter
             if (filterType === 'bpo' && !bp.isBpo) return false;
             if (filterType === 'bpc' && bp.isBpo) return false;
@@ -85,46 +153,18 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
             // Category filter
             if (selectedCategory !== 'all' && bp.category !== selectedCategory) return false;
 
-            // Search filter
-            if (queryTerms.length > 0) {
-                const activityText = bp.activeJob
-                    ? (bp.activeJob.activityId === 4
-                        ? 'materialforschung me research'
-                        : bp.activeJob.activityId === 3
-                        ? 'zeiteffizienz te research'
-                        : bp.activeJob.activityId === 5
-                        ? 'kopieren copy bpc'
-                        : 'forschung job in arbeit')
-                    : 'bereit hangar';
-
-                const bpoBpcText = bp.isBpo ? 'original bpo originale' : 'kopie bpc kopien copy';
-
-                const searchableText = [
-                    bp.name || '',
-                    bp.category || '',
-                    bp.ownerCharacterName || '',
-                    bp.ownerUserName || '',
-                    bp.locationName || '',
-                    bp.systemName || '',
-                    bpoBpcText,
-                    activityText,
-                    `me:${bp.me ?? 0}`,
-                    `te:${bp.te ?? 0}`,
-                    `me ${bp.me ?? 0}`,
-                    `te ${bp.te ?? 0}`,
-                    `me${bp.me ?? 0}`,
-                    `te${bp.te ?? 0}`,
-                ].join(' ').toLowerCase();
-
-                const matchesAllTerms = queryTerms.every((term) => searchableText.includes(term));
-                if (!matchesAllTerms) {
-                    return false;
-                }
-            }
-
             return true;
         });
-    }, [blueprints, searchQuery, filterType, selectedCategory]);
+    }, [matchingBlueprints, filterType, selectedCategory]);
+
+    // Blueprints matching the search query when all current filtered results are 0
+    const hiddenMatches = useMemo(() => {
+        const query = cleanItemSearch(searchQuery).trim().toLowerCase();
+        if (!query || filteredBlueprints.length > 0) {
+            return [];
+        }
+        return matchingBlueprints;
+    }, [searchQuery, filteredBlueprints.length, matchingBlueprints]);
 
     const getBlueprintIconUrl = (bp: BlueprintData) => {
         const action = bp.isBpo ? 'bp' : 'bpc';
@@ -187,7 +227,28 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
             {/* Search and Filters */}
             <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="flex-1 min-w-[250px]">
-                    <p className="text-xs text-eve-muted">Durchsuche alle von Corp-Mitgliedern geteilten Blueprints.</p>
+                    {cleanItemSearch(searchQuery).trim() ? (
+                        <p className="text-xs text-eve-muted">
+                            <span className="text-white font-semibold">{filteredBlueprints.length}</span> von{' '}
+                            <span className="text-white font-semibold">{matchingBlueprints.length}</span> Treffern für „{cleanItemSearch(searchQuery).trim()}“
+                            {matchingBlueprints.length > filteredBlueprints.length && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFilterType('all');
+                                        setSelectedCategory('all');
+                                    }}
+                                    className="ml-2 text-eve-primary hover:underline cursor-pointer font-medium"
+                                >
+                                    (Alle {matchingBlueprints.length} anzeigen)
+                                </button>
+                            )}
+                        </p>
+                    ) : (
+                        <p className="text-xs text-eve-muted">
+                            {blueprints.length} Blueprints im Tresor geteilt.
+                        </p>
+                    )}
                 </div>
                 <div className="flex-shrink-0">
                     <div className="mb-0">
@@ -197,10 +258,10 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                 onChange={(e) => setFilterType(e.target.value as any)}
                                 className="rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
                             >
-                                <option value="all">Alle Typen ({blueprints.length})</option>
-                                <option value="bpo">Originale (BPOs) ({blueprints.filter(b => b.isBpo).length})</option>
-                                <option value="bpc">Kopien (BPCs) ({blueprints.filter(b => !b.isBpo).length})</option>
-                                <option value="job">In Forschung/Kopie ({blueprints.filter(b => b.activeJob !== null).length})</option>
+                                <option value="all">Alle Typen ({matchingBlueprints.length})</option>
+                                <option value="bpo">Originale (BPOs) ({matchingBlueprints.filter(b => b.isBpo).length})</option>
+                                <option value="bpc">Kopien (BPCs) ({matchingBlueprints.filter(b => !b.isBpo).length})</option>
+                                <option value="job">In Forschung/Kopie ({matchingBlueprints.filter(b => b.activeJob !== null).length})</option>
                             </select>
                         </div>
                     </div>
@@ -214,10 +275,15 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                     onChange={(e) => setSelectedCategory(e.target.value)}
                                     className="rounded-lg text-xs px-2.5 py-1.5 border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
                                 >
-                                    <option value="all">Alle Kategorien</option>
-                                    {categories.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
+                                    <option value="all">Alle Kategorien ({matchingBlueprints.length})</option>
+                                    {categories.map(cat => {
+                                        const count = matchingBlueprints.filter(b => b.category === cat).length;
+                                        return (
+                                            <option key={cat} value={cat}>
+                                                {cat} ({count})
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                         </div>
@@ -231,7 +297,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                                 type="text"
                                 placeholder="Blueprints suchen..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(cleanItemSearch(e.target.value))}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-eve-muted pointer-events-none">🔍</span>
                             {searchQuery && (
@@ -251,9 +317,43 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
 
             {/* Blueprint Vault List */}
             {filteredBlueprints.length === 0 ? (
-                <div className="text-center py-12 rounded-lg bg-[#13192b] border border-white/5">
-                    <p className="text-eve-muted">Keine passenden Blueprints im Tresor gefunden.</p>
-                </div>
+                hiddenMatches.length > 0 ? (
+                    <div className="p-4 rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-200 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 my-4">
+                        <div>
+                            <div className="font-semibold flex items-center gap-2">
+                                <span>💡</span>
+                                <span>{hiddenMatches.length} passende(r) Blueprint(s) gefunden, aber durch Filter ausgeblendet!</span>
+                            </div>
+                            <div className="text-xs text-eve-muted mt-1">
+                                Gefunden: {hiddenMatches.filter(b => b.isBpo).length} Originale (BPO), {hiddenMatches.filter(b => !b.isBpo).length} Kopien (BPC).
+                                {filterType !== 'all' && (
+                                    <span className="ml-1 text-sky-300">
+                                        (Aktiver Typ-Filter: <strong>{filterType === 'bpo' ? 'Nur BPOs' : filterType === 'bpc' ? 'Nur BPCs' : 'Nur Jobs'}</strong>)
+                                    </span>
+                                )}
+                                {selectedCategory !== 'all' && (
+                                    <span className="ml-1 text-sky-300">
+                                        (Kategorie: <strong>{selectedCategory}</strong>)
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFilterType('all');
+                                setSelectedCategory('all');
+                            }}
+                            className="px-3 py-1.5 bg-sky-500/25 hover:bg-sky-500/40 border border-sky-500/50 rounded text-xs text-white font-medium transition-colors cursor-pointer shrink-0"
+                        >
+                            Filter zurücksetzen & anzeigen
+                        </button>
+                    </div>
+                ) : (
+                    <div className="text-center py-12 rounded-lg bg-[#13192b] border border-white/5">
+                        <p className="text-eve-muted">Keine passenden Blueprints im Tresor gefunden.</p>
+                    </div>
+                )
             ) : (
                 <div style={{ overflowX: 'auto' }}>
                     <table className="w-full border-collapse text-left bg-[#101525] text-eve-text min-w-[800px]">
