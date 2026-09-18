@@ -11,6 +11,9 @@ export function cleanItemSearch(value: string): string {
     if (cleaned.includes('\t')) {
         cleaned = cleaned.split('\t')[0];
     }
+    // Remove wrapping/internal quotes (ASCII and Unicode) and brackets from copied fits/chat
+    cleaned = cleaned.replace(/["'„“”»«\[\]]/g, '');
     // Remove all asterisks (EVE items never contain '*' in their canonical names)
     return cleaned.replace(/\*/g, '');
 }
+
