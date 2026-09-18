@@ -1,5 +1,5 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, Root } from 'react-dom/client';
 import ItemAutocomplete from './components/Form/ItemAutocomplete';
 import UserAutocomplete from './components/Form/UserAutocomplete';
 import CharacterAssets from './components/Assets/CharacterAssets';
@@ -43,12 +43,14 @@ const components: Record<string, React.ComponentType<any>> = {
     DefenseDoctrine,
 };
 
+const mountedRoots = new Map<Element, Root>();
+
 function mountReactComponents() {
     const elements = document.querySelectorAll('[data-react-component]');
 
     elements.forEach((element) => {
-        // Prevent mounting multiple times (especially with Turbo)
-        if (element.getAttribute('data-react-mounted') === 'true') {
+        // Prevent mounting multiple times if already active and tracked
+        if (element.getAttribute('data-react-mounted') === 'true' && mountedRoots.has(element)) {
             return;
         }
 
@@ -72,8 +74,19 @@ function mountReactComponents() {
             console.error(`Failed to parse props for React component "${componentName}":`, error);
         }
 
+        // Clean up previous root if element was re-used or restored
+        if (mountedRoots.has(element)) {
+            try {
+                mountedRoots.get(element)!.unmount();
+            } catch (e) {
+                // Ignore unmount error
+            }
+            mountedRoots.delete(element);
+        }
+
         // Render the component
         const root = createRoot(element);
+        mountedRoots.set(element, root);
         root.render(<Component {...props} />);
 
         // Mark as mounted
@@ -81,8 +94,22 @@ function mountReactComponents() {
     });
 }
 
+function unmountReactComponents() {
+    mountedRoots.forEach((root, element) => {
+        try {
+            root.unmount();
+        } catch (e) {
+            console.error('Error unmounting React root:', e);
+        }
+        element.removeAttribute('data-react-mounted');
+    });
+    mountedRoots.clear();
+}
+
 // Support standard page load
 document.addEventListener('DOMContentLoaded', mountReactComponents);
 
 // Support Symfony UX Turbo dynamic page transitions
 document.addEventListener('turbo:load', mountReactComponents);
+document.addEventListener('turbo:render', mountReactComponents);
+document.addEventListener('turbo:before-cache', unmountReactComponents);
