@@ -8,14 +8,14 @@
 
         <h2 class="text-2xl font-bold mt-8 mb-6 text-white">Bestellliste:</h2>
 
-        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[720px] group">
-            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
+        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg mb-6 max-w-[720px] group">
+            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none rounded-lg hover:bg-white/5 transition-colors duration-200">
                 <span>Neue Bestellung erstellen</span>
                 <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
             </summary>
-            <div class="border-t border-eve-border p-6 bg-black/15">
+            <div class="border-t border-eve-border p-6 bg-black/15 rounded-b-lg">
                 <form action="{{ path('app_order_create_order') }}" method="post">
-                    <div class="flex flex-col gap-2 mb-4">
+                    <div class="flex flex-col gap-2 mb-4 relative z-30">
                         <label class="text-sm font-semibold text-white" for="itemname_buy">Item:</label>
                         {{ react_component('ItemAutocomplete', {
                             'jwtToken': jwt_token(app.user),
@@ -26,7 +26,7 @@
                         <p class="text-xs text-eve-muted mt-1">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
                     </div>
 
-                    <div class="flex flex-wrap gap-4 mt-3">
+                    <div class="flex flex-wrap gap-4 mt-3 relative z-10">
                         <div class="flex-1 min-w-[150px]">
                             <div class="flex flex-col gap-2 mb-4">
                                 <label class="text-sm font-semibold text-white" for="amount_buy">Menge:</label>
@@ -215,14 +215,14 @@
 
         <h2 class="text-2xl font-bold mt-8 mb-6 text-white">Verkaufsliste:</h2>
 
-        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[720px] group">
-            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none hover:bg-white/5 transition-colors duration-200">
+        <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg mb-6 max-w-[720px] group">
+            <summary class="cursor-pointer select-none flex justify-between items-center p-5 font-semibold list-none rounded-lg hover:bg-white/5 transition-colors duration-200">
                 <span>Neues Angebot erstellen</span>
                 <span class="text-eve-primary transition-transform duration-300 group-open:rotate-180">▼</span>
             </summary>
-            <div class="border-t border-eve-border p-6 bg-black/15">
+            <div class="border-t border-eve-border p-6 bg-black/15 rounded-b-lg">
                 <form action="{{ path('app_order_create_sell') }}" method="post">
-                    <div class="flex flex-col gap-2 mb-4">
+                    <div class="flex flex-col gap-2 mb-4 relative z-30">
                         <label class="text-sm font-semibold text-white" for="itemname_sell">Item:</label>
                         {{ react_component('ItemAutocomplete', {
                             'jwtToken': jwt_token(app.user),
@@ -233,7 +233,7 @@
                         <p class="text-xs text-eve-muted mt-1">Bitte tippe den Namen ein und wähle das Item zwingend aus der Vorschlagsliste aus.</p>
                     </div>
 
-                    <div class="flex flex-wrap gap-4 mt-3">
+                    <div class="flex flex-wrap gap-4 mt-3 relative z-10">
                         <div class="flex-1 min-w-[150px]">
                             <div class="flex flex-col gap-2 mb-4">
                                 <label class="text-sm font-semibold text-white" for="amount_sell">Menge:</label>

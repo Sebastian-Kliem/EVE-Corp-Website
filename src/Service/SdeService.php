@@ -176,21 +176,39 @@ class SdeService
     }
 
     /**
-     * Searches for published items in the EVE SDE database by name.
+     * Searches for items in the SDE database by name.
      * Returns an array of items matching the query.
      */
-    public function searchItems(string $query, int $limit = 20): array
+    public function searchItems(string $query, int $limit = 50): array
     {
-        $query = trim(str_replace('*', '', $query));
-        if (strlen($query) < 2) {
+        $cleanedQuery = trim(str_replace('*', '', $query));
+        if (strlen($cleanedQuery) < 2) {
             return [];
         }
 
         try {
             $results = $this->connection->fetchAllAssociative(
-                'SELECT t.typeID as id, t.typeName as name, g.groupName FROM invTypes t JOIN invGroups g ON t.groupID = g.groupID WHERE t.published = 1 AND t.typeName LIKE :query ORDER BY t.typeName ASC LIMIT :limit',
+                'SELECT t.typeID as id, t.typeName as name, g.groupName 
+                 FROM invTypes t 
+                 JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE t.published = 1 AND t.typeName LIKE :likeQuery 
+                 ORDER BY 
+                    CASE 
+                        WHEN g.categoryID = 91 OR g.groupName LIKE \'%SKIN%\' OR t.typeName LIKE \'% SKIN%\' OR t.typeName LIKE \'% SKIN\' THEN 1 
+                        ELSE 0 
+                    END ASC,
+                    CASE 
+                        WHEN LOWER(t.typeName) = LOWER(:exactQuery) THEN 0 
+                        WHEN LOWER(t.typeName) LIKE LOWER(:prefixQuery) THEN 1 
+                        ELSE 2 
+                    END ASC,
+                    LENGTH(t.typeName) ASC,
+                    t.typeName ASC 
+                 LIMIT :limit',
                 [
-                    'query' => '%' . $query . '%',
+                    'likeQuery' => '%' . $cleanedQuery . '%',
+                    'exactQuery' => $cleanedQuery,
+                    'prefixQuery' => $cleanedQuery . '%',
                     'limit' => $limit,
                 ],
                 [
@@ -198,14 +216,17 @@ class SdeService
                 ]
             );
 
-            return array_map(function ($row) {
+            $formattedItems = [];
+            foreach ($results as $row) {
                 $isBlueprint = (bool)preg_match('/blueprint/i', $row['groupName'] ?? '');
-                return [
+                $formattedItems[] = [
                     'id' => (int)$row['id'],
                     'name' => $row['name'],
                     'variation' => $isBlueprint ? 'bp' : 'icon',
                 ];
-            }, $results);
+            }
+
+            return $formattedItems;
         } catch (\Exception $e) {
             return [];
         }

@@ -109,7 +109,7 @@ export default function ItemAutocomplete({
     };
 
     return (
-        <div ref={containerRef} className="relative mb-4">
+        <div ref={containerRef} className={`relative mb-4 ${isOpen ? 'z-50' : 'z-10'}`}>
             <input 
                 type="text" 
                 ref={inputRef}
@@ -135,7 +135,7 @@ export default function ItemAutocomplete({
             />
 
             {isOpen && suggestions.length > 0 && (
-                <div className="absolute w-full max-h-[250px] overflow-y-auto z-[1000] bg-eve-card/95 border border-eve-border shadow-eve backdrop-blur-md rounded-lg mt-1">
+                <div className="absolute left-0 right-0 top-full max-h-[250px] overflow-y-auto z-[1000] bg-[#0d121f] border border-eve-border shadow-2xl backdrop-blur-md rounded-lg mt-1">
                     {suggestions.map((item) => (
                         <div 
                             key={item.id}

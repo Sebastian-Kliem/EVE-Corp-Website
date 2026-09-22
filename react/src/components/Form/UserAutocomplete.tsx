@@ -69,12 +69,12 @@ export default function UserAutocomplete({
     };
 
     return (
-        <div ref={containerRef} className="relative mb-4">
+        <div ref={containerRef} className={`relative mb-4 ${isOpen ? 'z-50' : 'z-10'}`}>
             <div className="flex relative">
                 <input 
                     type="text" 
-                    id={inputId}
-                    name={inputName}
+                    id={inputId} 
+                    name={inputName} 
                     className="rounded-lg w-full pl-3 pr-10 py-2 text-base border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300"
                     value={query}
                     onChange={handleInputChange}
@@ -96,7 +96,7 @@ export default function UserAutocomplete({
             </div>
 
             {isOpen && suggestions.length > 0 && (
-                <div className="absolute w-full max-h-[200px] overflow-y-auto z-[1000] bg-eve-card/95 border border-eve-border shadow-eve backdrop-blur-md rounded-lg mt-1">
+                <div className="absolute left-0 right-0 top-full max-h-[200px] overflow-y-auto z-[1000] bg-[#0d121f] border border-eve-border shadow-2xl backdrop-blur-md rounded-lg mt-1">
                     {suggestions.map((user) => (
                         <div 
                             key={user}
