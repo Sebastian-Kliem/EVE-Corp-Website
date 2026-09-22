@@ -190,7 +190,7 @@ export default function MarketOrdersOverview({ apiDataUrl, imagePaths }: MarketO
 
 
     return (
-        <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
+        <div className="w-full flex flex-col gap-4">
             
             {/* Sync Header button */}
             <div className="flex justify-end mb-2">

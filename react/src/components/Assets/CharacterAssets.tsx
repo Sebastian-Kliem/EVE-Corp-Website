@@ -139,7 +139,7 @@ export default function CharacterAssets({
     const hasAssets = Object.keys(groupedAssets).length > 0;
 
     return (
-        <div className="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+        <div className="w-full px-6 mt-10 mb-12">
             {/* Back Link */}
             <nav className="flex gap-2 text-xs text-eve-muted mb-4" aria-label="breadcrumbs">
                 <ul className="flex items-center gap-1.5">

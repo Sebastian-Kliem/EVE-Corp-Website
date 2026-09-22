@@ -25,7 +25,7 @@
             {% set invalid_chars = get_sso_warnings() %}
             {% if invalid_chars is not empty %}
                 <a href="{{ path('app_profile') }}" class="group block w-full bg-red-950/50 hover:bg-red-900/60 border-b border-red-500/40 text-red-200 transition-colors py-2 px-4 no-underline relative z-50">
-                    <div class="w-full max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
+                    <div class="w-full px-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/25 text-red-300 border border-red-500/40 shrink-0">
                                 SSO-Warnung
@@ -51,7 +51,7 @@
             {% set fuel_warnings = get_fuel_warnings() %}
             {% if fuel_warnings is not empty %}
                 <a href="{{ path('app_corp_structures') }}" class="group block w-full bg-red-950/40 hover:bg-red-900/50 border-b border-red-500/30 text-red-200 transition-colors py-2 px-4 no-underline relative z-50">
-                    <div class="w-full max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
+                    <div class="w-full px-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
                                 Treibstoff-Warnung
@@ -84,7 +84,7 @@
         </header>
 
         {% if app.user %}
-            <div class="w-full max-w-[1200px] mx-auto px-6 mt-4">
+            <div class="w-full px-6 mt-4">
                 {% include 'breadcrumbs.html.twig' %}
             </div>
         {% endif %}
@@ -97,7 +97,7 @@
             'info': 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
         } %}
 
-        <div class="w-full max-w-[1200px] mx-auto px-6 mt-6">
+        <div class="w-full px-6 mt-6">
             {% for label, messages in app.flashes %}
                 {% for message in messages %}
                     <div class="border border-eve-border bg-eve-card rounded-lg p-5 mb-6 relative {{ flash_classes[label] ?? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' }}">

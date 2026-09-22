@@ -74,7 +74,7 @@ export default function TrackingViewer(_props: TrackingViewerProps) {
     };
 
     return (
-        <div className="w-full max-w-[900px] mx-auto">
+        <div className="w-full">
             {loadingLists ? (
                 <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg text-center">
                     <span className="inline-block w-8 h-8 border-3 border-eve-primary rounded-full border-t-transparent animate-spin"></span>

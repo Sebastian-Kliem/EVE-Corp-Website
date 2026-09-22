@@ -366,7 +366,7 @@ export default function CorpAssetsOverview({
     };
 
     return (
-        <div className="w-full max-w-[1200px] mx-auto px-6 mt-10 mb-12">
+        <div className="w-full px-6 mt-10 mb-12">
             {/* Header */}
             <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg mb-6 assets-header-gradient relative overflow-hidden">
                 <div className="assets-header-bg-text">CORP</div>
