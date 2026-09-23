@@ -336,4 +336,29 @@ class ProfileController extends AbstractController
         $this->addFlash('success', 'Deine Blueprint-Freigabe-Einstellungen wurden gespeichert.');
         return $this->redirectToRoute('app_profile');
     }
+
+    #[Route('/update-settings', name: 'app_profile_update_settings', methods: ['POST'])]
+    public function updateSettings(Request $request): Response
+    {
+        $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return $this->redirectToRoute('app_login');
+        }
+
+        if (!$this->isCsrfTokenValid('update_user_settings', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Ungültiges CSRF-Token.');
+            return $this->redirectToRoute('app_profile');
+        }
+
+        $layoutWidth = (string) $request->request->get('layout_width', 'standard');
+        if (!in_array($layoutWidth, ['standard', 'fluid'], true)) {
+            $layoutWidth = 'standard';
+        }
+
+        $currentUser->setSetting('layout_width', $layoutWidth);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Deine Webseiten-Einstellungen wurden erfolgreich gespeichert.');
+        return $this->redirectToRoute('app_profile');
+    }
 }

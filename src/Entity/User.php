@@ -43,11 +43,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $shareBlueprints = false;
 
+    #[ORM\Column(type: 'json', options: ['default' => '{}'])]
+    private array $settings = [];
+
     public function __construct()
     {
         $this->eveAccounts = new ArrayCollection();
         $this->personalCorpHangars = [];
         $this->personalCorpContainers = [];
+        $this->settings = [];
     }
 
 
@@ -149,6 +153,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->personalCorpHangars = $data["\0".self::class."\0personalCorpHangars"] ?? [];
         $this->personalCorpContainers = $data["\0".self::class."\0personalCorpContainers"] ?? [];
         $this->shareBlueprints = $data["\0".self::class."\0shareBlueprints"] ?? false;
+        $this->settings = $data["\0".self::class."\0settings"] ?? [];
 
         if (isset($data["\0".self::class."\0eveAccounts"])) {
             $this->eveAccounts = $data["\0".self::class."\0eveAccounts"];
@@ -224,5 +229,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->shareBlueprints = $shareBlueprints;
         return $this;
+    }
+
+    public function getSettings(): array
+    {
+        return $this->settings ?? [];
+    }
+
+    public function setSettings(array $settings): static
+    {
+        $this->settings = $settings;
+        return $this;
+    }
+
+    public function getSetting(string $key, mixed $default = null): mixed
+    {
+        return $this->settings[$key] ?? $default;
+    }
+
+    public function setSetting(string $key, mixed $value): static
+    {
+        if ($this->settings === null) {
+            $this->settings = [];
+        }
+        $this->settings[$key] = $value;
+        return $this;
+    }
+
+    public function isFluidLayout(): bool
+    {
+        return ($this->getSetting('layout_width', 'standard')) === 'fluid';
     }
 }

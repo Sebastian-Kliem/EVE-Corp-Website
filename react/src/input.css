@@ -57,6 +57,21 @@ html, body {
   padding: 0;
 }
 
+/* Layout container width rules */
+.app-container {
+  width: 100%;
+}
+
+body.layout-standard .app-container {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+body.layout-fluid .app-container {
+  max-width: 100%;
+}
+
 /* Global text gradient utility */
 .text-gradient {
   background: linear-gradient(90deg, #00f0ff, #c084fc);

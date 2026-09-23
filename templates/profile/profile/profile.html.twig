@@ -87,6 +87,48 @@
         </div>
     </details>
 
+    <!-- Webseiten- & Anzeige-Einstellungen -->
+    <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-site-settings" open>
+        <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
+            <span>Webseiten- &amp; UI-Einstellungen</span>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">▼</span>
+        </summary>
+        <div class="p-6 border-t border-eve-border">
+            <p class="text-xs text-eve-muted mb-4">
+                Hier kannst du persönliche Einstellungen zur Darstellung der Benutzeroberfläche festlegen.
+            </p>
+
+            <form action="{{ path('app_profile_update_settings') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('update_user_settings') }}">
+
+                <!-- Seitenbreite / Layout -->
+                <div class="mb-5">
+                    <label class="block font-semibold text-sm text-white mb-2">Layout-Breite (Seitenbreite)</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label class="flex items-start gap-3 p-3.5 rounded-lg border border-eve-border bg-black/20 hover:border-eve-primary/50 cursor-pointer transition-colors">
+                            <input type="radio" name="layout_width" value="standard" {% if not user.fluidLayout %}checked{% endif %} class="mt-1 cursor-pointer accent-eve-primary">
+                            <div>
+                                <strong class="block text-sm text-white">Standard (Zentriert)</strong>
+                                <span class="text-xs text-eve-muted">Optimale Lesbarkeit mit maximal 1200px Inhaltsbreite.</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-3 p-3.5 rounded-lg border border-eve-border bg-black/20 hover:border-eve-primary/50 cursor-pointer transition-colors">
+                            <input type="radio" name="layout_width" value="fluid" {% if user.fluidLayout %}checked{% endif %} class="mt-1 cursor-pointer accent-eve-primary">
+                            <div>
+                                <strong class="block text-sm text-white">Volle Breite (Fluid)</strong>
+                                <span class="text-xs text-eve-muted">Nutzt die gesamte Monitorbreite für maximale Übersicht.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer mt-2">
+                    Webseiten-Einstellungen speichern
+                </button>
+            </form>
+        </div>
+    </details>
+
     <!-- Blueprint-Tresor Freigabe-Einstellungen -->
     <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-blueprint-sharing">
         <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
