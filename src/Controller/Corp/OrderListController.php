@@ -32,19 +32,19 @@ final class OrderListController extends AbstractController
         $orders = $orderRepository->findAll();
         $sell = $sellRepository->findAll();
 
-        // Populate Jita prices for buy orders
+        // Populate Jita prices for buy orders (Bestellungen are based on Jita-Sell)
         foreach ($orders as $order) {
             $itemId = $order->getItem();
             if (is_numeric($itemId)) {
-                $order->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, true));
+                $order->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, false));
             }
         }
 
-        // Populate Jita prices for sell orders
+        // Populate Jita prices for sell orders (Angebote are based on Jita-Buy)
         foreach ($sell as $sellOrder) {
             $itemId = $sellOrder->getItem();
             if (is_numeric($itemId)) {
-                $sellOrder->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, false));
+                $sellOrder->setJitaPriceInfo($jitaPriceService->getAverageJitaPrice((int)$itemId, true));
             }
         }
 
@@ -112,7 +112,8 @@ final class OrderListController extends AbstractController
             $order = new BuyOrder();
             $order->setItem($itemId);
             $order->setAmount((int)$amount);
-            $order->setPercentToJitaBuy((int)$request->get('jita_buy', 100));
+            $percent = $request->get('jita_sell') ?? $request->get('jita_buy', 100);
+            $order->setPercentToJitaSell((int)$percent);
             
             $note = $request->get('note');
             $order->setNote($note ? trim((string)$note) : null);
@@ -157,7 +158,8 @@ final class OrderListController extends AbstractController
 
             $order->setItem($itemId);
             $order->setAmount((int)$amount);
-            $order->setPercentToJitaBuy((int)$request->get('jita_buy', 100));
+            $percent = $request->get('jita_sell') ?? $request->get('jita_buy', 100);
+            $order->setPercentToJitaSell((int)$percent);
 
             $note = $request->get('note');
             $order->setNote($note ? trim((string)$note) : null);
@@ -236,7 +238,8 @@ final class OrderListController extends AbstractController
             $sell = new SellOrder();
             $sell->setItem($itemId);
             $sell->setAmount((int)$amount);
-            $sell->setPercentToJitaSell((int)$request->get('jita_sell', 100));
+            $percent = $request->get('jita_buy') ?? $request->get('jita_sell', 100);
+            $sell->setPercentToJitaBuy((int)$percent);
 
             $note = $request->get('note');
             $sell->setNote($note ? trim((string)$note) : null);
@@ -281,7 +284,8 @@ final class OrderListController extends AbstractController
 
             $sell->setItem($itemId);
             $sell->setAmount((int)$amount);
-            $sell->setPercentToJitaSell((int)$request->get('jita_sell', 100));
+            $percent = $request->get('jita_buy') ?? $request->get('jita_sell', 100);
+            $sell->setPercentToJitaBuy((int)$percent);
 
             $note = $request->get('note');
             $sell->setNote($note ? trim((string)$note) : null);

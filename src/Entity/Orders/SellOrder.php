@@ -32,8 +32,8 @@ class SellOrder
     #[ORM\Column(nullable: true)]
     private ?bool $fullfilled = null;
 
-    #[ORM\Column(nullable: true, options: ["default" => 100])]
-    private ?int $percentToJitaSell = 100;
+    #[ORM\Column(name: 'percent_to_jita_buy', nullable: true, options: ["default" => 100])]
+    private ?int $percentToJitaBuy = 100;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $note = null;
@@ -103,14 +103,26 @@ class SellOrder
         return $this;
     }
 
+    public function getPercentToJitaBuy(): ?int
+    {
+        return $this->percentToJitaBuy;
+    }
+
+    public function setPercentToJitaBuy(?int $percentToJitaBuy): static
+    {
+        $this->percentToJitaBuy = $percentToJitaBuy;
+
+        return $this;
+    }
+
     public function getPercentToJitaSell(): ?int
     {
-        return $this->percentToJitaSell;
+        return $this->percentToJitaBuy;
     }
 
     public function setPercentToJitaSell(?int $percentToJitaSell): static
     {
-        $this->percentToJitaSell = $percentToJitaSell;
+        $this->percentToJitaBuy = $percentToJitaSell;
 
         return $this;
     }
@@ -132,7 +144,7 @@ class SellOrder
         if ($this->jitaPriceInfo === null || $this->jitaPriceInfo['price'] === null) {
             return null;
         }
-        return $this->jitaPriceInfo['price'] * $this->amount * ($this->percentToJitaSell / 100);
+        return $this->jitaPriceInfo['price'] * $this->amount * ($this->percentToJitaBuy / 100);
     }
 
     public function getNote(): ?string
