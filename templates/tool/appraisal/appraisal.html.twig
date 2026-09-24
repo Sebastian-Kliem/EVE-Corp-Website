@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Janice Appraisal & Rechner - WH-Toolbox{% endblock %}
+
+{% block body %}
+    <div class="w-full px-6 mt-8 mb-16">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-white tracking-tight">Janice Appraisal & Wertermittlung</h1>
+                <p class="text-xs text-eve-muted mt-1">EFT-Fittings, Hangar-Listen und Multibuy analysieren, Frachtvolumen (m³) berechnen und direkt als Order aufgeben</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{{ path('app_order_list') }}" class="px-4 py-2 rounded-lg text-xs font-semibold border border-white/10 bg-[#0a0f1d] hover:bg-white/5 text-slate-300 hover:text-white transition-all cursor-pointer">
+                    Zurück zur Order-Übersicht
+                </a>
+            </div>
+        </div>
+
+        {{ react_component('JaniceAppraisal', {
+            'doctrineFits': doctrineFits,
+            'defaultType': 'BUY',
+            'embedded': false
+        }) }}
+    </div>
+{% endblock %}
