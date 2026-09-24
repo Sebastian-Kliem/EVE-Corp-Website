@@ -535,20 +535,207 @@ class SdeService
         }
     }
 
+    private const PACKAGED_SHIP_VOLUMES_BY_GROUP = [
+        25 => 2500.0,   // Frigate
+        324 => 2500.0,  // Assault Frigate
+        830 => 2500.0,  // Covert Ops
+        893 => 2500.0,  // Electronic Attack Ship
+        1283 => 2500.0, // Expedition Frigate
+        831 => 2500.0,  // Interceptor
+        1527 => 2500.0, // Logistics Frigate
+        834 => 2500.0,  // Stealth Bomber
+        1022 => 2500.0, // Prototype Exploration Ship
+        237 => 2500.0,  // Corvette
+        29 => 500.0,    // Capsule
+        31 => 500.0,    // Shuttle
+        420 => 5000.0,  // Destroyer
+        541 => 5000.0,  // Interdictor
+        1534 => 5000.0, // Command Destroyer
+        1305 => 5000.0, // Tactical Destroyer
+        26 => 10000.0,  // Cruiser
+        358 => 10000.0, // Heavy Assault Cruiser
+        894 => 10000.0, // Heavy Interdiction Cruiser
+        832 => 10000.0, // Logistics
+        833 => 10000.0, // Force Recon Ship
+        906 => 10000.0, // Combat Recon Ship
+        963 => 10000.0, // Strategic Cruiser
+        1972 => 10000.0,// Flag Cruiser
+        463 => 3750.0,  // Mining Barge
+        543 => 3750.0,  // Exhumer
+        419 => 15000.0, // Combat Battlecruiser
+        1201 => 15000.0,// Attack Battlecruiser
+        540 => 15000.0, // Command Ship
+        27 => 50000.0,  // Battleship
+        898 => 50000.0, // Black Ops
+        900 => 50000.0, // Marauder
+        381 => 50000.0, // Elite Battleship
+        28 => 20000.0,  // Hauler
+        380 => 20000.0, // Deep Space Transport
+        1202 => 20000.0,// Blockade Runner
+        5087 => 20000.0,// Special Edition Yachts
+        941 => 500000.0,// Industrial Command Ship (Orca)
+        4902 => 500000.0,// Expedition Command Ship
+        883 => 1000000.0,// Capital Industrial Ship (Rorqual)
+        513 => 1000000.0,// Freighter
+        902 => 1000000.0,// Jump Freighter
+        547 => 1000000.0,// Carrier
+        5120 => 1000000.0,// Command Carrier
+        485 => 1000000.0,// Dreadnought
+        4594 => 1000000.0,// Lancer Dreadnought
+        1538 => 1000000.0,// Force Auxiliary
+        659 => 2500000.0,// Supercarrier
+        30 => 10000000.0,// Titan
+    ];
+
     /**
-     * Resolves the volume of an item from the SDE.
+     * Resolves the volume of an item from the SDE (packaged or unpackaged).
      */
-    public function getItemVolume(int $typeId): float
+    public function getItemVolume(int $typeId, bool $packaged = true): float
     {
         try {
-            $volume = $this->connection->fetchOne(
-                'SELECT volume FROM invTypes WHERE typeID = :id LIMIT 1',
+            $row = $this->connection->fetchAssociative(
+                'SELECT t.volume, t.groupID, g.categoryID 
+                 FROM invTypes t 
+                 JOIN invGroups g ON t.groupID = g.groupID 
+                 WHERE t.typeID = :id LIMIT 1',
                 ['id' => $typeId]
             );
-            return $volume !== false ? (float)$volume : 0.0;
+
+            if (!$row) {
+                return 0.0;
+            }
+
+            $volume = (float)($row['volume'] ?? 0.0);
+            $categoryId = (int)($row['categoryID'] ?? 0);
+            $groupId = (int)($row['groupID'] ?? 0);
+
+            if ($packaged && $categoryId === 6 && isset(self::PACKAGED_SHIP_VOLUMES_BY_GROUP[$groupId])) {
+                return self::PACKAGED_SHIP_VOLUMES_BY_GROUP[$groupId];
+            }
+
+            return $volume;
         } catch (\Exception $e) {
             return 0.0;
         }
     }
+
+    /**
+     * Batch retrieves comprehensive SDE details for an array of typeIDs.
+     * @param int[] $typeIds
+     * @return array<int, array> Map of typeId => details
+     */
+    public function getItemsDetails(array $typeIds): array
+    {
+        $typeIds = array_values(array_unique(array_filter(array_map('intval', $typeIds))));
+        if (empty($typeIds)) {
+            return [];
+        }
+
+        try {
+            $placeholders = implode(',', array_fill(0, count($typeIds), '?'));
+            $stmt = $this->connection->prepare(
+                "SELECT t.typeID, t.typeName, t.volume, t.mass, t.capacity, t.groupID, g.groupName, g.categoryID, c.categoryName
+                 FROM invTypes t
+                 JOIN invGroups g ON t.groupID = g.groupID
+                 JOIN invCategories c ON g.categoryID = c.categoryID
+                 WHERE t.typeID IN ($placeholders)"
+            );
+            $result = $stmt->executeQuery($typeIds);
+            $rows = $result->fetchAllAssociative();
+
+            // Fetch fitting slot effects for modules if any
+            $slotMap = $this->_fetchSlotEffectsForTypeIds($typeIds);
+
+            $details = [];
+            foreach ($rows as $row) {
+                $typeId = (int)$row['typeID'];
+                $categoryId = (int)$row['categoryID'];
+                $groupId = (int)$row['groupID'];
+                $rawVolume = (float)$row['volume'];
+                $packagedVolume = $rawVolume;
+
+                if ($categoryId === 6 && isset(self::PACKAGED_SHIP_VOLUMES_BY_GROUP[$groupId])) {
+                    $packagedVolume = self::PACKAGED_SHIP_VOLUMES_BY_GROUP[$groupId];
+                }
+
+                $slot = 'cargo';
+                if ($categoryId === 6) {
+                    $slot = 'hull';
+                } elseif (isset($slotMap[$typeId])) {
+                    $slot = $slotMap[$typeId];
+                } elseif ($categoryId === 18) {
+                    $slot = 'drone';
+                } elseif ($categoryId === 87) {
+                    $slot = 'fighter';
+                } elseif ($categoryId === 32) {
+                    $slot = 'subsystem';
+                } elseif ($categoryId === 8) {
+                    $slot = 'charge';
+                }
+
+                $isBlueprint = (bool)preg_match('/(blueprint|formula)/i', $row['groupName'] ?? '');
+
+                $details[$typeId] = [
+                    'typeId' => $typeId,
+                    'name' => $row['typeName'],
+                    'groupId' => $groupId,
+                    'groupName' => $row['groupName'],
+                    'categoryId' => $categoryId,
+                    'categoryName' => $row['categoryName'],
+                    'volume' => $rawVolume,
+                    'packagedVolume' => $packagedVolume,
+                    'slot' => $slot,
+                    'variation' => $isBlueprint ? 'bp' : 'icon',
+                ];
+            }
+
+            return $details;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Helper to fetch slot effects for typeIDs.
+     */
+    private function _fetchSlotEffectsForTypeIds(array $typeIds): array
+    {
+        if (empty($typeIds)) {
+            return [];
+        }
+
+        try {
+            $placeholders = implode(',', array_fill(0, count($typeIds), '?'));
+            $stmt = $this->connection->prepare(
+                "SELECT te.typeID, te.effectID
+                 FROM dgmTypeEffects te
+                 WHERE te.typeID IN ($placeholders) AND te.effectID IN (11, 12, 13, 2663, 3772)"
+            );
+            $result = $stmt->executeQuery($typeIds);
+            $rows = $result->fetchAllAssociative();
+
+            $map = [];
+            foreach ($rows as $row) {
+                $tId = (int)$row['typeID'];
+                $eId = (int)$row['effectID'];
+                if ($eId === 12) {
+                    $map[$tId] = 'high';
+                } elseif ($eId === 13) {
+                    $map[$tId] = 'med';
+                } elseif ($eId === 11) {
+                    $map[$tId] = 'low';
+                } elseif ($eId === 2663) {
+                    $map[$tId] = 'rig';
+                } elseif ($eId === 3772) {
+                    $map[$tId] = 'subsystem';
+                }
+            }
+
+            return $map;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
 }
+
 
