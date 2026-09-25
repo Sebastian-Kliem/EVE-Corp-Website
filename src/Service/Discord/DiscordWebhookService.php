@@ -17,6 +17,7 @@ class DiscordWebhookService
     public const CHANNEL_USER_ALERTS = 'user_alerts';
     public const CHANNEL_INDUSTRY = 'industry';
     public const CHANNEL_MARKET = 'market';
+    public const CHANNEL_WANDERER = 'wanderer';
 
     public const SETTING_KEYS = [
         'discord_webhook_default' => self::CHANNEL_DEFAULT,
@@ -26,41 +27,21 @@ class DiscordWebhookService
         'discord_webhook_user_alerts' => self::CHANNEL_USER_ALERTS,
         'discord_webhook_industry' => self::CHANNEL_INDUSTRY,
         'discord_webhook_market' => self::CHANNEL_MARKET,
+        'discord_webhook_wanderer' => self::CHANNEL_WANDERER,
         'discord_ping_role_structure_defense' => 'ping_defense',
         'discord_ping_role_fuel' => 'ping_fuel',
+        'discord_ping_role_wanderer' => 'ping_wanderer',
+        'wanderer_webhook_secret' => 'wanderer_secret',
     ];
-
-    private array $envDefaults = [];
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
-        ?string $defaultWebhook = null,
-        ?string $structuresWebhook = null,
-        ?string $fuelWebhook = null,
-        ?string $combatWebhook = null,
-        ?string $userAlertsWebhook = null,
-        ?string $industryWebhook = null,
-        ?string $marketWebhook = null,
-        private readonly ?string $structureDefensePingRole = null,
-        private readonly ?string $fuelPingRole = null
-    ) {
-        $this->envDefaults = [
-            'discord_webhook_default' => $defaultWebhook,
-            'discord_webhook_structures' => $structuresWebhook,
-            'discord_webhook_fuel' => $fuelWebhook,
-            'discord_webhook_combat' => $combatWebhook,
-            'discord_webhook_user_alerts' => $userAlertsWebhook,
-            'discord_webhook_industry' => $industryWebhook,
-            'discord_webhook_market' => $marketWebhook,
-            'discord_ping_role_structure_defense' => $structureDefensePingRole,
-            'discord_ping_role_fuel' => $fuelPingRole,
-        ];
-    }
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
-     * Gets a setting value from database or fallback to .env default.
+     * Gets a setting value from the database.
      */
     public function getSetting(string $key, ?string $default = null): ?string
     {
@@ -71,10 +52,10 @@ class DiscordWebhookService
                 return trim($setting->getValue());
             }
         } catch (\Throwable $e) {
-            // Database might not be initialized or connection issue, fallback to env
+            // Database might not be initialized or connection issue
         }
 
-        return $this->envDefaults[$key] ?? $default;
+        return $default;
     }
 
     /**
@@ -176,6 +157,32 @@ class DiscordWebhookService
         }
 
         return '<@&' . $role . '>';
+    }
+
+    /**
+     * Returns the formatted role mention string for wanderer alerts.
+     */
+    public function getWandererPing(): ?string
+    {
+        $role = $this->getSetting('discord_ping_role_wanderer');
+        if (empty($role)) {
+            return null;
+        }
+
+        $role = trim($role);
+        if ($role === '@here' || $role === '@everyone' || str_starts_with($role, '<@&')) {
+            return $role;
+        }
+
+        return '<@&' . $role . '>';
+    }
+
+    /**
+     * Returns the configured Wanderer Webhook secret for HMAC signature verification.
+     */
+    public function getWandererSecret(): ?string
+    {
+        return $this->getSetting('wanderer_webhook_secret');
     }
 
     /**

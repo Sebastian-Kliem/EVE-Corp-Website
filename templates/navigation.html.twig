@@ -24,8 +24,8 @@
         {% set current_route = app.request.attributes.get('_route') %}
         {% set is_allgemein_active = current_route in ['link_collection', 'app_suggestions', 'app_general_reactions'] %}
         {% set is_corp_active = current_route in ['app_order_list', 'app_corp_appraisal', 'app_dashboard_corp_assets_overview', 'app_corp_blueprints', 'app_corp_structures', 'app_tracking_index', 'app_corp_defense_doctrine'] %}
-        {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview'] %}
-        {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index', 'app_admin_discord_index'] %}
+        {% set is_personlich_active = current_route in ['app_profile', 'app_profile_characters', 'app_profile_skill_farm', 'app_dashboard_pi_overview', 'app_dashboard_mining_ledger', 'app_dashboard_industry_overview', 'app_dashboard_assets_overview', 'app_dashboard_eve_character_assets', 'app_dashboard_eve_character_details', 'app_dashboard_market_overview', 'app_personal_wanderer_index'] %}
+        {% set is_admin_active = current_route in ['app_admin_users', 'app_admin_corp_assets_visibility', 'app_admin_cron_index', 'app_admin_discord_index', 'app_admin_wanderer_index'] %}
 
         {% set nav_trigger_base = "cursor-pointer flex items-center gap-2 py-2 font-semibold select-none no-underline transition-all duration-200 " %}
         {% set nav_item_base = "block w-full text-left py-2 px-5 no-underline transition-all duration-200 text-sm " %}
@@ -77,6 +77,7 @@
                             <a class="{{ current_route == 'app_dashboard_industry_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_industry_overview') }}" data-turbo="false">Industrie-Aufträge</a>
                             <a class="{{ current_route == 'app_dashboard_assets_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_assets_overview') }}" data-turbo="false">Inventar & Wallet</a>
                             <a class="{{ current_route == 'app_dashboard_market_overview' ? nav_item_active : nav_item_normal }}" href="{{ path('app_dashboard_market_overview') }}" data-turbo="false">Marktaufträge</a>
+                            <a class="{{ current_route == 'app_personal_wanderer_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_personal_wanderer_index') }}" data-turbo="false">Wanderer-Exit-Alerts</a>
                         </div>
                     </div>
 
@@ -92,6 +93,7 @@
                                 <a class="{{ current_route == 'app_admin_corp_assets_visibility' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_corp_assets_visibility') }}" data-turbo="false">Hangar-Sichtbarkeit</a>
                                 <a class="{{ current_route == 'app_admin_cron_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_cron_index') }}" data-turbo="false">Cron-Jobs</a>
                                 <a class="{{ current_route == 'app_admin_discord_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_discord_index') }}" data-turbo="false">Discord-Webhooks</a>
+                                <a class="{{ current_route == 'app_admin_wanderer_index' ? nav_item_active : nav_item_normal }}" href="{{ path('app_admin_wanderer_index') }}" data-turbo="false">Wanderer-Integration</a>
                             {% endif %}
                         </div>
                     </div>

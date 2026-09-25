@@ -415,6 +415,51 @@ class EsiClient
     }
 
     /**
+     * Calculates the solar system route between origin and destination.
+     * Supported flags: 'secure' (prefer/only Highsec), 'shortest', 'insecure' (prefer Low/Null).
+     * Returns an array of solar system IDs along the path or null if no route found.
+     *
+     * @return int[]|null
+     */
+    public function getRoute(int $originSolarSystemId, int $destinationSolarSystemId, string $flag = 'secure'): ?array
+    {
+        if ($originSolarSystemId <= 0 || $destinationSolarSystemId <= 0) {
+            return null;
+        }
+
+        if ($originSolarSystemId === $destinationSolarSystemId) {
+            return [$originSolarSystemId];
+        }
+
+        try {
+            $path = sprintf('route/%d/%d/', $originSolarSystemId, $destinationSolarSystemId);
+            $result = $this->request('GET', $path, [
+                'query' => [
+                    'flag' => $flag,
+                ],
+            ]);
+
+            if (is_array($result) && !empty($result)) {
+                $route = [];
+                foreach ($result as $systemId) {
+                    $route[] = (int)$systemId;
+                }
+                return $route;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug(sprintf(
+                '[EsiClient] No route found from %d to %d (flag: %s): %s',
+                $originSolarSystemId,
+                $destinationSolarSystemId,
+                $flag,
+                $e->getMessage()
+            ));
+        }
+
+        return null;
+    }
+
+    /**
      * Helper to log both to standard logger and directly to the dedicated var/log/cron.log file.
      */
     private function logCron(string $message, string $level = 'info'): void
