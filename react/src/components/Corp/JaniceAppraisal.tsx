@@ -74,6 +74,7 @@ export default function JaniceAppraisal({
     const [orderNote, setOrderNote] = useState('');
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
     const [feedback, setFeedback] = useState<string | null>(null);
+    const [showJitaInfo, setShowJitaInfo] = useState(false);
 
     const handleCalculate = (textToAppraise = rawText, currentPercent = percent, currentType = orderType) => {
         if (!textToAppraise.trim()) {
@@ -308,8 +309,18 @@ export default function JaniceAppraisal({
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-eve-border/40">
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold text-white">Jita-Anpassung:</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-white">Jita-Anpassung:</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowJitaInfo(!showJitaInfo)}
+                                className="w-4 h-4 rounded-full bg-eve-primary/15 border border-eve-primary/40 text-eve-primary font-bold text-[10px] flex items-center justify-center hover:bg-eve-primary/30 transition-colors cursor-pointer"
+                                title="Erklärung zu den Prozent-Optionen anzeigen"
+                            >
+                                i
+                            </button>
+                        </div>
                         <div className="flex items-center gap-1.5">
                             <input
                                 type="number"
@@ -369,6 +380,53 @@ export default function JaniceAppraisal({
                         </button>
                     </div>
                 </div>
+
+                {/* Collapsible Info Card for Jita-Anpassung */}
+                {showJitaInfo && (
+                    <div className="mt-4 p-4 rounded-lg bg-black/40 border border-eve-border/60 text-xs text-slate-300 animate-slide-down">
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-eve-border/40">
+                            <span className="font-bold text-white text-xs">Leitfaden: Wann nutzt man welche Jita-Anpassung?</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowJitaInfo(false)}
+                                className="text-eve-muted hover:text-white text-xs cursor-pointer"
+                            >
+                                Schließen
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="p-3 rounded-md bg-eve-card/60 border border-eve-border/40 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-eve-primary">100% (Fair Trade)</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-eve-primary/15 text-eve-primary border border-eve-primary/30">Selbstkosten</span>
+                                </div>
+                                <p className="text-eve-muted text-[11px] leading-relaxed">
+                                    1:1 Jita-Marktwert (Buy = Jita-Sell, Sell = Jita-Buy). Geeignet für interne Gefallen unter Corp-Mitgliedern, Weitergabe gebrauchter Schiffe oder Bestellungen ohne zusätzlichen Logistik-Aufschlag.
+                                </p>
+                            </div>
+
+                            <div className="p-3 rounded-md bg-eve-card/60 border border-eve-border/40 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-amber-300">90% (Buyback)</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/30">Ankauf vor Ort</span>
+                                </div>
+                                <p className="text-eve-muted text-[11px] leading-relaxed">
+                                    10% Abschlag für Ankaufsprogramme im Wurmloch (z. B. Erz, PI, Gas, Loot). Der Verkäufer spart das Transportrisiko und den Zeitaufwand nach Jita; der Aufkäufer übernimmt Frachtraum und Vermarktung.
+                                </p>
+                            </div>
+
+                            <div className="p-3 rounded-md bg-eve-card/60 border border-eve-border/40 flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-bold text-emerald-300">105% (Logistik)</span>
+                                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Lieferbonus</span>
+                                </div>
+                                <p className="text-eve-muted text-[11px] leading-relaxed">
+                                    5% Aufschlag für Lieferungen direkt zur heimischen Struktur. Dient als Trinkgeld und Entlohnung für den Hauler-Piloten, der den Einkauf in Jita und den Frachtraum im Transporter stellt.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
