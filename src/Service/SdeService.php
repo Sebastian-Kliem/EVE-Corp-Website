@@ -87,6 +87,101 @@ class SdeService
     }
 
     /**
+     * Fetches detailed information for a solar system from the SDE database.
+     */
+    public function getSolarSystemInfo(int $solarSystemId): ?array
+    {
+        try {
+            $row = $this->connection->fetchAssociative(
+                'SELECT s.solarSystemID, s.solarSystemName, s.security, s.regionID, s.constellationID,
+                        r.regionName, c.constellationName
+                 FROM mapSolarSystems s
+                 LEFT JOIN mapRegions r ON s.regionID = r.regionID
+                 LEFT JOIN mapConstellations c ON s.constellationID = c.constellationID
+                 WHERE s.solarSystemID = :id LIMIT 1',
+                ['id' => $solarSystemId]
+            );
+
+            if ($row) {
+                $row['solarSystemID'] = (int)$row['solarSystemID'];
+                $row['security'] = (float)$row['security'];
+                $row['regionID'] = (int)($row['regionID'] ?? 0);
+                $row['constellationID'] = (int)($row['constellationID'] ?? 0);
+                return $row;
+            }
+        } catch (\Exception $e) {
+            // Keep going and return null on query failure
+        }
+
+        return null;
+    }
+
+    /**
+     * Searches solar systems by name with a given limit.
+     */
+    public function searchSolarSystems(string $query, int $limit = 10): array
+    {
+        $trimmed = trim($query);
+        if ($trimmed === '') {
+            return [];
+        }
+
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT s.solarSystemID, s.solarSystemName, s.security, r.regionName
+                 FROM mapSolarSystems s
+                 LEFT JOIN mapRegions r ON s.regionID = r.regionID
+                 WHERE s.solarSystemName LIKE :query
+                 ORDER BY s.solarSystemName ASC
+                 LIMIT :limit',
+                [
+                    'query' => '%' . $trimmed . '%',
+                    'limit' => $limit,
+                ],
+                [
+                    'limit' => \PDO::PARAM_INT,
+                ]
+            );
+
+            $results = [];
+            foreach ($rows as $row) {
+                $results[] = [
+                    'id' => (int)$row['solarSystemID'],
+                    'name' => $row['solarSystemName'],
+                    'security' => round((float)$row['security'], 1),
+                    'region' => $row['regionName'] ?? '',
+                ];
+            }
+
+            return $results;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Translates a solar system name into its numeric ID.
+     */
+    public function getSolarSystemIdByName(string $name): ?int
+    {
+        $trimmed = trim($name);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        try {
+            $id = $this->connection->fetchOne(
+                'SELECT solarSystemID FROM mapSolarSystems WHERE solarSystemName = :name LIMIT 1',
+                ['name' => $trimmed]
+            );
+
+            return $id ? (int)$id : null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * Checks if a typeID belongs to a blueprint group in the SDE database.
      */
     public function isBlueprint(int $itemId): bool
