@@ -23,13 +23,15 @@ security:
             pattern: ^/api/login
             stateless: true
         api:
-            pattern: ^/api
+            pattern: ^/api(?!/orders)
             stateless: true
             custom_authenticator: App\Security\JwtAuthenticator
         main:
             lazy: true
             provider: app_user_provider
-            custom_authenticator: App\Security\AppAuthenticator
+            custom_authenticators:
+                - App\Security\AppAuthenticator
+                - App\Security\JwtAuthenticator
             logout:
                 path: app_logout
                 # where to redirect after logout

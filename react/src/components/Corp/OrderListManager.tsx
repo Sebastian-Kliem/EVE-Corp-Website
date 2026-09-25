@@ -145,8 +145,11 @@ export default function OrderListManager({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: !currentStatus }),
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler beim Aktualisieren der Position.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Aktualisieren der Position.');
+                }
                 return res.json();
             })
             .then(data => {
@@ -165,8 +168,11 @@ export default function OrderListManager({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler beim Abschließen der Bestellung.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Abschließen der Bestellung.');
+                }
                 return res.json();
             })
             .then(data => {
@@ -189,8 +195,11 @@ export default function OrderListManager({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler beim Stornieren der Bestellung.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Stornieren der Bestellung.');
+                }
                 return res.json();
             })
             .then(data => {
@@ -211,8 +220,11 @@ export default function OrderListManager({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler beim Wiedereröffnen der Bestellung.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Wiedereröffnen der Bestellung.');
+                }
                 return res.json();
             })
             .then(data => {

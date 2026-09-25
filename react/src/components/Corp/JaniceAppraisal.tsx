@@ -96,8 +96,11 @@ export default function JaniceAppraisal({
                 type: currentType,
             }),
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler bei der Wertermittlung.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler bei der Wertermittlung.');
+                }
                 return res.json();
             })
             .then((data: AppraisalResult) => {
@@ -178,8 +181,11 @@ export default function JaniceAppraisal({
             },
             body: JSON.stringify(payload),
         })
-            .then(res => {
-                if (!res.ok) throw new Error('Fehler beim Erstellen der Bestellung.');
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Erstellen der Bestellung.');
+                }
                 return res.json();
             })
             .then(data => {
