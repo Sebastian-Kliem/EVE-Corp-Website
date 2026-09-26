@@ -31,17 +31,7 @@ class PersonalWandererController extends AbstractController
     #[Route('', name: 'app_personal_wanderer_index', methods: ['GET'])]
     public function index(): Response
     {
-        /** @var User $user */
-        $user = $this->getUser();
-        $userRules = $this->ruleRepository->findByUser($user);
-
-        $userSettings = $user->getSettings();
-        $personalWebhook = $userSettings['discord_webhook_wanderer'] ?? '';
-
-        return $this->render('profile/wanderer_routes.html.twig', [
-            'userRules' => $userRules,
-            'personalWebhook' => $personalWebhook,
-        ]);
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
     #[Route('/webhook', name: 'app_personal_wanderer_save_webhook', methods: ['POST'])]
@@ -49,7 +39,7 @@ class PersonalWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('personal_wanderer_webhook_save', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         /** @var User $user */
@@ -63,7 +53,7 @@ class PersonalWandererController extends AbstractController
         $this->entityManager->flush();
 
         $this->addFlash('success', 'Persoenliche Discord-Webhook-URL wurde erfolgreich gespeichert.');
-        return $this->redirectToRoute('app_personal_wanderer_index');
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
     #[Route('/test-webhook', name: 'app_personal_wanderer_test_webhook', methods: ['POST'])]
@@ -71,7 +61,7 @@ class PersonalWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('personal_wanderer_test_webhook', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         /** @var User $user */
@@ -81,7 +71,7 @@ class PersonalWandererController extends AbstractController
 
         if (empty($webhookUrl)) {
             $this->addFlash('error', 'Bitte trage zuerst deine persoenliche Discord-Webhook-URL ein.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $now = new \DateTimeImmutable();
@@ -103,7 +93,7 @@ class PersonalWandererController extends AbstractController
             $this->addFlash('error', 'Fehler beim Senden der Testnachricht. Bitte pruefe deine Webhook-URL.');
         }
 
-        return $this->redirectToRoute('app_personal_wanderer_index');
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
     #[Route('/rule/create', name: 'app_personal_wanderer_create_rule', methods: ['POST'])]
@@ -111,7 +101,7 @@ class PersonalWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('personal_wanderer_rule_create', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         /** @var User $user */
@@ -125,7 +115,7 @@ class PersonalWandererController extends AbstractController
 
         if ($name === '' || $targetSystemInput === '') {
             $this->addFlash('error', 'Bitte Name und Zielsystem angeben.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $systemId = null;
@@ -143,7 +133,7 @@ class PersonalWandererController extends AbstractController
 
         if (!$systemId) {
             $this->addFlash('error', sprintf('Das System "%s" konnte in der EVE-Datenbank nicht gefunden werden.', $targetSystemInput));
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $rule = new WandererRouteRule();
@@ -160,7 +150,7 @@ class PersonalWandererController extends AbstractController
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Persoenliche Routenregel "%s" fuer Ziel %s erfolgreich erstellt.', $name, $systemName));
-        return $this->redirectToRoute('app_personal_wanderer_index');
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
     #[Route('/rule/{id}/toggle', name: 'app_personal_wanderer_toggle_rule', methods: ['POST'])]
@@ -168,7 +158,7 @@ class PersonalWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('personal_wanderer_rule_toggle_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         /** @var User $user */
@@ -177,14 +167,14 @@ class PersonalWandererController extends AbstractController
 
         if (!$rule || $rule->getUser() !== $user) {
             $this->addFlash('error', 'Regel nicht gefunden oder keine Berechtigung.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $rule->setIsActive(!$rule->isActive());
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Regel "%s" wurde %s.', $rule->getName(), $rule->isActive() ? 'aktiviert' : 'deaktiviert'));
-        return $this->redirectToRoute('app_personal_wanderer_index');
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
     #[Route('/rule/{id}/delete', name: 'app_personal_wanderer_delete_rule', methods: ['POST'])]
@@ -192,7 +182,7 @@ class PersonalWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('personal_wanderer_rule_delete_' . $id, $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         /** @var User $user */
@@ -201,7 +191,7 @@ class PersonalWandererController extends AbstractController
 
         if (!$rule || $rule->getUser() !== $user) {
             $this->addFlash('error', 'Regel nicht gefunden oder keine Berechtigung.');
-            return $this->redirectToRoute('app_personal_wanderer_index');
+            return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $ruleName = $rule->getName();
@@ -209,6 +199,6 @@ class PersonalWandererController extends AbstractController
         $this->entityManager->flush();
 
         $this->addFlash('success', sprintf('Regel "%s" wurde geloescht.', $ruleName));
-        return $this->redirectToRoute('app_personal_wanderer_index');
+        return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 }
