@@ -1,0 +1,218 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Wanderer-Integration & Routen{% endblock %}
+
+{% block body %}
+<div class="w-full px-6 mt-10 mb-12">
+    <!-- Headline -->
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-semibold text-white text-gradient">
+                Wanderer Integration & Exit-Routen
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{{ path('app_admin_discord_index') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-4 py-2 font-medium transition-all duration-300 cursor-pointer">
+                Discord-Uebersicht
+            </a>
+            <a href="{{ path('app_profile') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-4 py-2 font-medium transition-all duration-300 cursor-pointer">
+                Zurueck zum Profil
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="py-4 px-6 rounded-lg mt-4 mb-6 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% elseif label == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% else %}bg-sky-500/10 border-sky-500/30 text-sky-400{% endif %}">
+                {{ message|raw }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Webhook Instructions Card -->
+    <div class="py-5 px-6 rounded-lg bg-black/20 border border-eve-border mb-8">
+        <div class="text-sm leading-relaxed text-eve-text">
+            <strong class="text-white">Wanderer Webhook Einrichtung:</strong>
+            <p class="text-xs text-eve-muted mt-1">
+                Trage folgenden Webhook-Endpunkt in Wanderer auf der Map unter <em>Webhooks</em> ein (fuer Events wie <code>add_system</code> oder <code>connection_added</code>):
+            </p>
+            <div class="mt-2 p-3 bg-black/50 border border-eve-border/60 rounded flex items-center justify-between gap-4 font-mono text-xs text-eve-primary break-all">
+                <span>{{ webhookEndpoint }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <!-- Settings Form (Left) -->
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg lg:col-span-1">
+            <h3 class="text-lg font-semibold mb-2 text-white">
+                Integrationseinstellungen
+            </h3>
+            <p class="text-xs text-eve-muted mb-6">Discord-Kanal und Sicherheits-Secret fuer Corp-Benachrichtigungen.</p>
+
+            <form action="{{ path('app_admin_wanderer_save_settings') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('wanderer_settings_save') }}">
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="discord_webhook_wanderer" class="block text-xs font-medium text-white mb-1">
+                            Discord Webhook URL (Wanderer-Kanal)
+                        </label>
+                        <input type="url" id="discord_webhook_wanderer" name="discord_webhook_wanderer" value="{{ settings.discord_webhook_wanderer }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        <p class="text-[11px] text-eve-muted mt-1">Eigener Discord-Kanal ausschliesslich fuer K-Space- und Exit-Meldungen.</p>
+                    </div>
+
+                    <div>
+                        <label for="discord_ping_role_wanderer" class="block text-xs font-medium text-white mb-1">
+                            Ping-Rolle (Optional)
+                        </label>
+                        <input type="text" id="discord_ping_role_wanderer" name="discord_ping_role_wanderer" value="{{ settings.discord_ping_role_wanderer }}" placeholder="z. B. 123456789012345678 oder @here" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    </div>
+
+                    <div>
+                        <label for="wanderer_webhook_secret" class="block text-xs font-medium text-white mb-1">
+                            Wanderer Webhook Secret (HMAC)
+                        </label>
+                        <input type="text" id="wanderer_webhook_secret" name="wanderer_webhook_secret" value="{{ settings.wanderer_webhook_secret }}" placeholder="Optionales Secret zur Signaturpruefung" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        <p class="text-[11px] text-eve-muted mt-1">Wird mit dem x-wanderer-signature Header abgeglichen.</p>
+                    </div>
+
+                    <div class="pt-2 flex flex-col gap-2">
+                        <button type="submit" class="w-full bg-eve-primary text-black font-semibold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all text-xs cursor-pointer">
+                            Einstellungen speichern
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <hr class="border-eve-border my-6">
+
+            <!-- Test Webhook Form -->
+            <form action="{{ path('app_admin_wanderer_test_discord') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('wanderer_test_discord') }}">
+                <button type="submit" class="w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-white py-2 px-4 rounded-lg transition-all text-xs cursor-pointer">
+                    Testnachricht senden
+                </button>
+            </form>
+        </div>
+
+        <!-- Corporate Route Rules (Right) -->
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg lg:col-span-2">
+            <h3 class="text-lg font-semibold mb-2 text-white">
+                Aktive Corp-Routenregeln
+            </h3>
+            <p class="text-xs text-eve-muted mb-6">Wann soll eine Benachrichtigung an den Corp-Kanal ausgeloest werden?</p>
+
+            <!-- Rules Table -->
+            <div class="overflow-x-auto mb-6">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-eve-border text-eve-muted uppercase text-[10px]">
+                            <th class="py-2.5 px-3">Status</th>
+                            <th class="py-2.5 px-3">Regel-Name</th>
+                            <th class="py-2.5 px-3">Zielsystem</th>
+                            <th class="py-2.5 px-3">Max. Spruenge</th>
+                            <th class="py-2.5 px-3">Sicherheitsmodus</th>
+                            <th class="py-2.5 px-3">Cooldown</th>
+                            <th class="py-2.5 px-3 text-right">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-eve-border/40">
+                        {% for rule in corpRules %}
+                            <tr class="hover:bg-white/5 transition-colors">
+                                <td class="py-3 px-3">
+                                    {% if rule.isActive %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Aktiv</span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">Inaktiv</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-3 font-semibold text-white">{{ rule.name }}</td>
+                                <td class="py-3 px-3 text-eve-primary font-mono">{{ rule.targetSolarSystemName }}</td>
+                                <td class="py-3 px-3 text-white">{{ rule.maxJumps }} Spruenge</td>
+                                <td class="py-3 px-3">
+                                    {% if rule.securityMode == 'highsec_only' %}
+                                        <span class="text-emerald-400">Nur Highsec</span>
+                                    {% elseif rule.securityMode == 'highsec_lowsec' %}
+                                        <span class="text-amber-400">Highsec & Lowsec</span>
+                                    {% else %}
+                                        <span class="text-rose-400">Alle (inkl. Null)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-3 text-eve-muted">{{ rule.cooldownMinutes }} Min.</td>
+                                <td class="py-3 px-3 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <form action="{{ path('app_admin_wanderer_toggle_rule', {id: rule.id}) }}" method="POST" class="inline">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('wanderer_rule_toggle_' ~ rule.id) }}">
+                                            <button type="submit" class="text-xs text-eve-muted hover:text-white px-2 py-1 rounded bg-black/40 border border-eve-border cursor-pointer">
+                                                {{ rule.isActive ? 'Deaktivieren' : 'Aktivieren' }}
+                                            </button>
+                                        </form>
+                                        <form action="{{ path('app_admin_wanderer_delete_rule', {id: rule.id}) }}" method="POST" class="inline" onsubmit="return confirm('Regel wirklich loeschen?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('wanderer_rule_delete_' ~ rule.id) }}">
+                                            <button type="submit" class="text-xs text-rose-400 hover:text-rose-300 px-2 py-1 rounded bg-rose-500/10 border border-rose-500/30 cursor-pointer">
+                                                Loeschen
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="py-6 text-center text-eve-muted">
+                                    Noch keine Corp-Routenregeln angelegt. Erstelle unten die erste Regel (z. B. Jita Highsec).
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add Rule Form -->
+            <div class="p-4 bg-black/30 border border-eve-border/60 rounded-lg">
+                <h4 class="text-sm font-semibold text-white mb-3">Neue Corp-Routenregel hinzufuegen</h4>
+                <form action="{{ path('app_admin_wanderer_create_rule') }}" method="POST">
+                    <input type="hidden" name="_token" value="{{ csrf_token('wanderer_rule_create') }}">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label for="name" class="block text-xs text-eve-muted mb-1">Bezeichnung</label>
+                            <input type="text" id="name" name="name" placeholder="z. B. Jita Highsec Express" required class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label for="target_system" class="block text-xs text-eve-muted mb-1">Zielsystem (Name oder ID)</label>
+                            <input type="text" id="target_system" name="target_system" value="Jita" required class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label for="max_jumps" class="block text-xs text-eve-muted mb-1">Max. Spruenge</label>
+                            <input type="number" id="max_jumps" name="max_jumps" value="10" min="1" max="50" required class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label for="security_mode" class="block text-xs text-eve-muted mb-1">Erlaubte Sicherheit</label>
+                            <select id="security_mode" name="security_mode" class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                                <option value="highsec_only" selected>Nur Highsec (&ge; 0.45)</option>
+                                <option value="highsec_lowsec">Highsec &amp; Lowsec (&ge; 0.0)</option>
+                                <option value="any">Alle Routen (inkl. Nullsec)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="cooldown_minutes" class="block text-xs text-eve-muted mb-1">Cooldown (Minuten)</label>
+                            <input type="number" id="cooldown_minutes" name="cooldown_minutes" value="180" min="0" max="1440" required class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="bg-eve-primary text-black font-semibold py-2 px-5 rounded hover:bg-opacity-90 transition-all text-xs cursor-pointer">
+                        Regel erstellen
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
