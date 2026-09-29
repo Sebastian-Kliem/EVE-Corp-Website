@@ -39,6 +39,10 @@ class WandererRouteService
             return false;
         }
 
+        if (str_starts_with($signatureHeader, 'sha256=')) {
+            $signatureHeader = substr($signatureHeader, 7);
+        }
+
         $signedData = $timestampHeader . '.' . $rawPayload;
         $expectedSignature = hash_hmac('sha256', $signedData, $secret);
 
@@ -53,17 +57,30 @@ class WandererRouteService
     public function processWebhookPayload(array $payload): array
     {
         $eventType = $payload['event'] ?? $payload['type'] ?? 'unknown';
-        $discoveredSystems = $this->_extractSolarSystems($payload);
-        $mapName = $payload['map']['name'] ?? $payload['map_name'] ?? $payload['map_id'] ?? null;
-        $characterName = $payload['character']['name'] ?? $payload['character_name'] ?? null;
 
         $results = [
             'event' => $eventType,
-            'processed_systems' => count($discoveredSystems),
+            'processed_systems' => 0,
             'matched_rules' => 0,
             'corp_notifications' => 0,
             'user_notifications' => 0,
         ];
+
+        // Nur Events mit realer Verbindungsentstehung verarbeiten.
+        // Das bloße händische Anlegen eines Systems ('add_system') besitzt keine Verbindung
+        // und soll keinen unberechtigten Routenalarm auslösen.
+        if ($eventType !== 'connection_added') {
+            $this->logger->info(sprintf(
+                '[WandererRouteService] Event "%s" ignoriert (Routenalarme triggern nur bei "connection_added").',
+                $eventType
+            ));
+            return $results;
+        }
+
+        $discoveredSystems = $this->_extractSolarSystems($payload);
+        $results['processed_systems'] = count($discoveredSystems);
+        $mapName = $payload['map']['name'] ?? $payload['map_name'] ?? $payload['map_id'] ?? null;
+        $characterName = $payload['character']['name'] ?? $payload['character_name'] ?? null;
 
         if (empty($discoveredSystems)) {
             $this->logger->info(sprintf('[WandererRouteService] No solar systems found in event: %s', $eventType));
@@ -307,40 +324,63 @@ class WandererRouteService
     private function _extractSolarSystems(array $payload): array
     {
         $systems = [];
+        $data = isset($payload['payload']) && is_array($payload['payload']) ? $payload['payload'] : $payload;
 
         // Check if payload has direct system object
-        if (isset($payload['solar_system_id']) && is_numeric($payload['solar_system_id'])) {
+        if (isset($data['solar_system_id']) && is_numeric($data['solar_system_id'])) {
             $systems[] = [
-                'id' => (int)$payload['solar_system_id'],
-                'source_system_name' => $payload['source_system_name'] ?? null,
+                'id' => (int)$data['solar_system_id'],
+                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
             ];
-        } elseif (isset($payload['system']['solar_system_id']) && is_numeric($payload['system']['solar_system_id'])) {
+        } elseif (isset($data['system']['solar_system_id']) && is_numeric($data['system']['solar_system_id'])) {
             $systems[] = [
-                'id' => (int)$payload['system']['solar_system_id'],
-                'source_system_name' => $payload['source_system_name'] ?? null,
+                'id' => (int)$data['system']['solar_system_id'],
+                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
             ];
-        } elseif (isset($payload['system_id']) && is_numeric($payload['system_id'])) {
+        } elseif (isset($data['system_id']) && is_numeric($data['system_id'])) {
             $systems[] = [
-                'id' => (int)$payload['system_id'],
-                'source_system_name' => $payload['source_system_name'] ?? null,
+                'id' => (int)$data['system_id'],
+                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
             ];
         }
 
-        // Check if payload is a connection event
-        if (isset($payload['solar_system_target']) && is_numeric($payload['solar_system_target'])) {
-            $sourceName = null;
-            if (isset($payload['solar_system_source']) && is_numeric($payload['solar_system_source'])) {
-                $sourceName = $this->sdeService->getLocationName((int)$payload['solar_system_source']);
+        // Check if connection is a wormhole connection (reject pure K-space stargate jumps)
+        if ((isset($data['solar_system_target']) || isset($data['solar_system_source'])) && !$this->_isWormholeConnection($data)) {
+            $this->logger->info(sprintf(
+                '[WandererRouteService] Ignored connection between %s and %s (not a wormhole exit or chain connection).',
+                $data['solar_system_source'] ?? 'unknown',
+                $data['solar_system_target'] ?? 'unknown'
+            ));
+            return [];
+        }
+
+        // Check if payload is a connection event (target system)
+        if (isset($data['solar_system_target']) && is_numeric($data['solar_system_target'])) {
+            $sourceName = $data['from_name'] ?? null;
+            if (!$sourceName && isset($data['solar_system_source']) && is_numeric($data['solar_system_source'])) {
+                $sourceName = $this->sdeService->getLocationName((int)$data['solar_system_source']);
             }
             $systems[] = [
-                'id' => (int)$payload['solar_system_target'],
+                'id' => (int)$data['solar_system_target'],
                 'source_system_name' => $sourceName,
             ];
         }
 
+        // Check connection event source system (e.g. if jumping into K-space exit from WH)
+        if (isset($data['solar_system_source']) && is_numeric($data['solar_system_source'])) {
+            $targetName = $data['to_name'] ?? null;
+            if (!$targetName && isset($data['solar_system_target']) && is_numeric($data['solar_system_target'])) {
+                $targetName = $this->sdeService->getLocationName((int)$data['solar_system_target']);
+            }
+            $systems[] = [
+                'id' => (int)$data['solar_system_source'],
+                'source_system_name' => $targetName,
+            ];
+        }
+
         // Check for nested systems array
-        if (isset($payload['systems']) && is_array($payload['systems'])) {
-            foreach ($payload['systems'] as $sys) {
+        if (isset($data['systems']) && is_array($data['systems'])) {
+            foreach ($data['systems'] as $sys) {
                 $sysId = $sys['solar_system_id'] ?? $sys['id'] ?? null;
                 if (is_numeric($sysId)) {
                     $systems[] = [
@@ -351,7 +391,17 @@ class WandererRouteService
             }
         }
 
-        return $systems;
+        // Deduplicate systems by id
+        $unique = [];
+        $seen = [];
+        foreach ($systems as $s) {
+            if (!in_array($s['id'], $seen, true)) {
+                $seen[] = $s['id'];
+                $unique[] = $s;
+            }
+        }
+
+        return $unique;
     }
 
     /**
@@ -383,5 +433,39 @@ class WandererRouteService
             return DiscordColor::ORANGE;
         }
         return DiscordColor::RED;
+    }
+
+    /**
+     * Checks if a connection is potentially a wormhole connection (i.e. not a pure K-space stargate jump).
+     */
+    private function _isWormholeConnection(array $data): bool
+    {
+        $sourceId = isset($data['solar_system_source']) ? (int)$data['solar_system_source'] : 0;
+        $targetId = isset($data['solar_system_target']) ? (int)$data['solar_system_target'] : 0;
+
+        // 1. If Wanderer explicitly flags it as a stargate connection (type === 1), it is not a wormhole exit
+        if (isset($data['type']) && ((int)$data['type'] === 1 || $data['type'] === 'stargate')) {
+            return false;
+        }
+
+        // 2. If either side is a J-space / Wormhole system (EVE solarSystemID 31000000-31999999)
+        $isSourceWh = ($sourceId >= 31000000 && $sourceId < 32000000);
+        $isTargetWh = ($targetId >= 31000000 && $targetId < 32000000);
+
+        if ($isSourceWh || $isTargetWh) {
+            return true;
+        }
+
+        // 3. For K-space to K-space connections, only accept if explicitly a wormhole connection (type === 0 or wormhole_type set)
+        if (!empty($data['wormhole_type'])) {
+            return true;
+        }
+
+        if (isset($data['type']) && ((int)$data['type'] === 0 || $data['type'] === 'wormhole')) {
+            return true;
+        }
+
+        // Pure K-space to K-space without wormhole type: reject (normal gate travel)
+        return false;
     }
 }
