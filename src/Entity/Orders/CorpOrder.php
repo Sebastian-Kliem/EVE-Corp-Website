@@ -48,6 +48,10 @@ class CorpOrder
     #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
     private ?User $user = null;
 
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'fulfiller_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $fulfiller = null;
+
     #[ORM\Column(options: ['default' => 100])]
     private int $percentToJita = 100;
 
@@ -160,6 +164,17 @@ class CorpOrder
     public function setUser(?User $user): static
     {
         $this->user = $user;
+        return $this;
+    }
+
+    public function getFulfiller(): ?User
+    {
+        return $this->fulfiller;
+    }
+
+    public function setFulfiller(?User $fulfiller): static
+    {
+        $this->fulfiller = $fulfiller;
         return $this;
     }
 
@@ -302,10 +317,8 @@ class CorpOrder
         $this->totalPrice = number_format($totalPrice, 2, '.', '');
         $this->totalVolume = number_format($totalVolume, 2, '.', '');
 
-        if ($this->status !== self::STATUS_CANCELLED) {
-            if ($totalCount > 0 && $fulfilledCount === $totalCount) {
-                $this->setStatus(self::STATUS_FULFILLED);
-            } elseif ($fulfilledCount > 0) {
+        if ($this->status !== self::STATUS_CANCELLED && $this->status !== self::STATUS_FULFILLED) {
+            if ($this->fulfiller !== null || $fulfilledCount > 0) {
                 $this->setStatus(self::STATUS_IN_PROGRESS);
             } else {
                 $this->setStatus(self::STATUS_OPEN);

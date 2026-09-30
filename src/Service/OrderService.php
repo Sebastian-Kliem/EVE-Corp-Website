@@ -162,15 +162,102 @@ class OrderService
     }
 
     /**
+     * Accepts / mass-fulfills all open items of a CorpOrder.
+     */
+    public function acceptOrder(CorpOrder $order, User $fulfiller): CorpOrder
+    {
+        $order->setFulfiller($fulfiller);
+        foreach ($order->getItems() as $item) {
+            if (!$item->isFulfilled()) {
+                $item->setIsFulfilled(true);
+                $item->setFulfiller($fulfiller);
+                $item->setFulfilledAt(new \DateTimeImmutable());
+            }
+        }
+
+        $order->recalculateTotals();
+        $this->entityManager->flush();
+
+        return $order;
+    }
+
+    /**
+     * Unaccepts / releases items of a CorpOrder back to OPEN.
+     */
+    public function unacceptOrder(CorpOrder $order, ?User $user = null): CorpOrder
+    {
+        foreach ($order->getItems() as $item) {
+            if ($user === null || $item->getFulfiller() === $user || $order->getUser() === $user) {
+                $item->setIsFulfilled(false);
+                $item->setFulfiller(null);
+                $item->setFulfilledAt(null);
+            }
+        }
+
+        $remainingFulfiller = null;
+        foreach ($order->getItems() as $item) {
+            if ($item->isFulfilled() && $item->getFulfiller()) {
+                $remainingFulfiller = $item->getFulfiller();
+                break;
+            }
+        }
+        $order->setFulfiller($remainingFulfiller);
+
+        $order->recalculateTotals();
+        $this->entityManager->flush();
+
+        return $order;
+    }
+
+    /**
+     * Marks a CorpOrder as completed (FULFILLED).
+     */
+    public function completeOrder(CorpOrder $order, User $user): CorpOrder
+    {
+        if ($order->getFulfiller() === null) {
+            $order->setFulfiller($user);
+        }
+        foreach ($order->getItems() as $item) {
+            $item->setIsFulfilled(true);
+            if ($item->getFulfiller() === null) {
+                $item->setFulfiller($order->getFulfiller() ?? $user);
+                $item->setFulfilledAt(new \DateTimeImmutable());
+            }
+        }
+
+        $order->setStatus(CorpOrder::STATUS_FULFILLED);
+        $order->setFulfilledAt(new \DateTimeImmutable());
+        $order->recalculateTotals();
+        $this->entityManager->flush();
+
+        return $order;
+    }
+
+    /**
      * Toggles or sets fulfillment status of a specific CorpOrderItem.
      */
     public function fulfillItem(CorpOrderItem $item, User $fulfiller, bool $status = true): CorpOrder
     {
         $item->setIsFulfilled($status);
         $item->setFulfiller($status ? $fulfiller : null);
+        $item->setFulfilledAt($status ? new \DateTimeImmutable() : null);
+
         $order = $item->getOrder();
 
         if ($order !== null) {
+            if ($status && $order->getFulfiller() === null) {
+                $order->setFulfiller($fulfiller);
+            } elseif (!$status) {
+                $remainingFulfiller = null;
+                foreach ($order->getItems() as $otherItem) {
+                    if ($otherItem->isFulfilled() && $otherItem->getFulfiller()) {
+                        $remainingFulfiller = $otherItem->getFulfiller();
+                        break;
+                    }
+                }
+                $order->setFulfiller($remainingFulfiller);
+            }
+
             $order->recalculateTotals();
         }
 
@@ -180,21 +267,11 @@ class OrderService
     }
 
     /**
-     * Fulfills all remaining open items of a CorpOrder at once.
+     * Fulfills all remaining open items of a CorpOrder at once (alias for acceptOrder).
      */
     public function fulfillAll(CorpOrder $order, User $fulfiller): CorpOrder
     {
-        foreach ($order->getItems() as $item) {
-            if (!$item->isFulfilled()) {
-                $item->setIsFulfilled(true);
-                $item->setFulfiller($fulfiller);
-            }
-        }
-
-        $order->recalculateTotals();
-        $this->entityManager->flush();
-
-        return $order;
+        return $this->acceptOrder($order, $fulfiller);
     }
 
     /**
@@ -213,11 +290,13 @@ class OrderService
      */
     public function reopenOrder(CorpOrder $order): CorpOrder
     {
+        $order->setFulfiller(null);
         foreach ($order->getItems() as $item) {
             $item->setIsFulfilled(false);
             $item->setFulfiller(null);
         }
         $order->setStatus(CorpOrder::STATUS_OPEN);
+        $order->setFulfilledAt(null);
         $order->recalculateTotals();
         $this->entityManager->flush();
 
@@ -275,6 +354,26 @@ class OrderService
         $priceDiff = $liveTotalPrice - $snapshotTotal;
         $priceDiffPercent = $snapshotTotal > 0 ? ($priceDiff / $snapshotTotal) * 100 : 0.0;
 
+        $fulfillersMap = [];
+        if ($order->getFulfiller()) {
+            $fId = $order->getFulfiller()->getId();
+            $fulfillersMap[$fId] = [
+                'id' => $fId,
+                'displayName' => $order->getFulfiller()->getDisplayName() ?: $order->getFulfiller()->getUserIdentifier(),
+            ];
+        }
+        foreach ($order->getItems() as $item) {
+            if ($item->getFulfiller()) {
+                $fId = $item->getFulfiller()->getId();
+                if (!isset($fulfillersMap[$fId])) {
+                    $fulfillersMap[$fId] = [
+                        'id' => $fId,
+                        'displayName' => $item->getFulfiller()->getDisplayName() ?: $item->getFulfiller()->getUserIdentifier(),
+                    ];
+                }
+            }
+        }
+
         return [
             'id' => $order->getId(),
             'type' => $order->getType(),
@@ -294,10 +393,15 @@ class OrderService
                 'id' => $order->getUser()->getId(),
                 'displayName' => $order->getUser()->getDisplayName() ?: $order->getUser()->getUserIdentifier(),
             ],
+            'fulfiller' => $order->getFulfiller() ? [
+                'id' => $order->getFulfiller()->getId(),
+                'displayName' => $order->getFulfiller()->getDisplayName() ?: $order->getFulfiller()->getUserIdentifier(),
+            ] : null,
+            'fulfillers' => array_values($fulfillersMap),
             'items' => $itemsData,
             'fulfilledItemCount' => $fulfilledItemCount,
             'totalItemCount' => $totalItemCount,
-            'isFullyFulfilled' => $totalItemCount > 0 && $fulfilledItemCount === $totalItemCount,
+            'isFullyFulfilled' => $order->getStatus() === CorpOrder::STATUS_FULFILLED,
             'liveTotalPrice' => round($liveTotalPrice, 2),
             'priceDiff' => round($priceDiff, 2),
             'priceDiffPercent' => round($priceDiffPercent, 1),

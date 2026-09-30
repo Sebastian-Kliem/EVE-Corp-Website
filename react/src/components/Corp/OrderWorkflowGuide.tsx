@@ -42,10 +42,10 @@ export default function OrderWorkflowGuide() {
                         <div className="p-3.5 rounded-lg border border-eve-border/40 bg-eve-card/60 flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-eve-primary/20 text-eve-primary font-bold flex items-center justify-center text-[10px]">2</span>
-                                <span className="font-semibold text-white">Multibuy Einkauf</span>
+                                <span className="font-semibold text-white">Auftrag annehmen & Multibuy</span>
                             </div>
                             <p className="text-eve-muted leading-relaxed">
-                                Der Erfüller klickt auf <strong className="text-eve-primary">"Multibuy kopieren"</strong> und fügt die Liste direkt im EVE-Multibuy-Fenster (Jita 4-4) ein.
+                                Der Erfüller klickt auf <strong className="text-eve-primary">"Bestellung annehmen"</strong> (Auftrag geht auf "In Bearbeitung" und bleibt aktiv), kopiert die Liste mit <strong className="text-eve-primary">"Multibuy kopieren"</strong> und kauft in Jita 4-4 ein.
                             </p>
                         </div>
 

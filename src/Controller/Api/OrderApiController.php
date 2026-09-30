@@ -136,6 +136,14 @@ class OrderApiController extends AbstractController
         $body = json_decode($request->getContent(), true);
         $status = filter_var($body['status'] ?? !$item->isFulfilled(), FILTER_VALIDATE_BOOLEAN);
 
+        if (!$status && $item->isFulfilled()) {
+            $isFulfiller = $item->getFulfiller() === $user;
+            $isOrderCreator = $item->getOrder() && $item->getOrder()->getUser() === $user;
+            if (!$isFulfiller && !$isOrderCreator && !$this->isGranted('ROLE_OFFICER')) {
+                return new JsonResponse(['error' => 'Nur der Erfüller, Ersteller oder Offiziere können diese Position freigeben.'], Response::HTTP_FORBIDDEN);
+            }
+        }
+
         $order = $this->orderService->fulfillItem($item, $user, $status);
 
         return new JsonResponse([
@@ -144,8 +152,8 @@ class OrderApiController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}/fulfill-all', name: 'api_orders_fulfill_all', methods: ['POST'])]
-    public function fulfillAll(int $id): JsonResponse
+    #[Route('/{id}/accept', name: 'api_orders_accept', methods: ['POST'])]
+    public function accept(int $id): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -157,10 +165,106 @@ class OrderApiController extends AbstractController
             return new JsonResponse(['error' => 'Bestellung nicht gefunden.'], Response::HTTP_NOT_FOUND);
         }
 
-        $this->orderService->fulfillAll($order, $user);
+        if ($order->getStatus() === CorpOrder::STATUS_FULFILLED || $order->getStatus() === CorpOrder::STATUS_CANCELLED) {
+            return new JsonResponse(['error' => 'Dieser Auftrag ist bereits archiviert oder storniert.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $hasOpenItems = false;
+        foreach ($order->getItems() as $item) {
+            if (!$item->isFulfilled()) {
+                $hasOpenItems = true;
+                break;
+            }
+        }
+        if (!$hasOpenItems) {
+            return new JsonResponse(['error' => 'Alle Positionen dieses Auftrags sind bereits erfüllt.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $order = $this->orderService->acceptOrder($order, $user);
 
         return new JsonResponse([
             'success' => true,
+            'message' => 'Bestellung erfolgreich angenommen.',
+            'order' => $this->orderService->formatOrderForApi($order),
+        ]);
+    }
+
+    #[Route('/{id}/unaccept', name: 'api_orders_unaccept', methods: ['POST'])]
+    public function unaccept(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $order = $this->orderRepository->find($id);
+        if (!$order) {
+            return new JsonResponse(['error' => 'Bestellung nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($order->getStatus() !== CorpOrder::STATUS_IN_PROGRESS && $order->getFulfiller() === null) {
+            return new JsonResponse(['error' => 'Dieser Auftrag ist nicht in Bearbeitung.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $userHasFulfilledItems = false;
+        foreach ($order->getItems() as $item) {
+            if ($item->isFulfilled() && $item->getFulfiller() === $user) {
+                $userHasFulfilledItems = true;
+                break;
+            }
+        }
+
+        // Only fulfiller, someone who fulfilled items, order creator, or officer can unaccept
+        if ($order->getFulfiller() !== $user && !$userHasFulfilledItems && $order->getUser() !== $user && !$this->isGranted('ROLE_OFFICER')) {
+            return new JsonResponse(['error' => 'Keine Berechtigung zum Zurückziehen dieser Bestellung.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $userParam = ($this->isGranted('ROLE_OFFICER') || $order->getUser() === $user) ? null : $user;
+        $this->orderService->unacceptOrder($order, $userParam);
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'Annahme zurückgezogen. Bestellung ist wieder offen.',
+            'order' => $this->orderService->formatOrderForApi($order),
+        ]);
+    }
+
+    #[Route('/{id}/complete', name: 'api_orders_complete', methods: ['POST'])]
+    #[Route('/{id}/fulfill-all', name: 'api_orders_fulfill_all', methods: ['POST'])]
+    public function complete(int $id): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $order = $this->orderRepository->find($id);
+        if (!$order) {
+            return new JsonResponse(['error' => 'Bestellung nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($order->getStatus() === CorpOrder::STATUS_FULFILLED || $order->getStatus() === CorpOrder::STATUS_CANCELLED) {
+            return new JsonResponse(['error' => 'Dieser Auftrag ist bereits archiviert.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $userHasFulfilledItems = false;
+        foreach ($order->getItems() as $item) {
+            if ($item->isFulfilled() && $item->getFulfiller() === $user) {
+                $userHasFulfilledItems = true;
+                break;
+            }
+        }
+
+        // Order can be completed by creator, fulfiller, someone who fulfilled items, or officer
+        if ($order->getUser() !== $user && $order->getFulfiller() !== $user && !$userHasFulfilledItems && !$this->isGranted('ROLE_OFFICER')) {
+            return new JsonResponse(['error' => 'Keine Berechtigung zum Abschließen dieser Bestellung.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $this->orderService->completeOrder($order, $user);
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => 'Bestellung erfolgreich abgeschlossen.',
             'order' => $this->orderService->formatOrderForApi($order),
         ]);
     }

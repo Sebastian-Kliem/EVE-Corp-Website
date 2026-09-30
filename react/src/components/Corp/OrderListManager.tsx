@@ -43,6 +43,14 @@ interface Order {
         id: number;
         displayName: string;
     };
+    fulfiller: {
+        id: number;
+        displayName: string;
+    } | null;
+    fulfillers?: {
+        id: number;
+        displayName: string;
+    }[];
     items: OrderItem[];
     fulfilledItemCount: number;
     totalItemCount: number;
@@ -94,6 +102,7 @@ export default function OrderListManager({
     const [expandedOrderIds, setExpandedOrderIds] = useState<number[]>([]);
     const [feedback, setFeedback] = useState<string | null>(null);
     const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+    const [itemLoadingId, setItemLoadingId] = useState<number | null>(null);
 
     const toggleExpand = (id: number) => {
         setExpandedOrderIds(prev =>
@@ -140,6 +149,7 @@ export default function OrderListManager({
     };
 
     const handleFulfillItem = (itemId: number, currentStatus: boolean) => {
+        setItemLoadingId(itemId);
         fetch(`/api/orders/items/${itemId}/fulfill`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -154,17 +164,77 @@ export default function OrderListManager({
             })
             .then(data => {
                 updateOrderInState(data.order);
+                showFeedbackMessage(
+                    !currentStatus
+                        ? 'Position als erfüllt markiert.'
+                        : 'Position wieder freigegeben.'
+                );
             })
             .catch(err => {
                 alert(err.message || 'Fehler beim Erfüllen der Position.');
+            })
+            .finally(() => {
+                setItemLoadingId(null);
             });
     };
 
-    const handleFulfillAll = (orderId: number) => {
-        if (!confirm('Möchtest du wirklich alle offenen Positionen dieser Bestellung als erledigt markieren?')) return;
+    const handleAcceptOrder = (orderId: number) => {
+        setActionLoadingId(orderId);
+        fetch(`/api/orders/${orderId}/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Annehmen der Bestellung.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                updateOrderInState(data.order);
+                showFeedbackMessage('Bestellung erfolgreich angenommen. Sie ist nun "In Bearbeitung".');
+            })
+            .catch(err => {
+                alert(err.message || 'Fehler beim Annehmen.');
+            })
+            .finally(() => {
+                setActionLoadingId(null);
+            });
+    };
+
+    const handleUnacceptOrder = (orderId: number) => {
+        if (!confirm('Möchtest du die Annahme dieser Bestellung wirklich zurückziehen?')) return;
 
         setActionLoadingId(orderId);
-        fetch(`/api/orders/${orderId}/fulfill-all`, {
+        fetch(`/api/orders/${orderId}/unaccept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Zurückziehen der Annahme.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                updateOrderInState(data.order);
+                showFeedbackMessage('Annahme zurückgezogen. Bestellung ist wieder offen.');
+            })
+            .catch(err => {
+                alert(err.message || 'Fehler beim Zurückziehen.');
+            })
+            .finally(() => {
+                setActionLoadingId(null);
+            });
+    };
+
+    const handleCompleteOrder = (orderId: number) => {
+        if (!confirm('Möchtest du diese Bestellung wirklich als erledigt abschließen? Sie wird ins Archiv verschoben.')) return;
+
+        setActionLoadingId(orderId);
+        fetch(`/api/orders/${orderId}/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
         })
@@ -177,7 +247,7 @@ export default function OrderListManager({
             })
             .then(data => {
                 updateOrderInState(data.order);
-                showFeedbackMessage('Bestellung vollständig abgeschlossen.');
+                showFeedbackMessage('Bestellung vollständig abgeschlossen und archiviert.');
             })
             .catch(err => {
                 alert(err.message || 'Fehler beim Abschließen.');
@@ -505,12 +575,30 @@ export default function OrderListManager({
                                         )}
 
                                         <div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="text-sm font-bold text-white">{order.title}</h3>
                                                 {getStatusBadge(order.status)}
+                                                {order.fulfillers && order.fulfillers.length > 0 ? (
+                                                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-blue-500/15 text-blue-300 border-blue-500/30">
+                                                        Wird bedient von: {order.fulfillers.map(f => f.displayName).join(', ')}
+                                                    </span>
+                                                ) : order.fulfiller ? (
+                                                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-blue-500/15 text-blue-300 border-blue-500/30">
+                                                        Wird bedient von: {order.fulfiller.displayName}
+                                                    </span>
+                                                ) : null}
                                             </div>
                                             <p className="text-[11px] text-eve-muted mt-0.5">
                                                 Von <span className="text-slate-300 font-semibold">{order.user.displayName}</span> am {order.createdAt}
+                                                {order.fulfillers && order.fulfillers.length > 0 ? (
+                                                    <span className="ml-2">
+                                                        • Bearbeiter: <span className="text-blue-300 font-medium">{order.fulfillers.map(f => f.displayName).join(', ')}</span>
+                                                    </span>
+                                                ) : order.fulfiller ? (
+                                                    <span className="ml-2">
+                                                        • Bearbeiter: <span className="text-blue-300 font-medium">{order.fulfiller.displayName}</span>
+                                                    </span>
+                                                ) : null}
                                                 {order.note && <span className="ml-2 italic text-slate-400">"{order.note}"</span>}
                                             </p>
                                         </div>
@@ -527,7 +615,7 @@ export default function OrderListManager({
                                             </div>
                                             <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden border border-white/10">
                                                 <div
-                                                    className="bg-eve-primary h-full transition-all duration-300"
+                                                    className={`h-full transition-all duration-300 ${progressPercent === 100 ? 'bg-emerald-400' : 'bg-eve-primary'}`}
                                                     style={{ width: `${progressPercent}%` }}
                                                 ></div>
                                             </div>
@@ -608,18 +696,55 @@ export default function OrderListManager({
                                                     </button>
                                                 )}
 
-                                                {order.status !== 'FULFILLED' && order.status !== 'CANCELLED' && (
+                                                {/* Mass Button: Take all remaining open positions at once */}
+                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount < order.totalItemCount && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleFulfillAll(order.id)}
+                                                        onClick={() => handleAcceptOrder(order.id)}
                                                         disabled={actionLoadingId === order.id}
                                                         className="px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer font-semibold"
+                                                        title="Nimmt alle noch offenen Positionen dieser Bestellung auf einmal an"
                                                     >
-                                                        Gesamte Bestellung erfüllen
+                                                        {order.fulfilledItemCount > 0 ? 'Restliche Posten annehmen' : 'Alle Posten annehmen'}
                                                     </button>
                                                 )}
 
-                                                {order.status === 'OPEN' && canManageOrder && (
+                                                {/* Completion: Creator, fulfiller or officer can complete order */}
+                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0) && (
+                                                    canManageOrder ||
+                                                    (order.fulfiller && currentUserId === order.fulfiller.id) ||
+                                                    (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
+                                                ) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCompleteOrder(order.id)}
+                                                        disabled={actionLoadingId === order.id}
+                                                        className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                                                        title="Schließt die gesamte Bestellung ab und archiviert sie"
+                                                    >
+                                                        Bestellung abschließen
+                                                    </button>
+                                                )}
+
+                                                {/* Release items: Fulfiller, creator or officer can cancel acceptance / release back to OPEN */}
+                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount > 0 && (
+                                                    canManageOrder ||
+                                                    (order.fulfiller && currentUserId === order.fulfiller.id) ||
+                                                    (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
+                                                ) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUnacceptOrder(order.id)}
+                                                        disabled={actionLoadingId === order.id}
+                                                        className="px-2.5 py-1 rounded bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer"
+                                                        title="Gibt deine übernommenen Positionen wieder frei"
+                                                    >
+                                                        Posten freigeben
+                                                    </button>
+                                                )}
+
+                                                {/* Stornieren: OPEN or IN_PROGRESS */}
+                                                {(order.status === 'OPEN' || order.status === 'IN_PROGRESS') && canManageOrder && (
                                                     <button
                                                         type="button"
                                                         onClick={() => handleCancelOrder(order.id)}
@@ -656,79 +781,105 @@ export default function OrderListManager({
                                                         <th className="p-2.5 text-right">Stückpreis (vereinbart)</th>
                                                         <th className="p-2.5 text-right">Gesamt (ISK)</th>
                                                         <th className="p-2.5 text-center">Status / Erfüller</th>
-                                                        <th className="p-2.5 text-right">Aktion</th>
+                                                        {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (
+                                                            <th className="p-2.5 text-center">Aktion</th>
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-white/5 bg-black/20">
-                                                    {order.items.map(item => (
-                                                        <tr key={item.id} className={`hover:bg-white/5 transition-colors ${item.isFulfilled ? 'opacity-60 bg-emerald-950/10' : ''}`}>
-                                                            <td className="p-2">
-                                                                <img
-                                                                    src={`/eve/image/types/${item.typeId}/icon?size=64`}
-                                                                    alt={item.name}
-                                                                    className="w-7 h-7 rounded border border-white/10 bg-black/40 object-contain"
-                                                                    loading="lazy"
-                                                                    onError={(e) => {
-                                                                        (e.target as HTMLImageElement).src = '/assets/images/fallback_item.png';
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                            <td className="p-2 font-medium text-white">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span>{item.name}</span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleOpenMarketItem(item.typeId)}
-                                                                        title="Markt im Spiel öffnen"
-                                                                        className="text-eve-muted hover:text-eve-primary cursor-pointer text-[10px]"
-                                                                    >
-                                                                        [Markt]
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-2">
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getSlotBadgeStyle(item.slot)}`}>
-                                                                    {item.slot.toUpperCase()}
-                                                                </span>
-                                                            </td>
-                                                            <td className="p-2 text-right font-mono text-slate-300">
-                                                                {formatThousands(item.amount)}
-                                                            </td>
-                                                            <td className="p-2 text-right font-mono text-eve-muted">
-                                                                {formatThousands(item.totalVolume)} m³
-                                                            </td>
-                                                            <td className="p-2 text-right font-mono text-eve-muted">
-                                                                {formatThousands(item.unitPrice)}
-                                                            </td>
-                                                            <td className="p-2 text-right font-mono font-semibold text-eve-primary">
-                                                                {formatThousands(item.totalPrice)}
-                                                            </td>
-                                                            <td className="p-2 text-center">
-                                                                {item.isFulfilled ? (
-                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                                                                        Erfüllt {item.fulfiller ? `(${item.fulfiller.displayName})` : ''}
+                                                    {order.items.map(item => {
+                                                        const isItemFulfiller = currentUserId && item.fulfiller?.id === currentUserId;
+                                                        const canReleaseItem = canManageOrder || isItemFulfiller;
+
+                                                        return (
+                                                            <tr key={item.id} className={`hover:bg-white/5 transition-colors ${item.isFulfilled ? 'bg-emerald-950/10' : ''}`}>
+                                                                <td className="p-2">
+                                                                    <img
+                                                                        src={`/eve/image/types/${item.typeId}/icon?size=64`}
+                                                                        alt={item.name}
+                                                                        className="w-7 h-7 rounded border border-white/10 bg-black/40 object-contain"
+                                                                        loading="lazy"
+                                                                        onError={(e) => {
+                                                                            (e.target as HTMLImageElement).src = '/assets/images/fallback_item.png';
+                                                                        }}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-2 font-medium text-white">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span>{item.name}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleOpenMarketItem(item.typeId)}
+                                                                            title="Markt im Spiel öffnen"
+                                                                            className="text-eve-muted hover:text-eve-primary cursor-pointer text-[10px]"
+                                                                        >
+                                                                            [Markt]
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-2">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getSlotBadgeStyle(item.slot)}`}>
+                                                                        {item.slot.toUpperCase()}
                                                                     </span>
-                                                                ) : (
-                                                                    <span className="text-[10px] text-eve-muted">Offen</span>
+                                                                </td>
+                                                                <td className="p-2 text-right font-mono text-slate-300">
+                                                                    {formatThousands(item.amount)}
+                                                                </td>
+                                                                <td className="p-2 text-right font-mono text-eve-muted">
+                                                                    {formatThousands(item.totalVolume)} m³
+                                                                </td>
+                                                                <td className="p-2 text-right font-mono text-eve-muted">
+                                                                    {formatThousands(item.unitPrice)}
+                                                                </td>
+                                                                <td className="p-2 text-right font-mono font-semibold text-eve-primary">
+                                                                    {formatThousands(item.totalPrice)}
+                                                                </td>
+                                                                <td className="p-2 text-center">
+                                                                    {item.isFulfilled ? (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                                                            </svg>
+                                                                            Erfüllt {item.fulfiller ? `(${item.fulfiller.displayName})` : ''}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 border border-white/10 text-eve-muted">
+                                                                            Offen
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (
+                                                                    <td className="p-2 text-center">
+                                                                        {!item.isFulfilled ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleFulfillItem(item.id, item.isFulfilled)}
+                                                                                disabled={itemLoadingId === item.id}
+                                                                                className="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer disabled:opacity-50"
+                                                                                title="Diesen Posten annehmen / erfüllen"
+                                                                            >
+                                                                                {itemLoadingId === item.id ? '...' : 'Annehmen'}
+                                                                            </button>
+                                                                        ) : canReleaseItem ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleFulfillItem(item.id, item.isFulfilled)}
+                                                                                disabled={itemLoadingId === item.id}
+                                                                                className="px-2.5 py-1 rounded text-[11px] font-medium bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer disabled:opacity-50"
+                                                                                title="Diesen Posten wieder freigeben"
+                                                                            >
+                                                                                {itemLoadingId === item.id ? '...' : 'Freigeben'}
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-eve-muted italic">
+                                                                                Belegt
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
                                                                 )}
-                                                            </td>
-                                                            <td className="p-2 text-right">
-                                                                {order.status !== 'CANCELLED' && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleFulfillItem(item.id, item.isFulfilled)}
-                                                                        className={`px-2 py-1 rounded text-[10px] font-semibold border transition-all cursor-pointer ${
-                                                                            item.isFulfilled
-                                                                                ? 'bg-black/40 border-white/10 text-eve-muted hover:text-white'
-                                                                                : 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 hover:brightness-115'
-                                                                        }`}
-                                                                    >
-                                                                        {item.isFulfilled ? 'Freigeben' : 'Abhaken'}
-                                                                    </button>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
