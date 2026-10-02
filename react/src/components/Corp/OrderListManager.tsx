@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import JaniceAppraisal from './JaniceAppraisal';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
+import DeliveryPackingList from './DeliveryPackingList';
 import { formatThousands } from '../../utils/numberFormat';
 
-interface OrderItem {
+export interface OrderItem {
     id: number;
     typeId: number;
     name: string;
@@ -24,7 +25,7 @@ interface OrderItem {
     liveTotalPrice: number;
 }
 
-interface Order {
+export interface Order {
     id: number;
     type: 'BUY' | 'SELL';
     status: 'OPEN' | 'IN_PROGRESS' | 'FULFILLED' | 'CANCELLED';
@@ -89,7 +90,7 @@ export default function OrderListManager({
     isOfficer = false,
 }: OrderListManagerProps) {
     const [selectedTab, setSelectedTab] = useState<'BUY' | 'SELL'>('BUY');
-    const [viewMode, setViewMode] = useState<'active' | 'archived'>('active');
+    const [viewMode, setViewMode] = useState<'active' | 'deliveries' | 'archived'>('active');
     const [searchQuery, setSearchQuery] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -115,11 +116,31 @@ export default function OrderListManager({
         setTimeout(() => setFeedback(null), 4000);
     };
 
+    const handleCopyItemName = (name: string) => {
+        navigator.clipboard.writeText(name);
+        showFeedbackMessage(`"${name}" kopiert (bereit für EVE-Suchfilter).`);
+    };
+
+    const myDeliveries = useMemo(() => {
+        const allActive = [...buyOrders, ...sellOrders];
+        return allActive.filter(order => {
+            if (order.status === 'FULFILLED' || order.status === 'CANCELLED') {
+                return false;
+            }
+            if (!currentUserId) {
+                return order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0;
+            }
+            const isFulfiller = order.fulfiller?.id === currentUserId;
+            const hasFulfilledItem = order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId);
+            return isFulfiller || hasFulfilledItem;
+        });
+    }, [buyOrders, sellOrders, currentUserId]);
+
     const currentOrders = useMemo(() => {
         if (selectedTab === 'BUY') {
-            return viewMode === 'active' ? buyOrders : archivedBuyOrders;
+            return viewMode === 'archived' ? archivedBuyOrders : buyOrders;
         }
-        return viewMode === 'active' ? sellOrders : archivedSellOrders;
+        return viewMode === 'archived' ? archivedSellOrders : sellOrders;
     }, [selectedTab, viewMode, buyOrders, sellOrders, archivedBuyOrders, archivedSellOrders]);
 
     const filteredOrders = useMemo(() => {
@@ -514,6 +535,22 @@ export default function OrderListManager({
                         </button>
                         <button
                             type="button"
+                            onClick={() => setViewMode('deliveries')}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                viewMode === 'deliveries'
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                    : 'text-eve-muted hover:text-white'
+                            }`}
+                        >
+                            <span>📦 Meine Lieferungen</span>
+                            {myDeliveries.length > 0 && (
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${viewMode === 'deliveries' ? 'bg-emerald-400 text-black' : 'bg-white/10 text-slate-300'}`}>
+                                    {myDeliveries.length}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setViewMode('archived')}
                             className={`px-3 py-1 rounded text-xs font-semibold transition-all cursor-pointer ${
                                 viewMode === 'archived'
@@ -525,18 +562,39 @@ export default function OrderListManager({
                         </button>
                     </div>
 
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Auftrag, Item oder Member suchen..."
-                        className="w-56 rounded-lg px-3 py-1.5 text-xs border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
-                    />
+                    {viewMode !== 'deliveries' && (
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Auftrag, Item oder Member suchen..."
+                            className="w-56 rounded-lg px-3 py-1.5 text-xs border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
+                        />
+                    )}
                 </div>
             </div>
 
-            {/* Orders List */}
-            {filteredOrders.length === 0 ? (
+            {/* View Mode Content */}
+            {viewMode === 'deliveries' ? (
+                <DeliveryPackingList
+                    orders={myDeliveries}
+                    currentUserId={currentUserId}
+                    isOfficer={isOfficer}
+                    onCopyUser={handleCopyUser}
+                    onCopyAmount={handleCopyAmount}
+                    onCopyTitle={handleCopyTitle}
+                    onCopyMultibuy={handleCopyMultibuy}
+                    onCopyItemName={handleCopyItemName}
+                    onOpenInGame={handleOpenInGame}
+                    onOpenMarketItem={handleOpenMarketItem}
+                    onCompleteOrder={handleCompleteOrder}
+                    onUnacceptOrder={handleUnacceptOrder}
+                    onFulfillItem={handleFulfillItem}
+                    onGoToActiveOrders={() => setViewMode('active')}
+                    actionLoadingId={actionLoadingId}
+                    itemLoadingId={itemLoadingId}
+                />
+            ) : filteredOrders.length === 0 ? (
                 <div className="p-8 rounded-lg border border-eve-border bg-eve-card/40 text-center text-eve-muted text-xs">
                     Keine {viewMode === 'active' ? 'aktiven' : 'archivierten'} {selectedTab === 'BUY' ? 'Kaufaufträge' : 'Verkaufsangebote'} gefunden.
                 </div>
@@ -805,8 +863,18 @@ export default function OrderListManager({
                                                                     />
                                                                 </td>
                                                                 <td className="p-2 font-medium text-white">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span>{item.name}</span>
+                                                                    <div className="flex items-center gap-1.5 group">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleCopyItemName(item.name)}
+                                                                            title="Klicken zum Kopieren (für EVE Inventar-Filter)"
+                                                                            className="text-left font-medium text-white hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 cursor-pointer text-xs"
+                                                                        >
+                                                                            <span>{item.name}</span>
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white/30 group-hover:text-amber-400 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                            </svg>
+                                                                        </button>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleOpenMarketItem(item.typeId)}
