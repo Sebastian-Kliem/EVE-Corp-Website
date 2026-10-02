@@ -120,6 +120,20 @@ class OrderApiController extends AbstractController
         ]);
     }
 
+    #[Route('/items/search', name: 'api_orders_items_search', methods: ['GET'])]
+    public function searchItems(Request $request): JsonResponse
+    {
+        $query = trim(str_replace('*', '', (string) $request->query->get('q', '')));
+
+        if (strlen($query) < 2) {
+            return new JsonResponse([]);
+        }
+
+        $items = $this->sdeService->searchItems($query, 30);
+
+        return new JsonResponse($items);
+    }
+
     #[Route('/items/{id}/fulfill', name: 'api_orders_fulfill_item', methods: ['POST'])]
     public function fulfillItem(int $id, Request $request): JsonResponse
     {

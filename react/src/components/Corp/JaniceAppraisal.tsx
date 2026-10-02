@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
 import { formatThousands } from '../../utils/numberFormat';
+import { cleanItemSearch } from '../../utils/itemSearch';
+
+interface SdeSuggestion {
+    id: number;
+    name: string;
+    variation: string;
+}
 
 interface AppraisalItem {
     typeId: number;
@@ -76,6 +83,17 @@ export default function JaniceAppraisal({
     const [feedback, setFeedback] = useState<string | null>(null);
     const [showJitaInfo, setShowJitaInfo] = useState(false);
 
+    // Item Quick-Search / Autocomplete state
+    const [itemSearchQuery, setItemSearchQuery] = useState('');
+    const [selectedItem, setSelectedItem] = useState<SdeSuggestion | null>(null);
+    const [itemQuantity, setItemQuantity] = useState<number>(1);
+    const [suggestions, setSuggestions] = useState<SdeSuggestion[]>([]);
+    const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+    const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+    const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
     const handleCalculate = (textToAppraise = rawText, currentPercent = percent, currentType = orderType) => {
         if (!textToAppraise.trim()) {
             setResult(null);
@@ -119,6 +137,134 @@ export default function JaniceAppraisal({
             .finally(() => {
                 setLoading(false);
             });
+    };
+
+    useEffect(() => {
+        const cleanQuery = cleanItemSearch(itemSearchQuery).trim();
+        if (selectedItem && selectedItem.name.toLowerCase() === cleanQuery.toLowerCase()) {
+            setSuggestions([]);
+            setIsSuggestionsOpen(false);
+            return;
+        }
+
+        if (cleanQuery.length < 2) {
+            setSuggestions([]);
+            setIsSuggestionsOpen(false);
+            setIsSearchingSuggestions(false);
+            return;
+        }
+
+        setIsSearchingSuggestions(true);
+        const timer = setTimeout(() => {
+            fetch(`/api/orders/items/search?q=${encodeURIComponent(cleanQuery)}`, {
+                headers: { 'Accept': 'application/json' },
+            })
+                .then(res => {
+                    if (!res.ok) throw new Error('Search failed');
+                    return res.json();
+                })
+                .then((data: SdeSuggestion[]) => {
+                    setSuggestions(data);
+                    setIsSuggestionsOpen(data.length > 0);
+                    setActiveSuggestionIndex(-1);
+                })
+                .catch(err => {
+                    console.error('Error searching items:', err);
+                    setSuggestions([]);
+                })
+                .finally(() => {
+                    setIsSearchingSuggestions(false);
+                });
+        }, 220);
+
+        return () => clearTimeout(timer);
+    }, [itemSearchQuery, selectedItem]);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsSuggestionsOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelectSuggestion = (item: SdeSuggestion) => {
+        setSelectedItem(item);
+        setItemSearchQuery(item.name);
+        setIsSuggestionsOpen(false);
+        setActiveSuggestionIndex(-1);
+    };
+
+    const handleAddItem = (overrideItem?: SdeSuggestion) => {
+        const itemToAdd = overrideItem || selectedItem;
+        const nameToAdd = itemToAdd ? itemToAdd.name : itemSearchQuery.trim();
+        if (!nameToAdd) return;
+
+        const qty = Math.max(1, parseInt(itemQuantity.toString(), 10) || 1);
+        const line = `${nameToAdd} ${qty}`;
+        const newText = rawText.trim() ? `${rawText.trim()}\n${line}` : line;
+
+        setRawText(newText);
+        setItemSearchQuery('');
+        setSelectedItem(null);
+        setSuggestions([]);
+        setIsSuggestionsOpen(false);
+        setItemQuantity(1);
+
+        handleCalculate(newText, percent, orderType);
+        showFeedbackMessage(`"${nameToAdd} x${qty}" hinzugefügt.`);
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    };
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isSuggestionsOpen && suggestions.length > 0) {
+                setIsSuggestionsOpen(true);
+            }
+            setActiveSuggestionIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : prev));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : -1));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isSuggestionsOpen && activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+                const picked = suggestions[activeSuggestionIndex];
+                handleSelectSuggestion(picked);
+            } else if (selectedItem || itemSearchQuery.trim()) {
+                handleAddItem();
+            }
+        } else if (e.key === 'Escape') {
+            setIsSuggestionsOpen(false);
+            setActiveSuggestionIndex(-1);
+        }
+    };
+
+    const handleRemoveItem = (itemName: string) => {
+        const lines = rawText.split('\n');
+        const lower = itemName.toLowerCase();
+        let removed = false;
+        const newLines = lines.filter(line => {
+            if (removed) return true;
+            const cleaned = line.trim().toLowerCase();
+            if (cleaned.startsWith(lower) || cleaned.includes(lower)) {
+                removed = true;
+                return false;
+            }
+            return true;
+        });
+        const newText = newLines.join('\n').trim();
+        setRawText(newText);
+        if (newText) {
+            handleCalculate(newText, percent, orderType);
+        } else {
+            setResult(null);
+        }
+        showFeedbackMessage(`"${itemName}" entfernt.`);
     };
 
     const handleTypeChange = (newType: 'BUY' | 'SELL') => {
@@ -301,10 +447,150 @@ export default function JaniceAppraisal({
                     )}
                 </div>
 
+                {/* Quick Item Search & Add */}
+                <div className="mb-4 p-4 rounded-lg bg-black/40 border border-eve-border/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <label className="text-xs font-semibold text-white flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-eve-primary">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            Gegenstand suchen & hinzufügen:
+                        </label>
+                        <span className="text-[11px] text-eve-muted">
+                            Tippe den Namen, wähle aus den SDE-Vorschlägen und füge ihn hinzu
+                        </span>
+                    </div>
+
+                    <div ref={searchContainerRef} className="relative">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                            {/* Autocomplete Input */}
+                            <div className="relative flex-1 min-w-[220px]">
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={itemSearchQuery}
+                                    onChange={(e) => {
+                                        setItemSearchQuery(e.target.value);
+                                        setSelectedItem(null);
+                                    }}
+                                    onKeyDown={handleSearchKeyDown}
+                                    onFocus={() => {
+                                        if (suggestions.length > 0) setIsSuggestionsOpen(true);
+                                    }}
+                                    placeholder="Item eingeben... (z. B. Nanite, Scrambler, Caracal, Tritanium)"
+                                    className="w-full rounded-lg px-3 py-2 text-xs border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.2)] transition-all"
+                                    autoComplete="off"
+                                />
+                                {isSearchingSuggestions && (
+                                    <span className="absolute right-3 top-2 text-[10px] text-eve-muted animate-pulse">
+                                        Suche...
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Quantity Input */}
+                            <div className="flex items-center gap-1">
+                                <label className="text-[11px] text-eve-muted font-medium">Menge:</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={itemQuantity}
+                                    onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddItem();
+                                        }
+                                    }}
+                                    className="w-20 rounded-lg px-2.5 py-2 text-xs text-center border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
+                                />
+                            </div>
+
+                            {/* Add Button */}
+                            <button
+                                type="button"
+                                onClick={() => handleAddItem()}
+                                disabled={!itemSearchQuery.trim()}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                                    itemSearchQuery.trim()
+                                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                        : 'bg-[#0a0f1d] border-white/10 text-eve-muted opacity-50 cursor-not-allowed'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Hinzufügen
+                            </button>
+                        </div>
+
+                        {/* Suggestions Dropdown */}
+                        {isSuggestionsOpen && suggestions.length > 0 && (
+                            <div className="absolute left-0 right-0 top-full mt-1.5 max-h-[260px] overflow-y-auto z-50 rounded-lg bg-[#0d121fe6] backdrop-blur-md border border-eve-border shadow-2xl divide-y divide-white/5">
+                                {suggestions.map((suggestion, index) => {
+                                    const isSelected = index === activeSuggestionIndex || selectedItem?.id === suggestion.id;
+                                    return (
+                                        <div
+                                            key={suggestion.id}
+                                            onClick={() => handleSelectSuggestion(suggestion)}
+                                            className={`p-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                                                isSelected ? 'bg-eve-primary/20 text-eve-primary' : 'hover:bg-white/5 text-slate-200'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <img
+                                                    src={`/eve/image/types/${suggestion.id}/${suggestion.variation || 'icon'}?size=32`}
+                                                    alt={suggestion.name}
+                                                    className="w-6 h-6 rounded bg-black/40 border border-white/10 object-contain flex-shrink-0"
+                                                    loading="lazy"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = '/assets/images/fallback_item.png';
+                                                    }}
+                                                />
+                                                <span className="text-xs font-medium truncate">{suggestion.name}</span>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAddItem(suggestion);
+                                                }}
+                                                className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:brightness-125 cursor-pointer whitespace-nowrap"
+                                                title={`Mit Menge ${itemQuantity} direkt hinzufügen`}
+                                            >
+                                                + {itemQuantity}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 <div className="mb-4">
-                    <label className="block text-xs font-semibold text-white mb-1.5">
-                        EVE Copy & Paste (EFT Fitting, Hangar-Liste, Multibuy oder Mengen):
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-white">
+                            Oder Fitting / Hangar-Liste per Copy & Paste einfügen (EFT, Multibuy, Hangar):
+                        </label>
+                        {rawText.trim() && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (confirm('Möchtest du das gesamte Textfeld wirklich leeren?')) {
+                                        setRawText('');
+                                        setResult(null);
+                                    }
+                                }}
+                                className="text-[11px] text-red-400 hover:text-red-300 cursor-pointer"
+                            >
+                                Liste leeren
+                            </button>
+                        )}
+                    </div>
                     <textarea
                         rows={6}
                         value={rawText}
@@ -514,6 +800,7 @@ export default function JaniceAppraisal({
                                     <th className="p-3 text-right">Basis Jita</th>
                                     <th className="p-3 text-right">Preis ({result.percent}%)</th>
                                     <th className="p-3 text-right">Gesamt (ISK)</th>
+                                    <th className="p-3 w-8 text-center"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 bg-black/20">
@@ -557,6 +844,16 @@ export default function JaniceAppraisal({
                                         </td>
                                         <td className="p-2.5 text-right font-mono font-semibold text-eve-primary">
                                             {formatThousands(item.totalPrice)}
+                                        </td>
+                                        <td className="p-2.5 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem(item.name)}
+                                                className="w-5 h-5 rounded hover:bg-red-500/20 text-eve-muted hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer text-xs"
+                                                title={`"${item.name}" entfernen`}
+                                            >
+                                                ×
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
