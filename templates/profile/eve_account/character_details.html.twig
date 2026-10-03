@@ -169,7 +169,7 @@
                 {% if character.skillQueue is not empty %}
                     <div class="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
                         {% for item in character.skillQueue %}
-                            {% set skillName = skillNames[item.skill_id] ?? 'Skill #' ~ item.skill_id %}
+                            {% set skillName = skillNames[item.skill_id] ?? ('Skill #' ~ item.skill_id) %}
                             <div class="p-2 bg-white/[0.03] rounded border border-white/[0.05] flex justify-between items-center">
                                 <div>
                                     <div class="font-semibold text-xs text-white">{{ skillName }}</div>
@@ -197,7 +197,7 @@
                     <ul class="m-0 pl-5 list-disc marker:text-eve-primary/70 text-xs text-eve-text space-y-1">
                         {% for typeId in character.implants %}
                             <li class="mb-1">
-                                {{ implantNames[typeId] ?? 'Implantat #' ~ typeId }}
+                                {{ implantNames[typeId] ?? ('Implantat #' ~ typeId) }}
                             </li>
                         {% endfor %}
                     </ul>
