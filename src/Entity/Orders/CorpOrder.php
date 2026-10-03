@@ -80,7 +80,7 @@ class CorpOrder
      * @var Collection<int, CorpOrderItem>
      */
     #[ORM\OneToMany(targetEntity: CorpOrderItem::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['sortOrder' => 'ASC', 'name' => 'ASC'])]
+    #[ORM\OrderBy(['sortOrder' => \SortDirection::Ascending, 'name' => \SortDirection::Ascending])]
     private Collection $items;
 
     public function __construct()
