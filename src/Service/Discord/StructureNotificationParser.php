@@ -27,7 +27,8 @@ class StructureNotificationParser
     {
         $type = $notification['type'] ?? '';
         $text = $notification['text'] ?? '';
-        $sentDateStr = $notification['sent_date'] ?? null;
+        // ESI delivers the notification time as "timestamp"
+        $sentDateStr = $notification['timestamp'] ?? null;
         $sentDate = $sentDateStr ? new \DateTimeImmutable($sentDateStr) : new \DateTimeImmutable();
 
         $data = [];
