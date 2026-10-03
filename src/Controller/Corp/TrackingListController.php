@@ -93,7 +93,7 @@ class TrackingListController extends AbstractController
     public function copyList(int $id): JsonResponse
     {
         $listToCopy = $this->entityManager->getRepository(TrackingList::class)->find($id);
-        if (!$listToCopy) {
+        if (!$listToCopy || !$this->_canReadList($listToCopy)) {
             return new JsonResponse(['error' => 'Vorlage nicht gefunden.'], Response::HTTP_NOT_FOUND);
         }
 
@@ -254,7 +254,7 @@ class TrackingListController extends AbstractController
         $rangeType = $request->query->get('rangeType', 'days'); // 'hours', 'days', 'single_date'
         
         $list = $this->entityManager->getRepository(TrackingList::class)->find($listId);
-        if (!$list) {
+        if (!$list || !$this->_canReadList($list)) {
             return new JsonResponse(['error' => 'Liste nicht gefunden.'], Response::HTTP_NOT_FOUND);
         }
 
@@ -434,7 +434,7 @@ class TrackingListController extends AbstractController
         
         if ($listId !== null && $listId !== '') {
             $list = $this->entityManager->getRepository(TrackingList::class)->find((int)$listId);
-            if (!$list) {
+            if (!$list || !$this->_canReadList($list)) {
                 return new JsonResponse(['error' => 'Liste nicht gefunden.'], Response::HTTP_NOT_FOUND);
             }
         }
@@ -505,5 +505,11 @@ class TrackingListController extends AbstractController
         $this->entityManager->flush();
 
         return new JsonResponse(['success' => true]);
+    }
+
+    // Templates (user is null) are readable by everyone, private lists only by their owner
+    private function _canReadList(TrackingList $list): bool
+    {
+        return $list->getUser() === null || $list->getUser() === $this->getUser();
     }
 }
