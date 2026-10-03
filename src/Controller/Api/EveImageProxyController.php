@@ -11,32 +11,34 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class EveImageProxyController extends AbstractController
 {
+    // Actions offered by the CCP Image Server per category
+    private const ALLOWED_ACTIONS = [
+        'types' => ['icon', 'render', 'bp', 'bpc'],
+        'characters' => ['portrait'],
+        'corporations' => ['logo'],
+        'alliances' => ['logo'],
+    ];
+
+    // The CCP Image Server only accepts these sizes
+    private const ALLOWED_SIZES = [32, 64, 128, 256, 512, 1024];
+
     public function __construct(
         private readonly HttpClientInterface $httpClient
     ) {}
 
-    #[Route('/eve/image/{category}/{id}/{action}', name: 'app_eve_image_proxy', requirements: ['id' => '\d+'])]
+    #[Route('/eve/image/{category}/{id}/{action}', name: 'app_eve_image_proxy', requirements: ['id' => '[1-9]\d{0,10}'])]
     public function proxy(string $category, int $id, string $action, Request $request): Response
     {
-        // Allowed categories and actions to prevent arbitrary external requests
-        $allowedCategories = ['types', 'characters', 'corporations', 'alliances'];
-        $allowedActions = ['icon', 'portrait', 'logo', 'render', 'bp', 'bpc'];
-        
-        if (!in_array($category, $allowedCategories) || !in_array($action, $allowedActions)) {
+        // Allowed categories and actions to prevent arbitrary external requests and unbounded disk caching
+        if (!in_array($action, self::ALLOWED_ACTIONS[$category] ?? [], true)) {
             throw $this->createNotFoundException('Invalid category or action.');
         }
 
-        // Get requested size, fallback to 64px
-        $size = $request->query->getInt('size', 64);
+        $size = $this->_normalizeSize($request->query->getInt('size', 64));
         
         // Define local cache path inside the writable var/ directory
         $projectDir = $this->getParameter('kernel.project_dir');
         $cacheDir = $projectDir . '/var/eve_image_cache/' . $category . '/' . $id;
-        
-        if (!is_dir($cacheDir)) {
-            mkdir($cacheDir, 0777, true);
-        }
-        
         $cachePath = sprintf('%s/%s_%d.png', $cacheDir, $action, $size);
 
         // If cached file exists locally, serve it immediately (0ms external latency)
@@ -56,8 +58,13 @@ class EveImageProxyController extends AbstractController
                 'timeout' => 5,
             ]);
             
-            if ($response->getStatusCode() === 200) {
+            if ($response->getStatusCode() === 200 && $this->_isImageResponse($response->getHeaders(false))) {
                 $content = $response->getContent();
+
+                // Only create cache directories for images that actually exist
+                if (!is_dir($cacheDir)) {
+                    mkdir($cacheDir, 0775, true);
+                }
                 file_put_contents($cachePath, $content);
                 
                 $fileResponse = new BinaryFileResponse($cachePath);
@@ -76,5 +83,24 @@ class EveImageProxyController extends AbstractController
         }
 
         return new Response('Image not found or failed to fetch.', Response::HTTP_NOT_FOUND);
+    }
+
+    // Maps any requested size to the next supported one, so arbitrary values cannot create new cache files
+    private function _normalizeSize(int $requestedSize): int
+    {
+        foreach (self::ALLOWED_SIZES as $allowedSize) {
+            if ($allowedSize >= $requestedSize) {
+                return $allowedSize;
+            }
+        }
+
+        return self::ALLOWED_SIZES[array_key_last(self::ALLOWED_SIZES)];
+    }
+
+    private function _isImageResponse(array $headers): bool
+    {
+        $contentType = $headers['content-type'][0] ?? '';
+
+        return str_starts_with($contentType, 'image/');
     }
 }
