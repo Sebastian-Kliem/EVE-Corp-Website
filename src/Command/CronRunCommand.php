@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Entity\CronJob;
+use App\Service\Cron\CronErrorCollector;
 use App\Service\Cron\CronTaskInterface;
 use Cron\CronExpression;
 use Doctrine\ORM\EntityManagerInterface;
@@ -13,8 +14,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Lock\LockFactory;
 
 #[AsCommand(
     name: 'app:cron:run',
@@ -33,7 +35,9 @@ class CronRunCommand extends Command
         EntityManagerInterface $entityManager,
         private readonly \App\Service\Esi\EsiClient $esiClient,
         private readonly KernelInterface $kernel,
-        #[TaggedIterator('app.cron_task')] iterable $tasks
+        private readonly LockFactory $lockFactory,
+        private readonly CronErrorCollector $errorCollector,
+        #[AutowireIterator('app.cron_task')] iterable $tasks
     ) {
         parent::__construct();
 
@@ -122,6 +126,15 @@ class CronRunCommand extends Command
                 $writeLog(sprintf('Führe Cronjob aus: %s (%s)', $job->getName(), $job->getCommand()));
                 
                 $commandName = $job->getCommand();
+
+                // Prevent overlapping runs of the same job (cron loop and admin trigger)
+                $jobLock = $this->lockFactory->createLock('cron_job_' . $commandName, 3600);
+                if (!$jobLock->acquire()) {
+                    $io->note(sprintf('Job "%s" is still running. Skipping.', $job->getName()));
+                    $writeLog(sprintf('Job "%s" läuft noch, Ausführung übersprungen.', $job->getName()), 'WARNING');
+                    continue;
+                }
+
                 if (!isset($this->taskRegistry[$commandName])) {
                     $errorMsg = sprintf('Registered command service "%s" not found in container.', $commandName);
                     $io->warning($errorMsg);
@@ -132,6 +145,7 @@ class CronRunCommand extends Command
                     $job->setLastRunAt($now);
                     $this->updateNextRunAt($job, $now);
                     $this->entityManager->flush();
+                    $jobLock->release();
                     continue;
                 }
 
@@ -142,19 +156,31 @@ class CronRunCommand extends Command
                 $task = $this->taskRegistry[$commandName];
                 
                 $startTime = microtime(true);
+                $this->errorCollector->start();
                 try {
                     $task->execute();
                     
                     $executionTime = microtime(true) - $startTime;
+                    $collectedErrors = $this->errorCollector->stop();
                     
-                    $job->setLastStatus('success');
-                    $job->setLastError(null);
                     $job->setLastExecutionTime($executionTime);
-                    
-                    $io->success(sprintf('Job "%s" finished successfully in %.2f seconds.', $job->getName(), $executionTime));
-                    $writeLog(sprintf('Job "%s" erfolgreich beendet in %.2f Sekunden.', $job->getName(), $executionTime));
+
+                    if (empty($collectedErrors)) {
+                        $job->setLastStatus('success');
+                        $job->setLastError(null);
+
+                        $io->success(sprintf('Job "%s" finished successfully in %.2f seconds.', $job->getName(), $executionTime));
+                        $writeLog(sprintf('Job "%s" erfolgreich beendet in %.2f Sekunden.', $job->getName(), $executionTime));
+                    } else {
+                        $job->setLastStatus('warning');
+                        $job->setLastError($this->_formatCollectedErrors($collectedErrors));
+
+                        $io->warning(sprintf('Job "%s" finished in %.2f seconds with %d error(s).', $job->getName(), $executionTime, count($collectedErrors)));
+                        $writeLog(sprintf('Job "%s" beendet in %.2f Sekunden mit %d Fehler(n).', $job->getName(), $executionTime, count($collectedErrors)), 'WARNING');
+                    }
                 } catch (\Throwable $e) {
                     $executionTime = microtime(true) - $startTime;
+                    $this->errorCollector->stop();
                     
                     $errorDetails = $e->getMessage() . "\n" . $e->getTraceAsString();
                     $io->error(sprintf('Job "%s" failed after %.2f seconds: %s', $job->getName(), $executionTime, $e->getMessage()));
@@ -181,6 +207,8 @@ class CronRunCommand extends Command
                     $job->setLastRunAt($now);
                     $this->entityManager->flush();
                 }
+
+                $jobLock->release();
             }
         }
 
@@ -190,6 +218,24 @@ class CronRunCommand extends Command
 
         $writeLog('Cronjob-Runner Ausführung beendet.');
         return Command::SUCCESS;
+    }
+
+    /**
+     * @param string[] $collectedErrors
+     */
+    private function _formatCollectedErrors(array $collectedErrors): string
+    {
+        $occurrences = [];
+        foreach ($collectedErrors as $message) {
+            $occurrences[$message] = ($occurrences[$message] ?? 0) + 1;
+        }
+
+        $lines = [];
+        foreach ($occurrences as $message => $count) {
+            $lines[] = $count > 1 ? sprintf('%dx %s', $count, $message) : $message;
+        }
+
+        return implode("\n", $lines);
     }
 
     private function updateNextRunAt(CronJob $job, \DateTimeImmutable $now): void

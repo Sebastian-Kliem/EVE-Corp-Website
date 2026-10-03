@@ -1,0 +1,3 @@
+framework:
+    # Shared project directory, so app and cron containers see the same locks
+    lock: 'flock://%kernel.project_dir%/var/lock'

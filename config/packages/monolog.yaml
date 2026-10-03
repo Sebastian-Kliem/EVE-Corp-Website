@@ -1,6 +1,11 @@
 monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
+    handlers:
+        cron_errors:
+            type: service
+            id: App\Service\Cron\CronErrorCollector
+            channels: ["!deprecation", "!event"]
 
 when@dev:
     monolog:
