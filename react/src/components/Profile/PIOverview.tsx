@@ -93,6 +93,12 @@ interface CharacterPiData {
     error?: string;
 }
 
+interface GroupedCharacter extends CharacterPiData {
+    accountName: string;
+    accountGroup: string;
+    tags: string[];
+}
+
 interface Bottleneck {
     type: 'error' | 'warning' | 'info';
     message: string;
@@ -584,7 +590,7 @@ export default function PIOverview({
         });
 
         // 2. Group by Account
-        const groups: Record<string, { accountName: string; accountGroup: string; characters: any[] }> = {};
+        const groups: Record<string, { accountName: string; accountGroup: string; characters: GroupedCharacter[] }> = {};
 
         piCharacters.forEach((charData) => {
             const charListItem = charactersList.find(c => c.id === charData.character_id);

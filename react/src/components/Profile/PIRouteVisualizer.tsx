@@ -238,7 +238,7 @@ export default function PIRouteVisualizer({ pins, routes, getTypeIconUrl }: PIRo
                         'font-size': '10px',
                         'text-valign': 'bottom',
                         'text-halign': 'center',
-                        'text-margin-y': '6px',
+                        'text-margin-y': 6,
                         'text-wrap': 'wrap',
                         'text-max-width': '90px'
                     }
