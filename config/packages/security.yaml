@@ -60,7 +60,11 @@ security:
     # Easy way to control access for large sections of your site
     # Note: Only the *first* access control that matches will be used
     access_control:
-        # Managed via Controller attributes (#[IsGranted])
+        # Baseline per area; finer rules stay in controller attributes (#[IsGranted])
+        - { path: ^/admin, roles: ROLE_OFFICER }
+        # Recruits only get the profile page (password change) until they are approved
+        - { path: ^/personal/profile$, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/(personal|corp|general|auth/eve|online-status), roles: ROLE_MEMBER }
 
 when@test:
     security:

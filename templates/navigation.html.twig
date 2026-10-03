@@ -105,6 +105,7 @@
 
             <div class="flex items-center gap-4 mt-4 lg:mt-0">
                 {% if app.user %}
+                    {% if is_granted('ROLE_MEMBER') %}
                     <!-- Online Users Indicator (links neben Logout) -->
                     {% set online_status = get_online_status() %}
                     <div class="relative group" data-controller="dropdown online-status" data-online-status-url-value="{{ path('app_online_status') }}">
@@ -163,6 +164,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
 
                     <a class="cursor-pointer py-2 lg:py-0 font-medium text-eve-muted hover:text-eve-primary no-underline transition-colors duration-200" href="{{ path('app_logout') }}">
                         🚪 Logout

@@ -84,7 +84,7 @@ class ApiController extends AbstractController
     }
 
     #[Route('/characters', name: 'api_characters', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function getCharacters(EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();
@@ -113,7 +113,7 @@ class ApiController extends AbstractController
     }
 
     #[Route('/characters/{id}', name: 'api_character_detail', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_MEMBER')]
     public function getCharacterDetail(int $id, EntityManagerInterface $entityManager): JsonResponse
     {
         $user = $this->getUser();

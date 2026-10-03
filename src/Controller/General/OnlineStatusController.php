@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class OnlineStatusController extends AbstractController
 {
     #[Route('/online-status', name: 'app_online_status', methods: ['GET'])]
-    #[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
+    #[IsGranted('ROLE_MEMBER')]
     public function getOnlineStatus(CharacterOnlineService $characterOnlineService): JsonResponse
     {
         $status = $characterOnlineService->getOnlineStatus();
