@@ -89,6 +89,8 @@
                                     <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mt-1 inline-block">Erfolgreich</span>
                                 {% elseif job.lastStatus == 'error' %}
                                     <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30 mt-1 inline-block">Fehlgeschlagen</span>
+                                {% elseif job.lastStatus == 'warning' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 mt-1 inline-block">Teilweise fehlgeschlagen</span>
                                 {% else %}
                                     <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 mt-1 inline-block">Ausstehend</span>
                                 {% endif %}
@@ -128,7 +130,7 @@
                                 </div>
                             </td>
                         </tr>
-                        {% if job.lastStatus == 'error' and job.lastError %}
+                        {% if job.lastStatus in ['error', 'warning'] and job.lastError %}
                             <tr>
                                 <td colspan="6" class="p-0">
                                     <details class="mb-3 ml-2 mr-2">

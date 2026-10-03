@@ -143,6 +143,8 @@ class AdminCronController extends AbstractController
             
             if ($job->getLastStatus() === 'success') {
                 $this->addFlash('success', sprintf('Der Cronjob "%s" wurde erfolgreich ausgeführt (Dauer: %.2f Sek.).', $job->getName(), $job->getLastExecutionTime()));
+            } elseif ($job->getLastStatus() === 'warning') {
+                $this->addFlash('warning', sprintf('Der Cronjob "%s" wurde mit Fehlern beendet: %s', $job->getName(), $job->getLastError()));
             } else {
                 $this->addFlash('error', sprintf('Fehler beim Ausführen des Cronjobs "%s": %s', $job->getName(), $job->getLastError()));
             }
