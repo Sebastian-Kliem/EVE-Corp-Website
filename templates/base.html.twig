@@ -102,7 +102,7 @@
                 {% for message in messages %}
                     <div class="border border-eve-border bg-eve-card rounded-lg p-5 mb-6 relative {{ flash_classes[label] ?? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' }}">
                         <button class="absolute top-4 right-4 text-eve-muted hover:text-white cursor-pointer text-xl leading-none" onclick="this.parentElement.style.display='none'">&times;</button>
-                        {{ message|raw }}
+                        {{ message }}
                     </div>
                 {% endfor %}
             {% endfor %}
