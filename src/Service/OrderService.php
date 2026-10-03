@@ -447,14 +447,7 @@ class OrderService
             }
 
             // Search for contracts matching "Order #<id>" or "WH-Order #<id>" in title
-            $pattern = sprintf('%%Order #%d%%', $order->getId());
-            /** @var EveCharacterContract|null $matchedContract */
-            $matchedContract = $contractRepo->createQueryBuilder('c')
-                ->where('c.title LIKE :pattern')
-                ->setParameter('pattern', $pattern)
-                ->setMaxResults(1)
-                ->getQuery()
-                ->getOneOrNullResult();
+            $matchedContract = $this->_findContractForOrder($order);
 
             if ($matchedContract) {
                 $order->setContractId($matchedContract->getContractId());
@@ -476,5 +469,36 @@ class OrderService
         }
 
         return $updatedCount;
+    }
+
+    /**
+     * Checks whether a contract title references exactly the given order id (e.g. #1 must not match #12).
+     */
+    public function contractTitleMatchesOrder(?string $title, int $orderId): bool
+    {
+        if ($title === null) {
+            return false;
+        }
+
+        return preg_match('/Order #' . $orderId . '(?!\d)/i', $title) === 1;
+    }
+
+    private function _findContractForOrder(CorpOrder $order): ?EveCharacterContract
+    {
+        /** @var EveCharacterContract[] $candidates */
+        $candidates = $this->entityManager->getRepository(EveCharacterContract::class)
+            ->createQueryBuilder('c')
+            ->where('c.title LIKE :pattern')
+            ->setParameter('pattern', sprintf('%%Order #%d%%', $order->getId()))
+            ->getQuery()
+            ->getResult();
+
+        foreach ($candidates as $candidate) {
+            if ($this->contractTitleMatchesOrder($candidate->getTitle(), $order->getId())) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }
