@@ -22,3 +22,7 @@ services:
         resource: '../src/'
 
 
+
+    # Fetched in Kernel::boot() to hand it to the encrypted_text Doctrine type
+    App\Security\TokenCipher:
+        public: true
