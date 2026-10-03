@@ -175,6 +175,12 @@ class EveCharacter
         return $this->corporationId;
     }
 
+    // NPC corporations use IDs 1,000,000 - 1,999,999 and have no accessible corporation endpoints
+    public function isInNpcCorporation(): bool
+    {
+        return $this->corporationId !== null && $this->corporationId >= 1000000 && $this->corporationId < 2000000;
+    }
+
     public function setCorporationId(?int $corporationId): static
     {
         $this->corporationId = $corporationId;

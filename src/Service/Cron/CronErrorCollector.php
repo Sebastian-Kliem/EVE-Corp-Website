@@ -2,6 +2,7 @@
 
 namespace App\Service\Cron;
 
+use App\Service\Esi\EsiMissingScopeException;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
@@ -42,6 +43,11 @@ class CronErrorCollector extends AbstractProcessingHandler
     protected function write(LogRecord $record): void
     {
         if (!$this->isCollecting || count($this->errors) >= self::MAX_COLLECTED_ERRORS) {
+            return;
+        }
+
+        // Missing scopes are a known per-character limitation, not a task failure
+        if (str_contains($record->message, EsiMissingScopeException::MESSAGE_MARKER)) {
             return;
         }
 

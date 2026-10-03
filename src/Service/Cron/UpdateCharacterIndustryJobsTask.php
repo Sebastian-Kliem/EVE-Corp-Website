@@ -63,11 +63,16 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
 
             // B. Sync Corporation Industry Jobs (if character has roles & corporationId, and corp not yet synced)
             $corpId = $character->getCorporationId();
-            if ($corpId) {
+            if ($corpId && !$character->isInNpcCorporation()) {
                 if (!isset($corpSyncSuccess[$corpId])) {
                     $corpSyncSuccess[$corpId] = 'not_attempted';
                 }
-                if ($corpSyncSuccess[$corpId] !== 'success') {
+                // ESI answers 403 without these roles, which counts against the error limit
+                if (!$this->_canReadCorpIndustryJobs($character)) {
+                    if ($corpSyncSuccess[$corpId] === 'not_attempted') {
+                        $corpSyncSuccess[$corpId] = 'no_roles';
+                    }
+                } elseif ($corpSyncSuccess[$corpId] !== 'success') {
                     try {
                         $result = $this->syncCorpJobs($character, $corpId, $localCharactersMap);
                         if ($result['status'] === 'success') {
@@ -99,7 +104,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
             $charId = $character->getId();
             if (($personalSyncSuccess[$charId] ?? false) === true) {
                 $corpId = $character->getCorporationId();
-                if (!$corpId || in_array(($corpSyncSuccess[$corpId] ?? null), ['success', 'no_roles'], true)) {
+                if (!$corpId || $character->isInNpcCorporation() || in_array(($corpSyncSuccess[$corpId] ?? null), ['success', 'no_roles'], true)) {
                     $fullySyncedCharIds[] = $charId;
                 }
             }
@@ -122,6 +127,13 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         }
 
         $this->logger->info('[Cron] Finished sync-industry-jobs execution.');
+    }
+
+    private function _canReadCorpIndustryJobs(EveCharacter $character): bool
+    {
+        $roles = $character->getRoles();
+
+        return in_array('Director', $roles, true) || in_array('Factory_Manager', $roles, true);
     }
 
     private function syncPersonalJobs(EveCharacter $character): array
