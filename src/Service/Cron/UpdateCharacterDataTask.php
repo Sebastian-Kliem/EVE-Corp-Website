@@ -510,6 +510,10 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $singletonItemIds = [];
         $itemToTypeMap = [];
         foreach ($allAssets as $assetData) {
+            // Merged corp items are owned by the corporation; ESI rejects the whole name batch (404) for them
+            if (($assetData['location_type'] ?? null) === 'personal_corp_asset') {
+                continue;
+            }
             if (!empty($assetData['is_singleton'])) {
                 $itemId = (int) $assetData['item_id'];
                 $singletonItemIds[] = $itemId;
