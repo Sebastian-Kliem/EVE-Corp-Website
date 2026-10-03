@@ -12,10 +12,13 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\RateLimiter\RequestRateLimiterInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Security\Http\SecurityRequestAttributes;
 
 #[Route('/api')]
 class ApiController extends AbstractController
@@ -23,7 +26,9 @@ class ApiController extends AbstractController
     public function __construct(
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        #[Autowire(service: 'security.login_throttling.main.limiter')]
+        private RequestRateLimiterInterface $loginRateLimiter
     ) {}
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
@@ -35,12 +40,24 @@ class ApiController extends AbstractController
             return new JsonResponse(['message' => 'Missing username or password'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Shares the attempt counter with the login form
+        $request->attributes->set(SecurityRequestAttributes::LAST_USERNAME, (string) $data['username']);
+        $rateLimit = $this->loginRateLimiter->consume($request);
+        if (!$rateLimit->isAccepted()) {
+            return new JsonResponse(
+                ['message' => 'Too many failed login attempts, please try again later'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+                ['Retry-After' => (string) max(1, $rateLimit->getRetryAfter()->getTimestamp() - time())]
+            );
+        }
+
         $user = $this->userRepository->findOneBy(['username' => $data['username']]);
 
         if (!$user || !$this->passwordHasher->isPasswordValid($user, $data['password'])) {
             return new JsonResponse(['message' => 'Invalid credentials'], Response::HTTP_UNAUTHORIZED);
         }
 
+        $this->loginRateLimiter->reset($request);
         $token = $this->jwtService->createToken($user);
 
         return new JsonResponse([

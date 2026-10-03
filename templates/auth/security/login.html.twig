@@ -18,7 +18,7 @@
 
             {% if error %}
                 <div class="border border-red-500/30 bg-red-500/10 text-red-400 rounded-lg p-5 mb-5">
-                    {{ error.messageKey|trans(error.messageData, 'security') }}
+                    {{ error.messageKey|trans(error.messageData, 'security', 'de') }}
                 </div>
             {% endif %}
 
