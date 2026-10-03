@@ -743,7 +743,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
     private function syncCorpAssets(EveCharacter $character): void
     {
         $corpId = $character->getCorporationId();
-        if (!$corpId) {
+        if (!$corpId || $character->isInNpcCorporation()) {
             return;
         }
 

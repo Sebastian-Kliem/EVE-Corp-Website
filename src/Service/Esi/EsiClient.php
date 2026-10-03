@@ -15,6 +15,8 @@ class EsiClient
     private const SSO_AUTH_URL = 'https://login.eveonline.com/v2/oauth/authorize';
     private const SSO_TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token';
 
+    private const MISSING_SCOPE_CACHE_TTL = 3600;
+
     private static bool $esiOffline = false;
 
     public function __construct(
@@ -231,6 +233,13 @@ class EsiClient
                     }
 
                     $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
+
+                    // Skip endpoints known to be outside the token's scopes (avoids burning the ESI error limit)
+                    $missingScopeCacheItem = $this->_getMissingScopeCacheItem($character, $path);
+                    if ($missingScopeCacheItem?->isHit()) {
+                        $this->logCron(sprintf('[EsiClient] Skipping %s for %s: required scope missing (cached).', $fullPathLog, $character->getName()), 'debug');
+                        throw new EsiMissingScopeException($path, $character->getName(), $missingScopeCacheItem->get());
+                    }
                 }
 
                 $options['headers'] = $headers;
@@ -283,6 +292,8 @@ class EsiClient
 
                 return $result;
 
+            } catch (EsiMissingScopeException $e) {
+                throw $e;
             } catch (\Exception $e) {
                 $statusCode = 0;
                 $is420 = false;
@@ -290,6 +301,16 @@ class EsiClient
 
                 if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
                     $statusCode = $e->getResponse()->getStatusCode();
+
+                    // ESI answers 401 for tokens lacking the endpoint's scope; refreshing the token cannot fix that
+                    if ($character && $statusCode === 401) {
+                        $requiredScope = $this->_extractMissingScope($e->getResponse());
+                        if ($requiredScope !== null) {
+                            $this->_rememberMissingScope($character, $path, $requiredScope);
+                            $this->logCron(sprintf('[EsiClient] %s lacks scope %s for %s. Skipping for %d seconds.', $character->getName(), $requiredScope, $fullPathLog, self::MISSING_SCOPE_CACHE_TTL), 'warning');
+                            throw new EsiMissingScopeException($path, $character->getName(), $requiredScope);
+                        }
+                    }
 
                     // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
                     if ($character && $statusCode === 401 && $attempt === 1) {
@@ -325,7 +346,9 @@ class EsiClient
                 $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420);
 
                 if ($isClientError || $attempt >= $maxRetries) {
-                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s', $fullPathLog, $attempt, $e->getMessage()), 'error');
+                    // 403 means missing corporation roles; callers decide whether that is an error
+                    $logLevel = $statusCode === 403 ? 'warning' : 'error';
+                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s', $fullPathLog, $attempt, $e->getMessage()), $logLevel);
                     throw $e;
                 }
 
@@ -376,6 +399,8 @@ class EsiClient
                     }
 
                     break; // Success
+                } catch (EsiMissingScopeException $e) {
+                    throw $e;
                 } catch (\Exception $e) {
                     $isClientError = false;
                     if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
@@ -457,6 +482,49 @@ class EsiClient
         }
 
         return null;
+    }
+
+    // Returns the scope named in ESI's "Token is not valid for any required scope" response, or null for other 401s
+    private function _extractMissingScope(ResponseInterface $response): ?string
+    {
+        try {
+            $body = $response->getContent(false);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        if (!str_contains($body, 'not valid for any required scope')) {
+            return null;
+        }
+
+        return preg_match('/required scope:\s*([\w.\-]+)/', $body, $matches) === 1 ? $matches[1] : '';
+    }
+
+    private function _rememberMissingScope(EveCharacter $character, string $path, string $requiredScope): void
+    {
+        $cacheItem = $this->_getMissingScopeCacheItem($character, $path);
+        if ($cacheItem === null) {
+            return;
+        }
+
+        $cacheItem->set($requiredScope);
+        $cacheItem->expiresAfter(self::MISSING_SCOPE_CACHE_TTL);
+        $this->cachePool->save($cacheItem);
+    }
+
+    // Keyed by the token's scope set, so re-linking the character with more scopes invalidates the entry
+    private function _getMissingScopeCacheItem(EveCharacter $character, string $path): ?\Psr\Cache\CacheItemInterface
+    {
+        try {
+            $scopes = $this->decodeTokenPayload((string) $character->getAccessToken())['scopes'];
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        sort($scopes);
+        $cacheKey = 'esi_missing_scope_' . md5($character->getId() . '_' . $path . '_' . implode(' ', $scopes));
+
+        return $this->cachePool->getItem($cacheKey);
     }
 
     /**
