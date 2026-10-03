@@ -75,7 +75,18 @@ class EsiClientTest extends TestCase
         $this->assertSame(['total_sp' => 1000], $esiClient->request('GET', 'characters/123/skills/', [], $character));
     }
 
-    private function _createClient(MockHttpClient $httpClient): EsiClient
+    public function testGetMissingScopesComparesTokenWithConfiguredScopes(): void
+    {
+        $esiClient = $this->_createClient(new MockHttpClient(), 'esi-skills.read_skills.v1, esi-wallet.read_character_wallet.v1,esi-assets.read_assets.v1');
+        $character = $this->_createCharacter(['esi-wallet.read_character_wallet.v1']);
+
+        $this->assertSame(['esi-skills.read_skills.v1', 'esi-assets.read_assets.v1'], $esiClient->getMissingScopes($character));
+
+        $character->setAccessToken('not-a-jwt');
+        $this->assertSame([], $esiClient->getMissingScopes($character));
+    }
+
+    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = ''): EsiClient
     {
         return new EsiClient(
             $httpClient,
@@ -85,7 +96,7 @@ class EsiClientTest extends TestCase
             'client-id',
             'secret',
             'https://example.org/callback',
-            ''
+            $configuredScopes
         );
     }
 

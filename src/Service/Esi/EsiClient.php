@@ -102,6 +102,28 @@ class EsiClient
     }
 
     /**
+     * Returns the configured SSO scopes the character's token was not granted.
+     */
+    public function getMissingScopes(EveCharacter $character): array
+    {
+        try {
+            $grantedScopes = $this->decodeTokenPayload((string) $character->getAccessToken())['scopes'];
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $missingScopes = [];
+        foreach (explode(',', $this->eveSsoScopes) as $requiredScope) {
+            $requiredScope = trim($requiredScope);
+            if ($requiredScope !== '' && !in_array($requiredScope, $grantedScopes, true)) {
+                $missingScopes[] = $requiredScope;
+            }
+        }
+
+        return $missingScopes;
+    }
+
+    /**
      * Refreshes the access token for a character.
      */
     public function refreshToken(EveCharacter $character): bool

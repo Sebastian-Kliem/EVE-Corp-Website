@@ -251,7 +251,7 @@ class ProfileController extends AbstractController
     }
 
     #[Route('/characters', name: 'app_profile_characters', methods: ['GET'])]
-    public function characters(): Response
+    public function characters(EsiClient $esiClient): Response
     {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
@@ -268,10 +268,20 @@ class ProfileController extends AbstractController
             return strcasecmp($a->getName(), $b->getName());
         });
 
+        // Characters linked before new scopes were added need a re-auth
+        $missingScopesByCharacter = [];
+        foreach ($this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]) as $character) {
+            $missingScopes = $esiClient->getMissingScopes($character);
+            if ($missingScopes !== []) {
+                $missingScopesByCharacter[$character->getId()] = $missingScopes;
+            }
+        }
+
         return $this->render('profile/eve_account/characters.html.twig', [
             'user' => $currentUser,
             'unassignedCharacters' => $unassignedCharacters,
             'accounts' => $accounts,
+            'missingScopesByCharacter' => $missingScopesByCharacter,
         ]);
     }
 

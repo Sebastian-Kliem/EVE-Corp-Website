@@ -96,6 +96,15 @@
                                     <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-2 mt-2 text-xs rounded">
                                         ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
                                     </div>
+                                {% elseif missingScopesByCharacter[char.id] is defined %}
+                                    <details class="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-2 mt-2 text-xs rounded">
+                                        <summary class="cursor-pointer select-none"><strong>Berechtigungen fehlen:</strong> {{ missingScopesByCharacter[char.id]|length }} ESI-Scopes nicht freigegeben. Bitte Re-Auth durchführen.</summary>
+                                        <ul class="mt-2 font-mono text-[10px] text-amber-300/80 break-all">
+                                            {% for scope in missingScopesByCharacter[char.id] %}
+                                                <li>{{ scope }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </details>
                                 {% endif %}
                                 
                                 <!-- Zuweisungs-Formular -->
@@ -259,6 +268,15 @@
                                         <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-2 mt-2 text-xs rounded">
                                             ⚠️ <strong>SSO ungültig!</strong> Passwort geändert oder Zugriff entzogen. Bitte Re-Auth durchführen.
                                         </div>
+                                    {% elseif missingScopesByCharacter[char.id] is defined %}
+                                        <details class="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-2 mt-2 text-xs rounded">
+                                            <summary class="cursor-pointer select-none"><strong>Berechtigungen fehlen:</strong> {{ missingScopesByCharacter[char.id]|length }} ESI-Scopes nicht freigegeben. Bitte Re-Auth durchführen.</summary>
+                                            <ul class="mt-2 font-mono text-[10px] text-amber-300/80 break-all">
+                                                {% for scope in missingScopesByCharacter[char.id] %}
+                                                    <li>{{ scope }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </details>
                                     {% endif %}
                                     
                                     <!-- Zuweisungs-Formular -->
