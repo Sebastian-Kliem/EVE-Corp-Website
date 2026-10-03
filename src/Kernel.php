@@ -21,6 +21,9 @@ class Kernel extends BaseKernel
     {
         parent::boot();
 
-        EncryptedTextType::setCipher($this->getContainer()->get(TokenCipher::class));
+        // A stale compiled container (e.g. during cache:clear after a deploy) may not know the service yet
+        if ($this->getContainer()->has(TokenCipher::class)) {
+            EncryptedTextType::setCipher($this->getContainer()->get(TokenCipher::class));
+        }
     }
 }
