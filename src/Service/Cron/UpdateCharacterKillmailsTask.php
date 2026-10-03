@@ -78,14 +78,7 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
             return;
         }
 
-        // Fetch recent stored killmail IDs to check for duplicates efficiently
         $killmailRepository = $this->entityManager->getRepository(EveKillmail::class);
-        $existingKillmails = $killmailRepository->findBy(
-            ['character' => $character],
-            ['killmailTime' => 'DESC'],
-            100
-        );
-        $existingIds = array_map(fn(EveKillmail $k) => (string)$k->getKillmailId(), $existingKillmails);
 
         $newKillmailsCount = 0;
         $batchSize = 25;
@@ -109,12 +102,6 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
             ]);
             if ($exists) {
                 continue;
-            }
-
-            // Since ESI returns from newest to oldest, we can stop importing once we hit an already imported killmail.
-            if (in_array($killmailId, $existingIds, true)) {
-                $this->logger->debug(sprintf('[Cron] Hit already imported killmail %s for character %s. Stopping sync.', $killmailId, $character->getName()));
-                break;
             }
 
             try {
