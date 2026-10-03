@@ -208,7 +208,7 @@ export default function ReactionDashboard({ apiDataUrl, imagePaths, structuresLi
         if (!calcData) return [];
 
         return calcData.reactions.map((react) => {
-            const polymerPrices = calcData.marketPrices[react.polymerTypeId]?.[selectedHub] || { maxBuyPrice: null, minSellPrice: null };
+            const polymerPrices = calcData.marketPrices[react.polymerTypeId]?.[selectedHub as keyof HubData] || { maxBuyPrice: null, minSellPrice: null };
 
             // Calculate material cost and Base Cost (EIV base value)
             let materialCost = 0;
