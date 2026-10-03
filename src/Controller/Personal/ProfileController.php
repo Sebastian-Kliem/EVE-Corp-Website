@@ -251,6 +251,7 @@ class ProfileController extends AbstractController
     }
 
     #[Route('/characters', name: 'app_profile_characters', methods: ['GET'])]
+    #[IsGranted('ROLE_MEMBER')]
     public function characters(EsiClient $esiClient): Response
     {
         $currentUser = $this->getUser();
@@ -287,6 +288,7 @@ class ProfileController extends AbstractController
 
 
     #[Route('/personal-assets', name: 'app_profile_personal_assets', methods: ['POST'])]
+    #[IsGranted('ROLE_MEMBER')]
     public function updatePersonalAssets(Request $request): Response
     {
         $currentUser = $this->getUser();
@@ -335,6 +337,7 @@ class ProfileController extends AbstractController
     }
 
     #[Route('/update-blueprint-sharing', name: 'app_profile_update_blueprint_sharing', methods: ['POST'])]
+    #[IsGranted('ROLE_MEMBER')]
     public function updateBlueprintSharing(Request $request): Response
     {
         $currentUser = $this->getUser();
@@ -356,6 +359,7 @@ class ProfileController extends AbstractController
     }
 
     #[Route('/update-settings', name: 'app_profile_update_settings', methods: ['POST'])]
+    #[IsGranted('ROLE_MEMBER')]
     public function updateSettings(Request $request): Response
     {
         $currentUser = $this->getUser();

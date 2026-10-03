@@ -87,6 +87,8 @@
         </div>
     </details>
 
+    {# Settings below are only available after the account was approved #}
+    {% if is_granted('ROLE_MEMBER') %}
     <!-- Webseiten- & Anzeige-Einstellungen -->
     <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-site-settings" open>
         <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">
@@ -391,5 +393,6 @@
             <div data-react-component="TrackingListManager" data-react-props="{{ {'jwtToken': jwt_token(app.user)}|json_encode|e('html_attr') }}"></div>
         </div>
     </details>
+    {% endif %}
 </div>
 {% endblock %}

@@ -22,6 +22,7 @@ class EveSsoController extends AbstractController
 
     #[Route('/auth/eve/login', name: 'app_eve_sso_login')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted('ROLE_MEMBER')]
     public function login(Request $request): Response
     {
         $state = bin2hex(random_bytes(16));
@@ -34,6 +35,7 @@ class EveSsoController extends AbstractController
 
     #[Route('/auth/eve/callback', name: 'app_eve_sso_callback')]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    #[IsGranted('ROLE_MEMBER')]
     public function callback(Request $request): Response
     {
         $session = $request->getSession();
