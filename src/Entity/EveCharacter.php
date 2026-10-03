@@ -15,10 +15,10 @@ class EveCharacter
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(type: 'encrypted_text', nullable: true)]
     private ?string $accessToken = null;
 
-    #[ORM\Column(type: 'text', nullable: true)]
+    #[ORM\Column(type: 'encrypted_text', nullable: true)]
     private ?string $refreshToken = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]

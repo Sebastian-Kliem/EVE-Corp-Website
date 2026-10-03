@@ -1,5 +1,7 @@
 doctrine:
     dbal:
+        types:
+            encrypted_text: App\Doctrine\Type\EncryptedTextType
         connections:
             default:
                 url: '%env(resolve:DATABASE_URL)%'
