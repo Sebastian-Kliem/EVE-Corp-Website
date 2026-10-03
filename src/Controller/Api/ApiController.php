@@ -8,6 +8,7 @@ use App\Service\JwtService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -286,12 +287,18 @@ class ApiController extends AbstractController
         string $id,
         Request $request,
         EntityManagerInterface $entityManager,
-        ManagerRegistry $doctrine
+        ManagerRegistry $doctrine,
+        LoggerInterface $logger
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
+        $name = trim((string) ($data['name'] ?? ''));
 
-        if (empty($data['name'])) {
-            return new JsonResponse(['message' => 'Name darf nicht leer sein.'], Response::HTTP_BAD_REQUEST);
+        if ($name === '' || mb_strlen($name) > 255) {
+            return new JsonResponse(['message' => 'Name darf nicht leer und maximal 255 Zeichen lang sein.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (!$this->_isPlayerStructureId($id)) {
+            return new JsonResponse(['message' => 'Ungültige Struktur-ID.'], Response::HTTP_BAD_REQUEST);
         }
 
         $structure = $entityManager->getRepository(EveStructure::class)->find($id);
@@ -300,7 +307,12 @@ class ApiController extends AbstractController
             $structure->setId($id);
         }
 
-        $structure->setName($data['name']);
+        // Structures resolved via ESI (owner known) may only be renamed by officers
+        if ($structure->getOwnerId() !== null && !$this->isGranted('ROLE_OFFICER')) {
+            return new JsonResponse(['message' => 'Diese Struktur wurde über ESI aufgelöst und kann nicht manuell geändert werden.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $structure->setName($name);
 
         $solarSystemName = trim($data['solarSystemName'] ?? '');
         $solarSystemId = 0;
@@ -323,7 +335,8 @@ class ApiController extends AbstractController
                     return new JsonResponse(['message' => 'Sonnensystem nicht gefunden.'], Response::HTTP_BAD_REQUEST);
                 }
             } catch (\Exception $e) {
-                return new JsonResponse(['message' => 'Fehler beim Abfragen der SDE-Datenbank: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+                $logger->error('[ApiController] SDE lookup failed: ' . $e->getMessage());
+                return new JsonResponse(['message' => 'Fehler beim Abfragen der SDE-Datenbank.'], Response::HTTP_INTERNAL_SERVER_ERROR);
             }
         } else {
             $solarSystemName = 'Unbekannt';
@@ -342,5 +355,11 @@ class ApiController extends AbstractController
             'solarSystemName' => $structure->getSolarSystemName(),
             'message' => 'Struktur erfolgreich aktualisiert.'
         ]);
+    }
+
+    // Player-owned structures have IDs above 1e12 (stations and celestials are below)
+    private function _isPlayerStructureId(string $id): bool
+    {
+        return ctype_digit($id) && strlen($id) >= 13 && strlen($id) <= 19;
     }
 }
