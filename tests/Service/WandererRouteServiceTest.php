@@ -10,9 +10,12 @@ use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use App\Service\Wanderer\WandererRouteService;
 use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
+// Shared mocks from setUp() are only configured by some tests
+#[AllowMockObjectsWithoutExpectations]
 class WandererRouteServiceTest extends TestCase
 {
     private $ruleRepository;

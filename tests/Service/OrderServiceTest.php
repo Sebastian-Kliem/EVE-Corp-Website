@@ -16,10 +16,10 @@ class OrderServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->service = new OrderService(
-            $this->createMock(EntityManagerInterface::class),
-            $this->createMock(ItemParserService::class),
-            $this->createMock(JitaPriceService::class),
-            $this->createMock(SdeService::class)
+            $this->createStub(EntityManagerInterface::class),
+            $this->createStub(ItemParserService::class),
+            $this->createStub(JitaPriceService::class),
+            $this->createStub(SdeService::class)
         );
     }
 
