@@ -41,6 +41,8 @@ security:
                 secret: '%kernel.secret%'
                 lifetime: 604800
                 path: /
+                samesite: lax
+                secure: auto
                 # by default, the feature is enabled by checking a checkbox in the
                 # login form, uncomment the following line to always enable it.
                 #always_remember_me: true
