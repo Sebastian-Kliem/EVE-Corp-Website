@@ -32,6 +32,10 @@ security:
             custom_authenticators:
                 - App\Security\AppAuthenticator
                 - App\Security\JwtAuthenticator
+            # Per username+IP and per IP; also used by the API login (ApiController::login)
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
             logout:
                 path: app_logout
                 # where to redirect after logout

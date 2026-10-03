@@ -2,6 +2,10 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
+    # Reverse proxies (NPM, nginx) sit in private Docker networks; needed for the real client IP
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for']
+
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
