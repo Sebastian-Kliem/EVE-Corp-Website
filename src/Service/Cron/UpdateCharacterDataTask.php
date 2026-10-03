@@ -317,7 +317,15 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
                 foreach ($transData as $tData) {
                     $transId = (string) $tData['transaction_id'];
-                    $lastTransId = $transId;
+
+                    // from_id is inclusive: the first entry repeats the last one of the previous page
+                    if ($transId === $fromId) {
+                        continue;
+                    }
+
+                    if ($lastTransId === null || (int) $transId < (int) $lastTransId) {
+                        $lastTransId = $transId;
+                    }
 
                     $existing = $repo->findOneBy([
                         'character' => $character,
