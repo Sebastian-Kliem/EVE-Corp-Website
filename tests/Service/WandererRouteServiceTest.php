@@ -43,7 +43,7 @@ class WandererRouteServiceTest extends TestCase
     public function testVerifySignatureWithValidHmac(): void
     {
         $secret = 'test_secret_123';
-        $timestamp = '1727271600';
+        $timestamp = (string) time();
         $rawPayload = '{"event":"add_system"}';
 
         $validSignature = hash_hmac('sha256', $timestamp . '.' . $rawPayload, $secret);
@@ -54,6 +54,31 @@ class WandererRouteServiceTest extends TestCase
 
         $this->assertTrue($this->service->verifySignature($rawPayload, $validSignature, $timestamp));
         $this->assertFalse($this->service->verifySignature($rawPayload, 'invalid_sig', $timestamp));
+    }
+
+    public function testVerifySignatureRejectsExpiredTimestamp(): void
+    {
+        $secret = 'test_secret_123';
+        $timestamp = (string) (time() - WandererRouteService::MAX_TIMESTAMP_AGE_SECONDS - 1);
+        $rawPayload = '{"event":"connection_added"}';
+
+        $signature = hash_hmac('sha256', $timestamp . '.' . $rawPayload, $secret);
+
+        $this->discordWebhookService->expects($this->any())
+            ->method('getWandererSecret')
+            ->willReturn($secret);
+
+        $this->assertFalse($this->service->verifySignature($rawPayload, $signature, $timestamp));
+        $this->assertFalse($this->service->verifySignature($rawPayload, $signature, 'not-a-number'));
+    }
+
+    public function testVerifySignatureRejectsWhenNoSecretConfigured(): void
+    {
+        $this->discordWebhookService->expects($this->any())
+            ->method('getWandererSecret')
+            ->willReturn(null);
+
+        $this->assertFalse($this->service->verifySignature('{}', 'any', (string) time()));
     }
 
     public function testProcessWebhookPayloadMatchesCorpRule(): void
@@ -139,7 +164,7 @@ class WandererRouteServiceTest extends TestCase
     public function testVerifySignatureWithSha256Prefix(): void
     {
         $secret = 'test_secret_prefix';
-        $timestamp = '1727271600';
+        $timestamp = (string) time();
         $rawPayload = '{"event":"connection_added"}';
 
         $signature = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $rawPayload, $secret);

@@ -15,6 +15,8 @@ use Psr\Log\LoggerInterface;
 
 class WandererRouteService
 {
+    public const MAX_TIMESTAMP_AGE_SECONDS = 300;
+
     public function __construct(
         private readonly WandererRouteRuleRepository $ruleRepository,
         private readonly EsiClient $esiClient,
@@ -31,11 +33,16 @@ class WandererRouteService
     {
         $secret = $this->discordWebhookService->getWandererSecret();
         if (empty($secret)) {
-            // If no secret is configured, accept incoming requests
-            return true;
+            // Without a configured secret, requests cannot be authenticated and are rejected
+            $this->logger->warning('[WandererRouteService] No Wanderer webhook secret configured, rejecting request.');
+            return false;
         }
 
         if (empty($signatureHeader) || empty($timestampHeader)) {
+            return false;
+        }
+
+        if (!$this->_isTimestampFresh($timestampHeader)) {
             return false;
         }
 
@@ -47,6 +54,16 @@ class WandererRouteService
         $expectedSignature = hash_hmac('sha256', $signedData, $secret);
 
         return hash_equals($expectedSignature, $signatureHeader);
+    }
+
+    // Rejects replayed requests whose Unix timestamp (seconds) is outside the tolerance window
+    private function _isTimestampFresh(string $timestampHeader): bool
+    {
+        if (!ctype_digit($timestampHeader)) {
+            return false;
+        }
+
+        return abs(time() - (int) $timestampHeader) <= self::MAX_TIMESTAMP_AGE_SECONDS;
     }
 
     /**
