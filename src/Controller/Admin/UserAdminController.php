@@ -4,6 +4,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Security\TemporaryPasswordGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -104,7 +105,7 @@ class UserAdminController extends AbstractController
     }
 
     #[Route('/users/{id}/reset-password', name: 'app_admin_reset_password', methods: ['POST'])]
-    public function resetPassword(User $user, Request $request, UserPasswordHasherInterface $passwordHasher): Response
+    public function resetPassword(User $user, Request $request, UserPasswordHasherInterface $passwordHasher, TemporaryPasswordGenerator $temporaryPasswordGenerator): Response
     {
         // CSRF Protection
         if (!$this->isCsrfTokenValid('reset_password_' . $user->getId(), $request->request->get('_token'))) {
@@ -142,7 +143,7 @@ class UserAdminController extends AbstractController
         }
 
         // 4. Generate temporary password
-        $tempPassword = 'Keepers-' . random_int(100000, 999999);
+        $tempPassword = $temporaryPasswordGenerator->generate();
         $hashedPassword = $passwordHasher->hashPassword($user, $tempPassword);
 
         $user->setPassword($hashedPassword);

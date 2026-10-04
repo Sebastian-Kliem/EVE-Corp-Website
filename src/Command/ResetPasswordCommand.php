@@ -10,6 +10,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use App\Security\TemporaryPasswordGenerator;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[AsCommand(
@@ -20,7 +21,8 @@ class ResetPasswordCommand extends Command
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private UserPasswordHasherInterface $passwordHasher
+        private UserPasswordHasherInterface $passwordHasher,
+        private TemporaryPasswordGenerator $temporaryPasswordGenerator
     ) {
         parent::__construct();
     }
@@ -51,7 +53,7 @@ class ResetPasswordCommand extends Command
         // Determine if password needs to be generated
         $isGenerated = false;
         if (empty($password)) {
-            $password = 'Keepers-' . random_int(100000, 999999);
+            $password = $this->temporaryPasswordGenerator->generate();
             $isGenerated = true;
         }
 
