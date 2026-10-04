@@ -8,6 +8,7 @@ use App\Service\Cron\UpdateCorporationNotificationsTask;
 use App\Service\Discord\DiscordWebhookService;
 use App\Service\Discord\Model\DiscordMessage;
 use App\Service\Discord\StructureNotificationParser;
+use App\Service\Esi\CorporationAccessResolver;
 use App\Service\Esi\EsiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
@@ -81,16 +82,13 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
         $director->setCorporationId(98000001);
         $director->setRoles(['Director']);
 
-        $characterRepository = $this->createStub(EntityRepository::class);
-        $characterRepository->method('findAll')->willReturn([$director]);
+        $resolver = $this->createStub(CorporationAccessResolver::class);
+        $resolver->method('getCharactersByCorporation')->willReturn([98000001 => [$director]]);
         $logRepository = $this->createStub(EntityRepository::class);
         $logRepository->method('findOneBy')->willReturn(null);
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturnMap([
-            [EveCharacter::class, $characterRepository],
-            [DiscordNotificationLog::class, $logRepository],
-        ]);
+        $entityManager->method('getRepository')->willReturn($logRepository);
         $entityManager->method('persist')->willReturnCallback(function (object $entity): void {
             $this->persistedLogs[] = $entity;
         });
@@ -101,7 +99,7 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
         $parser = $this->createStub(StructureNotificationParser::class);
         $parser->method('parseNotification')->willReturn(DiscordMessage::create('alert'));
 
-        return new UpdateCorporationNotificationsTask($entityManager, $esiClient, $parser, $webhookService, new NullLogger());
+        return new UpdateCorporationNotificationsTask($entityManager, $esiClient, $parser, $webhookService, $resolver, new NullLogger());
     }
 
     private function _createNotification(int $notificationId, string $age): array

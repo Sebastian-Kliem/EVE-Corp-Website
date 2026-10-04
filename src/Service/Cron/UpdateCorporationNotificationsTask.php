@@ -6,6 +6,7 @@ use App\Entity\DiscordNotificationLog;
 use App\Entity\EveCharacter;
 use App\Service\Discord\DiscordWebhookService;
 use App\Service\Discord\StructureNotificationParser;
+use App\Service\Esi\CorporationAccessResolver;
 use App\Service\Esi\EsiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectRepository;
@@ -29,6 +30,10 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         'OrbitalReinforced',
     ];
 
+    // Structure alerts reach station managers too; directors come first and also receive POS and customs office alerts
+    private const NOTIFICATION_ROLES = ['Station_Manager'];
+    private const NOTIFICATION_SCOPE = 'esi-characters.read_notifications.v1';
+
     // Older notifications are stale (first run, new director, long Discord outage) and are not posted
     private const MAX_NOTIFICATION_AGE_HOURS = 6;
 
@@ -41,6 +46,7 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         private readonly EsiClient $esiClient,
         private readonly StructureNotificationParser $notificationParser,
         private readonly DiscordWebhookService $discordWebhookService,
+        private readonly CorporationAccessResolver $corporationAccessResolver,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -51,42 +57,27 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
 
     public function execute(): void
     {
-        $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
-        /** @var EveCharacter[] $allCharacters */
-        $allCharacters = $characterRepository->findAll();
+        $charactersByCorp = $this->corporationAccessResolver->getCharactersByCorporation(self::NOTIFICATION_ROLES, self::NOTIFICATION_SCOPE);
 
-        // 1. Group active director characters by corporation
-        $directorsByCorp = [];
-        foreach ($allCharacters as $char) {
-            if (empty($char->getRefreshToken()) || !$char->isTokenValid()) {
-                continue;
-            }
-
-            $corpId = $char->getCorporationId();
-            if ($corpId && $char->isDirector()) {
-                $directorsByCorp[$corpId][] = $char;
-            }
-        }
-
-        $this->logger->info(sprintf('[Cron] Starting corporation notifications sync for %d corporations.', count($directorsByCorp)));
+        $this->logger->info(sprintf('[Cron] Starting corporation notifications sync for %d corporations.', count($charactersByCorp)));
 
         $logRepo = $this->entityManager->getRepository(DiscordNotificationLog::class);
 
-        foreach ($directorsByCorp as $corpId => $directors) {
-            // Check notifications for directors
-            foreach ($directors as $director) {
+        foreach ($charactersByCorp as $corpId => $characters) {
+            // First character that can read its notifications covers the corporation
+            foreach ($characters as $character) {
                 $this->logger->info(sprintf(
-                    '[Cron] Checking notifications for corp %d via director %s...',
+                    '[Cron] Checking notifications for corp %d via %s...',
                     $corpId,
-                    $director->getName()
+                    $character->getName()
                 ));
 
                 try {
                     $notifications = $this->esiClient->request(
                         'GET',
-                        sprintf('characters/%d/notifications/', $director->getId()),
+                        sprintf('characters/%d/notifications/', $character->getId()),
                         [],
-                        $director
+                        $character
                     );
 
                     if (!is_array($notifications)) {
@@ -95,7 +86,7 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
 
                     $dispatchedCount = 0;
                     foreach ($notifications as $notif) {
-                        $result = $this->_processNotification($notif, $director, $corpId, $logRepo);
+                        $result = $this->_processNotification($notif, $character, $corpId, $logRepo);
                         if ($result === self::RESULT_DISPATCHED) {
                             $dispatchedCount++;
                         } elseif ($result === self::RESULT_DELIVERY_FAILED) {
@@ -110,12 +101,11 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
                         $dispatchedCount
                     ));
 
-                    // One director per corp is usually sufficient for corp-level notifications
                     break;
                 } catch (\Throwable $e) {
                     $this->logger->error(sprintf(
-                        '[Cron] Failed to fetch notifications for director %s: %s',
-                        $director->getName(),
+                        '[Cron] Failed to fetch notifications for %s: %s',
+                        $character->getName(),
                         $e->getMessage()
                     ));
                 }
