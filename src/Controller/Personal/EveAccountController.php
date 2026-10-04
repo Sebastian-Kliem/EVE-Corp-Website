@@ -489,7 +489,7 @@ class EveAccountController extends AbstractController
                         ->where('c.corporationId = :corpId')
                         ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
                         ->setParameter('corpId', $corpId)
-                        ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+                        ->orderBy('c.lastCorpAssetsUpdate', \SortDirection::Descending)
                         ->setMaxResults(1)
                         ->getQuery()
                         ->getOneOrNullResult();
@@ -575,7 +575,7 @@ class EveAccountController extends AbstractController
             $snapshots = $this->entityManager->getRepository(EveCharacterValueSnapshot::class)->createQueryBuilder('s')
                 ->where('s.character IN (:characterIds)')
                 ->setParameter('characterIds', $characterIds)
-                ->orderBy('s.snapshotDate', 'ASC')
+                ->orderBy('s.snapshotDate', \SortDirection::Ascending)
                 ->getQuery()
                 ->getResult();
         }
@@ -602,7 +602,7 @@ class EveAccountController extends AbstractController
             $journalEntries = $this->entityManager->getRepository(EveCharacterWalletJournalEntry::class)->createQueryBuilder('j')
                 ->where('j.character IN (:characterIds)')
                 ->setParameter('characterIds', $characterIds)
-                ->orderBy('j.date', 'DESC')
+                ->orderBy('j.date', \SortDirection::Descending)
                 ->setMaxResults(500)
                 ->getQuery()
                 ->getResult();
@@ -828,7 +828,7 @@ class EveAccountController extends AbstractController
                 ->where('c.corporationId = :corpId')
                 ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
                 ->setParameter('corpId', $corpId)
-                ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+                ->orderBy('c.lastCorpAssetsUpdate', \SortDirection::Descending)
                 ->setMaxResults(1)
                 ->getQuery()
                 ->getOneOrNullResult();

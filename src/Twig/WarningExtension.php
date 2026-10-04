@@ -85,7 +85,7 @@ class WarningExtension extends AbstractExtension
             ->andWhere('s.fuelExpires <= :threshold')
             ->setParameter('corpIds', $corpIds)
             ->setParameter('threshold', $thirtyDaysAhead)
-            ->orderBy('s.fuelExpires', 'ASC')
+            ->orderBy('s.fuelExpires', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

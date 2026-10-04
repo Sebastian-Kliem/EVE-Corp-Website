@@ -162,7 +162,7 @@ class PerformanceEngine
             ->setParameter('characters', $characters)
             ->setParameter('start', $queryStartDate)
             ->setParameter('end', $endDate)
-            ->orderBy('c.loggedAt', 'ASC')
+            ->orderBy('c.loggedAt', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

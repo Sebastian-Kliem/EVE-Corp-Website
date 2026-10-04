@@ -35,7 +35,7 @@ class CorpOrderRepository extends ServiceEntityRepository
             ->andWhere('o.status IN (:activeStatuses)')
             ->setParameter('type', strtoupper($type))
             ->setParameter('activeStatuses', [CorpOrder::STATUS_OPEN, CorpOrder::STATUS_IN_PROGRESS])
-            ->orderBy('o.createdAt', 'DESC')
+            ->orderBy('o.createdAt', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
     }
@@ -60,7 +60,7 @@ class CorpOrderRepository extends ServiceEntityRepository
             ->andWhere('o.status IN (:archivedStatuses)')
             ->setParameter('type', strtoupper($type))
             ->setParameter('archivedStatuses', [CorpOrder::STATUS_FULFILLED, CorpOrder::STATUS_CANCELLED])
-            ->orderBy('o.updatedAt', 'DESC')
+            ->orderBy('o.updatedAt', \SortDirection::Descending)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();

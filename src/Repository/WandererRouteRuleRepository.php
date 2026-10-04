@@ -28,7 +28,7 @@ class WandererRouteRuleRepository extends ServiceEntityRepository
             ->where('r.user IS NULL')
             ->andWhere('r.isActive = :active')
             ->setParameter('active', true)
-            ->orderBy('r.name', 'ASC')
+            ->orderBy('r.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -42,7 +42,7 @@ class WandererRouteRuleRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('r')
             ->where('r.user IS NULL')
-            ->orderBy('r.name', 'ASC')
+            ->orderBy('r.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -59,7 +59,7 @@ class WandererRouteRuleRepository extends ServiceEntityRepository
             ->where('r.user IS NOT NULL')
             ->andWhere('r.isActive = :active')
             ->setParameter('active', true)
-            ->orderBy('r.name', 'ASC')
+            ->orderBy('r.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -74,7 +74,7 @@ class WandererRouteRuleRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('r')
             ->where('r.user = :user')
             ->setParameter('user', $user)
-            ->orderBy('r.createdAt', 'DESC')
+            ->orderBy('r.createdAt', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
     }

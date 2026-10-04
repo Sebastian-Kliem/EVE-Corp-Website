@@ -56,8 +56,8 @@ class SuggestionController extends AbstractController
 
         // Fetch all suggestions, order by completed (not completed first) then by date desc
         $suggestions = $this->entityManager->getRepository(Suggestion::class)->createQueryBuilder('s')
-            ->orderBy('s.isCompleted', 'ASC')
-            ->addOrderBy('s.createdAt', 'DESC')
+            ->orderBy('s.isCompleted', \SortDirection::Ascending)
+            ->addOrderBy('s.createdAt', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
 

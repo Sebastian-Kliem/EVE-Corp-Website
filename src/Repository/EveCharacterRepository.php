@@ -33,8 +33,8 @@ class EveCharacterRepository extends ServiceEntityRepository
                ->setParameter('since', $since);
         }
 
-        return $qb->orderBy('u.username', 'ASC')
-            ->addOrderBy('c.name', 'ASC')
+        return $qb->orderBy('u.username', \SortDirection::Ascending)
+            ->addOrderBy('c.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
