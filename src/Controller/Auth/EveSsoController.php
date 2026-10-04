@@ -6,7 +6,9 @@ use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Entity\User;
 use App\Service\Esi\EsiClient;
+use App\Service\Esi\SsoTokenValidator;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +19,9 @@ class EveSsoController extends AbstractController
 {
     public function __construct(
         private readonly EsiClient $esiClient,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly SsoTokenValidator $ssoTokenValidator,
+        private readonly LoggerInterface $logger
     ) {}
 
     #[Route('/auth/eve/login', name: 'app_eve_sso_login')]
@@ -65,6 +69,14 @@ class EveSsoController extends AbstractController
 
             if (!$accessToken || !$refreshToken) {
                 throw new \RuntimeException('Es wurden keine gültigen Tokens von EVE Online empfangen.');
+            }
+
+            // Signature, issuer, audience and expiry must match before the token decides which character gets linked
+            try {
+                $this->ssoTokenValidator->validate($accessToken);
+            } catch (\UnexpectedValueException $e) {
+                $this->logger->warning(sprintf('[EveSso] Rejected SSO token: %s', $e->getMessage()));
+                throw new \RuntimeException('Das Token von EVE Online konnte nicht verifiziert werden.', 0, $e);
             }
 
             // Decode character details from the JWT payload
