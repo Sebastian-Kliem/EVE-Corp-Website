@@ -15,6 +15,9 @@ class JitaPriceService
     // Maximale Abweichung vom globalen 24h-Durchschnittspreis (30%)
     private const GLOBAL_PRICE_TOLERANCE = 0.30;
 
+    // Loaded once per request or cron process; unserializing ~16k cached rows costs ~10 ms per call
+    private ?array $globalPrices = null;
+
     public function __construct(
         private readonly EsiClient $esiClient
     ) {}
@@ -167,6 +170,10 @@ class JitaPriceService
      */
     public function getGlobalPrices(): array
     {
+        if ($this->globalPrices !== null) {
+            return $this->globalPrices;
+        }
+
         try {
             $data = $this->esiClient->request('GET', 'markets/prices/');
             if (!is_array($data)) {
@@ -178,6 +185,10 @@ class JitaPriceService
                 if (isset($row['type_id']) && isset($row['average_price'])) {
                     $prices[(int)$row['type_id']] = (float)$row['average_price'];
                 }
+            }
+            // Failed or empty loads are retried on the next call
+            if (!empty($prices)) {
+                $this->globalPrices = $prices;
             }
             return $prices;
         } catch (\Exception $e) {
