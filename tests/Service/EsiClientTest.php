@@ -86,12 +86,33 @@ class EsiClientTest extends TestCase
         $this->assertSame([], $esiClient->getMissingScopes($character));
     }
 
-    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = ''): EsiClient
+    public function testErrorResponseWithLowBudgetPausesAllRequests(): void
+    {
+        $cachePool = new ArrayAdapter();
+        $httpClient = new MockHttpClient(new MockResponse('{"error":"Forbidden"}', [
+            'http_code' => 403,
+            'response_headers' => ['X-ESI-Error-Limit-Remain' => '5', 'X-ESI-Error-Limit-Reset' => '30'],
+        ]));
+        $esiClient = $this->_createClient($httpClient, '', $cachePool);
+
+        try {
+            $esiClient->request('GET', 'universe/structures/1000000000001/', [], $this->_createCharacter([]));
+            $this->fail('Expected the 403 to be rethrown');
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            $this->assertSame(403, $e->getResponse()->getStatusCode());
+        }
+
+        $pauseItem = $cachePool->getItem('esi_error_limit_pause_until');
+        $this->assertTrue($pauseItem->isHit());
+        $this->assertEqualsWithDelta(time() + 31, $pauseItem->get(), 2);
+    }
+
+    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null): EsiClient
     {
         return new EsiClient(
             $httpClient,
             $this->createStub(EntityManagerInterface::class),
-            new ArrayAdapter(),
+            $cachePool ?? new ArrayAdapter(),
             new NullLogger(),
             'client-id',
             'secret',
