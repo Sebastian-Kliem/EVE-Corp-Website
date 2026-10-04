@@ -122,6 +122,43 @@ class EsiClientTest extends TestCase
         $this->assertGreaterThanOrEqual(1.0, microtime(true) - $startTime);
     }
 
+    public function testSingleServerErrorDoesNotTakeEsiOffline(): void
+    {
+        $responses = [
+            new MockResponse('{"error":"Gateway timeout"}', ['http_code' => 504]),
+            new MockResponse('{"total_sp":1000}', ['http_code' => 200]),
+        ];
+        $esiClient = $this->_createClient(new MockHttpClient($responses));
+
+        $this->assertSame(['total_sp' => 1000], $esiClient->request('GET', 'characters/123/skills/', [], $this->_createCharacter([])));
+        $this->assertFalse($esiClient->isOffline());
+    }
+
+    public function testConsecutiveServerErrorsOpenCircuitBreaker(): void
+    {
+        $httpClient = new MockHttpClient(function () {
+            return new MockResponse('{"error":"Bad gateway"}', ['http_code' => 502]);
+        });
+        $esiClient = $this->_createClient($httpClient);
+
+        // Single attempts per request keep the test free of retry sleeps
+        for ($requestNumber = 1; $requestNumber <= 10; $requestNumber++) {
+            $this->assertFalse($esiClient->isOffline());
+            try {
+                $esiClient->requestWithHeaders('GET', 'status/', [], null, 1);
+                $this->fail('Expected the 502 to be rethrown');
+            } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+                $this->assertSame(502, $e->getResponse()->getStatusCode());
+            }
+        }
+
+        // Further requests are rejected without calling ESI
+        $this->assertSame(10, $httpClient->getRequestsCount());
+        $this->assertTrue($esiClient->isOffline());
+        $this->expectExceptionMessage('circuit breaker active');
+        $esiClient->request('GET', 'status/');
+    }
+
     private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null): EsiClient
     {
         return new EsiClient(
