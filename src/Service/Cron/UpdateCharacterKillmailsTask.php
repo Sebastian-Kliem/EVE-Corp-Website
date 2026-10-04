@@ -56,12 +56,11 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
         try {
             // Fetch recent killmails list from ESI
             // ESI returns an array of { killmail_id, killmail_hash }
-            $response = $this->esiClient->request(
-                'GET',
+            $response = $this->esiClient->requestAllPages(
                 sprintf('characters/%d/killmails/recent/', $character->getId()),
                 [],
                 $character
-            );
+            )['data'];
         } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
             // If character does not have active/correct scopes, ESI returns 403 Forbidden.
             if ($e->getResponse()->getStatusCode() === 403) {
