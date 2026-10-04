@@ -454,7 +454,8 @@ class EsiClient
                             $isClientError = true;
                         }
                     }
-                    if ($isClientError || $attempt >= $maxPageRetries) {
+                    // Retrying is pointless while the circuit breaker or downtime blocks all requests
+                    if ($isClientError || $this->isOffline() || $attempt >= $maxPageRetries) {
                         throw $e;
                     }
                     $this->logCron(sprintf('[EsiClient] Request failed for page %d of %d on path %s (attempt %d/%d): %s. Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries, $e->getMessage()), 'warning');
