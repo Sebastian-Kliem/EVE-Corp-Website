@@ -35,8 +35,7 @@ class JitaPriceService
     {
         try {
             // EsiClient handles caching internally based on the HTTP Response headers (Expires)
-            $orders = $this->esiClient->request(
-                'GET',
+            $orders = $this->esiClient->requestAllPages(
                 sprintf('markets/%d/orders/', self::REGION_THE_FORGE),
                 [
                     'query' => [
@@ -44,7 +43,7 @@ class JitaPriceService
                         'order_type' => $isBuyOrder ? 'buy' : 'sell'
                     ]
                 ]
-            );
+            )['data'];
 
             // Filter for Jita IV - Moon 4 station
             $jitaOrders = array_filter($orders, function ($order) use ($isBuyOrder) {

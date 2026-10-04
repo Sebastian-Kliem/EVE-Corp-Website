@@ -186,14 +186,13 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         $this->logger->debug(sprintf('[Cron] Trying to sync corporation industry jobs for corporation %d using character %s...', $corpId, $character->getName()));
 
         try {
-            $jobsData = $this->esiClient->request(
-                'GET',
+            $jobsData = $this->esiClient->requestAllPages(
                 sprintf('corporations/%d/industry/jobs/', $corpId),
                 [
                     'query' => ['include_completed' => 'false']
                 ],
                 $character
-            );
+            )['data'];
         } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
             // A 403 error means the character doesn't have the scope or corporation roles
             if ($e->getResponse()->getStatusCode() === 403) {

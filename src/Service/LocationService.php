@@ -343,12 +343,11 @@ class LocationService
                 if ($tryChar->isDirector()) {
                     try {
                         $corpIdToQuery = $tryChar->getCorporationId();
-                        $corpStructures = $this->esiClient->request(
-                            'GET',
+                        $corpStructures = $this->esiClient->requestAllPages(
                             sprintf('corporations/%d/structures/', $corpIdToQuery),
                             [],
                             $tryChar
-                        );
+                        )['data'];
 
                         if (is_array($corpStructures)) {
                             $foundData = null;

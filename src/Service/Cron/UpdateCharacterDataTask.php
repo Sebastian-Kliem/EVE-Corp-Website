@@ -197,7 +197,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         while (true) {
             try {
-                $journalData = $this->esiClient->request(
+                $journalResponse = $this->esiClient->requestWithHeaders(
                     'GET',
                     sprintf('characters/%d/wallet/journal/', $character->getId()),
                     [
@@ -205,6 +205,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
                     ],
                     $character
                 );
+                $journalData = $journalResponse['data'];
+                $totalPages = (int) ($journalResponse['headers']['x-pages'][0] ?? 1);
 
                 if (empty($journalData)) {
                     break;
@@ -254,8 +256,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $this->entityManager->flush();
 
                 // ESI returns descending chronological order.
-                // If we hit any existing transaction, or count is less than full page, stop fetching.
-                if ($hasExisting || count($journalData) < 2500) {
+                // If we hit any existing transaction, or this was the last page, stop fetching.
+                if ($hasExisting || $page >= $totalPages) {
                     break;
                 }
 

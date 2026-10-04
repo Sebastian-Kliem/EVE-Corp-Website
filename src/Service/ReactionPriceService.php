@@ -243,8 +243,7 @@ class ReactionPriceService
     {
         try {
             // Fetch all orders for this type in the region
-            $orders = $this->esiClient->request(
-                'GET',
+            $orders = $this->esiClient->requestAllPages(
                 sprintf('markets/%d/orders/', $regionId),
                 [
                     'query' => [
@@ -252,7 +251,7 @@ class ReactionPriceService
                         'order_type' => 'all', // Fetch both buy and sell orders
                     ]
                 ]
-            );
+            )['data'];
 
             if (!is_array($orders)) {
                 return $this->emptyHubData();
