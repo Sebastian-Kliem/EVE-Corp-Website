@@ -3,6 +3,7 @@
 namespace App\Service\Esi;
 
 use App\Entity\EveCharacter;
+use App\Service\Cron\CronLogWriter;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Clock\ClockInterface;
@@ -53,6 +54,7 @@ class EsiClient
         private readonly string $eveSsoCallbackUrl,
         private readonly string $eveSsoScopes,
         private readonly ClockInterface $clock,
+        private readonly CronLogWriter $cronLogWriter,
         ?bool $isWebRequest = null
     ) {
         $this->isWebRequest = $isWebRequest ?? \PHP_SAPI !== 'cli';
@@ -244,7 +246,7 @@ class EsiClient
                 $cachedResult = $this->_normalizeCachedResult($cacheItem->get());
                 // Entries without expiresAt predate stale caching and are fresh until their cache TTL ends
                 if (($cachedResult['expiresAt'] ?? \PHP_INT_MAX) > $this->clock->now()->getTimestamp()) {
-                    $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'info');
+                    $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'debug');
                     return $cachedResult;
                 }
                 $staleResult = $cachedResult;
@@ -300,7 +302,7 @@ class EsiClient
 
                 // Log page count info if X-Pages header is present
                 if (isset($responseHeaders['x-pages'][0])) {
-                    $this->logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'info');
+                    $this->logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'debug');
                 }
 
                 $this->_trackErrorLimit($responseHeaders);
@@ -764,17 +766,6 @@ class EsiClient
     private function logCron(string $message, string $level = 'info'): void
     {
         $this->logger->log($level, $message);
-
-        try {
-            $logFile = dirname(__FILE__, 4) . '/var/log/cron.log';
-            $logDir = dirname($logFile);
-            if (!is_dir($logDir)) {
-                mkdir($logDir, 0777, true);
-            }
-            $formatted = sprintf("[%s] [%s] %s\n", (new \DateTimeImmutable())->format('Y-m-d H:i:s'), strtoupper($level), $message);
-            file_put_contents($logFile, $formatted, FILE_APPEND);
-        } catch (\Exception $e) {
-            // Ignore write errors to prevent breaking the ESI client
-        }
+        $this->cronLogWriter->write($message, $level);
     }
 }

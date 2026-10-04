@@ -26,3 +26,10 @@ services:
     # Fetched in Kernel::boot() to hand it to the encrypted_text Doctrine type
     App\Security\TokenCipher:
         public: true
+
+when@test:
+    services:
+        # Keep test runs out of the real cron.log
+        App\Service\Cron\CronLogWriter:
+            arguments:
+                $logFile: '%kernel.cache_dir%/cron.log'

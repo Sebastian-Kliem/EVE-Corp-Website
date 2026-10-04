@@ -3,6 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Entity\EveCharacter;
+use App\Service\Cron\CronLogWriter;
 use App\Service\Esi\EsiClient;
 use App\Service\Esi\EsiMissingScopeException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -249,6 +250,7 @@ class EsiClientTest extends TestCase
             'https://example.org/callback',
             $configuredScopes,
             $clock ?? new MockClock(self::DEFAULT_TIME, 'UTC'),
+            new CronLogWriter(sys_get_temp_dir() . '/wh-toolbox-test-cron.log', 'error'),
             $isWebRequest
         );
     }

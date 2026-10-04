@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Entity\CronJob;
 use App\Service\Cron\CronErrorCollector;
+use App\Service\Cron\CronLogWriter;
 use App\Service\Cron\CronTaskInterface;
 use Cron\CronExpression;
 use Doctrine\ORM\EntityManagerInterface;
@@ -15,7 +16,6 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
-use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Lock\LockFactory;
 
 #[AsCommand(
@@ -34,9 +34,9 @@ class CronRunCommand extends Command
         private readonly ManagerRegistry $doctrine,
         EntityManagerInterface $entityManager,
         private readonly \App\Service\Esi\EsiClient $esiClient,
-        private readonly KernelInterface $kernel,
         private readonly LockFactory $lockFactory,
         private readonly CronErrorCollector $errorCollector,
+        private readonly CronLogWriter $cronLogWriter,
         #[AutowireIterator('app.cron_task')] iterable $tasks
     ) {
         parent::__construct();
@@ -59,18 +59,8 @@ class CronRunCommand extends Command
         $now = new \DateTimeImmutable();
         $jobOption = $input->getOption('job');
 
-        $logFile = $this->kernel->getProjectDir() . '/var/log/cron.log';
-        $writeLog = function(string $message, string $level = 'INFO') use ($logFile) {
-            $formatted = sprintf("[%s] [%s] [Scheduler] %s\n", (new \DateTimeImmutable())->format('Y-m-d H:i:s'), $level, $message);
-            try {
-                $logDir = dirname($logFile);
-                if (!is_dir($logDir)) {
-                    mkdir($logDir, 0777, true);
-                }
-                file_put_contents($logFile, $formatted, FILE_APPEND);
-            } catch (\Exception $e) {
-                // Ignore
-            }
+        $writeLog = function(string $message, string $level = 'INFO') {
+            $this->cronLogWriter->write('[Scheduler] ' . $message, $level);
         };
 
         $writeLog('Starte Cronjob-Runner Ausführung...');
