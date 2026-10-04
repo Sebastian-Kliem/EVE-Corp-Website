@@ -348,7 +348,7 @@ class TrackingListController extends AbstractController
             ->setParameter('cutoff', $cutoffDate)
             ->setParameter('endDate', $endDate)
             ->setParameter('currentUser', $this->getUser())
-            ->orderBy('c.loggedAt', 'ASC')
+            ->orderBy('c.loggedAt', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -471,7 +471,7 @@ class TrackingListController extends AbstractController
             ->setParameter('cutoff', $cutoffDate)
             ->setParameter('endDate', $endDate)
             ->setParameter('currentUser', $this->getUser())
-            ->orderBy('c.loggedAt', 'DESC')
+            ->orderBy('c.loggedAt', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
 

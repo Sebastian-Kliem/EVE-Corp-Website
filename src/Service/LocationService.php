@@ -494,7 +494,7 @@ class LocationService
             ->setParameter('fallbackName', 'Spieler-Struktur')
             ->setParameter('resolvedExpiryLimit', $resolvedExpiryLimit)
             ->setParameter('fallbackExpiryLimit', $fallbackExpiryLimit)
-            ->orderBy('s.lastUpdated', 'ASC')
+            ->orderBy('s.lastUpdated', \SortDirection::Ascending)
             ->setMaxResults(self::MAX_STRUCTURES_PER_RUN)
             ->getQuery()
             ->getResult();

@@ -61,7 +61,7 @@ class AdminCorpAssetsController extends AbstractController
                 ->where('c.corporationId = :corpId')
                 ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
                 ->setParameter('corpId', $corpId)
-                ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+                ->orderBy('c.lastCorpAssetsUpdate', \SortDirection::Descending)
                 ->setMaxResults(1)
                 ->getQuery()
                 ->getOneOrNullResult();
@@ -90,7 +90,7 @@ class AdminCorpAssetsController extends AbstractController
         // We'll find one sync character in general or use the first available one to resolve locations
         $anySyncCharacter = $this->entityManager->getRepository(EveCharacter::class)->createQueryBuilder('c')
             ->where('c.lastCorpAssetsUpdate IS NOT NULL')
-            ->orderBy('c.lastCorpAssetsUpdate', 'DESC')
+            ->orderBy('c.lastCorpAssetsUpdate', \SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

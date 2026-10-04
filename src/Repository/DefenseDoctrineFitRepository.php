@@ -26,10 +26,10 @@ class DefenseDoctrineFitRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('d')
             ->leftJoin('d.createdBy', 'u')
             ->addSelect('u')
-            ->orderBy('d.sortOrder', 'ASC')
-            ->addOrderBy('d.role', 'ASC')
-            ->addOrderBy('d.shipName', 'ASC')
-            ->addOrderBy('d.title', 'ASC')
+            ->orderBy('d.sortOrder', \SortDirection::Ascending)
+            ->addOrderBy('d.role', \SortDirection::Ascending)
+            ->addOrderBy('d.shipName', \SortDirection::Ascending)
+            ->addOrderBy('d.title', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
