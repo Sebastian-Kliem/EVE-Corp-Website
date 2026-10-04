@@ -34,6 +34,11 @@ class DiscordWebhookService
         'wanderer_webhook_secret' => 'wanderer_secret',
     ];
 
+    private const MAX_ATTEMPTS = 3;
+    // Longer rate limit waits are not worth blocking a cron run or page; the caller retries later
+    private const MAX_RETRY_WAIT_SECONDS = 10.0;
+    private const SERVER_ERROR_RETRY_SECONDS = 1.0;
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly EntityManagerInterface $entityManager,
@@ -209,6 +214,29 @@ class DiscordWebhookService
             return false;
         }
 
+        for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            $retryWaitSeconds = $this->_postToWebhook($url, $payload, $channel);
+            if ($retryWaitSeconds === null) {
+                return true;
+            }
+            if ($retryWaitSeconds === false || $attempt === self::MAX_ATTEMPTS) {
+                return false;
+            }
+            if ($retryWaitSeconds > self::MAX_RETRY_WAIT_SECONDS) {
+                $this->logger->error(sprintf('[Discord] Giving up on channel "%s": rate limited for %.1f seconds.', $channel, $retryWaitSeconds));
+                return false;
+            }
+
+            $this->logger->warning(sprintf('[Discord] Retrying channel "%s" in %.1f seconds (attempt %d/%d).', $channel, $retryWaitSeconds, $attempt + 1, self::MAX_ATTEMPTS));
+            usleep((int) ($retryWaitSeconds * 1_000_000));
+        }
+
+        return false;
+    }
+
+    // Returns null on success, seconds to wait for a retryable failure, or false for a permanent failure
+    private function _postToWebhook(string $url, array $payload, string $channel): float|false|null
+    {
         try {
             $response = $this->httpClient->request('POST', $url, [
                 'json' => $payload,
@@ -216,13 +244,21 @@ class DiscordWebhookService
             ]);
 
             $statusCode = $response->getStatusCode();
+            $headers = $response->getHeaders(false);
             if ($statusCode >= 200 && $statusCode < 300) {
                 $this->logger->info(sprintf(
                     '[Discord] Successfully sent notification to channel "%s" (HTTP %d).',
                     $channel,
                     $statusCode
                 ));
-                return true;
+                $this->_waitForExhaustedBucket($headers);
+                return null;
+            }
+
+            if ($statusCode === 429) {
+                $retryWaitSeconds = $this->_getRateLimitWait($response->getContent(false), $headers);
+                $this->logger->warning(sprintf('[Discord] Rate limited on channel "%s" (HTTP 429), retry after %.1f seconds.', $channel, $retryWaitSeconds));
+                return $retryWaitSeconds;
             }
 
             $this->logger->error(sprintf(
@@ -231,14 +267,52 @@ class DiscordWebhookService
                 $statusCode,
                 $response->getContent(false)
             ));
-            return false;
+            return $statusCode >= 500 ? self::SERVER_ERROR_RETRY_SECONDS : false;
+        } catch (\Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface $e) {
+            $this->logger->error(sprintf(
+                '[Discord] Exception while sending webhook to channel "%s": %s',
+                $channel,
+                $this->_redactWebhookUrl($e->getMessage(), $url)
+            ));
+            return self::SERVER_ERROR_RETRY_SECONDS;
         } catch (\Throwable $e) {
             $this->logger->error(sprintf(
                 '[Discord] Exception while sending webhook to channel "%s": %s',
                 $channel,
-                $e->getMessage()
+                $this->_redactWebhookUrl($e->getMessage(), $url)
             ));
             return false;
         }
+    }
+
+    // Discord sends retry_after in the JSON body (seconds, fractional) and Retry-After as header
+    private function _getRateLimitWait(string $body, array $headers): float
+    {
+        $data = json_decode($body, true);
+        if (is_array($data) && isset($data['retry_after']) && is_numeric($data['retry_after'])) {
+            return max(0.0, (float) $data['retry_after']);
+        }
+        if (isset($headers['retry-after'][0]) && is_numeric($headers['retry-after'][0])) {
+            return max(0.0, (float) $headers['retry-after'][0]);
+        }
+
+        return self::MAX_RETRY_WAIT_SECONDS;
+    }
+
+    // Waits for the bucket reset when the last request used it up, so the next message is not rejected
+    private function _waitForExhaustedBucket(array $headers): void
+    {
+        if (($headers['x-ratelimit-remaining'][0] ?? null) !== '0' || !is_numeric($headers['x-ratelimit-reset-after'][0] ?? null)) {
+            return;
+        }
+
+        $waitSeconds = min((float) $headers['x-ratelimit-reset-after'][0], self::MAX_RETRY_WAIT_SECONDS);
+        usleep((int) ($waitSeconds * 1_000_000));
+    }
+
+    // The webhook URL contains its secret token and must not end up in logs
+    private function _redactWebhookUrl(string $message, string $url): string
+    {
+        return str_replace($url, '[webhook URL]', $message);
     }
 }
