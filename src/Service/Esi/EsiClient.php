@@ -5,6 +5,7 @@ namespace App\Service\Esi;
 use App\Entity\EveCharacter;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -28,8 +29,19 @@ class EsiClient
     private const CIRCUIT_BREAKER_THRESHOLD = 10;
     private const CIRCUIT_BREAKER_COOLDOWN = 120;
 
+    // Daily downtime starts at 11:00 UTC; until 12:00 the cluster status decides whether ESI is back
+    private const DOWNTIME_START = '11:00';
+    private const DOWNTIME_CHECK_UNTIL = '12:00';
+    private const CLUSTER_STATUS_CACHE_KEY = 'esi_cluster_status';
+    private const CLUSTER_STATUS_CACHE_TTL = 30;
+    private const CLUSTER_STATUS_TIMEOUT = 5;
+
+    // Web responses stay cached this long so they can be shown as last known state while ESI is unavailable
+    private const STALE_CACHE_TTL = 604800;
+
     private int $consecutiveServerFailures = 0;
     private int $circuitOpenUntil = 0;
+    private readonly bool $isWebRequest;
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -39,8 +51,12 @@ class EsiClient
         private readonly string $eveSsoClientId,
         private readonly string $eveSsoSecretKey,
         private readonly string $eveSsoCallbackUrl,
-        private readonly string $eveSsoScopes
-    ) {}
+        private readonly string $eveSsoScopes,
+        private readonly ClockInterface $clock,
+        ?bool $isWebRequest = null
+    ) {
+        $this->isWebRequest = $isWebRequest ?? \PHP_SAPI !== 'cli';
+    }
 
     /**
      * Generates the authorization URL for EVE Online SSO.
@@ -187,7 +203,7 @@ class EsiClient
     }
 
     /**
-     * Checks if ESI is offline (circuit breaker active or scheduled downtime).
+     * Checks if ESI is offline (circuit breaker active or daily downtime not finished yet).
      */
     public function isOffline(): bool
     {
@@ -195,14 +211,7 @@ class EsiClient
             return true;
         }
 
-        // Scheduled downtime window: 10:50 - 11:30 UTC
-        $nowUtc = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        $timeStr = $nowUtc->format('H:i');
-        if ($timeStr >= '10:50' && $timeStr <= '11:30') {
-            return true;
-        }
-
-        return false;
+        return $this->_isInDowntime();
     }
 
     /**
@@ -218,15 +227,11 @@ class EsiClient
     {
         $method = strtoupper($method);
 
-        if ($this->isOffline()) {
-            $reason = $this->_isCircuitOpen() ? 'circuit breaker active' : 'scheduled downtime (10:50 - 11:30 UTC)';
-            throw new \RuntimeException('ESI is offline (' . $reason . ')');
-        }
-
         // Cache only GET requests
         $useCache = ($method === 'GET');
         $cacheKey = null;
         $cacheItem = null;
+        $staleResult = null;
 
         $queryString = !empty($options['query']) ? '?' . http_build_query($options['query']) : '';
         $fullPathLog = $path . $queryString;
@@ -236,18 +241,24 @@ class EsiClient
             $cacheKey = 'esi_wh_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
             $cacheItem = $this->cachePool->getItem($cacheKey);
             if ($cacheItem->isHit()) {
-                $cachedVal = $cacheItem->get();
-                $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'info');
-                if (is_array($cachedVal) && isset($cachedVal['data']) && array_key_exists('headers', $cachedVal)) {
-                    $cachedVal['fromCache'] = true;
-                    return $cachedVal;
+                $cachedResult = $this->_normalizeCachedResult($cacheItem->get());
+                // Entries without expiresAt predate stale caching and are fresh until their cache TTL ends
+                if (($cachedResult['expiresAt'] ?? \PHP_INT_MAX) > $this->clock->now()->getTimestamp()) {
+                    $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'info');
+                    return $cachedResult;
                 }
-                return [
-                    'data' => $cachedVal,
-                    'headers' => [],
-                    'fromCache' => true
-                ];
+                $staleResult = $cachedResult;
+                $staleResult['stale'] = true;
             }
+        }
+
+        if ($this->isOffline()) {
+            if ($staleResult !== null && $this->isWebRequest) {
+                $this->logCron(sprintf('[EsiClient] ESI offline, serving last known data for GET %s.', $fullPathLog), 'info');
+                return $staleResult;
+            }
+            $reason = $this->_isCircuitOpen() ? 'circuit breaker active' : 'EVE downtime';
+            throw new \RuntimeException('ESI is offline (' . $reason . ')');
         }
 
         $headers = $options['headers'] ?? [];
@@ -307,10 +318,10 @@ class EsiClient
                     if ($expires) {
                         try {
                             $expiryTime = new \DateTimeImmutable($expires);
-                            $ttl = $expiryTime->getTimestamp() - time();
+                            $ttl = $expiryTime->getTimestamp() - $this->clock->now()->getTimestamp();
                             if ($ttl > 0) {
-                                $cacheItem->set($result);
-                                $cacheItem->expiresAfter($ttl);
+                                $cacheItem->set($result + ['expiresAt' => $expiryTime->getTimestamp()]);
+                                $cacheItem->expiresAfter($this->isWebRequest ? max($ttl, self::STALE_CACHE_TTL) : $ttl);
                                 $this->cachePool->save($cacheItem);
                             }
                         } catch (\Exception $e) {
@@ -376,10 +387,9 @@ class EsiClient
                 // Count server errors (5xx) and transport exceptions (connection issues) towards the circuit breaker
                 $isServerError = ($statusCode >= 500 && $statusCode < 600);
                 $isTransportError = ($e instanceof \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface);
+                $circuitOpened = false;
                 if ($isServerError || $isTransportError) {
-                    if ($this->_recordServerFailure($e)) {
-                        throw $e;
-                    }
+                    $circuitOpened = $this->_recordServerFailure($e);
                 } elseif ($statusCode > 0) {
                     // Any other HTTP answer proves ESI is reachable
                     $this->consecutiveServerFailures = 0;
@@ -387,8 +397,19 @@ class EsiClient
 
                 // Client error (4xx) except HTTP 420 and 429 should fail immediately without retry
                 $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420 && !$isRateLimited);
+
+                // Web requests show the last known data instead of waiting for a struggling ESI
+                if ($staleResult !== null && $this->isWebRequest && !$isClientError) {
+                    $this->logCron(sprintf('[EsiClient] GET %s failed (%s), serving last known data.', $fullPathLog, $e->getMessage()), 'warning');
+                    return $staleResult;
+                }
+
+                if ($circuitOpened) {
+                    throw $e;
+                }
+
                 // Web requests must not block a worker while waiting for the rate limit window
-                $isRateLimitedInWeb = $isRateLimited && \PHP_SAPI !== 'cli';
+                $isRateLimitedInWeb = $isRateLimited && $this->isWebRequest;
 
                 if ($isClientError || $isRateLimitedInWeb || $attempt >= $maxRetries) {
                     // 403 means missing corporation roles; callers decide whether that is an error
@@ -580,6 +601,69 @@ class EsiClient
         return $waitSeconds;
     }
 
+    private function _normalizeCachedResult(mixed $cachedValue): array
+    {
+        if (is_array($cachedValue) && isset($cachedValue['data']) && array_key_exists('headers', $cachedValue)) {
+            $cachedValue['fromCache'] = true;
+            return $cachedValue;
+        }
+
+        return [
+            'data' => $cachedValue,
+            'headers' => [],
+            'fromCache' => true
+        ];
+    }
+
+    // ESI is unusable from 11:00 UTC until the cluster reports a restart after that time and leaves VIP mode
+    private function _isInDowntime(): bool
+    {
+        $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
+        $timeOfDay = $now->format('H:i');
+        if ($timeOfDay < self::DOWNTIME_START || $timeOfDay >= self::DOWNTIME_CHECK_UNTIL) {
+            return false;
+        }
+
+        $clusterStatus = $this->_getClusterStatus();
+        if (empty($clusterStatus['start_time']) || ($clusterStatus['vip'] ?? false)) {
+            return true;
+        }
+
+        try {
+            $startTime = new \DateTimeImmutable($clusterStatus['start_time']);
+        } catch (\Exception $e) {
+            return true;
+        }
+
+        return $startTime < $now->modify('today ' . self::DOWNTIME_START);
+    }
+
+    // Cluster status from GET /status/, shared by all processes for a few seconds; empty while ESI cannot answer
+    private function _getClusterStatus(): array
+    {
+        $cacheItem = $this->cachePool->getItem(self::CLUSTER_STATUS_CACHE_KEY);
+        if ($cacheItem->isHit()) {
+            return $cacheItem->get();
+        }
+
+        $clusterStatus = [];
+        try {
+            $response = $this->httpClient->request('GET', self::BASE_URL . 'status/', [
+                'headers' => ['User-Agent' => 'WH-Toolbox/1.0 (Contact: Sebastian Kliem)'],
+                'timeout' => self::CLUSTER_STATUS_TIMEOUT,
+            ]);
+            $clusterStatus = $response->toArray();
+        } catch (\Exception $e) {
+            $this->logCron(sprintf('[EsiClient] Cluster status unavailable during downtime check: %s', $e->getMessage()), 'info');
+        }
+
+        $cacheItem->set($clusterStatus);
+        $cacheItem->expiresAfter(self::CLUSTER_STATUS_CACHE_TTL);
+        $this->cachePool->save($cacheItem);
+
+        return $clusterStatus;
+    }
+
     private function _isCircuitOpen(): bool
     {
         return $this->circuitOpenUntil > time();
@@ -623,7 +707,7 @@ class EsiClient
             return;
         }
 
-        if (\PHP_SAPI !== 'cli') {
+        if ($this->isWebRequest) {
             throw new \RuntimeException(sprintf('ESI error limit reached, retry in %d seconds.', $waitSeconds));
         }
 
