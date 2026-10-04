@@ -4,15 +4,14 @@ namespace App\Controller\Admin;
 
 use App\Entity\CronJob;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Process\PhpExecutableFinder;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -76,9 +75,6 @@ class AdminCronController extends AbstractController
     #[Route('/run', name: 'app_admin_cron_run_all', methods: ['POST'])]
     public function runAll(Request $request, KernelInterface $kernel): Response
     {
-        // Disable execution time limit for long-running imports/syncs
-        set_time_limit(0);
-
         if (!$this->isCsrfTokenValid('cron_run_all', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_admin_cron_index');
@@ -92,17 +88,10 @@ class AdminCronController extends AbstractController
         }
         $this->entityManager->flush();
 
-        $application = new Application($kernel);
-        $application->setAutoExit(false);
-
-        $input = new ArrayInput(['command' => 'app:cron:run']);
-        $output = new BufferedOutput();
-
-        try {
-            $application->run($input, $output);
-            $this->addFlash('success', 'Der Cron-Runner wurde erfolgreich ausgeführt und die Daten synchronisiert.');
-        } catch (\Exception $e) {
-            $this->addFlash('error', 'Fehler beim Ausführen des Cron-Runners: ' . $e->getMessage());
+        if ($this->_startCronRunInBackground($kernel)) {
+            $this->addFlash('success', 'Alle aktiven Cronjobs wurden im Hintergrund gestartet. Status und Dauer erscheinen nach Abschluss in der Liste.');
+        } else {
+            $this->addFlash('warning', 'Der Hintergrundstart ist fehlgeschlagen. Die Jobs sind als fällig markiert und laufen beim nächsten Scheduler-Durchlauf.');
         }
 
         return $this->redirectToRoute('app_admin_cron_index');
@@ -111,9 +100,6 @@ class AdminCronController extends AbstractController
     #[Route('/{id}/run', name: 'app_admin_cron_run_single', methods: ['POST'])]
     public function runSingle(CronJob $job, Request $request, KernelInterface $kernel): Response
     {
-        // Disable execution time limit for long-running imports/syncs
-        set_time_limit(0);
-
         if (!$this->isCsrfTokenValid('cron_run_' . $job->getId(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('app_admin_cron_index');
@@ -126,30 +112,10 @@ class AdminCronController extends AbstractController
         }
         $this->entityManager->flush();
 
-        $application = new Application($kernel);
-        $application->setAutoExit(false);
-
-        $input = new ArrayInput([
-            'command' => 'app:cron:run',
-            '--job' => $job->getCommand(),
-        ]);
-        $output = new BufferedOutput();
-
-        try {
-            $application->run($input, $output);
-            
-            // Refresh to get updated execution time, status, and error details
-            $this->entityManager->refresh($job);
-            
-            if ($job->getLastStatus() === 'success') {
-                $this->addFlash('success', sprintf('Der Cronjob "%s" wurde erfolgreich ausgeführt (Dauer: %.2f Sek.).', $job->getName(), $job->getLastExecutionTime()));
-            } elseif ($job->getLastStatus() === 'warning') {
-                $this->addFlash('warning', sprintf('Der Cronjob "%s" wurde mit Fehlern beendet: %s', $job->getName(), $job->getLastError()));
-            } else {
-                $this->addFlash('error', sprintf('Fehler beim Ausführen des Cronjobs "%s": %s', $job->getName(), $job->getLastError()));
-            }
-        } catch (\Exception $e) {
-            $this->addFlash('error', 'Fehler beim Ausführen des Cronjobs: ' . $e->getMessage());
+        if ($this->_startCronRunInBackground($kernel, $job->getCommand())) {
+            $this->addFlash('success', sprintf('Der Cronjob "%s" wurde im Hintergrund gestartet. Status und Dauer erscheinen nach Abschluss in der Liste.', $job->getName()));
+        } else {
+            $this->addFlash('warning', sprintf('Der Hintergrundstart von "%s" ist fehlgeschlagen. Der Job ist als fällig markiert und läuft beim nächsten Scheduler-Durchlauf.', $job->getName()));
         }
 
         return $this->redirectToRoute('app_admin_cron_index');
@@ -193,6 +159,31 @@ class AdminCronController extends AbstractController
     /**
      * Speicherschonendes Lesen der letzten N Zeilen einer Datei.
      */
+    // Detached CLI process: the request returns at once and EsiClient runs in cron mode (no stale web fallbacks)
+    private function _startCronRunInBackground(KernelInterface $kernel, ?string $jobCommand = null): bool
+    {
+        $phpBinary = (new PhpExecutableFinder())->find(false);
+        if ($phpBinary === false) {
+            return false;
+        }
+
+        $arguments = [$phpBinary, $kernel->getProjectDir() . '/bin/console', 'app:cron:run', '--no-interaction'];
+        if ($jobCommand !== null) {
+            $arguments[] = '--job=' . $jobCommand;
+        }
+
+        $escapedArguments = [];
+        foreach ($arguments as $argument) {
+            $escapedArguments[] = escapeshellarg($argument);
+        }
+
+        $process = Process::fromShellCommandline('nohup ' . implode(' ', $escapedArguments) . ' > /dev/null 2>&1 &');
+        $process->setEnv(['APP_ENV' => $kernel->getEnvironment()]);
+        $process->run();
+
+        return $process->isSuccessful();
+    }
+
     private function getLastLines(string $filename, int $numLines = 50): string
     {
         if (!file_exists($filename) || !is_readable($filename)) {
