@@ -7,15 +7,25 @@ use App\Entity\EveCorporationStructure;
 use App\Entity\EveCorporationStarbase;
 use App\Entity\EveStructure;
 use App\Service\Discord\StructureAlertService;
+use App\Service\Esi\CorporationAccessResolver;
 use App\Service\Esi\EsiClient;
+use App\Service\Esi\EsiMissingScopeException;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 
 class UpdateCorporationStructuresTask implements CronTaskInterface
 {
+    // Requirements from the ESI spec; Director is always accepted by the resolver
+    private const STRUCTURE_ROLES = ['Station_Manager'];
+    private const STRUCTURE_SCOPE = 'esi-corporations.read_structures.v1';
+    private const STARBASE_ROLES = [];
+    private const STARBASE_SCOPE = 'esi-corporations.read_starbases.v1';
+
     private EntityManagerInterface $entityManager;
+    private array $corporationNames = [];
 
     public function __construct(
         private readonly ManagerRegistry $doctrine,
@@ -23,6 +33,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         private readonly EsiClient $esiClient,
         private readonly SdeService $sdeService,
         private readonly StructureAlertService $structureAlertService,
+        private readonly CorporationAccessResolver $corporationAccessResolver,
         private readonly LoggerInterface $logger
     ) {
         $this->entityManager = $entityManager;
@@ -35,61 +46,71 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
 
     public function execute(): void
     {
-        $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
-        /** @var EveCharacter[] $allCharacters */
-        $allCharacters = $characterRepository->findAll();
+        $structureCharacters = $this->corporationAccessResolver->getCharactersByCorporation(self::STRUCTURE_ROLES, self::STRUCTURE_SCOPE);
+        $starbaseCharacters = $this->corporationAccessResolver->getCharactersByCorporation(self::STARBASE_ROLES, self::STARBASE_SCOPE);
+        $corporationIds = array_unique(array_merge(array_keys($structureCharacters), array_keys($starbaseCharacters)));
 
-        // 1. Group active director characters by corporation
-        $directorsByCorp = [];
-        foreach ($allCharacters as $char) {
-            if (empty($char->getRefreshToken()) || !$char->isTokenValid()) {
-                continue;
-            }
+        $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d corporations with authorized characters.', count($corporationIds)));
 
-            $corpId = $char->getCorporationId();
-            if ($corpId && $char->isDirector()) {
-                $directorsByCorp[$corpId][] = $char;
-            }
-        }
-
-        $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d corporations with directors.', count($directorsByCorp)));
-
-        foreach ($directorsByCorp as $corpId => $directors) {
+        foreach ($corporationIds as $corpId) {
             $this->ensureEntityManagerOpen();
-
-            // Use the first director character to fetch data
-            $director = $directors[0];
-
-            $this->logger->info(sprintf('[Cron] Syncing structures/starbases for corp %d using director %s...', $corpId, $director->getName()));
-
-            // A. Sync Upwell Structures
-            try {
-                $this->syncUpwellStructures($corpId, $director);
-            } catch (\Exception $e) {
-                $this->logger->error(sprintf(
-                    '[Cron] Failed to sync Upwell structures for corp %d using director %s: %s',
-                    $corpId,
-                    $director->getName(),
-                    $e->getMessage()
-                ));
-            }
+            $this->_syncWithFirstAuthorizedCharacter($corpId, 'Upwell structures', $structureCharacters[$corpId] ?? [], $this->syncUpwellStructures(...));
 
             $this->ensureEntityManagerOpen();
-
-            // B. Sync Starbases (POS)
-            try {
-                $this->syncStarbases($corpId, $director);
-            } catch (\Exception $e) {
-                $this->logger->error(sprintf(
-                    '[Cron] Failed to sync Starbases for corp %d using director %s: %s',
-                    $corpId,
-                    $director->getName(),
-                    $e->getMessage()
-                ));
-            }
+            $this->_syncWithFirstAuthorizedCharacter($corpId, 'starbases', $starbaseCharacters[$corpId] ?? [], $this->syncStarbases(...));
         }
 
         $this->logger->info('[Cron] Finished corporation structures sync execution.');
+    }
+
+    /**
+     * Tries the corporation's authorized characters in order until one can read the endpoint.
+     *
+     * @param EveCharacter[] $characters
+     */
+    private function _syncWithFirstAuthorizedCharacter(int $corpId, string $label, array $characters, callable $sync): void
+    {
+        if (empty($characters)) {
+            $this->logger->info(sprintf('[Cron] No character with the required role and scope for %s of corp %d.', $label, $corpId));
+            return;
+        }
+
+        foreach ($characters as $character) {
+            $this->logger->info(sprintf('[Cron] Syncing %s for corp %d using %s...', $label, $corpId, $character->getName()));
+            try {
+                $sync($corpId, $character);
+                return;
+            } catch (EsiMissingScopeException $e) {
+                $this->logger->warning(sprintf('[Cron] %s cannot read %s of corp %d: %s Trying next character.', $character->getName(), $label, $corpId, $e->getMessage()));
+            } catch (HttpExceptionInterface $e) {
+                // 403 means the stored roles are outdated; any other error would hit the next character as well
+                if ($e->getResponse()->getStatusCode() !== 403) {
+                    $this->logger->error(sprintf('[Cron] Failed to sync %s for corp %d using %s: %s', $label, $corpId, $character->getName(), $e->getMessage()));
+                    return;
+                }
+                $this->logger->warning(sprintf('[Cron] %s lacks the in-game role for %s of corp %d (HTTP 403). Trying next character.', $character->getName(), $label, $corpId));
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf('[Cron] Failed to sync %s for corp %d using %s: %s', $label, $corpId, $character->getName(), $e->getMessage()));
+                return;
+            }
+            $this->ensureEntityManagerOpen();
+        }
+
+        $this->logger->warning(sprintf('[Cron] None of the %d authorized characters could read %s of corp %d.', count($characters), $label, $corpId));
+    }
+
+    private function _getCorporationName(int $corpId): ?string
+    {
+        if (!array_key_exists($corpId, $this->corporationNames)) {
+            try {
+                $corporationData = $this->esiClient->request('GET', sprintf('corporations/%d/', $corpId));
+                $this->corporationNames[$corpId] = $corporationData['name'] ?? null;
+            } catch (\Exception $e) {
+                $this->corporationNames[$corpId] = null;
+            }
+        }
+
+        return $this->corporationNames[$corpId];
     }
 
     private function ensureEntityManagerOpen(): void
@@ -101,12 +122,11 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
 
     private function syncUpwellStructures(int $corpId, EveCharacter $director): void
     {
-        $structuresData = $this->esiClient->request(
-            'GET',
+        $structuresData = $this->esiClient->requestAllPages(
             sprintf('corporations/%d/structures/', $corpId),
             [],
             $director
-        );
+        )['data'];
 
         if (!is_array($structuresData)) {
             $this->logger->warning(sprintf('[Cron] ESI returned invalid structures data for corp %d.', $corpId));
@@ -190,9 +210,9 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
                 $globalStructure->setSolarSystemName($structure->getSolarSystemName());
                 $globalStructure->setOwnerId((string)$corpId);
                 
-                // Fetch corp owner name if possible (or keep null / default)
-                if ($director->getAccount() && $director->getAccount()->getName()) {
-                    $globalStructure->setOwnerName($director->getAccount()->getName());
+                $corporationName = $this->_getCorporationName($corpId);
+                if ($corporationName !== null) {
+                    $globalStructure->setOwnerName($corporationName);
                 }
 
                 $globalStructure->setLastUpdated($now);
@@ -214,12 +234,11 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
 
     private function syncStarbases(int $corpId, EveCharacter $director): void
     {
-        $starbasesData = $this->esiClient->request(
-            'GET',
+        $starbasesData = $this->esiClient->requestAllPages(
             sprintf('corporations/%d/starbases/', $corpId),
             [],
             $director
-        );
+        )['data'];
 
         if (!is_array($starbasesData)) {
             $this->logger->warning(sprintf('[Cron] ESI returned invalid starbases data for corp %d.', $corpId));

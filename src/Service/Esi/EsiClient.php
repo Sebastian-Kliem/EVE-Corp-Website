@@ -154,6 +154,18 @@ class EsiClient
     }
 
     /**
+     * Checks whether the character's token was granted the scope.
+     */
+    public function hasScope(EveCharacter $character, string $scope): bool
+    {
+        try {
+            return in_array($scope, $this->decodeTokenPayload((string) $character->getAccessToken())['scopes'], true);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
      * Refreshes the access token for a character.
      */
     public function refreshToken(EveCharacter $character): bool
