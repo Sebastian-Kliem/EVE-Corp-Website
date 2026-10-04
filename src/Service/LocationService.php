@@ -11,6 +11,9 @@ use Doctrine\DBAL\Connection;
 
 class LocationService
 {
+    private const FALLBACK_RETRY_DAYS = 7;
+    private const MAX_STRUCTURES_PER_RUN = 50;
+
     private Connection $sdeConnection;
     private array $resolvedLocations = [];
 
@@ -480,9 +483,10 @@ class LocationService
         $now = new \DateTimeImmutable();
         
         $resolvedExpiryLimit = $now->modify('-30 days');
-        $fallbackExpiryLimit = $now->modify('-1 days');
+        // Unresolvable structures cost up to three 403s each; retrying them daily exhausted the ESI error budget
+        $fallbackExpiryLimit = $now->modify('-' . self::FALLBACK_RETRY_DAYS . ' days');
 
-        // Find structures that are resolved but older than 30 days, OR fallbacks older than 1 day
+        // Find structures that are resolved but older than 30 days, OR fallbacks older than the retry interval
         $queryBuilder = $structureRepo->createQueryBuilder('s');
         $structures = $queryBuilder
             ->where('s.name != :fallbackName AND s.lastUpdated < :resolvedExpiryLimit')
@@ -490,6 +494,8 @@ class LocationService
             ->setParameter('fallbackName', 'Spieler-Struktur')
             ->setParameter('resolvedExpiryLimit', $resolvedExpiryLimit)
             ->setParameter('fallbackExpiryLimit', $fallbackExpiryLimit)
+            ->orderBy('s.lastUpdated', 'ASC')
+            ->setMaxResults(self::MAX_STRUCTURES_PER_RUN)
             ->getQuery()
             ->getResult();
 

@@ -17,6 +17,11 @@ class EsiClient
 
     private const MISSING_SCOPE_CACHE_TTL = 3600;
 
+    // ESI error budget is shared per server IP, so the pause is stored in the shared cache for all processes
+    private const ERROR_LIMIT_CACHE_KEY = 'esi_error_limit_pause_until';
+    private const ERROR_LIMIT_THRESHOLD = 20;
+    private const ERROR_LIMIT_DEFAULT_WAIT = 60;
+
     private static bool $esiOffline = false;
 
     public function __construct(
@@ -264,6 +269,8 @@ class EsiClient
                     }
                 }
 
+                $this->_waitForErrorLimit($fullPathLog);
+
                 $options['headers'] = $headers;
                 $url = self::BASE_URL . ltrim($path, '/');
 
@@ -278,15 +285,7 @@ class EsiClient
                     $this->logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'info');
                 }
 
-                // Handle error limit remainder if present
-                $remain = isset($responseHeaders['x-esi-error-limit-remain'][0]) ? (int)$responseHeaders['x-esi-error-limit-remain'][0] : null;
-                $reset = isset($responseHeaders['x-esi-error-limit-reset'][0]) ? (int)$responseHeaders['x-esi-error-limit-reset'][0] : null;
-
-                if ($remain !== null && $remain < 10) {
-                    $sleepTime = $reset !== null ? min($reset, 5) : 2;
-                    $this->logCron(sprintf('[EsiClient] ESI Error limit low (%d remaining). Throttling for %d seconds...', $remain, $sleepTime), 'warning');
-                    sleep($sleepTime);
-                }
+                $this->_trackErrorLimit($responseHeaders);
 
                 $result = [
                     'data' => $data,
@@ -324,6 +323,9 @@ class EsiClient
                 if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
                     $statusCode = $e->getResponse()->getStatusCode();
 
+                    // Error responses consume the error budget, so their headers matter most
+                    $this->_trackErrorLimit($e->getResponse()->getHeaders(false));
+
                     // ESI answers 401 for tokens lacking the endpoint's scope; refreshing the token cannot fix that
                     if ($character && $statusCode === 401) {
                         $requiredScope = $this->_extractMissingScope($e->getResponse());
@@ -350,9 +352,8 @@ class EsiClient
                     // HTTP 420: Enhance Your Calm
                     if ($statusCode === 420) {
                         $is420 = true;
-                        $responseHeaders = $e->getResponse()->getHeaders(false);
-                        $retryAfter = isset($responseHeaders['retry-after'][0]) ? (int)$responseHeaders['retry-after'][0] : 10;
-                        $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Sleeping for %d seconds...', $fullPathLog, $retryAfter), 'error');
+                        $retryAfter = $this->_pauseForErrorLimit($e->getResponse()->getHeaders(false));
+                        $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Pausing all ESI requests for %d seconds...', $fullPathLog, $retryAfter), 'error');
                     }
                 }
 
@@ -504,6 +505,61 @@ class EsiClient
         }
 
         return null;
+    }
+
+    // Records the remaining ESI error budget and pauses all processes before it runs out
+    private function _trackErrorLimit(array $responseHeaders): void
+    {
+        if (!isset($responseHeaders['x-esi-error-limit-remain'][0])) {
+            return;
+        }
+
+        $remain = (int) $responseHeaders['x-esi-error-limit-remain'][0];
+        if ($remain >= self::ERROR_LIMIT_THRESHOLD) {
+            return;
+        }
+
+        $waitSeconds = $this->_pauseForErrorLimit($responseHeaders);
+        $this->logCron(sprintf('[EsiClient] ESI error limit low (%d remaining). Pausing all ESI requests for %d seconds.', $remain, $waitSeconds), 'warning');
+    }
+
+    private function _pauseForErrorLimit(array $responseHeaders): int
+    {
+        $waitSeconds = self::ERROR_LIMIT_DEFAULT_WAIT;
+        if (isset($responseHeaders['x-esi-error-limit-reset'][0])) {
+            $waitSeconds = (int) $responseHeaders['x-esi-error-limit-reset'][0] + 1;
+        } elseif (isset($responseHeaders['retry-after'][0])) {
+            $waitSeconds = (int) $responseHeaders['retry-after'][0];
+        }
+        $waitSeconds = max(1, $waitSeconds);
+
+        $cacheItem = $this->cachePool->getItem(self::ERROR_LIMIT_CACHE_KEY);
+        $cacheItem->set(time() + $waitSeconds);
+        $cacheItem->expiresAfter($waitSeconds);
+        $this->cachePool->save($cacheItem);
+
+        return $waitSeconds;
+    }
+
+    // Cron processes wait for the budget to reset; web requests fail fast instead of blocking a worker
+    private function _waitForErrorLimit(string $fullPathLog): void
+    {
+        $cacheItem = $this->cachePool->getItem(self::ERROR_LIMIT_CACHE_KEY);
+        if (!$cacheItem->isHit()) {
+            return;
+        }
+
+        $waitSeconds = (int) $cacheItem->get() - time();
+        if ($waitSeconds <= 0) {
+            return;
+        }
+
+        if (\PHP_SAPI !== 'cli') {
+            throw new \RuntimeException(sprintf('ESI error limit reached, retry in %d seconds.', $waitSeconds));
+        }
+
+        $this->logCron(sprintf('[EsiClient] ESI error limit pause active. Waiting %d seconds before %s.', $waitSeconds, $fullPathLog), 'warning');
+        sleep($waitSeconds);
     }
 
     // Returns the scope named in ESI's "Token is not valid for any required scope" response, or null for other 401s
