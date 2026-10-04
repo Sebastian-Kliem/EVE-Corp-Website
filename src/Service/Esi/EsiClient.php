@@ -24,7 +24,12 @@ class EsiClient
     private const RATE_LIMIT_DEFAULT_WAIT = 60;
     private const RATE_LIMIT_MAX_WAIT = 300;
 
-    private static bool $esiOffline = false;
+    // Consecutive 5xx/transport failures before ESI is treated as down, and for how long
+    private const CIRCUIT_BREAKER_THRESHOLD = 10;
+    private const CIRCUIT_BREAKER_COOLDOWN = 120;
+
+    private int $consecutiveServerFailures = 0;
+    private int $circuitOpenUntil = 0;
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
@@ -186,7 +191,7 @@ class EsiClient
      */
     public function isOffline(): bool
     {
-        if (self::$esiOffline) {
+        if ($this->_isCircuitOpen()) {
             return true;
         }
 
@@ -214,7 +219,7 @@ class EsiClient
         $method = strtoupper($method);
 
         if ($this->isOffline()) {
-            $reason = self::$esiOffline ? 'circuit breaker active' : 'scheduled downtime (10:50 - 11:30 UTC)';
+            $reason = $this->_isCircuitOpen() ? 'circuit breaker active' : 'scheduled downtime (10:50 - 11:30 UTC)';
             throw new \RuntimeException('ESI is offline (' . $reason . ')');
         }
 
@@ -288,6 +293,7 @@ class EsiClient
                 }
 
                 $this->_trackErrorLimit($responseHeaders);
+                $this->consecutiveServerFailures = 0;
 
                 $result = [
                     'data' => $data,
@@ -367,12 +373,16 @@ class EsiClient
                     }
                 }
 
-                // Activate circuit breaker on server error (5xx) or transport exception (connection issues)
+                // Count server errors (5xx) and transport exceptions (connection issues) towards the circuit breaker
                 $isServerError = ($statusCode >= 500 && $statusCode < 600);
                 $isTransportError = ($e instanceof \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface);
                 if ($isServerError || $isTransportError) {
-                    self::$esiOffline = true;
-                    $this->logger->error(sprintf('[EsiClient] ESI is down or unreachable. Activating circuit breaker. Error: %s', $e->getMessage()));
+                    if ($this->_recordServerFailure($e)) {
+                        throw $e;
+                    }
+                } elseif ($statusCode > 0) {
+                    // Any other HTTP answer proves ESI is reachable
+                    $this->consecutiveServerFailures = 0;
                 }
 
                 // Client error (4xx) except HTTP 420 and 429 should fail immediately without retry
@@ -567,6 +577,25 @@ class EsiClient
         $this->cachePool->save($cacheItem);
 
         return $waitSeconds;
+    }
+
+    private function _isCircuitOpen(): bool
+    {
+        return $this->circuitOpenUntil > time();
+    }
+
+    // Returns true when this failure opened the circuit breaker
+    private function _recordServerFailure(\Throwable $exception): bool
+    {
+        $this->consecutiveServerFailures++;
+        if ($this->consecutiveServerFailures < self::CIRCUIT_BREAKER_THRESHOLD) {
+            return false;
+        }
+
+        $this->circuitOpenUntil = time() + self::CIRCUIT_BREAKER_COOLDOWN;
+        $this->logCron(sprintf('[EsiClient] ESI is down or unreachable (%d consecutive failures). Circuit breaker open for %d seconds. Error: %s', $this->consecutiveServerFailures, self::CIRCUIT_BREAKER_COOLDOWN, $exception->getMessage()), 'error');
+
+        return true;
     }
 
     // Seconds until the rate limit window allows requests again, capped to keep cron runs moving
