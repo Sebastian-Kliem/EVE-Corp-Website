@@ -146,6 +146,7 @@ class UserAdminController extends AbstractController
         $hashedPassword = $passwordHasher->hashPassword($user, $tempPassword);
 
         $user->setPassword($hashedPassword);
+        $user->invalidateApiTokens();
         $this->entityManager->flush();
 
         // Pass the temporary password via a special flash message so it's shown once

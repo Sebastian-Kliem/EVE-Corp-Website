@@ -7,10 +7,15 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 class JwtService
 {
+    private readonly string $signingKey;
+
     public function __construct(
         #[Autowire('%kernel.secret%')]
-        private string $appSecret
-    ) {}
+        string $appSecret
+    ) {
+        // Derived key, so API tokens cannot be forged with values signed by other APP_SECRET users (remember-me, CSRF)
+        $this->signingKey = hash_hmac('sha256', 'wh-toolbox-api-jwt', $appSecret, true);
+    }
 
     /**
      * Create a signed JWT (JWS) for a user.
@@ -25,13 +30,14 @@ class JwtService
         $payload = json_encode([
             'sub' => $user->getUsername(),
             'roles' => $user->getRoles(),
+            'iat' => time(),
             'exp' => time() + $ttl,
         ]);
 
         $base64UrlHeader = $this->base64UrlEncode($header);
         $base64UrlPayload = $this->base64UrlEncode($payload);
 
-        $signature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $this->appSecret, true);
+        $signature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $this->signingKey, true);
         $base64UrlSignature = $this->base64UrlEncode($signature);
 
         return $base64UrlHeader . '.' . $base64UrlPayload . '.' . $base64UrlSignature;
@@ -54,7 +60,7 @@ class JwtService
             return null;
         }
 
-        $expectedSignature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $this->appSecret, true);
+        $expectedSignature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $this->signingKey, true);
 
         if (!hash_equals($expectedSignature, $signature)) {
             return null; // Signature is invalid
@@ -66,7 +72,7 @@ class JwtService
         }
 
         $payload = json_decode($payloadJson, true);
-        if (!is_array($payload) || !isset($payload['exp']) || !isset($payload['sub'])) {
+        if (!is_array($payload) || !isset($payload['exp'], $payload['sub'], $payload['iat'])) {
             return null;
         }
 
