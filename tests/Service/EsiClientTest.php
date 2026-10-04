@@ -107,6 +107,21 @@ class EsiClientTest extends TestCase
         $this->assertEqualsWithDelta(time() + 31, $pauseItem->get(), 2);
     }
 
+    public function testRateLimitedRequestIsRetriedAfterRetryAfter(): void
+    {
+        $responses = [
+            new MockResponse('{"error":"Too many requests"}', ['http_code' => 429, 'response_headers' => ['Retry-After' => '1']]),
+            new MockResponse('{"total_sp":1000}', ['http_code' => 200]),
+        ];
+        $httpClient = new MockHttpClient($responses);
+        $esiClient = $this->_createClient($httpClient);
+
+        $startTime = microtime(true);
+        $this->assertSame(['total_sp' => 1000], $esiClient->request('GET', 'characters/123/skills/', [], $this->_createCharacter([])));
+        $this->assertSame(2, $httpClient->getRequestsCount());
+        $this->assertGreaterThanOrEqual(1.0, microtime(true) - $startTime);
+    }
+
     private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null): EsiClient
     {
         return new EsiClient(

@@ -21,6 +21,8 @@ class EsiClient
     private const ERROR_LIMIT_CACHE_KEY = 'esi_error_limit_pause_until';
     private const ERROR_LIMIT_THRESHOLD = 20;
     private const ERROR_LIMIT_DEFAULT_WAIT = 60;
+    private const RATE_LIMIT_DEFAULT_WAIT = 60;
+    private const RATE_LIMIT_MAX_WAIT = 300;
 
     private static bool $esiOffline = false;
 
@@ -318,6 +320,7 @@ class EsiClient
             } catch (\Exception $e) {
                 $statusCode = 0;
                 $is420 = false;
+                $isRateLimited = false;
                 $retryAfter = 2;
 
                 if ($e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
@@ -355,6 +358,13 @@ class EsiClient
                         $retryAfter = $this->_pauseForErrorLimit($e->getResponse()->getHeaders(false));
                         $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Pausing all ESI requests for %d seconds...', $fullPathLog, $retryAfter), 'error');
                     }
+
+                    // HTTP 429: rate limit of the route group exhausted for this token or IP
+                    if ($statusCode === 429) {
+                        $isRateLimited = true;
+                        $retryAfter = $this->_getRateLimitWait($e->getResponse()->getHeaders(false));
+                        $this->logCron(sprintf('[EsiClient] Got HTTP 429 (rate limited) for %s. Retry in %d seconds.', $fullPathLog, $retryAfter), 'warning');
+                    }
                 }
 
                 // Activate circuit breaker on server error (5xx) or transport exception (connection issues)
@@ -365,10 +375,12 @@ class EsiClient
                     $this->logger->error(sprintf('[EsiClient] ESI is down or unreachable. Activating circuit breaker. Error: %s', $e->getMessage()));
                 }
 
-                // Client error (4xx) except HTTP 420 should fail immediately without retry
-                $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420);
+                // Client error (4xx) except HTTP 420 and 429 should fail immediately without retry
+                $isClientError = ($statusCode >= 400 && $statusCode < 500 && !$is420 && !$isRateLimited);
+                // Web requests must not block a worker while waiting for the rate limit window
+                $isRateLimitedInWeb = $isRateLimited && \PHP_SAPI !== 'cli';
 
-                if ($isClientError || $attempt >= $maxRetries) {
+                if ($isClientError || $isRateLimitedInWeb || $attempt >= $maxRetries) {
                     // 403 means missing corporation roles; callers decide whether that is an error
                     $logLevel = $statusCode === 403 ? 'warning' : 'error';
                     $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s%s', $fullPathLog, $attempt, $e->getMessage(), $this->_getErrorBodySnippet($e)), $logLevel);
@@ -555,6 +567,17 @@ class EsiClient
         $this->cachePool->save($cacheItem);
 
         return $waitSeconds;
+    }
+
+    // Seconds until the rate limit window allows requests again, capped to keep cron runs moving
+    private function _getRateLimitWait(array $responseHeaders): int
+    {
+        $waitSeconds = self::RATE_LIMIT_DEFAULT_WAIT;
+        if (isset($responseHeaders['retry-after'][0]) && is_numeric($responseHeaders['retry-after'][0])) {
+            $waitSeconds = (int) $responseHeaders['retry-after'][0];
+        }
+
+        return min(self::RATE_LIMIT_MAX_WAIT, max(1, $waitSeconds));
     }
 
     // Cron processes wait for the budget to reset; web requests fail fast instead of blocking a worker
