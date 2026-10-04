@@ -371,7 +371,7 @@ class EsiClient
                 if ($isClientError || $attempt >= $maxRetries) {
                     // 403 means missing corporation roles; callers decide whether that is an error
                     $logLevel = $statusCode === 403 ? 'warning' : 'error';
-                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s', $fullPathLog, $attempt, $e->getMessage()), $logLevel);
+                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s%s', $fullPathLog, $attempt, $e->getMessage(), $this->_getErrorBodySnippet($e)), $logLevel);
                     throw $e;
                 }
 
@@ -505,6 +505,22 @@ class EsiClient
         }
 
         return null;
+    }
+
+    // ESI explains client errors in the body (e.g. invalid IDs); the exception message omits it
+    private function _getErrorBodySnippet(\Throwable $exception): string
+    {
+        if (!$exception instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
+            return '';
+        }
+
+        try {
+            $body = trim($exception->getResponse()->getContent(false));
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        return $body === '' ? '' : ' Response: ' . mb_substr($body, 0, 200);
     }
 
     // Records the remaining ESI error budget and pauses all processes before it runs out

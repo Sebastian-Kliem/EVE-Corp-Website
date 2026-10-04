@@ -885,7 +885,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         $namesMap = [];
-        $chunks = array_chunk($itemIds, 1000);
+        // Assets moving between page fetches can yield duplicate IDs, which ESI rejects with 400
+        $chunks = array_chunk(array_values(array_unique($itemIds)), 1000);
 
         foreach ($chunks as $chunk) {
             try {
@@ -927,7 +928,8 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         $namesMap = [];
-        $chunks = array_chunk($itemIds, 1000);
+        // Assets moving between page fetches can yield duplicate IDs, which ESI rejects with 400
+        $chunks = array_chunk(array_values(array_unique($itemIds)), 1000);
 
         foreach ($chunks as $chunk) {
             try {
