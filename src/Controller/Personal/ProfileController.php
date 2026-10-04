@@ -72,6 +72,7 @@ class ProfileController extends AbstractController
                 if (empty($errors)) {
                     $hashedPassword = $this->passwordHasher->hashPassword($currentUser, $newPassword);
                     $currentUser->setPassword($hashedPassword);
+                    $currentUser->invalidateApiTokens();
                     
                     $this->entityManager->flush();
                     $success = true;

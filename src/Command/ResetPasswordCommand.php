@@ -58,6 +58,7 @@ class ResetPasswordCommand extends Command
         // Hash and apply password
         $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
         $user->setPassword($hashedPassword);
+        $user->invalidateApiTokens();
         
         $this->entityManager->flush();
 

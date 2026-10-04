@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\User;
 use App\Service\JwtService;
 use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -40,16 +41,28 @@ class JwtAuthenticator extends AbstractAuthenticator
         }
 
         $username = $payload['sub'];
+        $issuedAt = (int) $payload['iat'];
 
         return new SelfValidatingPassport(
-            new UserBadge($username, function (string $userIdentifier) {
+            new UserBadge($username, function (string $userIdentifier) use ($issuedAt) {
                 $user = $this->userRepository->findOneBy(['username' => $userIdentifier]);
                 if (!$user) {
                     throw new CustomUserMessageAuthenticationException('User not found.');
                 }
+                if ($this->_isRevoked($user, $issuedAt)) {
+                    throw new CustomUserMessageAuthenticationException('Invalid or expired JWT token.');
+                }
                 return $user;
             })
         );
+    }
+
+    // Tokens issued before the user's last logout or password change are no longer accepted
+    private function _isRevoked(User $user, int $issuedAt): bool
+    {
+        $validAfter = $user->getApiTokensValidAfter();
+
+        return $validAfter !== null && $issuedAt < $validAfter->getTimestamp();
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
