@@ -9,19 +9,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 class EsiClientTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        // EsiClient refuses all requests during the daily ESI downtime window
-        $timeUtc = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('H:i');
-        if ($timeUtc >= '10:50' && $timeUtc <= '11:30') {
-            $this->markTestSkipped('ESI downtime window');
-        }
-    }
+    // Outside the daily downtime window, so no cluster status request is made
+    private const DEFAULT_TIME = '2026-10-04 09:00:00';
 
     public function testMissingScopeIsDetectedAndCachedWithoutRefresh(): void
     {
@@ -159,7 +154,90 @@ class EsiClientTest extends TestCase
         $esiClient->request('GET', 'status/');
     }
 
-    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null): EsiClient
+    public function testDowntimeLastsUntilClusterRestartedAfterEleven(): void
+    {
+        $clock = new MockClock('2026-10-04 11:05:00', 'UTC');
+        $notRestarted = new MockHttpClient(new MockResponse('{"players":20000,"vip":false,"start_time":"2026-10-03T11:02:00Z"}'));
+        $this->assertTrue($this->_createClient($notRestarted, clock: $clock)->isOffline());
+
+        $unreachable = new MockHttpClient(new MockResponse('{"error":"The datasource tranquility is temporarily unavailable"}', ['http_code' => 503]));
+        $this->assertTrue($this->_createClient($unreachable, clock: $clock)->isOffline());
+
+        $vipMode = new MockHttpClient(new MockResponse('{"players":50,"vip":true,"start_time":"2026-10-04T11:03:00Z"}'));
+        $this->assertTrue($this->_createClient($vipMode, clock: $clock)->isOffline());
+
+        $restarted = new MockHttpClient(new MockResponse('{"players":12000,"vip":false,"start_time":"2026-10-04T11:03:00Z"}'));
+        $this->assertFalse($this->_createClient($restarted, clock: $clock)->isOffline());
+
+        // Before 11:00 and after 12:00 no status request is needed
+        $noRequests = new MockHttpClient([]);
+        $this->assertFalse($this->_createClient($noRequests, clock: new MockClock('2026-10-04 10:59:00', 'UTC'))->isOffline());
+        $this->assertFalse($this->_createClient($noRequests, clock: new MockClock('2026-10-04 12:00:00', 'UTC'))->isOffline());
+        $this->assertSame(0, $noRequests->getRequestsCount());
+    }
+
+    public function testWebRequestShowsLastKnownDataDuringDowntime(): void
+    {
+        $clock = new MockClock('2026-10-04 10:30:00', 'UTC');
+        $httpClient = new MockHttpClient([
+            $this->_createExpiringResponse('{"name":"Keepers of Duat"}', $clock),
+            new MockResponse('{"error":"The datasource tranquility is temporarily unavailable"}', ['http_code' => 503]),
+        ]);
+        $esiClient = $this->_createClient($httpClient, clock: $clock, isWebRequest: true);
+
+        $esiClient->request('GET', 'corporations/98000001/');
+        $clock->modify('2026-10-04 11:05:00');
+        $result = $esiClient->requestWithHeaders('GET', 'corporations/98000001/');
+
+        $this->assertSame(['name' => 'Keepers of Duat'], $result['data']);
+        $this->assertTrue($result['stale']);
+        // Only the status check went to ESI, the corporation itself was not requested again
+        $this->assertSame(2, $httpClient->getRequestsCount());
+    }
+
+    public function testCronRequestDoesNotUseExpiredDataDuringDowntime(): void
+    {
+        $clock = new MockClock('2026-10-04 10:30:00', 'UTC');
+        $httpClient = new MockHttpClient([
+            $this->_createExpiringResponse('{"name":"Keepers of Duat"}', $clock),
+            new MockResponse('{"error":"The datasource tranquility is temporarily unavailable"}', ['http_code' => 503]),
+        ]);
+        $esiClient = $this->_createClient($httpClient, clock: $clock, isWebRequest: false);
+
+        $esiClient->request('GET', 'corporations/98000001/');
+        $clock->modify('2026-10-04 11:05:00');
+
+        $this->expectExceptionMessage('EVE downtime');
+        $esiClient->request('GET', 'corporations/98000001/');
+    }
+
+    public function testWebRequestShowsLastKnownDataOnServerError(): void
+    {
+        $clock = new MockClock(self::DEFAULT_TIME, 'UTC');
+        $httpClient = new MockHttpClient([
+            $this->_createExpiringResponse('{"name":"Keepers of Duat"}', $clock),
+            new MockResponse('{"error":"Bad gateway"}', ['http_code' => 502]),
+        ]);
+        $esiClient = $this->_createClient($httpClient, clock: $clock, isWebRequest: true);
+
+        $esiClient->request('GET', 'corporations/98000001/');
+        $clock->modify('+5 minutes');
+        $result = $esiClient->requestWithHeaders('GET', 'corporations/98000001/');
+
+        // Served right after the first failure, without retry sleeps
+        $this->assertTrue($result['stale']);
+        $this->assertSame(['name' => 'Keepers of Duat'], $result['data']);
+        $this->assertSame(2, $httpClient->getRequestsCount());
+    }
+
+    private function _createExpiringResponse(string $body, MockClock $clock): MockResponse
+    {
+        $expiresAt = $clock->now()->modify('+60 seconds')->getTimestamp();
+
+        return new MockResponse($body, ['response_headers' => ['Expires' => gmdate('D, d M Y H:i:s \G\M\T', $expiresAt)]]);
+    }
+
+    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false): EsiClient
     {
         return new EsiClient(
             $httpClient,
@@ -169,7 +247,9 @@ class EsiClientTest extends TestCase
             'client-id',
             'secret',
             'https://example.org/callback',
-            $configuredScopes
+            $configuredScopes,
+            $clock ?? new MockClock(self::DEFAULT_TIME, 'UTC'),
+            $isWebRequest
         );
     }
 
