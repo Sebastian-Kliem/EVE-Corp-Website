@@ -55,44 +55,45 @@
             <form action="{{ path('app_admin_wanderer_save_settings') }}" method="POST" data-controller="wanderer-connection-test" data-wanderer-connection-test-endpoint-value="{{ path('app_admin_wanderer_test_connection') }}" data-wanderer-connection-test-token-value="{{ csrf_token('wanderer_connection_test') }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('wanderer_settings_save') }}">
 
-                <div class="space-y-4">
+                <div class="space-y-5">
                     <div>
-                        <label for="discord_webhook_wanderer" class="block text-xs font-medium text-white mb-1">
+                        <label for="discord_webhook_wanderer" class="block text-xs font-medium text-white">
                             Discord Webhook URL (Wanderer-Kanal)
                         </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Eigener Discord-Kanal ausschließlich für K-Space- und Exit-Meldungen.</p>
                         <input type="url" id="discord_webhook_wanderer" name="discord_webhook_wanderer" value="{{ settings.discord_webhook_wanderer }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        <p class="text-[11px] text-eve-muted mt-1">Eigener Discord-Kanal ausschliesslich fuer K-Space- und Exit-Meldungen.</p>
                     </div>
 
                     <div>
-                        <label for="discord_ping_role_wanderer" class="block text-xs font-medium text-white mb-1">
-                            Ping-Rolle (Optional)
+                        <label for="discord_ping_role_wanderer" class="block text-xs font-medium text-white">
+                            Ping-Rolle (optional)
                         </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Rolle, die bei Corp-Meldungen erwähnt wird (Rollen-ID oder @here).</p>
                         <input type="text" id="discord_ping_role_wanderer" name="discord_ping_role_wanderer" value="{{ settings.discord_ping_role_wanderer }}" placeholder="z. B. 123456789012345678 oder @here" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
                     </div>
 
                     <div>
-                        <label for="wanderer_api_url" class="block text-xs font-medium text-white mb-1">
+                        <label for="wanderer_api_url" class="block text-xs font-medium text-white">
                             Wanderer-URL
                         </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Basis-URL der Wanderer-Instanz.</p>
                         <input type="url" id="wanderer_api_url" name="wanderer_api_url" data-wanderer-connection-test-target="url" value="{{ settings.wanderer_api_url }}" placeholder="https://wanderer.keepers-of-duat.de" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        <p class="text-[11px] text-eve-muted mt-1">Basis-URL der Wanderer-Instanz.</p>
                     </div>
 
                     <div>
-                        <label for="wanderer_map_slug" class="block text-xs font-medium text-white mb-1">
+                        <label for="wanderer_map_slug" class="block text-xs font-medium text-white">
                             Map-Slug
                         </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Kurzname der Map aus der Wanderer-URL.</p>
                         <input type="text" id="wanderer_map_slug" name="wanderer_map_slug" data-wanderer-connection-test-target="slug" value="{{ settings.wanderer_map_slug }}" placeholder="keepers-of-duat" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        <p class="text-[11px] text-eve-muted mt-1">Kurzname der Map aus der Wanderer-URL.</p>
                     </div>
 
                     <div>
-                        <label for="wanderer_api_key" class="block text-xs font-medium text-white mb-1">
+                        <label for="wanderer_api_key" class="block text-xs font-medium text-white">
                             Map-API-Key
                         </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Die Toolbox fragt damit jede Minute neue Verbindungen ab und prüft die Routenregeln.</p>
                         <input type="text" id="wanderer_api_key" name="wanderer_api_key" data-wanderer-connection-test-target="key" value="{{ settings.wanderer_api_key }}" placeholder="API-Key aus den Map-Einstellungen" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        <p class="text-[11px] text-eve-muted mt-1">Die Toolbox fragt damit jede Minute neue Verbindungen ab und prüft die Routenregeln.</p>
                         <button type="button" data-wanderer-connection-test-target="button" data-action="wanderer-connection-test#test" class="mt-2 w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-white py-1.5 px-4 rounded-lg transition-all text-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait">
                             Verbindung testen
                         </button>
