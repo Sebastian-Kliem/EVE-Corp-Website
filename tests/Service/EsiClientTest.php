@@ -231,6 +231,85 @@ class EsiClientTest extends TestCase
         $this->assertSame(2, $httpClient->getRequestsCount());
     }
 
+    public function testRevokedRefreshTokenMarksCharacterInvalidWithHourlyRetry(): void
+    {
+        $clock = new MockClock(self::DEFAULT_TIME, 'UTC');
+        $esiClient = $this->_createClient(new MockHttpClient(new MockResponse('{"error":"invalid_grant","error_description":"Invalid refresh token."}', ['http_code' => 400])), clock: $clock);
+        $character = $this->_createCharacter([]);
+
+        $this->assertFalse($esiClient->refreshToken($character));
+
+        $this->assertFalse($character->isTokenValid());
+        $this->assertEquals($clock->now()->modify('+1 hour'), $character->getTokenRetryAt());
+    }
+
+    public function testRevokedTokenIsRetriedOnlyAfterRetryTime(): void
+    {
+        $clock = new MockClock(self::DEFAULT_TIME, 'UTC');
+        $requestCount = 0;
+        $httpClient = new MockHttpClient(function () use (&$requestCount) {
+            $requestCount++;
+            return new MockResponse('{"access_token":"new-access-token","refresh_token":"new-refresh-token","expires_in":1199}');
+        });
+        $esiClient = $this->_createClient($httpClient, clock: $clock);
+        $character = $this->_createCharacter([]);
+        $character->markTokenRevoked($clock->now()->modify('+30 minutes'));
+
+        $this->assertFalse($esiClient->refreshToken($character));
+        $this->assertSame(0, $requestCount);
+
+        $clock->modify('+31 minutes');
+        $this->assertTrue($esiClient->refreshToken($character));
+        $this->assertSame(1, $requestCount);
+        $this->assertTrue($character->isTokenValid());
+        $this->assertNull($character->getTokenRetryAt());
+    }
+
+    public function testRejectedApplicationCredentialsKeepCharacterValid(): void
+    {
+        $esiClient = $this->_createClient(new MockHttpClient(new MockResponse('{"error":"invalid_client","error_description":"Client authentication failed."}', ['http_code' => 401])));
+        $character = $this->_createCharacter([]);
+
+        $this->assertFalse($esiClient->refreshToken($character));
+
+        $this->assertTrue($character->isTokenValid());
+        $this->assertNull($character->getTokenRetryAt());
+    }
+
+    public function testTemporarySsoFailuresKeepCharacterValid(): void
+    {
+        $responses = [
+            new MockResponse('{"error":"Service unavailable"}', ['http_code' => 503]),
+            new MockResponse('', ['error' => 'Idle timeout reached for "https://login.eveonline.com/v2/oauth/token".']),
+            new MockResponse('{"error":"invalid_request"}', ['http_code' => 400]),
+        ];
+        $esiClient = $this->_createClient(new MockHttpClient($responses));
+        $character = $this->_createCharacter([]);
+
+        foreach ($responses as $ignored) {
+            $this->assertFalse($esiClient->refreshToken($character));
+            $this->assertTrue($character->isTokenValid());
+        }
+    }
+
+    public function testEsiUnauthorizedWithFailedRefreshDoesNotInvalidateToken(): void
+    {
+        $esiClient = $this->_createClient(new MockHttpClient([
+            new MockResponse('{"error":"token is expired"}', ['http_code' => 401]),
+            new MockResponse('{"error":"Service unavailable"}', ['http_code' => 503]),
+        ]));
+        $character = $this->_createCharacter([]);
+
+        try {
+            $esiClient->request('GET', 'characters/123/skills/', [], $character);
+            $this->fail('Expected the original 401 to be rethrown');
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            $this->assertSame(401, $e->getResponse()->getStatusCode());
+        }
+
+        $this->assertTrue($character->isTokenValid());
+    }
+
     private function _createExpiringResponse(string $body, MockClock $clock): MockResponse
     {
         $expiresAt = $clock->now()->modify('+60 seconds')->getTimestamp();

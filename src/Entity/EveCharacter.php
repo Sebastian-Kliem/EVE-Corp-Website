@@ -68,6 +68,10 @@ class EveCharacter
     #[ORM\Column(type: 'boolean', options: ['default' => true])]
     private bool $tokenValid = true;
 
+    // Next refresh attempt for a revoked token, so a wrongly revoked token recovers by itself
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $tokenRetryAt = null;
+
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $roles = [];
 
@@ -328,8 +332,33 @@ class EveCharacter
     public function setTokenValid(bool $tokenValid): static
     {
         $this->tokenValid = $tokenValid;
+        if ($tokenValid) {
+            $this->tokenRetryAt = null;
+        }
 
         return $this;
+    }
+
+    public function markTokenRevoked(\DateTimeImmutable $retryAt): static
+    {
+        $this->tokenValid = false;
+        $this->tokenRetryAt = $retryAt;
+
+        return $this;
+    }
+
+    public function getTokenRetryAt(): ?\DateTimeImmutable
+    {
+        return $this->tokenRetryAt;
+    }
+
+    public function isTokenRefreshAllowed(?\DateTimeImmutable $now = null): bool
+    {
+        if ($this->tokenValid || $this->tokenRetryAt === null) {
+            return true;
+        }
+
+        return $this->tokenRetryAt <= ($now ?? new \DateTimeImmutable());
     }
 
     public function getRoles(): array

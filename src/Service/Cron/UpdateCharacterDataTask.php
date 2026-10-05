@@ -40,7 +40,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
     {
         $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
         /** @var EveCharacter[] $characters */
-        $characters = $characterRepository->findAll();
+        $characters = $characterRepository->findSyncableCharacters();
 
         $this->logger->info(sprintf('[Cron] Starting sync-wallet-assets for %d characters.', count($characters)));
 

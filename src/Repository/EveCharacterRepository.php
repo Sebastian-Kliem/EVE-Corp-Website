@@ -17,6 +17,21 @@ class EveCharacterRepository extends ServiceEntityRepository
     }
 
     /**
+     * Characters the cron tasks should sync: valid tokens plus revoked ones whose hourly retry is due.
+     *
+     * @return EveCharacter[]
+     */
+    public function findSyncableCharacters(?\DateTimeImmutable $now = null): array
+    {
+        return $this->createQueryBuilder('c')
+            ->where('c.refreshToken IS NOT NULL')
+            ->andWhere('c.tokenValid = true OR c.tokenRetryAt IS NULL OR c.tokenRetryAt <= :now')
+            ->setParameter('now', $now ?? new \DateTimeImmutable())
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Finds all characters currently marked as online.
      *
      * @return EveCharacter[]
