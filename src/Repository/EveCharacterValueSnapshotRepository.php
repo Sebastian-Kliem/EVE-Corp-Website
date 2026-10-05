@@ -15,17 +15,4 @@ class EveCharacterValueSnapshotRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, EveCharacterValueSnapshot::class);
     }
-
-    /**
-     * Purges snapshots older than a specific date.
-     */
-    public function purgeOldSnapshots(\DateTimeImmutable $cutoffDate): int
-    {
-        return $this->createQueryBuilder('s')
-            ->delete()
-            ->where('s.snapshotDate < :cutoffDate')
-            ->setParameter('cutoffDate', $cutoffDate)
-            ->getQuery()
-            ->execute();
-    }
 }

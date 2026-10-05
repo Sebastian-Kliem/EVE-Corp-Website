@@ -9,8 +9,6 @@ import './styles/app.css';
 
 import './react.js';
 
-console.log('This log comes from assets/app.js - welcome to AssetMapper! 🎉');
-
 // Global clipboard copy helper with fallback for insecure contexts
 window.copyToClipboard = function(text, element) {
     if (element.dataset.original) return;
