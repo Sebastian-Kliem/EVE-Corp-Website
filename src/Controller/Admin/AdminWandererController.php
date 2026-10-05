@@ -9,6 +9,7 @@ use App\Service\Discord\Model\DiscordColor;
 use App\Service\Discord\Model\DiscordEmbed;
 use App\Service\Discord\Model\DiscordMessage;
 use App\Service\SdeService;
+use App\Service\Wanderer\WandererApiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -60,6 +61,21 @@ class AdminWandererController extends AbstractController
 
         $this->addFlash('success', 'Wanderer-Integrationseinstellungen wurden erfolgreich gespeichert.');
         return $this->redirectToRoute('app_admin_wanderer_index');
+    }
+
+    // Tests the values currently in the form without saving them
+    #[Route('/test-connection', name: 'app_admin_wanderer_test_connection', methods: ['POST'])]
+    public function testConnection(Request $request, WandererApiClient $wandererApiClient): JsonResponse
+    {
+        if (!$this->isCsrfTokenValid('wanderer_connection_test', $request->request->get('_token'))) {
+            return new JsonResponse(['success' => false, 'message' => 'Ungültiges CSRF-Token. Bitte die Seite neu laden.'], Response::HTTP_FORBIDDEN);
+        }
+
+        return new JsonResponse($wandererApiClient->testConnection(
+            (string)$request->request->get('wanderer_api_url', ''),
+            (string)$request->request->get('wanderer_map_slug', ''),
+            (string)$request->request->get('wanderer_api_key', '')
+        ));
     }
 
     #[Route('/rule/create', name: 'app_admin_wanderer_create_rule', methods: ['POST'])]
