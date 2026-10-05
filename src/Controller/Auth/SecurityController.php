@@ -3,7 +3,6 @@
 namespace App\Controller\Auth;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
@@ -32,11 +31,8 @@ class SecurityController extends AbstractController
     }
 
     #[Route(path: '/login/success', name: 'app_login_success')]
-    public function loginSuccess(Request $request): Response
+    public function loginSuccess(): Response
     {
-        $redirect = $request->query->get('redirect');
-        return $this->render('auth/security/login_success.html.twig', [
-            'redirect_url' => $redirect,
-        ]);
+        return $this->render('auth/security/login_success.html.twig');
     }
 }

@@ -1,7 +1,5 @@
 import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import ItemAutocomplete from './components/Form/ItemAutocomplete';
-import UserAutocomplete from './components/Form/UserAutocomplete';
 import CharacterAssets from './components/Assets/CharacterAssets';
 import AssetsOverview from './components/Assets/AssetsOverview';
 import CorpAssetsOverview from './components/Assets/CorpAssetsOverview';
@@ -24,8 +22,6 @@ import OrderListManager from './components/Corp/OrderListManager';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
-    ItemAutocomplete,
-    UserAutocomplete,
     CharacterAssets,
     AssetsOverview,
     CorpAssetsOverview,

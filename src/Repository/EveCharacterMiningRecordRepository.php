@@ -15,17 +15,4 @@ class EveCharacterMiningRecordRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, EveCharacterMiningRecord::class);
     }
-
-    /**
-     * Clears all mining records for a given character ID.
-     */
-    public function clearMiningRecordsForCharacter(int $characterId): void
-    {
-        $this->createQueryBuilder('r')
-            ->delete()
-            ->where('r.character = :charId')
-            ->setParameter('charId', $characterId)
-            ->getQuery()
-            ->execute();
-    }
 }

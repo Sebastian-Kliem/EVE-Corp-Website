@@ -30,15 +30,6 @@ doctrine:
                         dir: '%kernel.project_dir%/src/Entity'
                         prefix: 'App\Entity'
                         alias: App
-            sde:
-                connection: sde
-                mappings:
-                    Sde:
-                        type: attribute
-                        is_bundle: false
-                        dir: '%kernel.project_dir%/src/EntitySde'
-                        prefix: 'App\EntitySde'
-                        alias: Sde
         controller_resolver:
             auto_mapping: false
 
