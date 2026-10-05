@@ -17,14 +17,6 @@
         Wenn neue Zitadellen oder Stationen hinzukommen, sind diese standardmäßig für andere unsichtbar, bis sie hier freigegeben werden.
     </p>
 
-    <!-- Flash Messages -->
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            <div class="py-5 px-6 rounded-lg mt-4 mb-4 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% else %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endfor %}
 
     <form action="{{ path('app_admin_corp_assets_visibility') }}" method="POST">
         <input type="hidden" name="_token" value="{{ csrf_token('admin_corp_assets_visibility') }}">

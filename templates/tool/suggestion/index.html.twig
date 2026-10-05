@@ -10,14 +10,6 @@
         </h1>
     </div>
 
-    <!-- Flash Messages -->
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            <div class="border border-eve-border bg-eve-card rounded-lg p-5 mb-6 relative {{ label == 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' : (label == 'danger' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-green-500/10 border-green-500/30 text-green-400') }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endfor %}
 
     <!-- Create Suggestion Details Box -->
     <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-hidden mb-6 max-w-[720px] group" {% if app.request.method == 'POST' and not app.session.flashBag.has('success') %}open{% endif %}>

@@ -9,18 +9,6 @@
         Charakterübersicht
     </h1>
 
-    <!-- Flash Messages -->
-    {% for message in app.flashes('success') %}
-        <div class="py-5 px-6 rounded-lg mb-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-            ✔️ {{ message }}
-        </div>
-    {% endfor %}
-    {% for message in app.flashes('error') %}
-        <div class="py-5 px-6 rounded-lg mb-6 bg-rose-500/10 border border-rose-500/30 text-rose-400">
-            ❌ {{ message }}
-        </div>
-    {% endfor %}
-
     <!-- EVE Online Accounts & Characters Box -->
     <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve p-6 rounded-lg mt-6">
         <div class="flex justify-between items-center mb-4 pb-4 border-b border-eve-border">
