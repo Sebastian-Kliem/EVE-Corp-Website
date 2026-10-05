@@ -61,10 +61,13 @@ html, body {
   --theme-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Layered so spacing utilities with zero specificity (space-y-*, space-x-*) still apply */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 /* Layout container width rules */
