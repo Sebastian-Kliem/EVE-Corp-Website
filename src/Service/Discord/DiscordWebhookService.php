@@ -31,7 +31,6 @@ class DiscordWebhookService
         'discord_ping_role_structure_defense' => 'ping_defense',
         'discord_ping_role_fuel' => 'ping_fuel',
         'discord_ping_role_wanderer' => 'ping_wanderer',
-        'wanderer_webhook_secret' => 'wanderer_secret',
         'wanderer_api_url' => 'wanderer_api_url',
         'wanderer_map_slug' => 'wanderer_map_slug',
         'wanderer_api_key' => 'wanderer_api_key',
@@ -183,14 +182,6 @@ class DiscordWebhookService
         }
 
         return '<@&' . $role . '>';
-    }
-
-    /**
-     * Returns the configured Wanderer Webhook secret for HMAC signature verification.
-     */
-    public function getWandererSecret(): ?string
-    {
-        return $this->getSetting('wanderer_webhook_secret');
     }
 
     /**

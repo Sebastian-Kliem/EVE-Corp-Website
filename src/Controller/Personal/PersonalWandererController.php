@@ -111,7 +111,6 @@ class PersonalWandererController extends AbstractController
         $targetSystemInput = trim((string)$request->request->get('target_system'));
         $maxJumps = (int)$request->request->get('max_jumps', 10);
         $securityMode = (string)$request->request->get('security_mode', WandererRouteRule::SEC_MODE_HIGHSEC_ONLY);
-        $cooldownMinutes = (int)$request->request->get('cooldown_minutes', 180);
 
         if ($name === '' || $targetSystemInput === '') {
             $this->addFlash('error', 'Bitte Name und Zielsystem angeben.');
@@ -131,7 +130,6 @@ class PersonalWandererController extends AbstractController
         $rule->setTargetSolarSystemName($targetSystem['name']);
         $rule->setMaxJumps(max(1, min(50, $maxJumps)));
         $rule->setSecurityMode($securityMode);
-        $rule->setCooldownMinutes(max(0, $cooldownMinutes));
         $rule->setIsActive(true);
 
         $this->entityManager->persist($rule);

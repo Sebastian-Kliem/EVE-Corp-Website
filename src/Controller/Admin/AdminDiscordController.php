@@ -57,7 +57,6 @@ class AdminDiscordController extends AbstractController
             'discord_ping_role_structure_defense' => $request->request->get('discord_ping_role_structure_defense'),
             'discord_ping_role_fuel' => $request->request->get('discord_ping_role_fuel'),
             'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
-            'wanderer_webhook_secret' => $request->request->get('wanderer_webhook_secret'),
         ];
 
         $this->discordWebhookService->saveSettings($submittedSettings);

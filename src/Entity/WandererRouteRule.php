@@ -41,9 +41,6 @@ class WandererRouteRule
     #[ORM\Column(type: 'boolean')]
     private bool $isActive = true;
 
-    #[ORM\Column]
-    private int $cooldownMinutes = 180;
-
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastTriggeredAt = null;
 
@@ -148,17 +145,6 @@ class WandererRouteRule
     public function setIsActive(bool $isActive): self
     {
         $this->isActive = $isActive;
-        return $this;
-    }
-
-    public function getCooldownMinutes(): int
-    {
-        return $this->cooldownMinutes;
-    }
-
-    public function setCooldownMinutes(int $cooldownMinutes): self
-    {
-        $this->cooldownMinutes = $cooldownMinutes;
         return $this;
     }
 

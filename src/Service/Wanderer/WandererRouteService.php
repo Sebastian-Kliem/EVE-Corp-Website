@@ -16,8 +16,6 @@ use Psr\Log\LoggerInterface;
 
 class WandererRouteService
 {
-    public const MAX_TIMESTAMP_AGE_SECONDS = 300;
-
     public function __construct(
         private readonly WandererRouteRuleRepository $ruleRepository,
         private readonly EsiClient $esiClient,
@@ -28,80 +26,30 @@ class WandererRouteService
     ) {}
 
     /**
-     * Verifies the HMAC-SHA256 signature sent by Wanderer.
-     */
-    public function verifySignature(string $rawPayload, ?string $signatureHeader, ?string $timestampHeader): bool
-    {
-        $secret = $this->discordWebhookService->getWandererSecret();
-        if (empty($secret)) {
-            // Without a configured secret, requests cannot be authenticated and are rejected
-            $this->logger->warning('[WandererRouteService] No Wanderer webhook secret configured, rejecting request.');
-            return false;
-        }
-
-        if (empty($signatureHeader) || empty($timestampHeader)) {
-            return false;
-        }
-
-        if (!$this->_isTimestampFresh($timestampHeader)) {
-            return false;
-        }
-
-        if (str_starts_with($signatureHeader, 'sha256=')) {
-            $signatureHeader = substr($signatureHeader, 7);
-        }
-
-        $signedData = $timestampHeader . '.' . $rawPayload;
-        $expectedSignature = hash_hmac('sha256', $signedData, $secret);
-
-        return hash_equals($expectedSignature, $signatureHeader);
-    }
-
-    // Rejects replayed requests whose Unix timestamp (seconds) is outside the tolerance window
-    private function _isTimestampFresh(string $timestampHeader): bool
-    {
-        if (!ctype_digit($timestampHeader)) {
-            return false;
-        }
-
-        return abs(time() - (int) $timestampHeader) <= self::MAX_TIMESTAMP_AGE_SECONDS;
-    }
-
-    /**
-     * Processes an incoming Wanderer webhook payload.
+     * Evaluates all active route rules for a new map connection (from the Wanderer API).
      *
-     * @return array<string, mixed> Processing summary
+     * @param array<string, mixed> $connection
+     * @param int[] $alreadyConnectedSystemIds systems that were already reachable on the map, they are not announced again
+     * @return array{processed_systems: int, matched_rules: int, corp_notifications: int, user_notifications: int}
      */
-    public function processWebhookPayload(array $payload): array
+    public function processNewConnection(array $connection, ?string $mapName, array $alreadyConnectedSystemIds = []): array
     {
-        $eventType = $payload['event'] ?? $payload['type'] ?? 'unknown';
-
         $results = [
-            'event' => $eventType,
             'processed_systems' => 0,
             'matched_rules' => 0,
             'corp_notifications' => 0,
             'user_notifications' => 0,
         ];
 
-        // Nur Events mit realer Verbindungsentstehung verarbeiten.
-        // Das bloße händische Anlegen eines Systems ('add_system') besitzt keine Verbindung
-        // und soll keinen unberechtigten Routenalarm auslösen.
-        if ($eventType !== 'connection_added') {
-            $this->logger->info(sprintf(
-                '[WandererRouteService] Event "%s" ignoriert (Routenalarme triggern nur bei "connection_added").',
-                $eventType
-            ));
-            return $results;
+        $discoveredSystems = [];
+        foreach ($this->_extractSolarSystems($connection) as $systemData) {
+            if (!in_array($systemData['id'], $alreadyConnectedSystemIds, true)) {
+                $discoveredSystems[] = $systemData;
+            }
         }
-
-        $discoveredSystems = $this->_extractSolarSystems($payload);
         $results['processed_systems'] = count($discoveredSystems);
-        $mapName = $payload['map']['name'] ?? $payload['map_name'] ?? $payload['map_id'] ?? null;
-        $characterName = $payload['character']['name'] ?? $payload['character_name'] ?? null;
 
         if (empty($discoveredSystems)) {
-            $this->logger->info(sprintf('[WandererRouteService] No solar systems found in event: %s', $eventType));
             return $results;
         }
 
@@ -114,7 +62,7 @@ class WandererRouteService
 
             // Check Corp Rules
             foreach ($corpRules as $rule) {
-                if ($this->_evaluateAndNotify($rule, $solarSystemId, $sourceSystemName, $mapName, $characterName)) {
+                if ($this->_evaluateAndNotify($rule, $solarSystemId, $sourceSystemName, $mapName)) {
                     $results['matched_rules']++;
                     $results['corp_notifications']++;
                 }
@@ -122,7 +70,7 @@ class WandererRouteService
 
             // Check User Rules
             foreach ($userRules as $rule) {
-                if ($this->_evaluateAndNotify($rule, $solarSystemId, $sourceSystemName, $mapName, $characterName)) {
+                if ($this->_evaluateAndNotify($rule, $solarSystemId, $sourceSystemName, $mapName)) {
                     $results['matched_rules']++;
                     $results['user_notifications']++;
                 }
@@ -141,14 +89,8 @@ class WandererRouteService
         WandererRouteRule $rule,
         int $originSolarSystemId,
         ?string $sourceSystemName,
-        ?string $mapName,
-        ?string $characterName
+        ?string $mapName
     ): bool {
-        // Cooldown check
-        if (!$this->_isCooldownPassed($rule, $originSolarSystemId)) {
-            return false;
-        }
-
         // Get origin system info from SDE
         $systemInfo = $this->sdeService->getSolarSystemInfo($originSolarSystemId);
         if (!$systemInfo) {
@@ -188,8 +130,7 @@ class WandererRouteService
             $targetName,
             $jumps,
             $sourceSystemName,
-            $mapName,
-            $characterName
+            $mapName
         );
 
         if ($sent) {
@@ -238,22 +179,6 @@ class WandererRouteService
     }
 
     /**
-     * Checks if cooldown period has passed for the given rule.
-     */
-    private function _isCooldownPassed(WandererRouteRule $rule, int $solarSystemId): bool
-    {
-        $lastTriggered = $rule->getLastTriggeredAt();
-        if ($lastTriggered === null) {
-            return true;
-        }
-
-        $cooldownSeconds = $rule->getCooldownMinutes() * 60;
-        $now = (new \DateTimeImmutable())->getTimestamp();
-
-        return ($now - $lastTriggered->getTimestamp()) >= $cooldownSeconds;
-    }
-
-    /**
      * Builds and sends the Discord notification message.
      */
     private function _sendDiscordNotification(
@@ -262,8 +187,7 @@ class WandererRouteService
         string $targetName,
         int $jumps,
         ?string $sourceSystemName,
-        ?string $mapName,
-        ?string $characterName
+        ?string $mapName
     ): bool {
         $originName = $originSystemInfo['solarSystemName'];
         $originSec = SecurityStatus::toDisplay((float)$originSystemInfo['security']);
@@ -294,9 +218,6 @@ class WandererRouteService
 
         if (!empty($sourceSystemName)) {
             $descriptionLines[] = sprintf('**Verbunden aus:** %s', $sourceSystemName);
-        }
-        if (!empty($characterName)) {
-            $descriptionLines[] = sprintf('**Entdeckt von:** %s', $characterName);
         }
         if (!empty($mapName)) {
             $descriptionLines[] = sprintf('**Wanderer Map:** %s', $mapName);
@@ -341,91 +262,38 @@ class WandererRouteService
     }
 
     /**
-     * Extracts solar system information from various Wanderer event payloads.
+     * Returns both systems of a wormhole connection; stargate connections yield nothing.
      *
-     * @return array<int, array<string, mixed>>
+     * @param array<string, mixed> $connection
+     * @return array<int, array{id: int, source_system_name: ?string}>
      */
-    private function _extractSolarSystems(array $payload): array
+    private function _extractSolarSystems(array $connection): array
     {
-        $systems = [];
-        $data = isset($payload['payload']) && is_array($payload['payload']) ? $payload['payload'] : $payload;
-
-        // Check if payload has direct system object
-        if (isset($data['solar_system_id']) && is_numeric($data['solar_system_id'])) {
-            $systems[] = [
-                'id' => (int)$data['solar_system_id'],
-                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
-            ];
-        } elseif (isset($data['system']['solar_system_id']) && is_numeric($data['system']['solar_system_id'])) {
-            $systems[] = [
-                'id' => (int)$data['system']['solar_system_id'],
-                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
-            ];
-        } elseif (isset($data['system_id']) && is_numeric($data['system_id'])) {
-            $systems[] = [
-                'id' => (int)$data['system_id'],
-                'source_system_name' => $data['source_system_name'] ?? $payload['source_system_name'] ?? null,
-            ];
+        if (!isset($connection['solar_system_source'], $connection['solar_system_target'])
+            || !is_numeric($connection['solar_system_source']) || !is_numeric($connection['solar_system_target'])) {
+            return [];
         }
 
-        // Check if connection is a wormhole connection (reject pure K-space stargate jumps)
-        if ((isset($data['solar_system_target']) || isset($data['solar_system_source'])) && !$this->_isWormholeConnection($data)) {
+        if (!$this->_isWormholeConnection($connection)) {
             $this->logger->info(sprintf(
-                '[WandererRouteService] Ignored connection between %s and %s (not a wormhole exit or chain connection).',
-                $data['solar_system_source'] ?? 'unknown',
-                $data['solar_system_target'] ?? 'unknown'
+                '[WandererRouteService] Ignored connection between %s and %s (not a wormhole connection).',
+                $connection['solar_system_source'],
+                $connection['solar_system_target']
             ));
             return [];
         }
 
-        // Check if payload is a connection event (target system)
-        if (isset($data['solar_system_target']) && is_numeric($data['solar_system_target'])) {
-            $sourceName = $data['from_name'] ?? null;
-            if (!$sourceName && isset($data['solar_system_source']) && is_numeric($data['solar_system_source'])) {
-                $sourceName = $this->sdeService->getLocationName((int)$data['solar_system_source']);
-            }
-            $systems[] = [
-                'id' => (int)$data['solar_system_target'],
-                'source_system_name' => $sourceName,
-            ];
+        $sourceId = (int)$connection['solar_system_source'];
+        $targetId = (int)$connection['solar_system_target'];
+
+        $systems = [
+            ['id' => $targetId, 'source_system_name' => $this->sdeService->getLocationName($sourceId)],
+        ];
+        if ($sourceId !== $targetId) {
+            $systems[] = ['id' => $sourceId, 'source_system_name' => $this->sdeService->getLocationName($targetId)];
         }
 
-        // Check connection event source system (e.g. if jumping into K-space exit from WH)
-        if (isset($data['solar_system_source']) && is_numeric($data['solar_system_source'])) {
-            $targetName = $data['to_name'] ?? null;
-            if (!$targetName && isset($data['solar_system_target']) && is_numeric($data['solar_system_target'])) {
-                $targetName = $this->sdeService->getLocationName((int)$data['solar_system_target']);
-            }
-            $systems[] = [
-                'id' => (int)$data['solar_system_source'],
-                'source_system_name' => $targetName,
-            ];
-        }
-
-        // Check for nested systems array
-        if (isset($data['systems']) && is_array($data['systems'])) {
-            foreach ($data['systems'] as $sys) {
-                $sysId = $sys['solar_system_id'] ?? $sys['id'] ?? null;
-                if (is_numeric($sysId)) {
-                    $systems[] = [
-                        'id' => (int)$sysId,
-                        'source_system_name' => $sys['source_system_name'] ?? null,
-                    ];
-                }
-            }
-        }
-
-        // Deduplicate systems by id
-        $unique = [];
-        $seen = [];
-        foreach ($systems as $s) {
-            if (!in_array($s['id'], $seen, true)) {
-                $seen[] = $s['id'];
-                $unique[] = $s;
-            }
-        }
-
-        return $unique;
+        return $systems;
     }
 
     /**
