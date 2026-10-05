@@ -1,154 +1,118 @@
-# WH-Toolbox 🌌
+# WH-Toolbox
 
-> **Eve Online Corp Tools** – Eine Sammlung von nützlichen Werkzeugen und Systemen für unsere Eve Online Corporation, basierend auf Symfony und Doctrine, kombiniert mit einer modernen React+TypeScript Insellösung für dynamische UI-Komponenten.
-
----
-
-## 🎨 Frontend & Design
-
-### CSS-Styling (Vanilla CSS)
-In diesem Projekt verwenden wir **kein** externes CSS-Framework wie Bootstrap, Bulma oder TailwindCSS. Stattdessen basiert das gesamte Design auf einem maßgeschneiderten, nativen CSS-System.
-- **Zentrale Style-Datei:** Das gesamte Styling ist in `assets/styles/app.css` definiert.
-- **Design-System (EVE Online Sci-Fi Dark Theme):** In `app.css` werden globale CSS-Variablen (`:root`) für Farben, Hintergründe, Rahmen und Schatten verwendet (z. B. `--theme-bg`, `--theme-primary`, `--theme-card-bg`). Das Styling zeichnet sich durch moderne Glassmorphism-Effekte und subtile Sci-Fi-Elemente aus.
-- **Layout-Hilfsklassen:** Es wurden einfache Layout-Hilfsklassen auf Basis von nativem Flexbox und Grid implementiert (z. B. `.container`, `.columns`, `.column`, `.level`), um die UI sauber zu strukturieren.
-- **Theme-Steuerung:** Das Theme wird standardmäßig über das HTML-Attribut `data-theme="dark"` (im Template `templates/base.html.twig`) gesteuert.
+Werkzeuge für die EVE-Online-Corporation *Keepers of Duat* (Wurmloch/J-Space): Corp-Orders, Inventare, Strukturen und Fuel, PI-Planung, Industrie, Bergbau, Performance-Auswertung, Discord- und Wanderer-Integration. Symfony-Backend mit React-Komponenten als Inseln in Twig-Seiten.
 
 ---
 
-## 🛠️ Technologie-Stack
+## Technologie-Stack
 
-- **Backend:** Symfony 7.3 (PHP 8.2+)
-- **Datenbank:** Doctrine ORM (**zwingend MariaDB**, da die Migrationen diese voraussetzen) + SQLite für EVE SDE
-- **Frontend-Pipeline:** Symfony AssetMapper (kein Webpack Encore/Vite im Hauptprojekt nötig!)
-- **Dynamische UI-Komponenten:** React & TypeScript als "Insellösung" (Islands Architecture)
-- **Kommunikation:** Symfony UX Turbo & Stimulus
-
----
-
-## 📂 Projektstruktur & Module
-
-- `src/Entity/LinkCollection/`: Verwaltung von nützlichen Corp-Links (kategorisiert).
-- `src/Entity/Orders/`: Verwaltung von Einkaufs- (Buy) und Verkaufsaufträgen (Sell).
-- `src/Command/`: CLI-Commands für die App-Verwaltung.
-- `react/`: Eigenständiger React/TypeScript-Source für interaktive Komponenten.
-- `templates/`: Symfony Twig-Templates.
+- **Backend:** Symfony 7.4 LTS (PHP 8.2+, im DDEV-Container 8.3)
+- **Datenbank:** Doctrine ORM auf **MariaDB** (die Migrationen setzen MariaDB voraus). Zweite DBAL-Verbindung `sde` auf SQLite (`var/sde.sqlite`, EVE Static Data Export von Fuzzwork)
+- **Frontend:** Symfony AssetMapper und Importmap, Symfony UX Turbo und Stimulus
+- **React-Inseln:** React 18 und TypeScript unter `react/`, mit esbuild nach `assets/react.js` gebündelt
+- **Styling:** Tailwind CSS v4 (CLI). Quelle ist `react/src/input.css` mit eigenem Theme (`--color-eve-*`), Ausgabe `assets/styles/app.css`
+- **EVE-Anbindung:** ESI über `App\Service\Esi\EsiClient` (Cache, Fehlerbudget, Circuit Breaker), EVE SSO nur zum Verknüpfen von Charakteren
+- **Lokale Entwicklung:** DDEV
 
 ---
 
-## 💻 Wichtige CLI-Befehle (Console Commands)
+## Einrichtung (lokal)
 
-Hier findest du eine Übersicht aller spezifischen Commands dieser App:
+```bash
+ddev start
+ddev composer install
+ddev npm install --prefix react
+ddev npm run --prefix react build
+ddev php bin/console app:install
+```
 
-### 1. Installation & SDE-Update
-* **App vollständig installieren:**
-  Richtet die Datenbank ein, führt alle Migrationen aus, lädt die neuesten EVE SDE-Daten herunter und erstellt interaktiv einen Administrator-Benutzer.
-  ```bash
-  ddev php bin/console app:install
-  ```
-  **Ablauf des Installationsprozesses:**
-  1. **Datenbank erstellen:** Legt die Hauptdatenbank an (falls sie noch nicht existiert).
-  2. **Migrationen ausführen:** Führt alle Doctrine-Migrationen aus (benötigt zwingend eine MariaDB).
-  3. **EVE Online SDE initialisieren:** Lädt den neuesten Static Data Export (SQLite) von Fuzzwork herunter und importiert ihn.
-  4. **Administrator erstellen (Interaktiv):**
-     - Wenn die Konsole im interaktiven Modus läuft, fragt das Skript nacheinander nach einem **Admin-Benutzernamen** (Vorschlag: `admin`) und einem **Admin-Passwort** (verdeckte Eingabe).
-     - Bei der Ausführung im nicht-interaktiven Modus (z. B. mit `--no-interaction`) wird dieser Schritt automatisch übersprungen.
+`app:install` legt die Datenbank an, führt die Migrationen aus, lädt die SDE, fragt interaktiv einen ersten Administrator ab und legt die Tracking-Vorlagen an. Der Befehl ist wiederholbar.
 
-* **EVE Online SDE aktualisieren:**
-  Prüft auf Aktualisierungen des EVE Online Static Data Exports (SQLite von Fuzzwork) und lädt diesen bei Bedarf herunter.
-  ```bash
-  ddev php bin/console app:sde:update
-  ```
-  *Optionen:*
-  - `-f` / `--force`: Update erzwingen (ignoriert gecachte Checksummen).
-  - `-u <URL>` / `--url=<URL>`: Alternative Download-Quelle für das `sqlite.bz2`-File.
-
-### 2. Benutzer- & Rechteverwaltung
-Das Projekt verfügt über ein mehrstufiges Rechtesystem:
-- **`ROLE_RECRUIT`**: Rekrut (Standard nach Erstellung).
-- **`ROLE_MEMBER`**: Normales Corp-Mitglied (Zugriff auf internen Bereich).
-- **`ROLE_OFFICER`**: Offizier.
-- **`ROLE_CEO`**: CEO.
-- **`ROLE_ADMIN`**: Administrator (darf alle Rollen verwalten).
-
-* **Benutzer erstellen:**
-  ```bash
-  ddev php bin/console app:create-user <username> <password> [<role>]
-  ```
-  *(Erstellt einen Benutzer direkt über die CLI mit optionaler Rolle - Standard ist `ROLE_RECRUIT`)*
-* **Rolle nachträglich zuweisen (Promotion):**
-  ```bash
-  ddev php bin/console app:promote-user <username> <role>
-  ```
-* **Passwort zurücksetzen (Notfall-CLI):**
-  ```bash
-  ddev php bin/console app:reset-password <username> [<new-password>]
-  ```
-  *(Setzt das Passwort eines Benutzers zurück. Wenn kein Wunschpasswort angegeben wird, generiert das Command ein zufälliges temporäres Passwort.)*
-
-### 3. React/TypeScript "Islands" Development
-Die React-Komponenten liegen unter `react/` und werden via Esbuild direkt in den Symfony AssetMapper kompiliert.
-* **Einmalige Einrichtung:**
-  ```bash
-  cd react && npm install
-  ```
-* **Entwicklung (Watcher starten – Hot-Rebuild in < 40ms):**
-  ```bash
-  ddev npm run watch
-  ```
-* **Produktions-Build (optimiert):**
-  ```bash
-  ddev npm run build
-  ```
-* **Komponenten in Twig einbinden:**
-  ```twig
-  {{ react_component('MyComponent', { 'propName': 'Value' }) }}
-  ```
+Lokale Secrets (z. B. `ESI_TOKEN_KEY`, EVE-SSO-Zugangsdaten, Discord-Webhooks) gehören in `.env.local`, nicht in `.env`.
 
 ---
 
-## 👥 Rechte- & Rollenkonzept (Nutzerverwaltung)
+## Wichtige Befehle
 
-Dieses Projekt steuert den Zugriff auf die verschiedenen Bereiche und Corp-Tools über ein mehrstufiges, hierarchisches Symfony-Rechtesystem. Höhere Rollen erben automatisch alle Rechte der untergeordneten Rollen.
+### Backend
 
-### 1. Rollen-Hierarchie
-Die Rollen sind wie folgt von unten nach oben hierarchisch strukturiert (eine Rolle rechts erbt alle Berechtigungen der Rollen links davon):
-`ROLE_USER` ➔ `ROLE_RECRUIT` ➔ `ROLE_MEMBER` ➔ `ROLE_OFFICER` ➔ `ROLE_CEO` ➔ `ROLE_ADMIN`
+| Zweck | Befehl |
+| :--- | :--- |
+| Installation / Update | `ddev php bin/console app:install` |
+| SDE aktualisieren | `ddev php bin/console app:sde:update [--force] [--url=<url>]` |
+| Cron-Lauf (alle fälligen Jobs) | `ddev php bin/console app:cron:run` |
+| Einzelnen Cron-Job erzwingen | `ddev php bin/console app:cron:run --job=<command>` |
+| Benutzer anlegen | `ddev php bin/console app:create-user <username> <password> [<role>]` |
+| Rolle setzen | `ddev php bin/console app:promote-user <username> <role>` |
+| Passwort zurücksetzen | `ddev php bin/console app:reset-password <username> [<password>]` |
+| Discord-Webhook testen | `ddev php bin/console app:discord:test [<channel>]` |
+| Tracking-Vorlagen anlegen | `ddev php bin/console app:seed:tracking-templates` |
+| Tests | `ddev php bin/phpunit` |
 
-### 2. Berechtigungen (Wer darf was?)
+Ohne Passwort generiert `app:reset-password` ein zufälliges temporäres Passwort.
 
-| Bereich / URL | Mindestrolle | Beschreibung & Berechtigungen |
-| :--- | :--- | :--- |
-| **Öffentlicher Bereich** (`/login`, `/api/login`) | *Jeder (Anonym)* | Login-Seiten und API-Authentifizierung. |
-| **Eigenes Profil** (`/profile`) | `IS_AUTHENTICATED_FULLY` | Zugriff auf das eigene Benutzerprofil. |
-| **Rekruten** (`ROLE_RECRUIT` / `ROLE_USER`) | `ROLE_RECRUIT` | Kann sich anmelden und sein Profil einsehen, hat aber **keinen** Zugriff auf interne Corp-Tools. |
-| **Interne Corp-Tools** (`/link`, `/order`) | `ROLE_MEMBER` | Vollwertiges Mitglied. Hat Zugriff auf die Linksammlung sowie Kauf- und Verkaufsaufträge (Orders). |
-| **REST-API** (`/api/*`) | `ROLE_MEMBER` | Zugriff auf die statuslosen API-Endpunkte (z. B. für externe Tools oder Corp-Skripte). |
-| **Admin-Bereich** (`/admin/*`) | `ROLE_OFFICER` | Zugriff auf administrative Oberflächen und Verwaltungs-Tools. Gilt auch für `ROLE_CEO` und `ROLE_ADMIN`. |
+### Frontend
+
+| Zweck | Befehl |
+| :--- | :--- |
+| Build (CSS und JS) | `ddev npm run --prefix react build` |
+| Watcher während der Entwicklung | `ddev npm run --prefix react watch` |
+| Typprüfung | `ddev exec --dir /var/www/html/react npx tsc --noEmit` |
+
+`assets/react.js` und `assets/styles/app.css` sind Build-Artefakte und nicht versioniert.
+
+React-Komponenten werden in `react/src/index.tsx` registriert und in Twig eingebunden:
+
+```twig
+{{ react_component('MyComponent', { propName: 'Value' }) }}
+```
 
 ---
 
-## 💡 Entwickler-Tipps & Best Practices
+## Rollen und Zugriff
 
-### 🔒 Sicherheit & Authentifizierung
-- **Web-Routen:** Normale Web-Seiten nutzen die standardmäßige Cookie-basierte Symfony Session-Security.
-- **API-Routen (`/api/*`):** Diese sind statuslos und werden über **JWS/JWT (HS256)** gesichert (Signierung mittels `APP_SECRET` aus der `.env`).
-  - *Token abfragen:* `POST /api/login` mit JSON `{"email":"...", "password":"..."}`
-  - *Token mitsenden:* Header `Authorization: Bearer <token>` bei Anfragen an `/api/*`
+Hierarchie (`config/packages/security.yaml`), höhere Rollen erben alle niedrigeren:
 
-### 🛡️ DSGVO-Konformität & Lokale Ressourcen
-- **CSS & Fonts:** Alle CSS- und Styling-Ressourcen liegen zu 100% lokal im Projekt vor (`assets/styles/`). Es werden keine externen CDNs oder Google-Fonts geladen.
-- **EVE Online Asset-Bilder (Image-Proxy):** Um zu verhindern, dass die IP-Adresse der Benutzer an fremde Server (wie den CCP Image Server) übertragen wird, verwenden wir einen lokalen **Image-Proxy** mit On-Demand Caching.
-  - **Route:** `/eve/image/{category}/{id}/{action}?size={size}`
-  - **Verwendung:** Statt `https://images.evetech.net/types/34/icon` fragt das Frontend `/eve/image/types/34/icon?size=64` an.
-  - **Funktionsweise:** Unser Server lädt das Bild im Hintergrund von CCP herunter, speichert es unter `var/eve_image_cache/` und liefert es direkt aus. Nach dem ersten Abruf beträgt die Ladezeit 0ms externe Latenz.
+`ROLE_USER` < `ROLE_RECRUIT` < `ROLE_MEMBER` < `ROLE_OFFICER` < `ROLE_CEO` < `ROLE_ADMIN`
 
-### 🎨 Styling & Layouts
-- **Keine Inline-Styles:** Schreibe nach Möglichkeit kein Inline-CSS. Nutze stattdessen die in `assets/styles/app.css` bereitgestellten CSS-Variablen und Layout-Klassen.
-- **Layouts & Grids:** Verwende `.columns` und `.column` (mit Modifikatoren wie `.is-half` oder `.is-one-third`) für mehrspaltige Layouts und `.level` zur horizontalen Ausrichtung.
-- **Formulare & Karten:** Verwende Klassen wie `.card`, `.button`, `.input` und `.textarea`, um Formulare und Container im passenden EVE Sci-Fi-Stil anzuzeigen.
+Neue Konten über `/register` starten als `ROLE_RECRUIT` und sehen nur Startseite und Profil, bis ein Officer sie freischaltet.
 
-### 📝 Sprache & Code-Richtlinien
-- **Kommunikation im CLI:** Deutsch.
-- **Code-Kommentare:** Englisch.
-- **Commit-Messages:** Englisch.
-- **i-doit Module (falls zutreffend):** Standardpfad unter `src/classes/modules/` mit passenden Präfixen.
+| Bereich | Mindestrolle |
+| :--- | :--- |
+| `/personal/profile` | eingeloggt |
+| `/personal`, `/corp`, `/general`, `/auth/eve`, `/online-status` | `ROLE_MEMBER` |
+| `/admin` | `ROLE_OFFICER` (Cron-Jobs, Webhooks, Wanderer, Hangar-Sichtbarkeit: `ROLE_CEO`) |
+
+`access_control` setzt die Grundregel je Bereich, Feinheiten regeln `#[IsGranted]`-Attribute an den Controllern.
+
+---
+
+## Authentifizierung
+
+- **Website:** Username und Passwort mit Session (Remember-me), Login-Throttling.
+- **API (`/api/*`):** zustandslos per JWT (HS256, signiert mit `APP_SECRET`, 1 h gültig). Token über `POST /api/login` oder in Twig per `jwt_token(app.user)` für React-Props. Ausnahme: `/api/orders/*` läuft über die Session.
+- **EVE SSO:** verknüpft Charaktere mit einem Benutzer. Access- und Refresh-Tokens liegen verschlüsselt in der Datenbank (Schlüssel `ESI_TOKEN_KEY`). Geht der Schlüssel verloren, müssen alle Charaktere neu verknüpft werden.
+
+---
+
+## Hintergrund-Jobs
+
+Der Server ruft alle paar Minuten `app:cron:run` auf. Welche Jobs es gibt, wann sie fällig sind und wie der letzte Lauf ausging, steht in der Datenbank und ist unter `/admin/cron` sichtbar (dort lassen sich Jobs auch manuell starten). Das Protokoll liegt in `var/log/cron.log`.
+
+---
+
+## Datenschutz: EVE-Bilder
+
+EVE-Bilder werden über einen lokalen Proxy mit Cache ausgeliefert, damit Browser keine Anfragen an CCP-Server schicken:
+
+- Route: `/eve/image/{category}/{id}/{action}?size={size}`, z. B. `/eve/image/types/34/icon?size=64`
+- Cache: `var/eve_image_cache/`
+
+---
+
+## Konventionen
+
+- Kommentare im Code und Commit-Messages auf Englisch
+- Styling mit Tailwind-Utility-Klassen, möglichst keine Inline-Styles
+- Datenbankänderungen nur über Doctrine-Migrationen (`ddev php bin/console make:migration`)
+- Deploy: Merge nach `main` wird nach grüner CI auf dem Produktionsserver ausgerollt
