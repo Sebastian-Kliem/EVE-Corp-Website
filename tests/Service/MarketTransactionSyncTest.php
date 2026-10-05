@@ -4,7 +4,10 @@ namespace App\Tests\Service;
 
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterMarketTransaction;
+use App\Entity\EveCharacterWalletJournalEntry;
 use App\Repository\EveCharacterAssetRepository;
+use App\Repository\EveCharacterMarketTransactionRepository;
+use App\Repository\EveCharacterWalletJournalEntryRepository;
 use App\Repository\EveCorporationAssetRepository;
 use App\Service\Cron\UpdateCharacterDataTask;
 use App\Service\Esi\EsiClient;
@@ -12,7 +15,6 @@ use App\Service\JitaPriceService;
 use App\Service\PersonalCorpAssetService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -42,10 +44,9 @@ class MarketTransactionSyncTest extends TestCase
             return $page;
         });
 
-        $transactionRepository = $this->createStub(EntityRepository::class);
-        $transactionRepository->method('findOneBy')->willReturnCallback(function (array $criteria) use (&$persistedIds): ?object {
-            // @phpstan-ignore isset.offset ($persistedIds is filled by reference during the sync)
-            return isset($persistedIds[$criteria['transactionId']]) ? new \stdClass() : null;
+        $transactionRepository = $this->createStub(EveCharacterMarketTransactionRepository::class);
+        $transactionRepository->method('findExistingTransactionIds')->willReturnCallback(function (EveCharacter $character, array $transactionIds) use (&$persistedIds): array {
+            return array_intersect_key($persistedIds, array_flip($transactionIds));
         });
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
@@ -56,16 +57,7 @@ class MarketTransactionSyncTest extends TestCase
             }
         });
 
-        $task = new UpdateCharacterDataTask(
-            $entityManager,
-            $esiClient,
-            $this->createStub(EveCharacterAssetRepository::class),
-            $this->createStub(EveCorporationAssetRepository::class),
-            $this->createStub(SdeService::class),
-            new NullLogger(),
-            $this->createStub(JitaPriceService::class),
-            $this->createStub(PersonalCorpAssetService::class)
-        );
+        $task = $this->_createTask($entityManager, $esiClient);
 
         $character = new EveCharacter();
         $character->setId(123);
@@ -75,6 +67,70 @@ class MarketTransactionSyncTest extends TestCase
 
         $this->assertCount(count($allTransactionIds), $persistedIds);
         $this->assertSame([null, '4501', '2002'], $requestedFromIds);
+    }
+
+    public function testWalletJournalInsertsOnlyNewEntriesWithOneLookupPerPage(): void
+    {
+        $storedRefIds = ['3' => true, '2' => true, '1' => true];
+        $lookupCount = 0;
+        $insertedRefIds = [];
+
+        $esiClient = $this->createStub(EsiClient::class);
+        $esiClient->method('requestWithHeaders')->willReturn([
+            'data' => [$this->_createJournalEntry(5), $this->_createJournalEntry(4), $this->_createJournalEntry(3), $this->_createJournalEntry(2)],
+            'headers' => ['x-pages' => ['3']],
+        ]);
+
+        $journalRepository = $this->createStub(EveCharacterWalletJournalEntryRepository::class);
+        $journalRepository->method('findExistingRefIds')->willReturnCallback(function (EveCharacter $character, array $refIds) use ($storedRefIds, &$lookupCount): array {
+            $lookupCount++;
+            return array_intersect_key($storedRefIds, array_flip($refIds));
+        });
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($journalRepository);
+        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$insertedRefIds): void {
+            if ($entity instanceof EveCharacterWalletJournalEntry) {
+                $insertedRefIds[] = $entity->getRefId();
+            }
+        });
+
+        $character = new EveCharacter();
+        $character->setId(123);
+        $character->setName('Trader');
+
+        $task = $this->_createTask($entityManager, $esiClient);
+        (new \ReflectionMethod($task, 'syncWalletJournal'))->invoke($task, $character);
+
+        // Known entries stop the paging, so page 2 is never requested
+        $this->assertSame(['5', '4'], $insertedRefIds);
+        $this->assertSame(1, $lookupCount);
+    }
+
+    private function _createTask(EntityManagerInterface $entityManager, EsiClient $esiClient): UpdateCharacterDataTask
+    {
+        return new UpdateCharacterDataTask(
+            $entityManager,
+            $esiClient,
+            $this->createStub(EveCharacterAssetRepository::class),
+            $this->createStub(EveCorporationAssetRepository::class),
+            $this->createStub(SdeService::class),
+            new NullLogger(),
+            $this->createStub(JitaPriceService::class),
+            $this->createStub(PersonalCorpAssetService::class)
+        );
+    }
+
+    private function _createJournalEntry(int $refId): array
+    {
+        return [
+            'id' => $refId,
+            'date' => '2026-10-01T12:00:00Z',
+            'ref_type' => 'bounty_prizes',
+            'amount' => 1000.0,
+            'balance' => 5000.0,
+            'description' => 'Bounty',
+        ];
     }
 
     private function _createTransaction(int $transactionId): array
