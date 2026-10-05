@@ -9,13 +9,6 @@
         Mein Profil
     </h1>
 
-    <!-- Flash Messages -->
-    {% for message in app.flashes('success') %}
-        <div class="py-5 px-6 rounded-lg mb-6 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-            ✔️ {{ message }}
-        </div>
-    {% endfor %}
-
     <!-- Profile Details Box -->
     <details class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-0 overflow-hidden mt-6 group" id="profile-details" {% if errors is not empty %}open{% endif %}>
         <summary class="p-5 font-semibold cursor-pointer list-none flex justify-between items-center select-none transition-colors duration-200 text-lg text-white">

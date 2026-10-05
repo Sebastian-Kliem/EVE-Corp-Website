@@ -31,24 +31,16 @@
         </div>
     </div>
 
-    <!-- Flash Messages -->
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            {% if label == 'success_temp_password' %}
-                <div class="border-2 border-[#48c78e] bg-[#48c78e]/15 text-white py-5 px-6 rounded-lg mt-4 mb-4">
-                    <p class="text-lg font-semibold mb-2 text-emerald-400">🔑 Temporäres Passwort generiert!</p>
-                    <p class="mt-2">Das Passwort für <strong>{{ message.displayName }}</strong> ({{ message.username }}) wurde erfolgreich zurückgesetzt.</p>
-                    <div class="bg-black/40 border border-dashed border-[#48c78e] p-3 rounded-lg mt-3 mb-2 text-center">
-                        <span class="text-2xl font-bold font-mono text-eve-primary">{{ message.password }}</span>
-                    </div>
-                    <p class="text-xs text-amber-400">⚠️ WICHTIG: Dieses Passwort wird nur dieses eine Mal angezeigt. Bitte kopiere es jetzt und teile es dem Benutzer vertraulich (z. B. per Discord-DM) mit!</p>
-                </div>
-            {% else %}
-                <div class="py-5 px-6 rounded-lg mt-4 mb-4 border {% if label == 'error' %}bg-rose-500/10 border-rose-500/30 text-rose-400{% else %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% endif %}">
-                    {{ message }}
-                </div>
-            {% endif %}
-        {% endfor %}
+    <!-- One-time temporary password after a reset (other flashes are shown as toasts by base.html.twig) -->
+    {% for message in app.flashes('success_temp_password') %}
+        <div class="border-2 border-[#48c78e] bg-[#48c78e]/15 text-white py-5 px-6 rounded-lg mt-4 mb-4">
+            <p class="text-lg font-semibold mb-2 text-emerald-400">🔑 Temporäres Passwort generiert!</p>
+            <p class="mt-2">Das Passwort für <strong>{{ message.displayName }}</strong> ({{ message.username }}) wurde erfolgreich zurückgesetzt.</p>
+            <div class="bg-black/40 border border-dashed border-[#48c78e] p-3 rounded-lg mt-3 mb-2 text-center">
+                <span class="text-2xl font-bold font-mono text-eve-primary">{{ message.password }}</span>
+            </div>
+            <p class="text-xs text-amber-400">⚠️ WICHTIG: Dieses Passwort wird nur dieses eine Mal angezeigt. Bitte kopiere es jetzt und teile es dem Benutzer vertraulich (z. B. per Discord-DM) mit!</p>
+        </div>
     {% endfor %}
 
     <!-- User Table inside a Glassmorphism box -->
