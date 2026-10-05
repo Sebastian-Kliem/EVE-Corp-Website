@@ -960,7 +960,7 @@ class PerformanceEngine
 
             // Fallback SDE query
             try {
-                $sdeConn = $this->entityManager->getConnection('sde');
+                $sdeConn = $this->doctrine->getConnection('sde');
                 $rawRow = $sdeConn->fetchAssociative(
                     "SELECT typeID FROM invTypes WHERE typeName = :name LIMIT 1",
                     ['name' => $rawName]
