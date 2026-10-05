@@ -118,7 +118,7 @@ class CronRunCommand extends Command
                 $commandName = $job->getCommand();
 
                 // Prevent overlapping runs of the same job (cron loop and admin trigger)
-                $jobLock = $this->lockFactory->createLock('cron_job_' . $commandName, 3600);
+                $jobLock = $this->lockFactory->createLock('cron_job_' . $commandName, CronJob::RUN_TIMEOUT_SECONDS);
                 if (!$jobLock->acquire()) {
                     $io->note(sprintf('Job "%s" is still running. Skipping.', $job->getName()));
                     $writeLog(sprintf('Job "%s" läuft noch, Ausführung übersprungen.', $job->getName()), 'WARNING');
@@ -141,6 +141,9 @@ class CronRunCommand extends Command
 
                 // Update nextRunAt immediately to prevent concurrent runs
                 $this->updateNextRunAt($job, $now);
+                // Mark as running so the admin page can show progress
+                $job->setLastStatus(CronJob::STATUS_RUNNING);
+                $job->setLastRunAt($now);
                 $this->entityManager->flush();
 
                 $task = $this->taskRegistry[$commandName];

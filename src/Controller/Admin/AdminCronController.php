@@ -6,6 +6,7 @@ use App\Entity\CronJob;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -65,11 +66,42 @@ class AdminCronController extends AbstractController
             $logContent = '<span style="color: #6a737d;">Keine Logdatei unter var/log/cron.log gefunden.<br>Sobald der Cronjob zum ersten Mal läuft, wird diese automatisch erstellt.</span>';
         }
 
+        $isBusy = false;
+        foreach ($cronJobs as $job) {
+            if ($job->isRunning() || $job->isDue()) {
+                $isBusy = true;
+            }
+        }
+
         return $this->render('admin/admin_cron/cron_list.html.twig', [
             'cronJobs' => $cronJobs,
+            'isBusy' => $isBusy,
             'logContent' => $logContent,
             'logFileExists' => file_exists($logFile),
         ]);
+    }
+
+    // Polled by the cron page to reload once background runs have finished
+    #[Route('/status', name: 'app_admin_cron_status', methods: ['GET'])]
+    public function status(): JsonResponse
+    {
+        $cronJobs = $this->entityManager->getRepository(CronJob::class)->findBy([], ['name' => 'ASC']);
+        $now = new \DateTimeImmutable();
+
+        $busy = false;
+        $jobStates = [];
+        foreach ($cronJobs as $job) {
+            if ($job->isRunning($now) || $job->isDue($now)) {
+                $busy = true;
+            }
+            $jobStates[] = [
+                'id' => $job->getId(),
+                'status' => $job->getLastStatus(),
+                'lastRunAt' => $job->getLastRunAt()?->format(\DATE_ATOM),
+            ];
+        }
+
+        return $this->json(['busy' => $busy, 'jobs' => $jobStates]);
     }
 
     #[Route('/run', name: 'app_admin_cron_run_all', methods: ['POST'])]
@@ -89,7 +121,7 @@ class AdminCronController extends AbstractController
         $this->entityManager->flush();
 
         if ($this->_startCronRunInBackground($kernel)) {
-            $this->addFlash('success', 'Alle aktiven Cronjobs wurden im Hintergrund gestartet. Status und Dauer erscheinen nach Abschluss in der Liste.');
+            $this->addFlash('success', 'Alle aktiven Cronjobs wurden im Hintergrund gestartet. Die Liste aktualisiert sich automatisch, sobald der Lauf beendet ist.');
         } else {
             $this->addFlash('warning', 'Der Hintergrundstart ist fehlgeschlagen. Die Jobs sind als fällig markiert und laufen beim nächsten Scheduler-Durchlauf.');
         }
@@ -113,7 +145,7 @@ class AdminCronController extends AbstractController
         $this->entityManager->flush();
 
         if ($this->_startCronRunInBackground($kernel, $job->getCommand())) {
-            $this->addFlash('success', sprintf('Der Cronjob "%s" wurde im Hintergrund gestartet. Status und Dauer erscheinen nach Abschluss in der Liste.', $job->getName()));
+            $this->addFlash('success', sprintf('Der Cronjob "%s" wurde im Hintergrund gestartet. Die Liste aktualisiert sich automatisch, sobald der Lauf beendet ist.', $job->getName()));
         } else {
             $this->addFlash('warning', sprintf('Der Hintergrundstart von "%s" ist fehlgeschlagen. Der Job ist als fällig markiert und läuft beim nächsten Scheduler-Durchlauf.', $job->getName()));
         }
