@@ -213,16 +213,17 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 }
 
                 $hasExisting = false;
+                // One lookup per page instead of one query per entry
+                $pageRefIds = [];
+                foreach ($journalData as $entryData) {
+                    $pageRefIds[] = (string) $entryData['id'];
+                }
+                $existingRefIds = $repo->findExistingRefIds($character, $pageRefIds);
+
                 foreach ($journalData as $entryData) {
                     $refId = (string) $entryData['id'];
-                    
-                    // Check if entry already exists in DB
-                    $existing = $repo->findOneBy([
-                        'character' => $character,
-                        'refId' => $refId
-                    ]);
 
-                    if ($existing) {
+                    if (isset($existingRefIds[$refId])) {
                         $hasExisting = true;
                         continue;
                     }
@@ -317,6 +318,13 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $hasExisting = false;
                 $lastTransId = null;
 
+                // One lookup per page instead of one query per transaction
+                $pageTransactionIds = [];
+                foreach ($transData as $tData) {
+                    $pageTransactionIds[] = (string) $tData['transaction_id'];
+                }
+                $existingTransactionIds = $repo->findExistingTransactionIds($character, $pageTransactionIds);
+
                 foreach ($transData as $tData) {
                     $transId = (string) $tData['transaction_id'];
 
@@ -329,12 +337,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                         $lastTransId = $transId;
                     }
 
-                    $existing = $repo->findOneBy([
-                        'character' => $character,
-                        'transactionId' => $transId
-                    ]);
-
-                    if ($existing) {
+                    if (isset($existingTransactionIds[$transId])) {
                         $hasExisting = true;
                         continue;
                     }
@@ -569,15 +572,16 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $trackedTypeIds = $this->getTrackedTypeIds();
 
                 if ($character->getLastAssetsUpdate() !== null && !empty($trackedTypeIds)) {
-                    $oldAssets = $this->assetRepository->findBy(['character' => $character]);
+                    // Plain rows instead of entities: managed old assets would be flushed as bogus UPDATEs after the delete below
+                    $oldAssets = $this->assetRepository->findTypeQuantitiesForCharacter($character);
                     
                     // Safety check: If we have no old assets in the database, do not log any changes (treat as first sync/reset)
                     if (!empty($oldAssets)) {
                         $oldQuantities = [];
                         foreach ($oldAssets as $oldAsset) {
-                            $tid = $oldAsset->getTypeId();
+                            $tid = $oldAsset['typeId'];
                             if (in_array($tid, $trackedTypeIds, true)) {
-                                $oldQuantities[$tid] = ($oldQuantities[$tid] ?? 0) + $oldAsset->getQuantity();
+                                $oldQuantities[$tid] = ($oldQuantities[$tid] ?? 0) + $oldAsset['quantity'];
                             }
                         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -27,5 +28,27 @@ class EveCharacterAssetRepository extends ServiceEntityRepository
             ->setParameter('charId', $characterId)
             ->getQuery()
             ->execute();
+    }
+
+    /**
+     * Type and quantity of a character's stored assets as plain rows (no managed entities).
+     *
+     * @return array<int, array{typeId: int, quantity: int}>
+     */
+    public function findTypeQuantitiesForCharacter(EveCharacter $character): array
+    {
+        $rows = $this->createQueryBuilder('a')
+            ->select('a.typeId', 'a.quantity')
+            ->where('a.character = :character')
+            ->setParameter('character', $character)
+            ->getQuery()
+            ->getScalarResult();
+
+        $typeQuantities = [];
+        foreach ($rows as $row) {
+            $typeQuantities[] = ['typeId' => (int)$row['typeId'], 'quantity' => (int)$row['quantity']];
+        }
+
+        return $typeQuantities;
     }
 }
