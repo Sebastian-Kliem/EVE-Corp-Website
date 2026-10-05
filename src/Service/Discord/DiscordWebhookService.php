@@ -32,6 +32,9 @@ class DiscordWebhookService
         'discord_ping_role_fuel' => 'ping_fuel',
         'discord_ping_role_wanderer' => 'ping_wanderer',
         'wanderer_webhook_secret' => 'wanderer_secret',
+        'wanderer_api_url' => 'wanderer_api_url',
+        'wanderer_map_slug' => 'wanderer_map_slug',
+        'wanderer_api_key' => 'wanderer_api_key',
     ];
 
     private const MAX_ATTEMPTS = 3;

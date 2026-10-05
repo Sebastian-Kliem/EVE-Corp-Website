@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Entity\CronJob;
 use App\Service\Cron\CronErrorCollector;
+use App\Service\Cron\CronLanes;
 use App\Service\Cron\CronLogWriter;
 use App\Service\Cron\CronTaskInterface;
 use Cron\CronExpression;
@@ -51,6 +52,7 @@ class CronRunCommand extends Command
     protected function configure(): void
     {
         $this->addOption('job', null, InputOption::VALUE_OPTIONAL, 'Only execute a specific cron job command');
+        $this->addOption('lane', null, InputOption::VALUE_REQUIRED, 'Only execute jobs of this lane (default, fast)', CronLanes::DEFAULT);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -58,22 +60,34 @@ class CronRunCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $now = new \DateTimeImmutable();
         $jobOption = $input->getOption('job');
+        $lane = (string)$input->getOption('lane');
+        if (!CronLanes::isValid($lane)) {
+            $io->error(sprintf('Unknown lane "%s".', $lane));
+            return Command::INVALID;
+        }
 
-        $writeLog = function(string $message, string $level = 'INFO') {
+        // The fast lane runs every minute, keep its routine messages out of the info log
+        $isQuietLane = $jobOption === null && $lane === CronLanes::FAST;
+        $writeLog = function(string $message, string $level = 'INFO') use ($isQuietLane) {
+            if ($isQuietLane && $level === 'INFO') {
+                $level = 'DEBUG';
+            }
             $this->cronLogWriter->write('[Scheduler] ' . $message, $level);
         };
 
         $writeLog('Starte Cronjob-Runner Ausführung...');
 
         if ($this->esiClient->isOffline()) {
-            $writeLog('ESI ist offline (Downtime oder Circuit Breaker aktiv). Ausführung aller Cronjobs übersprungen.', 'WARNING');
+            $writeLog('ESI ist offline (Downtime oder Circuit Breaker aktiv). Ausführung aller Cronjobs übersprungen.', $isQuietLane ? 'DEBUG' : 'WARNING');
             $io->warning('ESI is offline. Skipping cron job execution.');
             $writeLog('Cronjob-Runner Ausführung beendet.');
             return Command::SUCCESS;
         }
 
-        // 1. Auto-seed default cron jobs if database is empty or missing them
-        $this->seedDefaultJobs();
+        // 1. Auto-seed default cron jobs if database is empty or missing them (one lane only, avoids duplicate inserts)
+        if (!$isQuietLane) {
+            $this->seedDefaultJobs();
+        }
 
         $cronJobRepository = $this->entityManager->getRepository(CronJob::class);
         $activeJobs = $cronJobRepository->findBy(['isActive' => true]);
@@ -96,6 +110,7 @@ class CronRunCommand extends Command
             'character:sync-pi' => 7,
             'corporation:sync-structures' => 8,
             'corporation:sync-notifications' => 9,
+            'wanderer:sync-connections' => 10,
         ];
         usort($activeJobs, function(CronJob $a, CronJob $b) use ($executionOrder) {
             $orderA = $executionOrder[$a->getCommand()] ?? 99;
@@ -106,6 +121,9 @@ class CronRunCommand extends Command
         $dueJobsCount = 0;
         foreach ($activeJobs as $job) {
             if ($jobOption && $job->getCommand() !== $jobOption) {
+                continue;
+            }
+            if ($jobOption === null && CronLanes::laneOf($job->getCommand()) !== $lane) {
                 continue;
             }
 
@@ -297,6 +315,11 @@ class CronRunCommand extends Command
                 'name' => 'Corporation-Benachrichtigungen synchronisieren (Defense & Alerts)',
                 'command' => 'corporation:sync-notifications',
                 'expression' => '*/10 * * * *', // every 10 minutes
+            ],
+            [
+                'name' => 'Wanderer-Verbindungen prüfen (Routen-Alarme)',
+                'command' => 'wanderer:sync-connections',
+                'expression' => '* * * * *', // every minute, fast lane
             ]
         ];
 

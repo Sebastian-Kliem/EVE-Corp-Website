@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\CronJob;
+use App\Service\Cron\CronLanes;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -68,7 +69,7 @@ class AdminCronController extends AbstractController
 
         $isBusy = false;
         foreach ($cronJobs as $job) {
-            if ($job->isRunning() || $job->isDue()) {
+            if ($this->_isTrackedForRefresh($job) && ($job->isRunning() || $job->isDue())) {
                 $isBusy = true;
             }
         }
@@ -91,6 +92,9 @@ class AdminCronController extends AbstractController
         $busy = false;
         $jobStates = [];
         foreach ($cronJobs as $job) {
+            if (!$this->_isTrackedForRefresh($job)) {
+                continue;
+            }
             if ($job->isRunning($now) || $job->isDue($now)) {
                 $busy = true;
             }
@@ -214,6 +218,12 @@ class AdminCronController extends AbstractController
         $process->run();
 
         return $process->isSuccessful();
+    }
+
+    // Fast lane jobs run every minute and would keep the page reloading
+    private function _isTrackedForRefresh(CronJob $job): bool
+    {
+        return CronLanes::laneOf((string)$job->getCommand()) === CronLanes::DEFAULT;
     }
 
     private function getLastLines(string $filename, int $numLines = 50): string

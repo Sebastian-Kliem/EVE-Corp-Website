@@ -33,9 +33,12 @@
     <!-- Webhook Instructions Card -->
     <div class="py-5 px-6 rounded-lg bg-black/20 border border-eve-border mb-8">
         <div class="text-sm leading-relaxed text-eve-text">
-            <strong class="text-white">Wanderer Webhook Einrichtung:</strong>
+            <strong class="text-white">Anbindung an Wanderer:</strong>
             <p class="text-xs text-eve-muted mt-1">
-                Trage folgenden Webhook-Endpunkt in Wanderer auf der Map unter <em>Webhooks</em> ein (fuer Events wie <code>add_system</code> oder <code>connection_added</code>):
+                Standardweg: Mit Wanderer-URL, Map-Slug und Map-API-Key fragt die Toolbox jede Minute die Verbindungen der Map ab und prüft neue Verbindungen gegen die Routenregeln (Cron-Job <code>wanderer:sync-connections</code>).
+            </p>
+            <p class="text-xs text-eve-muted mt-2">
+                Alternativ, sobald Wanderer-Webhooks upstream repariert sind: folgenden Endpunkt in Wanderer auf der Map unter <em>Webhooks</em> eintragen (Event <code>connection_added</code>). Nicht beides gleichzeitig nutzen, sonst kommen Meldungen doppelt.
             </p>
             <div class="mt-2 p-3 bg-black/50 border border-eve-border/60 rounded flex items-center justify-between gap-4 font-mono text-xs text-eve-primary break-all">
                 <span>{{ webhookEndpoint }}</span>
@@ -72,11 +75,35 @@
                     </div>
 
                     <div>
+                        <label for="wanderer_api_url" class="block text-xs font-medium text-white mb-1">
+                            Wanderer-URL
+                        </label>
+                        <input type="url" id="wanderer_api_url" name="wanderer_api_url" value="{{ settings.wanderer_api_url }}" placeholder="https://wanderer.keepers-of-duat.de" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        <p class="text-[11px] text-eve-muted mt-1">Basis-URL der Wanderer-Instanz.</p>
+                    </div>
+
+                    <div>
+                        <label for="wanderer_map_slug" class="block text-xs font-medium text-white mb-1">
+                            Map-Slug
+                        </label>
+                        <input type="text" id="wanderer_map_slug" name="wanderer_map_slug" value="{{ settings.wanderer_map_slug }}" placeholder="keepers-of-duat" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        <p class="text-[11px] text-eve-muted mt-1">Kurzname der Map aus der Wanderer-URL.</p>
+                    </div>
+
+                    <div>
+                        <label for="wanderer_api_key" class="block text-xs font-medium text-white mb-1">
+                            Map-API-Key
+                        </label>
+                        <input type="text" id="wanderer_api_key" name="wanderer_api_key" value="{{ settings.wanderer_api_key }}" placeholder="API-Key aus den Map-Einstellungen" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        <p class="text-[11px] text-eve-muted mt-1">Die Toolbox fragt damit jede Minute neue Verbindungen ab und prüft die Routenregeln.</p>
+                    </div>
+
+                    <div>
                         <label for="wanderer_webhook_secret" class="block text-xs font-medium text-white mb-1">
                             Wanderer Webhook Secret (HMAC)
                         </label>
                         <input type="text" id="wanderer_webhook_secret" name="wanderer_webhook_secret" value="{{ settings.wanderer_webhook_secret }}" placeholder="Optionales Secret zur Signaturpruefung" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        <p class="text-[11px] text-eve-muted mt-1">Wird mit dem x-wanderer-signature Header abgeglichen.</p>
+                        <p class="text-[11px] text-eve-muted mt-1">Nur für Wanderer-Webhooks (derzeit upstream defekt), wird mit dem x-wanderer-signature Header abgeglichen.</p>
                     </div>
 
                     <div class="pt-2 flex flex-col gap-2">
