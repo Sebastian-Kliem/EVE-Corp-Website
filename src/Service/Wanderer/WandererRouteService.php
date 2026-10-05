@@ -172,7 +172,7 @@ class WandererRouteService
         }
 
         $jumps = count($route) - 1;
-        if ($jumps < 0 || $jumps > $rule->getMaxJumps()) {
+        if ($jumps > $rule->getMaxJumps()) {
             return false;
         }
 

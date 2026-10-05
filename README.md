@@ -48,6 +48,7 @@ Lokale Secrets (z. B. `ESI_TOKEN_KEY`, EVE-SSO-Zugangsdaten, Discord-Webhooks) g
 | Discord-Webhook testen | `ddev php bin/console app:discord:test [<channel>]` |
 | Tracking-Vorlagen anlegen | `ddev php bin/console app:seed:tracking-templates` |
 | Tests | `ddev php bin/phpunit` |
+| Statische Analyse (PHPStan, Level 5) | `ddev exec vendor/bin/phpstan analyse --memory-limit=1G` |
 
 Ohne Passwort generiert `app:reset-password` ein zufälliges temporäres Passwort.
 

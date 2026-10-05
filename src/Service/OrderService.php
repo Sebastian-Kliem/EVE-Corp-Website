@@ -64,8 +64,8 @@ class OrderService
                 'adjustedUnitPrice' => round($adjustedUnitPrice, 2),
                 'totalPrice' => round($itemTotalPrice, 2),
                 'baseTotalPrice' => round($itemBaseTotalPrice, 2),
-                'priceWarning' => $priceInfo['warning'] ?? false,
-                'priceMessage' => $priceInfo['message'] ?? null,
+                'priceWarning' => $priceInfo['warning'],
+                'priceMessage' => $priceInfo['message'],
             ]);
         }
 

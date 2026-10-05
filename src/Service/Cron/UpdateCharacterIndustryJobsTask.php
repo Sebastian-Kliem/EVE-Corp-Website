@@ -81,9 +81,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
                                 $activeJobIds[] = (string)$jobData['job_id'];
                             }
                         } elseif ($result['status'] === 'no_roles') {
-                            if ($corpSyncSuccess[$corpId] !== 'success') {
-                                $corpSyncSuccess[$corpId] = 'no_roles';
-                            }
+                            $corpSyncSuccess[$corpId] = 'no_roles';
                         }
                     } catch (\Exception $e) {
                         $corpSyncSuccess[$corpId] = 'failed';

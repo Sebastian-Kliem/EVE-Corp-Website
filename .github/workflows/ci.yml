@@ -42,6 +42,9 @@ jobs:
       - name: Lint YAML config
         run: php bin/console lint:yaml config --parse-tags
 
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
       - name: Run PHPUnit
         run: php bin/phpunit
 

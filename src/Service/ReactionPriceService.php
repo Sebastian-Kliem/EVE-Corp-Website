@@ -116,10 +116,7 @@ class ReactionPriceService
 
         // 1. Fetch formulas using SdeService
         foreach (self::HYBRID_POLYMERS as $polymerTypeId => $polymerName) {
-            $formula = self::REACTION_FORMULAS[$polymerTypeId] ?? null;
-            if (!$formula) {
-                continue;
-            }
+            $formula = self::REACTION_FORMULAS[$polymerTypeId];
 
             $bpDetails = $this->sdeService->getBlueprintDetails($formula['bpTypeId'], 9);
 

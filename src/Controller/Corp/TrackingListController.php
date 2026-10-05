@@ -81,7 +81,7 @@ class TrackingListController extends AbstractController
         $list->setName($name);
         $list->setDescription(trim($data['description'] ?? ''));
         $list->setIsGlobal(false); // User lists are not global templates by default
-        $list->setUser($this->getUser());
+        $list->setUser($this->_getCurrentUser());
 
         $this->entityManager->persist($list);
         $this->entityManager->flush();
@@ -101,7 +101,7 @@ class TrackingListController extends AbstractController
         $newList->setName($listToCopy->getName() . ' (Kopie)');
         $newList->setDescription($listToCopy->getDescription());
         $newList->setIsGlobal(false);
-        $newList->setUser($this->getUser());
+        $newList->setUser($this->_getCurrentUser());
 
         $this->entityManager->persist($newList);
 
@@ -511,5 +511,15 @@ class TrackingListController extends AbstractController
     private function _canReadList(TrackingList $list): bool
     {
         return $list->getUser() === null || $list->getUser() === $this->getUser();
+    }
+
+    private function _getCurrentUser(): User
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException();
+        }
+
+        return $user;
     }
 }

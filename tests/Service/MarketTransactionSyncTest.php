@@ -44,6 +44,7 @@ class MarketTransactionSyncTest extends TestCase
 
         $transactionRepository = $this->createStub(EntityRepository::class);
         $transactionRepository->method('findOneBy')->willReturnCallback(function (array $criteria) use (&$persistedIds): ?object {
+            // @phpstan-ignore isset.offset ($persistedIds is filled by reference during the sync)
             return isset($persistedIds[$criteria['transactionId']]) ? new \stdClass() : null;
         });
 

@@ -116,7 +116,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
     private function ensureEntityManagerOpen(): void
     {
         if (!$this->entityManager->isOpen()) {
-            $this->entityManager = $this->doctrine->resetManager();
+            $this->entityManager = $this->_resetEntityManager();
         }
     }
 
@@ -331,5 +331,15 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
 
         $this->entityManager->flush();
         $this->logger->info(sprintf('[Cron] Successfully updated %d starbases for corp %d.', count($starbasesData), $corpId));
+    }
+
+    private function _resetEntityManager(): EntityManagerInterface
+    {
+        $entityManager = $this->doctrine->resetManager();
+        if (!$entityManager instanceof EntityManagerInterface) {
+            throw new \LogicException('Default Doctrine manager is not an ORM EntityManager.');
+        }
+
+        return $entityManager;
     }
 }

@@ -97,7 +97,7 @@ class AdminCorpAssetsController extends AbstractController
 
         $resolvedLocations = [];
         foreach ($locationIds as $locationId) {
-            $resolved = $this->locationService->resolveLocation($locationId, $anySyncCharacter);
+            $resolved = $this->locationService->resolveLocation((int)$locationId, $anySyncCharacter);
             $resolvedLocations[$locationId] = [
                 'id' => $locationId,
                 'name' => $resolved['name'],
@@ -153,29 +153,27 @@ class AdminCorpAssetsController extends AbstractController
             $this->entityManager->flush();
 
             // Insert new visibilities
-            if (is_array($submittedVisibility)) {
-                foreach ($submittedVisibility as $locId => $flags) {
-                    if (!is_array($flags)) {
-                        continue;
-                    }
-                    foreach ($flags as $flag => $data) {
-                        if (is_array($data) && isset($data['visible']) && $data['visible'] === '1') {
-                            $v = new CorpAssetVisibility();
-                            $v->setLocationId((string)$locId);
-                            $v->setLocationFlag((string)$flag);
-                            $v->setIsVisible(true);
+            foreach ($submittedVisibility as $locId => $flags) {
+                if (!is_array($flags)) {
+                    continue;
+                }
+                foreach ($flags as $flag => $data) {
+                    if (is_array($data) && isset($data['visible']) && $data['visible'] === '1') {
+                        $v = new CorpAssetVisibility();
+                        $v->setLocationId((string)$locId);
+                        $v->setLocationFlag((string)$flag);
+                        $v->setIsVisible(true);
 
-                            if (isset($data['users']) && is_array($data['users'])) {
-                                foreach ($data['users'] as $username) {
-                                    $user = $this->entityManager->getRepository(\App\Entity\User::class)->findOneBy(['username' => $username]);
-                                    if ($user) {
-                                        $v->addUser($user);
-                                    }
+                        if (isset($data['users']) && is_array($data['users'])) {
+                            foreach ($data['users'] as $username) {
+                                $user = $this->entityManager->getRepository(\App\Entity\User::class)->findOneBy(['username' => $username]);
+                                if ($user) {
+                                    $v->addUser($user);
                                 }
                             }
-
-                            $this->entityManager->persist($v);
                         }
+
+                        $this->entityManager->persist($v);
                     }
                 }
             }

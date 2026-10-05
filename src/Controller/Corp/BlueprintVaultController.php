@@ -116,7 +116,7 @@ class BlueprintVaultController extends AbstractController
                     /** @var EveCharacterIndustryJob $job */
                     foreach ($jobs as $job) {
                         if ($job->getBlueprintId()) {
-                            $jobsByBlueprintId[$job->getBlueprintId()] = $job;
+                            $jobsByBlueprintId[(int)$job->getBlueprintId()] = $job;
                         }
                     }
 
@@ -135,9 +135,9 @@ class BlueprintVaultController extends AbstractController
                         $locationName = $resolvedLoc['name'];
                         
                         $jobData = null;
-                        if (isset($jobsByBlueprintId[$itemId])) {
+                        if (isset($jobsByBlueprintId[$asset->getItemId()])) {
                             /** @var EveCharacterIndustryJob $job */
-                            $job = $jobsByBlueprintId[$itemId];
+                            $job = $jobsByBlueprintId[$asset->getItemId()];
                             $jobData = [
                                 'activityId' => $job->getActivityId(),
                                 'endDate' => $job->getEndDate()->format('c'),

@@ -50,7 +50,10 @@ class JwtAuthenticatorTest extends TestCase
 
         $passport = $authenticator->authenticate(new Request(server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]));
 
-        return $passport->getBadge(UserBadge::class)->getUser();
+        $authenticatedUser = $passport->getBadge(UserBadge::class)->getUser();
+        $this->assertInstanceOf(User::class, $authenticatedUser);
+
+        return $authenticatedUser;
     }
 
     // Signs like JwtService but with a chosen issue time
