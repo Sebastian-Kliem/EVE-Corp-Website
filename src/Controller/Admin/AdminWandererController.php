@@ -29,18 +29,14 @@ class AdminWandererController extends AbstractController
     ) {}
 
     #[Route('', name: 'app_admin_wanderer_index', methods: ['GET'])]
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $corpRules = $this->ruleRepository->findAllCorpRules();
         $settings = $this->discordWebhookService->getAllSettings();
 
-        // Base webhook URL to display in setup instructions
-        $webhookEndpoint = $request->getSchemeAndHttpHost() . '/api/webhooks/wanderer';
-
         return $this->render('admin/admin_wanderer/index.html.twig', [
             'corpRules' => $corpRules,
             'settings' => $settings,
-            'webhookEndpoint' => $webhookEndpoint,
         ]);
     }
 
@@ -55,7 +51,6 @@ class AdminWandererController extends AbstractController
         $submittedSettings = [
             'discord_webhook_wanderer' => $request->request->get('discord_webhook_wanderer'),
             'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
-            'wanderer_webhook_secret' => $request->request->get('wanderer_webhook_secret'),
             'wanderer_api_url' => $request->request->get('wanderer_api_url'),
             'wanderer_map_slug' => $request->request->get('wanderer_map_slug'),
             'wanderer_api_key' => $request->request->get('wanderer_api_key'),
@@ -79,7 +74,6 @@ class AdminWandererController extends AbstractController
         $targetSystemInput = trim((string)$request->request->get('target_system'));
         $maxJumps = (int)$request->request->get('max_jumps', 10);
         $securityMode = (string)$request->request->get('security_mode', WandererRouteRule::SEC_MODE_HIGHSEC_ONLY);
-        $cooldownMinutes = (int)$request->request->get('cooldown_minutes', 180);
 
         if ($name === '' || $targetSystemInput === '') {
             $this->addFlash('error', 'Bitte Name und Zielsystem angeben.');
@@ -99,7 +93,6 @@ class AdminWandererController extends AbstractController
         $rule->setTargetSolarSystemName($targetSystem['name']);
         $rule->setMaxJumps(max(1, min(50, $maxJumps)));
         $rule->setSecurityMode($securityMode);
-        $rule->setCooldownMinutes(max(0, $cooldownMinutes));
         $rule->setIsActive(true);
 
         $this->entityManager->persist($rule);

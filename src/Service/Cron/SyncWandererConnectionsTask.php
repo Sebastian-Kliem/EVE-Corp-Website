@@ -14,7 +14,7 @@ use Psr\Log\LoggerInterface;
  */
 class SyncWandererConnectionsTask implements CronTaskInterface
 {
-    public const SEEN_IDS_SETTING_KEY = 'wanderer_seen_connection_ids';
+    public const STATE_SETTING_KEY = 'wanderer_known_connections';
 
     public function __construct(
         private readonly WandererApiClient $wandererApiClient,
@@ -37,70 +37,86 @@ class SyncWandererConnectionsTask implements CronTaskInterface
         }
 
         $connections = $this->wandererApiClient->fetchConnections();
-        $seenIds = $this->_loadSeenIds();
+        $previousConnections = $this->_loadKnownConnections();
 
-        $currentIds = [];
-        $newConnections = [];
+        $currentConnections = [];
         foreach ($connections as $connection) {
             $connectionId = (string)($connection['id'] ?? '');
             if ($connectionId === '') {
                 continue;
             }
-            $currentIds[] = $connectionId;
-            if ($seenIds !== null && !in_array($connectionId, $seenIds, true)) {
-                $newConnections[] = $connection;
-            }
+            $currentConnections[$connectionId] = [
+                (int)($connection['solar_system_source'] ?? 0),
+                (int)($connection['solar_system_target'] ?? 0),
+            ];
         }
 
         // First run only records the current state, otherwise every existing connection would alert
-        if ($seenIds === null) {
-            $this->_saveSeenIds($currentIds);
-            $this->cronLogWriter->write(sprintf('[Wanderer] Abgleich initialisiert mit %d bestehenden Verbindung(en).', count($currentIds)));
+        if ($previousConnections === null) {
+            $this->_saveKnownConnections($currentConnections);
+            $this->cronLogWriter->write(sprintf('[Wanderer] Abgleich initialisiert mit %d bestehenden Verbindung(en).', count($currentConnections)));
             return;
         }
 
-        $mapSlug = $this->wandererApiClient->getMapSlug();
-        foreach ($newConnections as $connection) {
-            $result = $this->routeService->processWebhookPayload([
-                'type' => 'connection_added',
-                'payload' => $connection,
-                'map_name' => $mapSlug,
-            ]);
-            $this->cronLogWriter->write(sprintf(
-                '[Wanderer] Neue Verbindung %s -> %s: %d Regel(n) ausgelöst.',
-                $connection['solar_system_source'] ?? '?',
-                $connection['solar_system_target'] ?? '?',
-                $result['matched_rules']
-            ));
+        // A system is announced again only after it was disconnected from the map in between
+        $connectedSystemIds = [];
+        foreach ($previousConnections as $systemIds) {
+            foreach ($systemIds as $systemId) {
+                $connectedSystemIds[$systemId] = true;
+            }
         }
 
-        $this->_saveSeenIds($currentIds);
+        $mapSlug = $this->wandererApiClient->getMapSlug();
+        foreach ($connections as $connection) {
+            $connectionId = (string)($connection['id'] ?? '');
+            if ($connectionId === '' || isset($previousConnections[$connectionId])) {
+                continue;
+            }
+
+            $result = $this->routeService->processNewConnection($connection, $mapSlug, array_keys($connectedSystemIds));
+            $this->cronLogWriter->write(sprintf(
+                '[Wanderer] Neue Verbindung %s -> %s: %d neue(s) System(e), %d Regel(n) ausgelöst.',
+                $connection['solar_system_source'] ?? '?',
+                $connection['solar_system_target'] ?? '?',
+                $result['processed_systems'],
+                $result['matched_rules']
+            ));
+
+            foreach ($currentConnections[$connectionId] as $systemId) {
+                $connectedSystemIds[$systemId] = true;
+            }
+        }
+
+        $this->_saveKnownConnections($currentConnections);
     }
 
     /**
-     * @return string[]|null null when the task has never run
+     * @return array<string, int[]>|null connection ID => [source, target]; null when not initialized yet
      */
-    private function _loadSeenIds(): ?array
+    private function _loadKnownConnections(): ?array
     {
-        $setting = $this->entityManager->getRepository(AppSetting::class)->find(self::SEEN_IDS_SETTING_KEY);
+        $setting = $this->entityManager->getRepository(AppSetting::class)->find(self::STATE_SETTING_KEY);
         if ($setting === null || $setting->getValue() === null) {
             return null;
         }
 
         $decoded = json_decode($setting->getValue(), true);
+        if (!is_array($decoded) || !isset($decoded['connections']) || !is_array($decoded['connections'])) {
+            return null;
+        }
 
-        return is_array($decoded) ? $decoded : null;
+        return $decoded['connections'];
     }
 
     /**
-     * @param string[] $connectionIds
+     * @param array<string, int[]> $connections
      */
-    private function _saveSeenIds(array $connectionIds): void
+    private function _saveKnownConnections(array $connections): void
     {
-        $value = json_encode(array_values($connectionIds));
-        $setting = $this->entityManager->getRepository(AppSetting::class)->find(self::SEEN_IDS_SETTING_KEY);
+        $value = json_encode(['connections' => $connections]);
+        $setting = $this->entityManager->getRepository(AppSetting::class)->find(self::STATE_SETTING_KEY);
         if ($setting === null) {
-            $setting = new AppSetting(self::SEEN_IDS_SETTING_KEY, $value);
+            $setting = new AppSetting(self::STATE_SETTING_KEY, $value);
             $this->entityManager->persist($setting);
         } else {
             $setting->setValue($value);
