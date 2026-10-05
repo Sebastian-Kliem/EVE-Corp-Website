@@ -22,6 +22,16 @@
   --shadow-eve: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
+/* Minimal button reset replacing the omitted preflight (browser default is a light background); layered so every utility class wins */
+@layer base {
+  button {
+    background-color: transparent;
+    border: 0 solid;
+    color: inherit;
+    font-family: inherit;
+  }
+}
+
 /* Global base styles for the EVE theme */
 html, body {
   min-height: 100vh;
