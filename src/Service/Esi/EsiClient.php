@@ -18,6 +18,12 @@ class EsiClient
     private const SSO_TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token';
 
     private const MISSING_SCOPE_CACHE_TTL = 3600;
+    // Revoked tokens are retried hourly, so a wrongly revoked character recovers by itself
+    private const REVOKED_TOKEN_RETRY_SECONDS = 3600;
+
+    private const REFRESH_FAILURE_REVOKED = 'revoked';
+    private const REFRESH_FAILURE_CLIENT_CONFIG = 'client_config';
+    private const REFRESH_FAILURE_TEMPORARY = 'temporary';
 
     // ESI error budget is shared per server IP, so the pause is stored in the shared cache for all processes
     private const ERROR_LIMIT_CACHE_KEY = 'esi_error_limit_pause_until';
@@ -175,6 +181,10 @@ class EsiClient
             return false;
         }
 
+        if (!$character->isTokenRefreshAllowed($this->clock->now())) {
+            return false;
+        }
+
         try {
             $response = $this->httpClient->request('POST', self::SSO_TOKEN_URL, [
                 'headers' => [
@@ -202,18 +212,60 @@ class EsiClient
 
             return true;
         } catch (\Exception $e) {
-            // Log error to system error log for easy developer troubleshooting
-            error_log(sprintf('[EsiClient] Failed to refresh token for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
-
-            // If the error indicates that the refresh token is invalid (e.g. invalid_grant or 400 Bad Request)
-            // we mark the character's token as invalid so we can warn the user.
-            if (str_contains(strtolower($e->getMessage()), 'invalid_grant') || str_contains($e->getMessage(), '400') || str_contains($e->getMessage(), '401')) {
-                $character->setTokenValid(false);
-                $this->entityManager->flush();
-            }
+            $this->_handleRefreshFailure($character, $e);
 
             return false;
         }
+    }
+
+    private function _handleRefreshFailure(EveCharacter $character, \Exception $exception): void
+    {
+        $failureType = $this->_classifyRefreshFailure($exception);
+
+        if ($failureType === self::REFRESH_FAILURE_REVOKED) {
+            $retryAt = $this->clock->now()->modify('+' . self::REVOKED_TOKEN_RETRY_SECONDS . ' seconds');
+            $character->markTokenRevoked($retryAt);
+            $this->entityManager->flush();
+            $this->logCron(sprintf('[EsiClient] Refresh token of %s (%d) was rejected by EVE SSO (invalid_grant). Marked invalid, next attempt at %s.', $character->getName(), $character->getId(), $retryAt->format('Y-m-d H:i')), 'warning');
+            return;
+        }
+
+        if ($failureType === self::REFRESH_FAILURE_CLIENT_CONFIG) {
+            // Our SSO client credentials are wrong; the character tokens are not at fault
+            $this->logCron(sprintf('[EsiClient] EVE SSO rejected the application credentials while refreshing %s: %s. Check EVE_SSO_CLIENT_ID and EVE_SSO_SECRET_KEY.', $character->getName(), $exception->getMessage()), 'error');
+            return;
+        }
+
+        $this->logCron(sprintf('[EsiClient] Temporary failure refreshing the token of %s (%d): %s', $character->getName(), $character->getId(), $exception->getMessage()), 'warning');
+    }
+
+    // Uses the OAuth error code of the SSO response instead of searching exception messages
+    private function _classifyRefreshFailure(\Exception $exception): string
+    {
+        if (!$exception instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface) {
+            return self::REFRESH_FAILURE_TEMPORARY;
+        }
+
+        $response = $exception->getResponse();
+        $statusCode = $response->getStatusCode();
+        if ($statusCode !== 400 && $statusCode !== 401) {
+            return self::REFRESH_FAILURE_TEMPORARY;
+        }
+
+        try {
+            $errorCode = (string)($response->toArray(false)['error'] ?? '');
+        } catch (\Throwable $e) {
+            $errorCode = '';
+        }
+
+        if ($errorCode === 'invalid_grant') {
+            return self::REFRESH_FAILURE_REVOKED;
+        }
+        if ($errorCode === 'invalid_client' || $errorCode === 'unauthorized_client') {
+            return self::REFRESH_FAILURE_CLIENT_CONFIG;
+        }
+
+        return self::REFRESH_FAILURE_TEMPORARY;
     }
 
     /**
@@ -376,11 +428,9 @@ class EsiClient
                         if ($this->refreshToken($character)) {
                             $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
                             continue; // Retry immediately
-                        } else {
-                            $character->setTokenValid(false);
-                            $this->entityManager->flush();
-                            throw $e;
                         }
+                        // refreshToken() alone decides whether the token counts as revoked
+                        throw $e;
                     }
 
                     // HTTP 420: Enhance Your Calm

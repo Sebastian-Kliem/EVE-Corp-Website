@@ -245,7 +245,7 @@ class LocationService
             }
         }
 
-        $allChars = $this->entityManager->getRepository(EveCharacter::class)->findAll();
+        $allChars = $this->entityManager->getRepository(EveCharacter::class)->findSyncableCharacters();
 
         $directorsInTargetCorp = [];
         $otherCharsInTargetCorp = [];

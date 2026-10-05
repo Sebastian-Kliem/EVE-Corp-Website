@@ -29,9 +29,7 @@ class CharacterOnlineService
 
         $characterRepository = $this->entityManager->getRepository(EveCharacter::class);
         /** @var EveCharacter[] $characters */
-        $characters = $characterRepository->findBy([
-            'tokenValid' => true,
-        ]);
+        $characters = $characterRepository->findSyncableCharacters();
 
         $checked = 0;
         $onlineCount = 0;
