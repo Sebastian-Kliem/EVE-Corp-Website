@@ -200,7 +200,7 @@
             <!-- Add Rule Form -->
             <div class="p-4 bg-black/30 border border-eve-border/60 rounded-lg">
                 <h4 class="text-sm font-semibold text-white mb-3">Neue Corp-Routenregel hinzufuegen</h4>
-                <form action="{{ path('app_admin_wanderer_create_rule') }}" method="POST">
+                <form action="{{ path('app_admin_wanderer_create_rule') }}" method="POST" data-controller="solar-system-autocomplete" data-solar-system-autocomplete-url-value="{{ path('app_solar_system_search') }}" data-action="submit->solar-system-autocomplete#validate">
                     <input type="hidden" name="_token" value="{{ csrf_token('wanderer_rule_create') }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
@@ -210,8 +210,11 @@
                         </div>
 
                         <div>
-                            <label for="target_system" class="block text-xs text-eve-muted mb-1">Zielsystem (Name oder ID)</label>
-                            <input type="text" id="target_system" name="target_system" value="Jita" required class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                            <label for="target_system" class="block text-xs text-eve-muted mb-1">Zielsystem</label>
+                            <input type="text" id="target_system" name="target_system" value="Jita" required autocomplete="off" placeholder="Systemname tippen, z. B. Jita" data-solar-system-autocomplete-target="input" data-action="input->solar-system-autocomplete#search keydown->solar-system-autocomplete#navigate blur->solar-system-autocomplete#hideResults" class="w-full bg-[#080d1a] border border-eve-border rounded px-3 py-1.5 text-xs text-white focus:border-eve-primary focus:outline-none">
+                            <input type="hidden" name="target_system_id" value="30000142" data-solar-system-autocomplete-target="systemId">
+                            <div data-solar-system-autocomplete-target="results" class="hidden mt-1 max-h-60 overflow-y-auto bg-[#080d1a] border border-eve-border rounded"></div>
+                            <p data-solar-system-autocomplete-target="hint" class="hidden text-[11px] text-rose-400 mt-1">Bitte ein System aus der Liste auswählen.</p>
                         </div>
 
                         <div>

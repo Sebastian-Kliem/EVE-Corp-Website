@@ -7,6 +7,10 @@ use Doctrine\DBAL\Connection;
 
 class SdeService
 {
+    // Known space (no wormhole systems); ESI cannot route into J-space
+    public const KSPACE_MIN_SYSTEM_ID = 30000000;
+    public const KSPACE_MAX_SYSTEM_ID = 30999999;
+
     private Connection $connection;
     private array $nameCache = [];
 
@@ -179,6 +183,83 @@ class SdeService
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    /**
+     * Searches k-space solar systems by name, prefix matches first (for route target autocomplete).
+     *
+     * @return array<int, array{id: int, name: string, security: float, regionName: string}>
+     */
+    public function searchKSpaceSolarSystems(string $query, int $limit = 15): array
+    {
+        $trimmed = trim($query);
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $escaped = addcslashes($trimmed, '\\%_');
+
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                "SELECT s.solarSystemID, s.solarSystemName, s.security, r.regionName
+                 FROM mapSolarSystems s
+                 LEFT JOIN mapRegions r ON s.regionID = r.regionID
+                 WHERE s.solarSystemID BETWEEN :minId AND :maxId
+                   AND s.solarSystemName LIKE :contains ESCAPE '\\'
+                 ORDER BY CASE WHEN s.solarSystemName LIKE :prefix ESCAPE '\\' THEN 0 ELSE 1 END, s.solarSystemName
+                 LIMIT " . max(1, $limit),
+                [
+                    'minId' => self::KSPACE_MIN_SYSTEM_ID,
+                    'maxId' => self::KSPACE_MAX_SYSTEM_ID,
+                    'contains' => '%' . $escaped . '%',
+                    'prefix' => $escaped . '%',
+                ]
+            );
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $systems = [];
+        foreach ($rows as $row) {
+            $security = round((float)$row['security'], 1);
+            $systems[] = [
+                'id' => (int)$row['solarSystemID'],
+                'name' => (string)$row['solarSystemName'],
+                // Avoid "-0" for systems slightly below zero
+                'security' => $security == 0.0 ? 0.0 : $security,
+                'regionName' => (string)($row['regionName'] ?? ''),
+            ];
+        }
+
+        return $systems;
+    }
+
+    /**
+     * Resolves a route target to a k-space system, preferring the ID picked in the autocomplete.
+     *
+     * @return array{id: int, name: string}|null
+     */
+    public function resolveKSpaceSolarSystem(?string $systemIdInput, string $systemNameInput): ?array
+    {
+        $systemId = null;
+        if ($systemIdInput !== null && ctype_digit(trim($systemIdInput))) {
+            $systemId = (int)trim($systemIdInput);
+        } elseif (ctype_digit(trim($systemNameInput))) {
+            $systemId = (int)trim($systemNameInput);
+        } else {
+            $systemId = $this->getSolarSystemIdByName($systemNameInput);
+        }
+
+        if ($systemId === null || $systemId < self::KSPACE_MIN_SYSTEM_ID || $systemId > self::KSPACE_MAX_SYSTEM_ID) {
+            return null;
+        }
+
+        $info = $this->getSolarSystemInfo($systemId);
+        if ($info === null) {
+            return null;
+        }
+
+        return ['id' => $systemId, 'name' => (string)$info['solarSystemName']];
     }
 
     /**

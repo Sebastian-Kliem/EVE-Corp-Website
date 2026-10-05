@@ -118,29 +118,17 @@ class PersonalWandererController extends AbstractController
             return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
-        $systemId = null;
-        $systemName = $targetSystemInput;
-
-        if (is_numeric($targetSystemInput)) {
-            $systemId = (int)$targetSystemInput;
-            $info = $this->sdeService->getSolarSystemInfo($systemId);
-            if ($info) {
-                $systemName = $info['solarSystemName'];
-            }
-        } else {
-            $systemId = $this->sdeService->getSolarSystemIdByName($targetSystemInput);
-        }
-
-        if (!$systemId) {
-            $this->addFlash('error', sprintf('Das System "%s" konnte in der EVE-Datenbank nicht gefunden werden.', $targetSystemInput));
+        $targetSystem = $this->sdeService->resolveKSpaceSolarSystem((string)$request->request->get('target_system_id', ''), $targetSystemInput);
+        if ($targetSystem === null) {
+            $this->addFlash('error', sprintf('"%s" ist kein bekanntes K-Space-System.', $targetSystemInput));
             return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
         }
 
         $rule = new WandererRouteRule();
         $rule->setUser($user);
         $rule->setName($name);
-        $rule->setTargetSolarSystemId($systemId);
-        $rule->setTargetSolarSystemName($systemName);
+        $rule->setTargetSolarSystemId($targetSystem['id']);
+        $rule->setTargetSolarSystemName($targetSystem['name']);
         $rule->setMaxJumps(max(1, min(50, $maxJumps)));
         $rule->setSecurityMode($securityMode);
         $rule->setCooldownMinutes(max(0, $cooldownMinutes));
@@ -149,7 +137,7 @@ class PersonalWandererController extends AbstractController
         $this->entityManager->persist($rule);
         $this->entityManager->flush();
 
-        $this->addFlash('success', sprintf('Persoenliche Routenregel "%s" fuer Ziel %s erfolgreich erstellt.', $name, $systemName));
+        $this->addFlash('success', sprintf('Persoenliche Routenregel "%s" fuer Ziel %s erfolgreich erstellt.', $name, $targetSystem['name']));
         return $this->redirect($this->generateUrl('app_profile') . '#profile-wanderer-alerts');
     }
 
