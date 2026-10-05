@@ -9,6 +9,7 @@ use App\Service\Discord\Model\DiscordColor;
 use App\Service\Discord\Model\DiscordEmbed;
 use App\Service\Discord\Model\DiscordMessage;
 use App\Service\Esi\EsiClient;
+use App\Service\Eve\SecurityStatus;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -154,12 +155,8 @@ class WandererRouteService
             return false;
         }
 
-        $originSec = $systemInfo['security'];
         // Quick security check on the origin system itself
-        if ($rule->getSecurityMode() === WandererRouteRule::SEC_MODE_HIGHSEC_ONLY && $originSec < 0.45) {
-            return false;
-        }
-        if ($rule->getSecurityMode() === WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC && $originSec < 0.0) {
+        if (!$this->_meetsSecurityMode((float)$systemInfo['security'], $rule->getSecurityMode())) {
             return false;
         }
 
@@ -214,17 +211,27 @@ class WandererRouteService
 
         foreach ($routeSystemIds as $sysId) {
             $info = $this->sdeService->getSolarSystemInfo($sysId);
+            // An unknown system cannot be proven safe
             if (!$info) {
-                continue;
+                return false;
             }
 
-            $sec = $info['security'];
-            if ($securityMode === WandererRouteRule::SEC_MODE_HIGHSEC_ONLY && $sec < 0.45) {
+            if (!$this->_meetsSecurityMode((float)$info['security'], $securityMode)) {
                 return false;
             }
-            if ($securityMode === WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC && $sec < 0.0) {
-                return false;
-            }
+        }
+
+        return true;
+    }
+
+    // Uses the security status as shown in game, so "highsec" never lets a 0.4 system through
+    private function _meetsSecurityMode(float $trueSecurity, string $securityMode): bool
+    {
+        if ($securityMode === WandererRouteRule::SEC_MODE_HIGHSEC_ONLY) {
+            return SecurityStatus::isHighsec($trueSecurity);
+        }
+        if ($securityMode === WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC) {
+            return SecurityStatus::isHighOrLowsec($trueSecurity);
         }
 
         return true;
@@ -259,7 +266,7 @@ class WandererRouteService
         ?string $characterName
     ): bool {
         $originName = $originSystemInfo['solarSystemName'];
-        $originSec = round($originSystemInfo['security'], 1);
+        $originSec = SecurityStatus::toDisplay((float)$originSystemInfo['security']);
         $regionName = $originSystemInfo['regionName'] ?? 'Unknown Region';
         $constellationName = $originSystemInfo['constellationName'] ?? '';
 
@@ -426,16 +433,15 @@ class WandererRouteService
      */
     private function _formatSecurityBadge(float $security): string
     {
-        if ($security >= 0.45) {
-            return 'Highsec';
-        }
-        if ($security > 0.0) {
-            return 'Lowsec';
-        }
         if ($security <= -0.99) {
             return 'Wormhole';
         }
-        return 'Nullsec';
+
+        return match (SecurityStatus::classify($security)) {
+            SecurityStatus::HIGHSEC => 'Highsec',
+            SecurityStatus::LOWSEC => 'Lowsec',
+            default => 'Nullsec',
+        };
     }
 
     /**
@@ -443,13 +449,11 @@ class WandererRouteService
      */
     private function _getColorForSecurity(float $security): int
     {
-        if ($security >= 0.45) {
-            return DiscordColor::GREEN;
-        }
-        if ($security > 0.0) {
-            return DiscordColor::ORANGE;
-        }
-        return DiscordColor::RED;
+        return match (SecurityStatus::classify($security)) {
+            SecurityStatus::HIGHSEC => DiscordColor::GREEN,
+            SecurityStatus::LOWSEC => DiscordColor::ORANGE,
+            default => DiscordColor::RED,
+        };
     }
 
     /**

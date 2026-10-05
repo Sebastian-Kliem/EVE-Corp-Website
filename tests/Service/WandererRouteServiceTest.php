@@ -11,6 +11,7 @@ use App\Service\SdeService;
 use App\Service\Wanderer\WandererRouteService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -162,6 +163,59 @@ class WandererRouteServiceTest extends TestCase
         $this->assertSame(1, $result['corp_notifications']);
         $this->assertSame(0, $result['user_notifications']);
         $this->assertNotNull($rule->getLastTriggeredAt());
+    }
+
+    /**
+     * @return array<string, array{string, ?float, bool}>
+     */
+    public static function routeSecurityProvider(): array
+    {
+        return [
+            'highsec rule, 0.5 system (true 0.450343) passes' => [WandererRouteRule::SEC_MODE_HIGHSEC_ONLY, 0.450343, true],
+            'highsec rule, 0.4 system (true 0.44779) blocks' => [WandererRouteRule::SEC_MODE_HIGHSEC_ONLY, 0.44779, false],
+            'lowsec rule, 0.1 system (true 0.02) passes' => [WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC, 0.02, true],
+            'lowsec rule, 0.0 system (true -0.04) blocks' => [WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC, -0.04, false],
+            'lowsec rule, exact 0.0 blocks' => [WandererRouteRule::SEC_MODE_HIGHSEC_LOWSEC, 0.0, false],
+            'highsec rule, unknown system blocks' => [WandererRouteRule::SEC_MODE_HIGHSEC_ONLY, null, false],
+            'any rule, nullsec passes' => [WandererRouteRule::SEC_MODE_ANY, -0.5, true],
+        ];
+    }
+
+    #[DataProvider('routeSecurityProvider')]
+    public function testRouteSecurityUsesInGameRounding(string $securityMode, ?float $middleSystemSecurity, bool $expectNotification): void
+    {
+        $rule = new WandererRouteRule();
+        $rule->setName('Security Check');
+        $rule->setTargetSolarSystemId(30000142);
+        $rule->setTargetSolarSystemName('Jita');
+        $rule->setMaxJumps(10);
+        $rule->setSecurityMode($securityMode);
+        $rule->setIsActive(true);
+
+        $this->ruleRepository->method('findActiveCorpRules')->willReturn([$rule]);
+        $this->ruleRepository->method('findActiveUserRules')->willReturn([]);
+
+        $systems = [
+            30000144 => ['solarSystemID' => 30000144, 'solarSystemName' => 'Perimeter', 'security' => 0.9, 'regionName' => 'The Forge', 'constellationName' => 'Kimotoro'],
+            30000142 => ['solarSystemID' => 30000142, 'solarSystemName' => 'Jita', 'security' => 0.945913, 'regionName' => 'The Forge', 'constellationName' => 'Kimotoro'],
+        ];
+        if ($middleSystemSecurity !== null) {
+            $systems[30005000] = ['solarSystemID' => 30005000, 'solarSystemName' => 'Middle', 'security' => $middleSystemSecurity, 'regionName' => 'Test', 'constellationName' => 'Test'];
+        }
+        $this->sdeService->method('getSolarSystemInfo')->willReturnCallback(fn (int $id) => $systems[$id] ?? null);
+        $this->esiClient->method('getRoute')->willReturn([30000144, 30005000, 30000142]);
+
+        $this->discordWebhookService->expects($expectNotification ? $this->once() : $this->never())
+            ->method('send')
+            ->willReturn(true);
+
+        // Highsec exit system next to a known-space system, so only the route decides
+        $this->service->processWebhookPayload([
+            'event' => 'connection_added',
+            'solar_system_source' => 30000144,
+            'solar_system_target' => 30000144,
+            'type' => 0,
+        ]);
     }
 
     public function testVerifySignatureWithSha256Prefix(): void

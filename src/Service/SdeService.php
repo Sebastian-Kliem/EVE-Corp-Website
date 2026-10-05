@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\Eve\SecurityStatus;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Connection;
 
@@ -152,7 +153,7 @@ class SdeService
                 $results[] = [
                     'id' => (int)$row['solarSystemID'],
                     'name' => $row['solarSystemName'],
-                    'security' => round((float)$row['security'], 1),
+                    'security' => SecurityStatus::toDisplay((float)$row['security']),
                     'region' => $row['regionName'] ?? '',
                 ];
             }
@@ -221,12 +222,10 @@ class SdeService
 
         $systems = [];
         foreach ($rows as $row) {
-            $security = round((float)$row['security'], 1);
             $systems[] = [
                 'id' => (int)$row['solarSystemID'],
                 'name' => (string)$row['solarSystemName'],
-                // Avoid "-0" for systems slightly below zero
-                'security' => $security == 0.0 ? 0.0 : $security,
+                'security' => SecurityStatus::toDisplay((float)$row['security']),
                 'regionName' => (string)($row['regionName'] ?? ''),
             ];
         }
