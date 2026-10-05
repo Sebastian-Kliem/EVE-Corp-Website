@@ -85,7 +85,11 @@
                                     {{ job.isActive ? 'Aktiv' : 'Inaktiv' }}
                                 </span>
                                 <br>
-                                {% if job.lastStatus == 'success' %}
+                                {% if job.running %}
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 mt-1 inline-block animate-pulse">Läuft...</span>
+                                {% elseif job.runAborted %}
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30 mt-1 inline-block">Abgebrochen</span>
+                                {% elseif job.lastStatus == 'success' %}
                                     <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mt-1 inline-block">Erfolgreich</span>
                                 {% elseif job.lastStatus == 'error' %}
                                     <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-rose-500/15 text-rose-400 border border-rose-500/30 mt-1 inline-block">Fehlgeschlagen</span>
@@ -98,7 +102,10 @@
                             <td class="p-3 text-xs text-eve-text align-middle">
                                 {% if job.lastRunAt %}
                                     {{ job.lastRunAt|date('d.m.Y H:i:s') }}
-                                    {% if job.lastExecutionTime %}
+                                    {% if job.running %}
+                                        <br>
+                                        <span class="text-eve-muted">gestartet</span>
+                                    {% elseif job.lastExecutionTime %}
                                         <br>
                                         <span class="text-eve-muted">Dauer: {{ job.lastExecutionTime|number_format(2) }}s</span>
                                     {% endif %}
@@ -183,5 +190,40 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
+{% if isBusy %}
+<script>
+    // Reload once a background run finished or its state changed; give up after 15 minutes
+    (function () {
+        const statusUrl = {{ path('app_admin_cron_status')|json_encode|raw }};
+        const pollIntervalMs = 5000;
+        const pollDeadline = Date.now() + 15 * 60 * 1000;
+        let initialSignature = null;
+
+        async function pollStatus() {
+            if (Date.now() > pollDeadline) {
+                return;
+            }
+            try {
+                const response = await fetch(statusUrl, { headers: { 'Accept': 'application/json' } });
+                if (response.ok) {
+                    const data = await response.json();
+                    const signature = JSON.stringify(data.jobs);
+                    if (initialSignature === null) {
+                        initialSignature = signature;
+                    } else if (signature !== initialSignature || !data.busy) {
+                        window.location.reload();
+                        return;
+                    }
+                }
+            } catch (error) {
+                // Ignore transient network errors and keep polling
+            }
+            setTimeout(pollStatus, pollIntervalMs);
+        }
+
+        pollStatus();
+    })();
+</script>
+{% endif %}
+{% endblock %}

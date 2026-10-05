@@ -9,6 +9,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: CronJobRepository::class)]
 class CronJob
 {
+    public const STATUS_RUNNING = 'running';
+    public const RUN_TIMEOUT_SECONDS = 3600;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -140,6 +143,30 @@ class CronJob
         $this->lastStatus = $lastStatus;
 
         return $this;
+    }
+
+    // A run is considered dead once it outlives the scheduler's job lock TTL
+    public function isRunning(?\DateTimeImmutable $now = null): bool
+    {
+        if ($this->lastStatus !== self::STATUS_RUNNING || $this->lastRunAt === null) {
+            return false;
+        }
+
+        $now ??= new \DateTimeImmutable();
+
+        return $now->getTimestamp() - $this->lastRunAt->getTimestamp() < self::RUN_TIMEOUT_SECONDS;
+    }
+
+    public function isRunAborted(?\DateTimeImmutable $now = null): bool
+    {
+        return $this->lastStatus === self::STATUS_RUNNING && !$this->isRunning($now);
+    }
+
+    public function isDue(?\DateTimeImmutable $now = null): bool
+    {
+        $now ??= new \DateTimeImmutable();
+
+        return $this->isActive && ($this->nextRunAt === null || $this->nextRunAt <= $now);
     }
 
     public function getLastError(): ?string
