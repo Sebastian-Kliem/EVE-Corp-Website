@@ -56,6 +56,9 @@ class AdminWandererController extends AbstractController
             'discord_webhook_wanderer' => $request->request->get('discord_webhook_wanderer'),
             'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
             'wanderer_webhook_secret' => $request->request->get('wanderer_webhook_secret'),
+            'wanderer_api_url' => $request->request->get('wanderer_api_url'),
+            'wanderer_map_slug' => $request->request->get('wanderer_map_slug'),
+            'wanderer_api_key' => $request->request->get('wanderer_api_key'),
         ];
 
         $this->discordWebhookService->saveSettings($submittedSettings);
