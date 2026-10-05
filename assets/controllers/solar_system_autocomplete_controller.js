@@ -71,8 +71,9 @@ export default class extends Controller {
         this.systems.forEach((system, index) => {
             const row = document.createElement('button');
             row.type = 'button';
-            row.className = 'w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left text-xs cursor-pointer transition-colors '
-                + (index === this.activeIndex ? 'bg-eve-primary/15 text-white' : 'text-eve-text hover:bg-white/5');
+            // Explicit background and border: without Tailwind preflight buttons keep the light browser default
+            row.className = 'w-full flex items-center justify-between gap-2 px-3 py-1.5 border-0 text-left text-xs cursor-pointer transition-colors '
+                + (index === this.activeIndex ? 'bg-eve-primary/15 text-white' : 'bg-transparent text-eve-text hover:bg-white/5');
             row.addEventListener('mousedown', (event) => {
                 // mousedown fires before the input loses focus
                 event.preventDefault();
