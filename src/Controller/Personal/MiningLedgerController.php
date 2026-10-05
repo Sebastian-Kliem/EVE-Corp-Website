@@ -5,7 +5,6 @@ namespace App\Controller\Personal;
 use App\Entity\User;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterMiningRecord;
-use App\Service\Esi\EsiClient;
 use App\Service\JitaPriceService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,7 +20,6 @@ class MiningLedgerController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly EsiClient $esiClient,
         private readonly SdeService $sdeService,
         private readonly JitaPriceService $jitaPriceService
     ) {}

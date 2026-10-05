@@ -1,0 +1,22 @@
+includes:
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - tests/bootstrap.php
+    tmpDir: var/phpstan
+    doctrine:
+        objectManagerLoader: tests/phpstan/object-manager.php
+    ignoreErrors:
+        # Entities guard properties that may be missing in sessions serialized before a schema change
+        -
+            identifier: nullCoalesce.property
+            path: src/Entity/*
+        -
+            identifier: identical.alwaysFalse
+            path: src/Entity/User.php

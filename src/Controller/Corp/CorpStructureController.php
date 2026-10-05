@@ -212,7 +212,7 @@ class CorpStructureController extends AbstractController
                         'solarSystemName' => $s->getSolarSystemName(),
                         'state' => $s->getState(),
                         'fuelExpires' => $s->getFuelExpires()?->format('c'),
-                        'services' => $s->getServices() ?? [],
+                        'services' => $s->getServices(),
                         'reinforceHour' => $s->getReinforceHour(),
                         'lastUpdated' => $s->getLastUpdated()?->format('c'),
                         'fittings' => $structureFittings,

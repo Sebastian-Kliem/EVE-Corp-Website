@@ -180,7 +180,7 @@ class CronRunCommand extends Command
                     $writeLog(sprintf('Job "%s" fehlgeschlagen nach %.2f Sekunden: %s', $job->getName(), $executionTime, $e->getMessage()), 'ERROR');
 
                     if (!$this->entityManager->isOpen()) {
-                        $this->entityManager = $this->doctrine->resetManager();
+                        $this->entityManager = $this->_resetEntityManager();
                         $job = $this->entityManager->find(CronJob::class, $job->getId());
                     }
 
@@ -192,7 +192,7 @@ class CronRunCommand extends Command
                 }
 
                 if (!$this->entityManager->isOpen()) {
-                    $this->entityManager = $this->doctrine->resetManager();
+                    $this->entityManager = $this->_resetEntityManager();
                     $job = $this->entityManager->find(CronJob::class, $job->getId());
                 }
 
@@ -334,5 +334,15 @@ class CronRunCommand extends Command
         }
 
         $this->entityManager->flush();
+    }
+
+    private function _resetEntityManager(): EntityManagerInterface
+    {
+        $entityManager = $this->doctrine->resetManager();
+        if (!$entityManager instanceof EntityManagerInterface) {
+            throw new \LogicException('Default Doctrine manager is not an ORM EntityManager.');
+        }
+
+        return $entityManager;
     }
 }

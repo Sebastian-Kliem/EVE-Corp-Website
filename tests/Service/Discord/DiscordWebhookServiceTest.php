@@ -65,6 +65,7 @@ class DiscordWebhookServiceTest extends TestCase
     {
         $logMessages = &$this->logMessages;
         $logger = new class($logMessages) extends AbstractLogger {
+            // @phpstan-ignore property.onlyWritten (written by reference, read by the test)
             public function __construct(private array &$messages)
             {
             }

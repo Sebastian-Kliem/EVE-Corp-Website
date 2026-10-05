@@ -553,9 +553,7 @@ class PerformanceEngine
             }
 
             foreach ($dayRewards as $rewardData) {
-                if ($rewardData['quantity'] > 0) {
-                    $rewardData['price'] = $rewardData['totalValue'] / $rewardData['quantity'];
-                }
+                $rewardData['price'] = $rewardData['totalValue'] / $rewardData['quantity'];
                 $dayData['details'][] = $rewardData;
             }
 
@@ -619,11 +617,7 @@ class PerformanceEngine
 
                         $totalValue = $qty * $price;
 
-                        if (isset($dayData['summary']['byCategory'][$category])) {
-                            $dayData['summary']['byCategory'][$category] += $totalValue;
-                        } else {
-                            $dayData['summary']['byCategory']['other'] += $totalValue;
-                        }
+                        $dayData['summary']['byCategory'][$category] += $totalValue;
                         $dayData['summary']['totalValue'] += $totalValue;
 
                         $dayData['details'][] = [
@@ -666,6 +660,7 @@ class PerformanceEngine
                         }
                     }
                 }
+                // @phpstan-ignore empty.variable (defensive: reset() on an empty map would return false)
                 if ($bestCharName === null && !empty($characterMap)) {
                     $firstChar = reset($characterMap);
                     $bestCharName = $firstChar->getName();

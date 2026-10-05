@@ -327,7 +327,7 @@ class EsiClient
                 ];
 
                 // Cache the response if it was a successful GET request and contains Expires header
-                if ($useCache && $cacheItem !== null) {
+                if ($useCache) {
                     $expires = $responseHeaders['expires'][0] ?? null;
                     if ($expires) {
                         try {

@@ -9,7 +9,6 @@ use App\Service\Discord\Model\DiscordColor;
 use App\Service\Discord\Model\DiscordEmbed;
 use App\Service\Discord\Model\DiscordMessage;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
 
 class StructureAlertService
 {
@@ -25,8 +24,7 @@ class StructureAlertService
 
     public function __construct(
         private readonly DiscordWebhookService $discordWebhookService,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger
+        private readonly EntityManagerInterface $entityManager
     ) {}
 
     /**

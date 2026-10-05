@@ -423,7 +423,7 @@ class LocationService
             $this->entityManager->flush();
 
             $formattedName = $structureName;
-            if ($solarSystemName && $solarSystemName !== 'Unbekannt') {
+            if ($solarSystemName !== 'Unbekannt') {
                 $escapedSystem = preg_quote($solarSystemName, '/');
                 if (!preg_match('/^\s*' . $escapedSystem . '\b/i', $structureName)) {
                     $formattedName = $solarSystemName . ' - ' . $structureName;

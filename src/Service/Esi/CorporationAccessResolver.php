@@ -27,7 +27,7 @@ class CorporationAccessResolver
     public function getCharactersByCorporation(array $acceptedRoles, string $requiredScope): array
     {
         /** @var EveCharacter[] $characters */
-        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['tokenValid' => true], ['id' => \SortDirection::Ascending]);
+        $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy(['tokenValid' => true], ['id' => 'ASC']);
 
         $charactersByCorporation = [];
         foreach ($characters as $character) {

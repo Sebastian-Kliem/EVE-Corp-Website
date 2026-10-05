@@ -4,7 +4,6 @@ namespace App\Service\Cron;
 
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterMiningRecord;
-use App\Repository\EveCharacterMiningRecordRepository;
 use App\Service\Esi\EsiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -14,7 +13,6 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly EsiClient $esiClient,
-        private readonly EveCharacterMiningRecordRepository $miningRecordRepository,
         private readonly LoggerInterface $logger
     ) {}
 

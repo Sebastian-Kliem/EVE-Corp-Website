@@ -2,6 +2,7 @@
 
 namespace App\Controller\Api;
 
+use App\Entity\User;
 use App\Entity\EveStructure;
 use App\Repository\UserRepository;
 use App\Service\JwtService;
@@ -72,7 +73,7 @@ class ApiController extends AbstractController
     {
         $user = $this->getUser();
 
-        if (!$user) {
+        if (!$user instanceof User) {
             return new JsonResponse(['message' => 'Not authenticated'], Response::HTTP_UNAUTHORIZED);
         }
 

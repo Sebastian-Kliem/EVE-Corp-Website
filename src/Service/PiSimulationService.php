@@ -223,7 +223,7 @@ class PiSimulationService
                                 }
                                 if (!$destPinId && isset($outgoingRoutes[(string)$pinId])) {
                                     $firstType = reset($outgoingRoutes[(string)$pinId]);
-                                    $destPinId = $firstType[0] ?? null;
+                                    $destPinId = $firstType[0];
                                 }
 
                                 if ($destPinId) {
