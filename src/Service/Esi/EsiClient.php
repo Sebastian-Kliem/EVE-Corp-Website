@@ -422,7 +422,8 @@ class EsiClient
                         $requiredScope = $this->_extractMissingScope($e->getResponse());
                         if ($requiredScope !== null) {
                             $this->_rememberMissingScope($character, $path, $requiredScope);
-                            $this->_logCron(sprintf('[EsiClient] %s lacks scope %s for %s. Skipping for %d seconds.', $character->getName(), $requiredScope, $fullPathLog, self::MISSING_SCOPE_CACHE_TTL), 'warning');
+                            // Debug only: the character list already shows missing scopes, the hourly warning was just noise
+                            $this->_logCron(sprintf('[EsiClient] %s lacks scope %s for %s. Skipping for %d seconds.', $character->getName(), $requiredScope, $fullPathLog, self::MISSING_SCOPE_CACHE_TTL), 'debug');
                             throw new EsiMissingScopeException($path, $character->getName(), $requiredScope);
                         }
                     }
