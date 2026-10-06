@@ -270,14 +270,16 @@ class EsiClient
 
     /**
      * Checks if ESI is offline (circuit breaker active or daily downtime not finished yet).
+     *
+     * @param bool $quiet Log an unreachable cluster status only at debug level (callers running in parallel to another one)
      */
-    public function isOffline(): bool
+    public function isOffline(bool $quiet = false): bool
     {
         if ($this->_isCircuitOpen()) {
             return true;
         }
 
-        return $this->_isInDowntime();
+        return $this->_isInDowntime($quiet);
     }
 
     /**
@@ -680,7 +682,7 @@ class EsiClient
     }
 
     // ESI is unusable from 11:00 UTC until the cluster reports a restart after that time and leaves VIP mode
-    private function _isInDowntime(): bool
+    private function _isInDowntime(bool $quiet = false): bool
     {
         $now = $this->clock->now()->setTimezone(new \DateTimeZone('UTC'));
         $timeOfDay = $now->format('H:i');
@@ -688,7 +690,7 @@ class EsiClient
             return false;
         }
 
-        $clusterStatus = $this->_getClusterStatus();
+        $clusterStatus = $this->_getClusterStatus($quiet);
         if (empty($clusterStatus['start_time']) || ($clusterStatus['vip'] ?? false)) {
             return true;
         }
@@ -703,7 +705,7 @@ class EsiClient
     }
 
     // Cluster status from GET /status/, shared by all processes for a few seconds; empty while ESI cannot answer
-    private function _getClusterStatus(): array
+    private function _getClusterStatus(bool $quiet = false): array
     {
         $cacheItem = $this->cachePool->getItem(self::CLUSTER_STATUS_CACHE_KEY);
         if ($cacheItem->isHit()) {
@@ -718,7 +720,7 @@ class EsiClient
             ]);
             $clusterStatus = $response->toArray();
         } catch (\Exception $e) {
-            $this->logCron(sprintf('[EsiClient] Cluster status unavailable during downtime check: %s', $e->getMessage()), 'info');
+            $this->logCron(sprintf('[EsiClient] Cluster status unavailable during downtime check: %s', $e->getMessage()), $quiet ? 'debug' : 'info');
         }
 
         $cacheItem->set($clusterStatus);
