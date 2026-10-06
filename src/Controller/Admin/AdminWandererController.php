@@ -34,10 +34,14 @@ class AdminWandererController extends AbstractController
     {
         $corpRules = $this->ruleRepository->findAllCorpRules();
         $settings = $this->discordWebhookService->getAllSettings();
+        // The stored API key never leaves the server, the form only shows its last characters
+        $storedApiKey = $settings['wanderer_api_key'] ?? null;
+        unset($settings['wanderer_api_key']);
 
         return $this->render('admin/admin_wanderer/index.html.twig', [
             'corpRules' => $corpRules,
             'settings' => $settings,
+            'apiKeyHint' => $storedApiKey !== null ? $this->_maskSecret($storedApiKey) : null,
         ]);
     }
 
@@ -54,8 +58,15 @@ class AdminWandererController extends AbstractController
             'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
             'wanderer_api_url' => $request->request->get('wanderer_api_url'),
             'wanderer_map_slug' => $request->request->get('wanderer_map_slug'),
-            'wanderer_api_key' => $request->request->get('wanderer_api_key'),
         ];
+
+        // An empty key field keeps the stored key, only the remove checkbox clears it
+        $submittedApiKey = trim((string)$request->request->get('wanderer_api_key', ''));
+        if ($request->request->getBoolean('wanderer_api_key_remove')) {
+            $submittedSettings['wanderer_api_key'] = null;
+        } elseif ($submittedApiKey !== '') {
+            $submittedSettings['wanderer_api_key'] = $submittedApiKey;
+        }
 
         $this->discordWebhookService->saveSettings($submittedSettings);
 
@@ -71,10 +82,16 @@ class AdminWandererController extends AbstractController
             return new JsonResponse(['success' => false, 'message' => 'Ungültiges CSRF-Token. Bitte die Seite neu laden.'], Response::HTTP_FORBIDDEN);
         }
 
+        // Without a newly typed key the test uses the stored one
+        $apiKey = trim((string)$request->request->get('wanderer_api_key', ''));
+        if ($apiKey === '') {
+            $apiKey = (string)$this->discordWebhookService->getSetting('wanderer_api_key');
+        }
+
         return new JsonResponse($wandererApiClient->testConnection(
             (string)$request->request->get('wanderer_api_url', ''),
             (string)$request->request->get('wanderer_map_slug', ''),
-            (string)$request->request->get('wanderer_api_key', '')
+            $apiKey
         ));
     }
 
@@ -208,5 +225,10 @@ class AdminWandererController extends AbstractController
         $results = $this->sdeService->searchSolarSystems($query, 10);
 
         return new JsonResponse($results);
+    }
+
+    private function _maskSecret(string $secret): string
+    {
+        return mb_strlen($secret) > 8 ? '...' . mb_substr($secret, -4) : '...';
     }
 }
