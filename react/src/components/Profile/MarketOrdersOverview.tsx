@@ -71,7 +71,7 @@ export default function MarketOrdersOverview({ apiDataUrl, imagePaths }: MarketO
         try {
             const fetchPromises = charGroup.orders.map(async (order) => {
                 try {
-                    const detailsUrl = `/personal/market/details?type_id=${order.type_id}&location_id=${order.location_id}`;
+                    const detailsUrl = `/wallet/market/details?type_id=${order.type_id}&location_id=${order.location_id}`;
                     const response = await fetch(detailsUrl);
                     if (!response.ok) {
                         return { key: `${order.type_id}_${order.location_id}`, data: null };

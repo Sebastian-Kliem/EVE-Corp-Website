@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Wallet;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/personal/market')]
+#[Route('/wallet/market')]
 #[IsGranted('ROLE_MEMBER')]
 class MarketController extends AbstractController
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\General;
+namespace App\Controller\Industry;
 
 use App\Entity\EveCorporationAsset;
 use App\Entity\EveStructure;
@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/general/reactions')]
+#[Route('/industry/reactions')]
 #[IsGranted('ROLE_MEMBER')]
 class ReactionDashboardController extends AbstractController
 {

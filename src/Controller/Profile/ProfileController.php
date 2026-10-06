@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Profile;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -18,7 +18,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/personal/profile')]
+#[Route('/profile')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
 class ProfileController extends AbstractController
 {
@@ -253,43 +253,6 @@ class ProfileController extends AbstractController
             'personalWebhookHint' => $personalWebhookHint,
         ], $response);
     }
-
-    #[Route('/characters', name: 'app_profile_characters', methods: ['GET'])]
-    #[IsGranted('ROLE_MEMBER')]
-    public function characters(EsiClient $esiClient): Response
-    {
-        $currentUser = $this->getUser();
-        if (!$currentUser instanceof User) {
-            return $this->redirectToRoute('app_login');
-        }
-
-        $unassignedCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
-            'user' => $currentUser,
-            'account' => null,
-        ]);
-
-        $accounts = iterator_to_array($currentUser->getEveAccounts());
-        usort($accounts, function($a, $b) {
-            return strcasecmp($a->getName(), $b->getName());
-        });
-
-        // Characters linked before new scopes were added need a re-auth
-        $missingScopesByCharacter = [];
-        foreach ($this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]) as $character) {
-            $missingScopes = $esiClient->getMissingScopes($character);
-            if ($missingScopes !== []) {
-                $missingScopesByCharacter[$character->getId()] = $missingScopes;
-            }
-        }
-
-        return $this->render('profile/eve_account/characters.html.twig', [
-            'user' => $currentUser,
-            'unassignedCharacters' => $unassignedCharacters,
-            'accounts' => $accounts,
-            'missingScopesByCharacter' => $missingScopesByCharacter,
-        ]);
-    }
-
 
     #[Route('/personal-assets', name: 'app_profile_personal_assets', methods: ['POST'])]
     #[IsGranted('ROLE_MEMBER')]

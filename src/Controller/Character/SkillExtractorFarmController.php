@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Character;
 
 use App\Entity\EveCharacter;
 use App\Entity\User;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/personal/profile/skill-farm')]
+#[Route('/characters/skill-farm')]
 #[IsGranted('ROLE_MEMBER')]
 class SkillExtractorFarmController extends AbstractController
 {

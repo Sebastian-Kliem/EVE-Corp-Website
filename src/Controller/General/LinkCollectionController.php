@@ -11,11 +11,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/general/link')]
+#[Route('/general/links')]
 #[IsGranted('ROLE_MEMBER')]
 final class LinkCollectionController extends AbstractController
 {
-    #[Route('/collection', name: 'link_collection', methods: ['GET'])]
+    #[Route('', name: 'link_collection', methods: ['GET'])]
     public function index(EntityManagerInterface $entityManager, Request $request): Response
     {
         $categories = $entityManager->getRepository(LinkCollectionCategory::class)->findBy([], ['Name' => 'ASC']);

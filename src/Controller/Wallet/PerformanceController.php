@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Wallet;
 
 use App\Entity\User;
 use App\Entity\EveAccount;
@@ -16,7 +16,7 @@ use App\Entity\PerformanceManualEntry;
 use App\Entity\PerformanceExclusion;
 use Symfony\Component\HttpFoundation\Request;
 
-#[Route('/personal/performance')]
+#[Route('/wallet/performance')]
 #[IsGranted('ROLE_MEMBER')]
 class PerformanceController extends AbstractController
 {
