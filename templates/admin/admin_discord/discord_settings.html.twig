@@ -1,5 +1,7 @@
 {% extends 'base.html.twig' %}
 
+{% import '_macros/secret_field.html.twig' as secret_field %}
+
 {% block title %}Discord-Konfiguration{% endblock %}
 
 {% block body %}
@@ -59,9 +61,8 @@
                             <span class="text-xs text-eve-muted">○ Nicht konfiguriert</span>
                         {% endif %}
                     </div>
-                    <div class="flex gap-2">
-                        <input type="url" id="discord_webhook_default" name="discord_webhook_default" value="{{ settings.discord_webhook_default }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
-                    </div>
+                    {{ secret_field.input('discord_webhook_default', settings.discord_webhook_default, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                    {{ secret_field.remove_checkbox('discord_webhook_default', settings.discord_webhook_default) }}
                     <p class="text-xs text-eve-muted mt-1.5">Fängt alle Benachrichtigungen auf, für die kein eigener Kanal hinterlegt ist.</p>
                 </div>
 
@@ -77,7 +78,8 @@
                             <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
                         {% endif %}
                     </div>
-                    <input type="url" id="discord_webhook_fuel" name="discord_webhook_fuel" value="{{ settings.discord_webhook_fuel }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    {{ secret_field.input('discord_webhook_fuel', settings.discord_webhook_fuel, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                    {{ secret_field.remove_checkbox('discord_webhook_fuel', settings.discord_webhook_fuel) }}
                     <p class="text-xs text-eve-muted mt-1.5">Meldungen bei niedrigem Treibstoffstand (≤ 30d, 14d, 7d, 3d, 1d) und Bestätigung bei Betankung.</p>
                 </div>
 
@@ -93,7 +95,8 @@
                             <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
                         {% endif %}
                     </div>
-                    <input type="url" id="discord_webhook_combat" name="discord_webhook_combat" value="{{ settings.discord_webhook_combat }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    {{ secret_field.input('discord_webhook_combat', settings.discord_webhook_combat, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                    {{ secret_field.remove_checkbox('discord_webhook_combat', settings.discord_webhook_combat) }}
                     <p class="text-xs text-eve-muted mt-1.5">Station unter Beschuss, Schild-/Armor-Verlust, Reinforce-Timer, POS- und POCO-Angriffe.</p>
                 </div>
 
@@ -109,7 +112,8 @@
                             <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
                         {% endif %}
                     </div>
-                    <input type="url" id="discord_webhook_structures" name="discord_webhook_structures" value="{{ settings.discord_webhook_structures }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    {{ secret_field.input('discord_webhook_structures', settings.discord_webhook_structures, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                    {{ secret_field.remove_checkbox('discord_webhook_structures', settings.discord_webhook_structures) }}
                     <p class="text-xs text-eve-muted mt-1.5">Low-Power, High-Power, ausgefallene Service-Module, Unanchoring.</p>
                 </div>
 
@@ -125,7 +129,8 @@
                             <span class="text-xs text-eve-muted">○ Verwendet Standard-Kanal</span>
                         {% endif %}
                     </div>
-                    <input type="url" id="discord_webhook_user_alerts" name="discord_webhook_user_alerts" value="{{ settings.discord_webhook_user_alerts }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    {{ secret_field.input('discord_webhook_user_alerts', settings.discord_webhook_user_alerts, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                    {{ secret_field.remove_checkbox('discord_webhook_user_alerts', settings.discord_webhook_user_alerts) }}
                     <p class="text-xs text-eve-muted mt-1.5">Für allgemeine Benachrichtigungen aus persönlichen Modulen.</p>
                 </div>
 

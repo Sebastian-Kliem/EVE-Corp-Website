@@ -46,8 +46,13 @@ class PersonalWandererController extends AbstractController
         $user = $this->getUser();
         $webhookUrl = trim((string)$request->request->get('discord_webhook_wanderer'));
 
+        // An empty field keeps the stored webhook, only the remove checkbox clears it
         $settings = $user->getSettings();
-        $settings['discord_webhook_wanderer'] = $webhookUrl;
+        if (in_array('discord_webhook_wanderer', $request->request->all('remove_settings'), true)) {
+            $settings['discord_webhook_wanderer'] = '';
+        } elseif ($webhookUrl !== '') {
+            $settings['discord_webhook_wanderer'] = $webhookUrl;
+        }
         $user->setSettings($settings);
 
         $this->entityManager->flush();

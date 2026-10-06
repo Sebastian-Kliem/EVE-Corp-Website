@@ -36,6 +36,19 @@ class DiscordWebhookService
         'wanderer_api_key' => 'wanderer_api_key',
     ];
 
+    // Settings that are never rendered back into a form; an empty submission keeps the stored value
+    public const SECRET_SETTING_KEYS = [
+        'discord_webhook_default',
+        'discord_webhook_structures',
+        'discord_webhook_fuel',
+        'discord_webhook_combat',
+        'discord_webhook_user_alerts',
+        'discord_webhook_industry',
+        'discord_webhook_market',
+        'discord_webhook_wanderer',
+        'wanderer_api_key',
+    ];
+
     private const MAX_ATTEMPTS = 3;
     // Longer rate limit waits are not worth blocking a cron run or page; the caller retries later
     private const MAX_RETRY_WAIT_SECONDS = 10.0;
@@ -92,6 +105,61 @@ class DiscordWebhookService
         }
 
         $this->entityManager->flush();
+    }
+
+    /**
+     * Saves the settings a form submitted. Keys missing from the submission are left untouched,
+     * secrets are only replaced by a non-empty value and cleared via $removeKeys.
+     *
+     * @param array<string, mixed> $submittedValues
+     * @param string[] $removeKeys
+     */
+    public function saveSubmittedSettings(array $submittedValues, array $removeKeys = []): void
+    {
+        $settingsToSave = [];
+        foreach (array_keys(self::SETTING_KEYS) as $key) {
+            $isSecret = in_array($key, self::SECRET_SETTING_KEYS, true);
+            if ($isSecret && in_array($key, $removeKeys, true)) {
+                $settingsToSave[$key] = null;
+                continue;
+            }
+            if (!array_key_exists($key, $submittedValues)) {
+                continue;
+            }
+
+            $value = trim((string)$submittedValues[$key]);
+            if ($isSecret && $value === '') {
+                continue;
+            }
+            $settingsToSave[$key] = $value;
+        }
+
+        $this->saveSettings($settingsToSave);
+    }
+
+    /**
+     * All settings with secrets reduced to a short hint, safe to render into a page.
+     *
+     * @return array<string, ?string>
+     */
+    public function getAllSettingsMasked(): array
+    {
+        $settings = $this->getAllSettings();
+        foreach (self::SECRET_SETTING_KEYS as $key) {
+            if ($settings[$key] !== null) {
+                $settings[$key] = self::maskSecret($settings[$key]);
+            }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Shows only the last four characters of a secret.
+     */
+    public static function maskSecret(string $secret): string
+    {
+        return mb_strlen($secret) > 8 ? '...' . mb_substr($secret, -4) : '...';
     }
 
     /**

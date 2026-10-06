@@ -8,6 +8,7 @@ use App\Entity\EveCorporationAsset;
 use App\Service\SdeService;
 use App\Service\LocationService;
 use App\Service\Esi\EsiClient;
+use App\Service\Discord\DiscordWebhookService;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\WandererRouteRuleRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -233,7 +234,9 @@ class ProfileController extends AbstractController
 
         $userWandererRules = $this->wandererRouteRuleRepository->findByUser($currentUser);
         $userSettings = $currentUser->getSettings();
-        $personalWebhook = $userSettings['discord_webhook_wanderer'] ?? '';
+        $personalWebhook = (string)($userSettings['discord_webhook_wanderer'] ?? '');
+        // The template only gets a hint, the URL itself is a secret
+        $personalWebhookHint = $personalWebhook !== '' ? DiscordWebhookService::maskSecret($personalWebhook) : null;
 
         $response = new Response();
         if (!empty($errors) && $request->isMethod('POST')) {
@@ -247,7 +250,7 @@ class ProfileController extends AbstractController
             'availableHangars' => $availableHangars,
             'availableContainers' => $availableContainers,
             'userWandererRules' => $userWandererRules,
-            'personalWebhook' => $personalWebhook,
+            'personalWebhookHint' => $personalWebhookHint,
         ], $response);
     }
 

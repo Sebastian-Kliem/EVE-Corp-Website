@@ -1,5 +1,7 @@
 {% extends 'base.html.twig' %}
 
+{% import '_macros/secret_field.html.twig' as secret_field %}
+
 {% block title %}Wanderer-Integration & Routen{% endblock %}
 
 {% block body %}
@@ -53,7 +55,8 @@
                             Discord Webhook URL (Wanderer-Kanal)
                         </label>
                         <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Eigener Discord-Kanal ausschließlich für K-Space- und Exit-Meldungen.</p>
-                        <input type="url" id="discord_webhook_wanderer" name="discord_webhook_wanderer" value="{{ settings.discord_webhook_wanderer }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                        {{ secret_field.input('discord_webhook_wanderer', settings.discord_webhook_wanderer, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors') }}
+                        {{ secret_field.remove_checkbox('discord_webhook_wanderer', settings.discord_webhook_wanderer) }}
                     </div>
 
                     <div>
@@ -85,13 +88,8 @@
                             Map-API-Key
                         </label>
                         <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Die Toolbox fragt damit jede Minute neue Verbindungen ab und prüft die Routenregeln.</p>
-                        <input type="password" id="wanderer_api_key" name="wanderer_api_key" data-wanderer-connection-test-target="key" value="" autocomplete="new-password" placeholder="{{ apiKeyHint ? 'Gespeichert (endet auf ' ~ apiKeyHint ~ '), leer lassen zum Beibehalten' : 'API-Key aus den Map-Einstellungen' }}" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
-                        {% if apiKeyHint %}
-                            <label class="mt-1.5 flex items-center gap-2 text-[11px] text-eve-muted cursor-pointer">
-                                <input type="checkbox" name="wanderer_api_key_remove" value="1" class="accent-rose-500">
-                                Gespeicherten Key entfernen
-                            </label>
-                        {% endif %}
+                        {{ secret_field.input('wanderer_api_key', settings.wanderer_api_key, 'API-Key aus den Map-Einstellungen', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors', 'key') }}
+                        {{ secret_field.remove_checkbox('wanderer_api_key', settings.wanderer_api_key) }}
                         <button type="button" data-wanderer-connection-test-target="button" data-action="wanderer-connection-test#test" class="mt-2 w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-white py-1.5 px-4 rounded-lg transition-all text-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait">
                             Verbindung testen
                         </button>
