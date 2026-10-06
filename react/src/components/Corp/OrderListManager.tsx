@@ -3,6 +3,7 @@ import JaniceAppraisal from './JaniceAppraisal';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
 import DeliveryPackingList from './DeliveryPackingList';
 import { formatThousands } from '../../utils/numberFormat';
+import OrderNote from './OrderNote';
 
 export interface OrderItem {
     id: number;
@@ -657,7 +658,6 @@ export default function OrderListManager({
                                                         • Bearbeiter: <span className="text-blue-300 font-medium">{order.fulfiller.displayName}</span>
                                                     </span>
                                                 ) : null}
-                                                {order.note && <span className="ml-2 italic text-slate-400">"{order.note}"</span>}
                                             </p>
                                         </div>
                                     </div>
@@ -704,6 +704,7 @@ export default function OrderListManager({
                                             </svg>
                                         </div>
                                     </div>
+                                    <OrderNote note={order.note} />
                                 </div>
 
                                 {/* Expanded Content */}

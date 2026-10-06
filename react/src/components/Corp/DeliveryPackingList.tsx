@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { formatThousands } from '../../utils/numberFormat';
+import OrderNote from './OrderNote';
 import { Order, OrderItem } from './OrderListManager';
 
 interface DeliveryPackingListProps {
@@ -365,7 +366,6 @@ export default function DeliveryPackingList({
                                         </div>
                                         <p className="text-[11px] text-eve-muted mt-0.5">
                                             Order #{order.id} • {order.items.length} Posten • {formatThousands(order.totalVolume)} m³
-                                            {order.note && <span className="ml-2 italic text-slate-400">"{order.note}"</span>}
                                         </p>
                                     </div>
                                 </div>
@@ -396,6 +396,7 @@ export default function DeliveryPackingList({
                                         </svg>
                                     </div>
                                 </div>
+                                <OrderNote note={order.note} />
                             </div>
 
                             {/* Expanded Content: Contract Toolbar & Checklist */}
