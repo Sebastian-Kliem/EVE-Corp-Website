@@ -35,7 +35,7 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
             }
 
             try {
-                $this->syncMiningLedger($character);
+                $this->_syncMiningLedger($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync mining ledger for character %s (%d): %s',
@@ -49,7 +49,7 @@ class UpdateCharacterMiningLedgerTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished sync-mining-ledger execution.');
     }
 
-    private function syncMiningLedger(EveCharacter $character): void
+    private function _syncMiningLedger(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing mining ledger for character %s...', $character->getName()));
 

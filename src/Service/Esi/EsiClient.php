@@ -226,17 +226,17 @@ class EsiClient
             $retryAt = $this->clock->now()->modify('+' . self::REVOKED_TOKEN_RETRY_SECONDS . ' seconds');
             $character->markTokenRevoked($retryAt);
             $this->entityManager->flush();
-            $this->logCron(sprintf('[EsiClient] Refresh token of %s (%d) was rejected by EVE SSO (invalid_grant). Marked invalid, next attempt at %s.', $character->getName(), $character->getId(), $retryAt->format('Y-m-d H:i')), 'warning');
+            $this->_logCron(sprintf('[EsiClient] Refresh token of %s (%d) was rejected by EVE SSO (invalid_grant). Marked invalid, next attempt at %s.', $character->getName(), $character->getId(), $retryAt->format('Y-m-d H:i')), 'warning');
             return;
         }
 
         if ($failureType === self::REFRESH_FAILURE_CLIENT_CONFIG) {
             // Our SSO client credentials are wrong; the character tokens are not at fault
-            $this->logCron(sprintf('[EsiClient] EVE SSO rejected the application credentials while refreshing %s: %s. Check EVE_SSO_CLIENT_ID and EVE_SSO_SECRET_KEY.', $character->getName(), $exception->getMessage()), 'error');
+            $this->_logCron(sprintf('[EsiClient] EVE SSO rejected the application credentials while refreshing %s: %s. Check EVE_SSO_CLIENT_ID and EVE_SSO_SECRET_KEY.', $character->getName(), $exception->getMessage()), 'error');
             return;
         }
 
-        $this->logCron(sprintf('[EsiClient] Temporary failure refreshing the token of %s (%d): %s', $character->getName(), $character->getId(), $exception->getMessage()), 'warning');
+        $this->_logCron(sprintf('[EsiClient] Temporary failure refreshing the token of %s (%d): %s', $character->getName(), $character->getId(), $exception->getMessage()), 'warning');
     }
 
     // Uses the OAuth error code of the SSO response instead of searching exception messages
@@ -312,7 +312,7 @@ class EsiClient
                 $cachedResult = $this->_normalizeCachedResult($cacheItem->get());
                 // Entries without expiresAt predate stale caching and are fresh until their cache TTL ends
                 if (($cachedResult['expiresAt'] ?? \PHP_INT_MAX) > $this->clock->now()->getTimestamp()) {
-                    $this->logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'debug');
+                    $this->_logCron(sprintf('[EsiClient] GET %s vom Cache geholt.', $fullPathLog), 'debug');
                     return $cachedResult;
                 }
                 $staleResult = $cachedResult;
@@ -322,7 +322,7 @@ class EsiClient
 
         if ($this->isOffline()) {
             if ($staleResult !== null && $this->isWebRequest) {
-                $this->logCron(sprintf('[EsiClient] ESI offline, serving last known data for GET %s.', $fullPathLog), 'info');
+                $this->_logCron(sprintf('[EsiClient] ESI offline, serving last known data for GET %s.', $fullPathLog), 'info');
                 return $staleResult;
             }
             $reason = $this->_isCircuitOpen() ? 'circuit breaker active' : 'EVE downtime';
@@ -350,7 +350,7 @@ class EsiClient
                     // Skip endpoints known to be outside the token's scopes (avoids burning the ESI error limit)
                     $missingScopeCacheItem = $this->_getMissingScopeCacheItem($character, $path);
                     if ($missingScopeCacheItem?->isHit()) {
-                        $this->logCron(sprintf('[EsiClient] Skipping %s for %s: required scope missing (cached).', $fullPathLog, $character->getName()), 'debug');
+                        $this->_logCron(sprintf('[EsiClient] Skipping %s for %s: required scope missing (cached).', $fullPathLog, $character->getName()), 'debug');
                         throw new EsiMissingScopeException($path, $character->getName(), $missingScopeCacheItem->get());
                     }
                 }
@@ -360,7 +360,7 @@ class EsiClient
                 $options['headers'] = $headers;
                 $url = self::BASE_URL . ltrim($path, '/');
 
-                $this->logCron(sprintf('[EsiClient] Sending actual API request: %s %s (attempt %d)', $method, $fullPathLog, $attempt), 'debug');
+                $this->_logCron(sprintf('[EsiClient] Sending actual API request: %s %s (attempt %d)', $method, $fullPathLog, $attempt), 'debug');
 
                 $response = $this->httpClient->request($method, $url, $options);
                 $data = json_decode($response->getContent(), true);
@@ -368,7 +368,7 @@ class EsiClient
 
                 // Log page count info if X-Pages header is present
                 if (isset($responseHeaders['x-pages'][0])) {
-                    $this->logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'debug');
+                    $this->_logCron(sprintf('[EsiClient] ESI Request %s %s - Gesamtzahl der Seiten: %d', $method, $fullPathLog, (int)$responseHeaders['x-pages'][0]), 'debug');
                 }
 
                 $this->_trackErrorLimit($responseHeaders);
@@ -419,14 +419,14 @@ class EsiClient
                         $requiredScope = $this->_extractMissingScope($e->getResponse());
                         if ($requiredScope !== null) {
                             $this->_rememberMissingScope($character, $path, $requiredScope);
-                            $this->logCron(sprintf('[EsiClient] %s lacks scope %s for %s. Skipping for %d seconds.', $character->getName(), $requiredScope, $fullPathLog, self::MISSING_SCOPE_CACHE_TTL), 'warning');
+                            $this->_logCron(sprintf('[EsiClient] %s lacks scope %s for %s. Skipping for %d seconds.', $character->getName(), $requiredScope, $fullPathLog, self::MISSING_SCOPE_CACHE_TTL), 'warning');
                             throw new EsiMissingScopeException($path, $character->getName(), $requiredScope);
                         }
                     }
 
                     // If ESI returned 401 Unauthorized (invalid/revoked token) and we have a character, try to refresh and retry once
                     if ($character && $statusCode === 401 && $attempt === 1) {
-                        $this->logCron(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()), 'notice');
+                        $this->_logCron(sprintf('[EsiClient] Got 401 from ESI. Forcing token refresh and retry for character %s (%d)...', $character->getName(), $character->getId()), 'notice');
                         if ($this->refreshToken($character)) {
                             $headers['Authorization'] = 'Bearer ' . $character->getAccessToken();
                             continue; // Retry immediately
@@ -439,14 +439,14 @@ class EsiClient
                     if ($statusCode === 420) {
                         $is420 = true;
                         $retryAfter = $this->_pauseForErrorLimit($e->getResponse()->getHeaders(false));
-                        $this->logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Pausing all ESI requests for %d seconds...', $fullPathLog, $retryAfter), 'error');
+                        $this->_logCron(sprintf('[EsiClient] Got HTTP 420 (Enhance Your Calm) for %s. Pausing all ESI requests for %d seconds...', $fullPathLog, $retryAfter), 'error');
                     }
 
                     // HTTP 429: rate limit of the route group exhausted for this token or IP
                     if ($statusCode === 429) {
                         $isRateLimited = true;
                         $retryAfter = $this->_getRateLimitWait($e->getResponse()->getHeaders(false));
-                        $this->logCron(sprintf('[EsiClient] Got HTTP 429 (rate limited) for %s. Retry in %d seconds.', $fullPathLog, $retryAfter), 'warning');
+                        $this->_logCron(sprintf('[EsiClient] Got HTTP 429 (rate limited) for %s. Retry in %d seconds.', $fullPathLog, $retryAfter), 'warning');
                     }
                 }
 
@@ -466,7 +466,7 @@ class EsiClient
 
                 // Web requests show the last known data instead of waiting for a struggling ESI
                 if ($staleResult !== null && $this->isWebRequest && !$isClientError) {
-                    $this->logCron(sprintf('[EsiClient] GET %s failed (%s), serving last known data.', $fullPathLog, $e->getMessage()), 'warning');
+                    $this->_logCron(sprintf('[EsiClient] GET %s failed (%s), serving last known data.', $fullPathLog, $e->getMessage()), 'warning');
                     return $staleResult;
                 }
 
@@ -480,11 +480,11 @@ class EsiClient
                 if ($isClientError || $isRateLimitedInWeb || $attempt >= $maxRetries) {
                     // 403 means missing corporation roles; callers decide whether that is an error
                     $logLevel = $statusCode === 403 ? 'warning' : 'error';
-                    $this->logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s%s', $fullPathLog, $attempt, $e->getMessage(), $this->_getErrorBodySnippet($e)), $logLevel);
+                    $this->_logCron(sprintf('[EsiClient] Request to %s failed permanently after %d attempts: %s%s', $fullPathLog, $attempt, $e->getMessage(), $this->_getErrorBodySnippet($e)), $logLevel);
                     throw $e;
                 }
 
-                $this->logCron(sprintf('[EsiClient] Request to %s fehlgeschlagen (Versuch %d/%d): %s. Erneuter Versuch in %d Sekunden...', $fullPathLog, $attempt, $maxRetries, $e->getMessage(), $retryAfter), 'warning');
+                $this->_logCron(sprintf('[EsiClient] Request to %s fehlgeschlagen (Versuch %d/%d): %s. Erneuter Versuch in %d Sekunden...', $fullPathLog, $attempt, $maxRetries, $e->getMessage(), $retryAfter), 'warning');
                 sleep($retryAfter);
             }
         }
@@ -525,7 +525,7 @@ class EsiClient
 
                     // ESI pagination hiccup: sometimes it returns empty page data on HTTP 200 for pages > 1
                     if ($page > 1 && (empty($data) || !is_array($data))) {
-                        $this->logCron(sprintf('[EsiClient] Page %d of %d on path %s returned empty data (attempt %d/%d). Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries), 'warning');
+                        $this->_logCron(sprintf('[EsiClient] Page %d of %d on path %s returned empty data (attempt %d/%d). Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries), 'warning');
                         sleep(2);
                         continue;
                     }
@@ -545,7 +545,7 @@ class EsiClient
                     if ($isClientError || $this->isOffline() || $attempt >= $maxPageRetries) {
                         throw $e;
                     }
-                    $this->logCron(sprintf('[EsiClient] Request failed for page %d of %d on path %s (attempt %d/%d): %s. Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries, $e->getMessage()), 'warning');
+                    $this->_logCron(sprintf('[EsiClient] Request failed for page %d of %d on path %s (attempt %d/%d): %s. Retrying...', $page, $totalPages, $path, $attempt, $maxPageRetries, $e->getMessage()), 'warning');
                     sleep(2);
                 }
             }
@@ -646,7 +646,7 @@ class EsiClient
         }
 
         $waitSeconds = $this->_pauseForErrorLimit($responseHeaders);
-        $this->logCron(sprintf('[EsiClient] ESI error limit low (%d remaining). Pausing all ESI requests for %d seconds.', $remain, $waitSeconds), 'warning');
+        $this->_logCron(sprintf('[EsiClient] ESI error limit low (%d remaining). Pausing all ESI requests for %d seconds.', $remain, $waitSeconds), 'warning');
     }
 
     private function _pauseForErrorLimit(array $responseHeaders): int
@@ -720,7 +720,7 @@ class EsiClient
             ]);
             $clusterStatus = $response->toArray();
         } catch (\Exception $e) {
-            $this->logCron(sprintf('[EsiClient] Cluster status unavailable during downtime check: %s', $e->getMessage()), $quiet ? 'debug' : 'info');
+            $this->_logCron(sprintf('[EsiClient] Cluster status unavailable during downtime check: %s', $e->getMessage()), $quiet ? 'debug' : 'info');
         }
 
         $cacheItem->set($clusterStatus);
@@ -744,7 +744,7 @@ class EsiClient
         }
 
         $this->circuitOpenUntil = time() + self::CIRCUIT_BREAKER_COOLDOWN;
-        $this->logCron(sprintf('[EsiClient] ESI is down or unreachable (%d consecutive failures). Circuit breaker open for %d seconds. Error: %s', $this->consecutiveServerFailures, self::CIRCUIT_BREAKER_COOLDOWN, $exception->getMessage()), 'error');
+        $this->_logCron(sprintf('[EsiClient] ESI is down or unreachable (%d consecutive failures). Circuit breaker open for %d seconds. Error: %s', $this->consecutiveServerFailures, self::CIRCUIT_BREAKER_COOLDOWN, $exception->getMessage()), 'error');
 
         return true;
     }
@@ -777,7 +777,7 @@ class EsiClient
             throw new \RuntimeException(sprintf('ESI error limit reached, retry in %d seconds.', $waitSeconds));
         }
 
-        $this->logCron(sprintf('[EsiClient] ESI error limit pause active. Waiting %d seconds before %s.', $waitSeconds, $fullPathLog), 'warning');
+        $this->_logCron(sprintf('[EsiClient] ESI error limit pause active. Waiting %d seconds before %s.', $waitSeconds, $fullPathLog), 'warning');
         sleep($waitSeconds);
     }
 
@@ -827,7 +827,7 @@ class EsiClient
     /**
      * Helper to log both to standard logger and directly to the dedicated var/log/cron.log file.
      */
-    private function logCron(string $message, string $level = 'info'): void
+    private function _logCron(string $message, string $level = 'info'): void
     {
         $this->logger->log($level, $message);
         $this->cronLogWriter->write($message, $level);

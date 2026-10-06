@@ -102,12 +102,12 @@ class SkillExtractorFarmController extends AbstractController
                         $attrId = (int)$row['attributeID'];
                         $val = (float)$row['valueFloat'];
                         if ($val > 0) {
-                            $attrKey = $this->getAttributeKey($attrId);
+                            $attrKey = $this->_getAttributeKey($attrId);
                             $implantBonuses[$attrKey] += $val;
                             $implantsList[] = [
                                 'name' => $row['typeName'],
                                 'bonus' => $val,
-                                'attribute' => $this->translateAttribute($attrKey),
+                                'attribute' => $this->_translateAttribute($attrKey),
                             ];
                         }
                     }
@@ -154,8 +154,8 @@ class SkillExtractorFarmController extends AbstractController
                 }
             }
 
-            $primaryAttrKey = $this->getAttributeKeyFromSde($primaryAttrId);
-            $secondaryAttrKey = $this->getAttributeKeyFromSde($secondaryAttrId);
+            $primaryAttrKey = $this->_getAttributeKeyFromSde($primaryAttrId);
+            $secondaryAttrKey = $this->_getAttributeKeyFromSde($secondaryAttrId);
 
             // Calculation of current SP per minute
             $currentSpMin = $effectiveAttrs[$primaryAttrKey] + 0.5 * $effectiveAttrs[$secondaryAttrKey];
@@ -199,8 +199,8 @@ class SkillExtractorFarmController extends AbstractController
                 'effectiveAttrs' => $effectiveAttrs,
                 'implantsList' => $implantsList,
                 'activeSkillName' => $activeSkillName,
-                'primaryAttr' => $this->translateAttribute($primaryAttrKey),
-                'secondaryAttr' => $this->translateAttribute($secondaryAttrKey),
+                'primaryAttr' => $this->_translateAttribute($primaryAttrKey),
+                'secondaryAttr' => $this->_translateAttribute($secondaryAttrKey),
                 'currentSpMin' => $currentSpMin,
                 'hasImplants' => $hasImplants,
                 'isOptimalAttributes' => $isOptimalAttributes,
@@ -243,7 +243,7 @@ class SkillExtractorFarmController extends AbstractController
         ]);
     }
 
-    private function getAttributeKey(int $implantAttrId): string
+    private function _getAttributeKey(int $implantAttrId): string
     {
         return match ($implantAttrId) {
             175 => 'charisma',
@@ -255,7 +255,7 @@ class SkillExtractorFarmController extends AbstractController
         };
     }
 
-    private function getAttributeKeyFromSde(int $sdeAttrId): string
+    private function _getAttributeKeyFromSde(int $sdeAttrId): string
     {
         return match ($sdeAttrId) {
             164 => 'charisma',
@@ -267,7 +267,7 @@ class SkillExtractorFarmController extends AbstractController
         };
     }
 
-    private function translateAttribute(string $key): string
+    private function _translateAttribute(string $key): string
     {
         return match ($key) {
             'charisma' => 'Charisma',

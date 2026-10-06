@@ -34,11 +34,11 @@ class JwtService
             'exp' => time() + $ttl,
         ]);
 
-        $base64UrlHeader = $this->base64UrlEncode($header);
-        $base64UrlPayload = $this->base64UrlEncode($payload);
+        $base64UrlHeader = $this->_base64UrlEncode($header);
+        $base64UrlPayload = $this->_base64UrlEncode($payload);
 
         $signature = hash_hmac('sha256', $base64UrlHeader . '.' . $base64UrlPayload, $this->signingKey, true);
-        $base64UrlSignature = $this->base64UrlEncode($signature);
+        $base64UrlSignature = $this->_base64UrlEncode($signature);
 
         return $base64UrlHeader . '.' . $base64UrlPayload . '.' . $base64UrlSignature;
     }
@@ -55,7 +55,7 @@ class JwtService
 
         [$base64UrlHeader, $base64UrlPayload, $base64UrlSignature] = $parts;
 
-        $signature = $this->base64UrlDecode($base64UrlSignature);
+        $signature = $this->_base64UrlDecode($base64UrlSignature);
         if ($signature === null) {
             return null;
         }
@@ -66,7 +66,7 @@ class JwtService
             return null; // Signature is invalid
         }
 
-        $payloadJson = $this->base64UrlDecode($base64UrlPayload);
+        $payloadJson = $this->_base64UrlDecode($base64UrlPayload);
         if ($payloadJson === null) {
             return null;
         }
@@ -83,12 +83,12 @@ class JwtService
         return $payload;
     }
 
-    private function base64UrlEncode(string $data): string
+    private function _base64UrlEncode(string $data): string
     {
         return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
     }
 
-    private function base64UrlDecode(string $data): ?string
+    private function _base64UrlDecode(string $data): ?string
     {
         $remainder = strlen($data) % 4;
         if ($remainder) {

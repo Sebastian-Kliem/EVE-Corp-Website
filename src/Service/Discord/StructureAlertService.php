@@ -69,7 +69,7 @@ class StructureAlertService
             }
 
             if ($isRefueled) {
-                $this->sendRefueledNotification(
+                $this->_sendRefueledNotification(
                     $structureName,
                     $typeName,
                     $systemName,
@@ -82,18 +82,18 @@ class StructureAlertService
                 );
 
                 // Reset alert threshold based on new fuel level
-                $newThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
+                $newThreshold = $this->_resolveCurrentThreshold($daysRemainingFloat);
                 $structure->setLastFuelAlertDays($newThreshold);
                 $lastAlertDays = $newThreshold;
             }
 
             // 2. Check Fuel Level Threshold Alerts (<= 30d, 14d, 7d, 3d, 1d, 0d)
-            $currentThreshold = $this->resolveCurrentThreshold($daysRemainingFloat);
+            $currentThreshold = $this->_resolveCurrentThreshold($daysRemainingFloat);
 
             if ($currentThreshold !== null) {
                 // Only send alert if we haven't alerted for this threshold (or lower) yet
                 if ($lastAlertDays === null || $lastAlertDays > $currentThreshold) {
-                    $this->sendFuelAlertNotification(
+                    $this->_sendFuelAlertNotification(
                         $structureName,
                         $typeName,
                         $systemName,
@@ -114,7 +114,7 @@ class StructureAlertService
 
         // 3. Detect State Changes (e.g. online -> offline, armor_reinforce, unanchoring)
         if ($previousState !== null && $previousState !== $currentState) {
-            $this->sendStateChangeNotification(
+            $this->_sendStateChangeNotification(
                 $structureName,
                 $typeName,
                 $systemName,
@@ -189,7 +189,7 @@ class StructureAlertService
             }
 
             if ($isRefueled) {
-                $this->sendRefueledNotification(
+                $this->_sendRefueledNotification(
                     $starbaseName,
                     $typeName,
                     $systemName,
@@ -201,17 +201,17 @@ class StructureAlertService
                     'starbase'
                 );
 
-                $newThreshold = $this->resolveCurrentThreshold($daysLeftFloat);
+                $newThreshold = $this->_resolveCurrentThreshold($daysLeftFloat);
                 $starbase->setLastFuelAlertDays($newThreshold);
                 $lastAlertDays = $newThreshold;
             }
 
             // Check Fuel Thresholds
-            $currentThreshold = $this->resolveCurrentThreshold($daysLeftFloat);
+            $currentThreshold = $this->_resolveCurrentThreshold($daysLeftFloat);
 
             if ($currentThreshold !== null) {
                 if ($lastAlertDays === null || $lastAlertDays > $currentThreshold) {
-                    $this->sendFuelAlertNotification(
+                    $this->_sendFuelAlertNotification(
                         $starbaseName,
                         $typeName,
                         $systemName,
@@ -232,7 +232,7 @@ class StructureAlertService
 
         // State change detection
         if ($previousState !== null && $previousState !== $currentState) {
-            $this->sendStateChangeNotification(
+            $this->_sendStateChangeNotification(
                 $starbaseName,
                 $typeName,
                 $systemName,
@@ -249,7 +249,7 @@ class StructureAlertService
     /**
      * Resolves the smallest matching threshold or null if above 30 days.
      */
-    private function resolveCurrentThreshold(float $daysRemainingFloat): ?int
+    private function _resolveCurrentThreshold(float $daysRemainingFloat): ?int
     {
         $currentThreshold = null;
         foreach (self::FUEL_THRESHOLDS as $threshold) {
@@ -260,7 +260,7 @@ class StructureAlertService
         return $currentThreshold;
     }
 
-    private function sendFuelAlertNotification(
+    private function _sendFuelAlertNotification(
         string $name,
         string $typeName,
         string $systemName,
@@ -339,7 +339,7 @@ class StructureAlertService
         }
     }
 
-    private function sendRefueledNotification(
+    private function _sendRefueledNotification(
         string $name,
         string $typeName,
         string $systemName,
@@ -396,7 +396,7 @@ class StructureAlertService
         }
     }
 
-    private function sendStateChangeNotification(
+    private function _sendStateChangeNotification(
         string $name,
         string $typeName,
         string $systemName,

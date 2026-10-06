@@ -86,7 +86,7 @@ class CronRunCommand extends Command
 
         // 1. Auto-seed default cron jobs if database is empty or missing them (one lane only, avoids duplicate inserts)
         if (!$isQuietLane) {
-            $this->seedDefaultJobs();
+            $this->_seedDefaultJobs();
         }
 
         $cronJobRepository = $this->entityManager->getRepository(CronJob::class);
@@ -151,14 +151,14 @@ class CronRunCommand extends Command
                     $job->setLastStatus('error');
                     $job->setLastError($errorMsg);
                     $job->setLastRunAt($now);
-                    $this->updateNextRunAt($job, $now);
+                    $this->_updateNextRunAt($job, $now);
                     $this->entityManager->flush();
                     $jobLock->release();
                     continue;
                 }
 
                 // Update nextRunAt immediately to prevent concurrent runs
-                $this->updateNextRunAt($job, $now);
+                $this->_updateNextRunAt($job, $now);
                 // Mark as running so the admin page can show progress
                 $job->setLastStatus(CronJob::STATUS_RUNNING);
                 $job->setLastRunAt($now);
@@ -249,7 +249,7 @@ class CronRunCommand extends Command
         return implode("\n", $lines);
     }
 
-    private function updateNextRunAt(CronJob $job, \DateTimeImmutable $now): void
+    private function _updateNextRunAt(CronJob $job, \DateTimeImmutable $now): void
     {
         try {
             $cron = new CronExpression($job->getCronExpression());
@@ -261,7 +261,7 @@ class CronRunCommand extends Command
         }
     }
 
-    private function seedDefaultJobs(): void
+    private function _seedDefaultJobs(): void
     {
         $repo = $this->entityManager->getRepository(CronJob::class);
         

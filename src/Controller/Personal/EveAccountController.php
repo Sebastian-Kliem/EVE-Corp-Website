@@ -422,10 +422,10 @@ class EveAccountController extends AbstractController
 
                 $items = [];
                 foreach ($topAssets as $asset) {
-                    $items[] = $this->buildAssetTreeNode($asset, $nestedAssets, $sdeService, $prices);
+                    $items[] = $this->_buildAssetTreeNode($asset, $nestedAssets, $sdeService, $prices);
                 }
 
-                $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
+                $items = $this->_groupAndSortNodes($items, $sdeService, $locationId);
 
                 $locations[] = [
                     'id' => $locationId,
@@ -516,14 +516,14 @@ class EveAccountController extends AbstractController
 
                         $items = [];
                         foreach ($roots as $root) {
-                            $items[] = $this->buildAssetTreeNodeFromCorpAsset($root, $corpNestedAssets, $sdeService, $prices);
+                            $items[] = $this->_buildAssetTreeNodeFromCorpAsset($root, $corpNestedAssets, $sdeService, $prices);
                         }
 
-                        $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
+                        $items = $this->_groupAndSortNodes($items, $sdeService, $locationId);
 
                         if ($locIndex >= 0) {
                             $locations[$locIndex]['items'] = array_merge($locations[$locIndex]['items'], $items);
-                            $locations[$locIndex]['items'] = $this->groupAndSortNodes($locations[$locIndex]['items'], $sdeService, $locationId);
+                            $locations[$locIndex]['items'] = $this->_groupAndSortNodes($locations[$locIndex]['items'], $sdeService, $locationId);
                         } else {
                             $locations[] = [
                                 'id' => $locationId,
@@ -534,7 +534,7 @@ class EveAccountController extends AbstractController
                         }
 
                         foreach ($items as $item) {
-                            $totalAssetVal += $this->calculateNodeValue($item);
+                            $totalAssetVal += $this->_calculateNodeValue($item);
                         }
                     }
                 }
@@ -690,16 +690,16 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_dashboard_assets_overview');
     }
 
-    private function buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
+    private function _buildAssetTreeNode(EveCharacterAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
     {
         $itemId = $asset->getItemId();
         $typeId = $asset->getTypeId();
         $children = [];
         if (isset($nestedAssets[$itemId])) {
             foreach ($nestedAssets[$itemId] as $childAsset) {
-                $children[] = $this->buildAssetTreeNode($childAsset, $nestedAssets, $sdeService, $prices);
+                $children[] = $this->_buildAssetTreeNode($childAsset, $nestedAssets, $sdeService, $prices);
             }
-            $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
+            $children = $this->_groupAndSortNodes($children, $sdeService, $itemId);
         }
 
         $price = $asset->isBlueprintCopy() ? 0.0 : ($prices[$typeId] ?? 0.0);
@@ -733,16 +733,16 @@ class EveAccountController extends AbstractController
         ];
     }
 
-    private function buildAssetTreeNodeFromCorpAsset(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
+    private function _buildAssetTreeNodeFromCorpAsset(EveCorporationAsset $asset, array $nestedAssets, SdeService $sdeService, array $prices): array
     {
         $itemId = $asset->getItemId();
         $typeId = $asset->getTypeId();
         $children = [];
         if (isset($nestedAssets[$itemId])) {
             foreach ($nestedAssets[$itemId] as $childAsset) {
-                $children[] = $this->buildAssetTreeNodeFromCorpAsset($childAsset, $nestedAssets, $sdeService, $prices);
+                $children[] = $this->_buildAssetTreeNodeFromCorpAsset($childAsset, $nestedAssets, $sdeService, $prices);
             }
-            $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
+            $children = $this->_groupAndSortNodes($children, $sdeService, $itemId);
         }
 
         return [
@@ -764,12 +764,12 @@ class EveAccountController extends AbstractController
         ];
     }
 
-    private function calculateNodeValue(array $node): float
+    private function _calculateNodeValue(array $node): float
     {
         $val = ($node['price'] ?? 0.0) * ($node['quantity'] ?? 1);
         if (!empty($node['children'])) {
             foreach ($node['children'] as $child) {
-                $val += $this->calculateNodeValue($child);
+                $val += $this->_calculateNodeValue($child);
             }
         }
         return $val;
@@ -898,7 +898,7 @@ class EveAccountController extends AbstractController
                     }
 
                     $folderName = $getDivisionName($flag);
-                    $node = $this->buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
+                    $node = $this->_buildCorpAssetTreeNode($asset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
 
                     // If this is an Office (typeId 27) and has no visible children (divisions) left after filtering, skip it
                     if ($node['typeId'] === 27 && empty($node['children'])) {
@@ -909,7 +909,7 @@ class EveAccountController extends AbstractController
                 }
 
                 foreach ($groupedByDivision as $folderName => &$items) {
-                    $items = $this->groupAndSortNodes($items, $sdeService, $locationId);
+                    $items = $this->_groupAndSortNodes($items, $sdeService, $locationId);
                 }
                 unset($items);
 
@@ -993,7 +993,7 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    private function buildCorpAssetTreeNode(
+    private function _buildCorpAssetTreeNode(
         EveCorporationAsset $asset,
         array $nestedAssets,
         SdeService $sdeService,
@@ -1018,7 +1018,7 @@ class EveAccountController extends AbstractController
 
             if ($hasOffice && $officeAsset !== null) {
                 // Bypass the office node completely: directly add the office's children (hangars/deliveries)
-                $officeNode = $this->buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
+                $officeNode = $this->_buildCorpAssetTreeNode($officeAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                 $children = $officeNode['children'];
             } else {
                 foreach ($nestedAssets[$itemId] as $childAsset) {
@@ -1042,7 +1042,7 @@ class EveAccountController extends AbstractController
                         continue;
                     }
 
-                    $children[] = $this->buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
+                    $children[] = $this->_buildCorpAssetTreeNode($childAsset, $nestedAssets, $sdeService, $divisionNames, $isCeoOrAdmin, $visibilityMap, $prices);
                 }
             }
 
@@ -1080,7 +1080,7 @@ class EveAccountController extends AbstractController
                 }
 
                 foreach ($groupedByDiv as $divName => &$items) {
-                    $items = $this->groupAndSortNodes($items, $sdeService, $itemId);
+                    $items = $this->_groupAndSortNodes($items, $sdeService, $itemId);
                 }
                 unset($items);
 
@@ -1119,7 +1119,7 @@ class EveAccountController extends AbstractController
 
                 $children = array_merge($divNodes, $nonDivChildren);
             } else {
-                $children = $this->groupAndSortNodes($children, $sdeService, $itemId);
+                $children = $this->_groupAndSortNodes($children, $sdeService, $itemId);
             }
         }
 
@@ -1149,7 +1149,7 @@ class EveAccountController extends AbstractController
      * 3. All other items are placed last.
      * Each sub-group is sorted alphabetically by name.
      */
-    private function groupAndSortNodes(array $nodes, SdeService $sdeService, int $parentId): array
+    private function _groupAndSortNodes(array $nodes, SdeService $sdeService, int $parentId): array
     {
         $shipNodes = [];
         $containerWithContentNodes = [];

@@ -17,7 +17,7 @@ class PiSimulationService
     {
         $simulatedPlanets = [];
         foreach ($planets as $planet) {
-            $simulatedPlanets[] = $this->simulatePlanet($planet);
+            $simulatedPlanets[] = $this->_simulatePlanet($planet);
         }
         return $simulatedPlanets;
     }
@@ -25,7 +25,7 @@ class PiSimulationService
     /**
      * Simulates the PI production and consumption for a single planet.
      */
-    private function simulatePlanet(array $planet): array
+    private function _simulatePlanet(array $planet): array
     {
         // If we don't have the raw routes in the database, we cannot simulate the flow.
         if (empty($planet['routes']) || empty($planet['last_update'])) {

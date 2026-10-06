@@ -46,7 +46,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
 
             // A. Sync Personal Industry Jobs
             try {
-                $jobs = $this->syncPersonalJobs($character);
+                $jobs = $this->_syncPersonalJobs($character);
                 foreach ($jobs as $jobData) {
                     $activeJobIds[] = (string)$jobData['job_id'];
                 }
@@ -74,7 +74,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
                     }
                 } elseif ($corpSyncSuccess[$corpId] !== 'success') {
                     try {
-                        $result = $this->syncCorpJobs($character, $corpId, $localCharactersMap);
+                        $result = $this->_syncCorpJobs($character, $corpId, $localCharactersMap);
                         if ($result['status'] === 'success') {
                             $corpSyncSuccess[$corpId] = 'success';
                             foreach ($result['jobs'] as $jobData) {
@@ -134,7 +134,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         return in_array('Director', $roles, true) || in_array('Factory_Manager', $roles, true);
     }
 
-    private function syncPersonalJobs(EveCharacter $character): array
+    private function _syncPersonalJobs(EveCharacter $character): array
     {
         $this->logger->debug(sprintf('[Cron] Syncing personal industry jobs for character %s...', $character->getName()));
 
@@ -164,7 +164,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         $existingJobs = $this->_loadExistingJobs($jobsData);
         $this->entityManager->wrapInTransaction(function() use ($character, $jobsData, $existingJobs) {
             foreach ($jobsData as $jobData) {
-                $this->saveJob($jobData, $character, $existingJobs);
+                $this->_saveJob($jobData, $character, $existingJobs);
             }
 
             $character->setLastIndustryJobsUpdate(new \DateTimeImmutable());
@@ -180,7 +180,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         return $jobsData;
     }
 
-    private function syncCorpJobs(EveCharacter $character, int $corpId, array $localCharactersMap): array
+    private function _syncCorpJobs(EveCharacter $character, int $corpId, array $localCharactersMap): array
     {
         $this->logger->debug(sprintf('[Cron] Trying to sync corporation industry jobs for corporation %d using character %s...', $corpId, $character->getName()));
 
@@ -212,7 +212,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
 
                 // Only save the corporation job if the installer character belongs to our system
                 if (isset($localCharactersMap[$installerId])) {
-                    $this->saveJob($jobData, $localCharactersMap[$installerId], $existingJobs);
+                    $this->_saveJob($jobData, $localCharactersMap[$installerId], $existingJobs);
                     $savedCount++;
                 }
             }
@@ -231,7 +231,7 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
     /**
      * @param array<string, EveCharacterIndustryJob> $existingJobs
      */
-    private function saveJob(array $jobData, EveCharacter $character, array $existingJobs): void
+    private function _saveJob(array $jobData, EveCharacter $character, array $existingJobs): void
     {
         $jobId = (string) $jobData['job_id'];
 

@@ -63,7 +63,7 @@ class MarketTransactionSyncTest extends TestCase
         $character->setId(123);
         $character->setName('Trader');
 
-        (new \ReflectionMethod($task, 'syncMarketTransactions'))->invoke($task, $character);
+        (new \ReflectionMethod($task, '_syncMarketTransactions'))->invoke($task, $character);
 
         $this->assertCount(count($allTransactionIds), $persistedIds);
         $this->assertSame([null, '4501', '2002'], $requestedFromIds);
@@ -100,7 +100,7 @@ class MarketTransactionSyncTest extends TestCase
         $character->setName('Trader');
 
         $task = $this->_createTask($entityManager, $esiClient);
-        (new \ReflectionMethod($task, 'syncWalletJournal'))->invoke($task, $character);
+        (new \ReflectionMethod($task, '_syncWalletJournal'))->invoke($task, $character);
 
         // Known entries stop the paging, so page 2 is never requested
         $this->assertSame(['5', '4'], $insertedRefIds);

@@ -35,7 +35,7 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
             }
 
             try {
-                $this->syncKillmails($character);
+                $this->_syncKillmails($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync killmails for character %s (%d): %s',
@@ -49,7 +49,7 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished sync-killmails execution.');
     }
 
-    private function syncKillmails(EveCharacter $character): void
+    private function _syncKillmails(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing killmails for character %s...', $character->getName()));
 

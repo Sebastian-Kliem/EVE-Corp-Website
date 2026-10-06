@@ -134,7 +134,7 @@ class ReactionPriceService
         foreach (self::HYBRID_POLYMERS as $typeId => $name) {
             $marketPrices[$typeId] = [];
             foreach (self::HUBS as $hubKey => $hubInfo) {
-                $marketPrices[$typeId][$hubKey] = $this->fetchHubMarketData($typeId, $hubInfo['regionId'], $hubInfo['stationId']);
+                $marketPrices[$typeId][$hubKey] = $this->_fetchHubMarketData($typeId, $hubInfo['regionId'], $hubInfo['stationId']);
             }
         }
 
@@ -142,22 +142,22 @@ class ReactionPriceService
         $jitaHub = self::HUBS['jita'];
         foreach (self::INPUT_TYPE_IDS as $typeId => $name) {
             $marketPrices[$typeId] = [
-                'jita' => $this->fetchHubMarketData($typeId, $jitaHub['regionId'], $jitaHub['stationId'])
+                'jita' => $this->_fetchHubMarketData($typeId, $jitaHub['regionId'], $jitaHub['stationId'])
             ];
         }
 
         // 4. Fetch compressed fullerite gas Jita prices
         foreach (self::COMPRESSED_GAS_MAP as $rawId => $compressedId) {
             $marketPrices[$compressedId] = [
-                'jita' => $this->fetchHubMarketData($compressedId, $jitaHub['regionId'], $jitaHub['stationId'])
+                'jita' => $this->_fetchHubMarketData($compressedId, $jitaHub['regionId'], $jitaHub['stationId'])
             ];
         }
 
         // 5. Fetch global prices for Adjusted Prices (Estimated Item Value) for inputs AND polymers
-        $adjustedPrices = $this->fetchAdjustedPrices();
+        $adjustedPrices = $this->_fetchAdjustedPrices();
 
         // 6. Fetch System Cost Indices for reactions
-        $systemCostIndices = $this->fetchReactionSystemCostIndices();
+        $systemCostIndices = $this->_fetchReactionSystemCostIndices();
 
         return [
             'reactions' => $reactions,
@@ -172,7 +172,7 @@ class ReactionPriceService
     /**
      * Fetches reaction activity system cost indices from ESI.
      */
-    private function fetchReactionSystemCostIndices(): array
+    private function _fetchReactionSystemCostIndices(): array
     {
         try {
             $systems = $this->esiClient->request('GET', 'industry/systems/');
@@ -205,7 +205,7 @@ class ReactionPriceService
     /**
      * Fetches global markets/prices/ to retrieve adjusted prices (EIV) for both polymers and materials.
      */
-    private function fetchAdjustedPrices(): array
+    private function _fetchAdjustedPrices(): array
     {
         try {
             $data = $this->esiClient->request('GET', 'markets/prices/');
@@ -236,7 +236,7 @@ class ReactionPriceService
     /**
      * Fetches and aggregates market data for a specific item at a specific station.
      */
-    private function fetchHubMarketData(int $typeId, int $regionId, int $stationId): array
+    private function _fetchHubMarketData(int $typeId, int $regionId, int $stationId): array
     {
         try {
             // Fetch all orders for this type in the region
@@ -251,7 +251,7 @@ class ReactionPriceService
             )['data'];
 
             if (!is_array($orders)) {
-                return $this->emptyHubData();
+                return $this->_emptyHubData();
             }
 
             // Filter for the specific station/hub
@@ -291,11 +291,11 @@ class ReactionPriceService
 
         } catch (\Exception $e) {
             error_log(sprintf('[ReactionPriceService] Failed to fetch market data for type %d in region %d: %s', $typeId, $regionId, $e->getMessage()));
-            return $this->emptyHubData();
+            return $this->_emptyHubData();
         }
     }
 
-    private function emptyHubData(): array
+    private function _emptyHubData(): array
     {
         return [
             'maxBuyPrice' => null,

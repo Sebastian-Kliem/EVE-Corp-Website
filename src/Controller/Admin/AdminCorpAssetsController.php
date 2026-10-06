@@ -41,7 +41,7 @@ class AdminCorpAssetsController extends AbstractController
             $corpIds[] = $asset->getCorporationId();
 
             // Resolve the physical base location (NPC Station or owned structure)
-            $baseLocId = $this->getBaseLocationId((string)$asset->getLocationId(), $assetsByItemId);
+            $baseLocId = $this->_getBaseLocationId((string)$asset->getLocationId(), $assetsByItemId);
 
             $baseLocNum = (int)$baseLocId;
             $isNpcStation = ($baseLocNum >= 60000000 && $baseLocNum < 64000000);
@@ -182,7 +182,7 @@ class AdminCorpAssetsController extends AbstractController
      * Resolves the physical base location (NPC Station ID or Upwell Structure ID)
      * for a given location ID, by traversing up the asset containment tree.
      */
-    private function getBaseLocationId(string $locationId, array $assetsByItemId): string
+    private function _getBaseLocationId(string $locationId, array $assetsByItemId): string
     {
         $currentId = $locationId;
 

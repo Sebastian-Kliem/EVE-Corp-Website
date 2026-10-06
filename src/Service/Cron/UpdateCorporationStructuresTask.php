@@ -53,11 +53,11 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d corporations with authorized characters.', count($corporationIds)));
 
         foreach ($corporationIds as $corpId) {
-            $this->ensureEntityManagerOpen();
-            $this->_syncWithFirstAuthorizedCharacter($corpId, 'Upwell structures', $structureCharacters[$corpId] ?? [], $this->syncUpwellStructures(...));
+            $this->_ensureEntityManagerOpen();
+            $this->_syncWithFirstAuthorizedCharacter($corpId, 'Upwell structures', $structureCharacters[$corpId] ?? [], $this->_syncUpwellStructures(...));
 
-            $this->ensureEntityManagerOpen();
-            $this->_syncWithFirstAuthorizedCharacter($corpId, 'starbases', $starbaseCharacters[$corpId] ?? [], $this->syncStarbases(...));
+            $this->_ensureEntityManagerOpen();
+            $this->_syncWithFirstAuthorizedCharacter($corpId, 'starbases', $starbaseCharacters[$corpId] ?? [], $this->_syncStarbases(...));
         }
 
         $this->logger->info('[Cron] Finished corporation structures sync execution.');
@@ -93,7 +93,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
                 $this->logger->error(sprintf('[Cron] Failed to sync %s for corp %d using %s: %s', $label, $corpId, $character->getName(), $e->getMessage()));
                 return;
             }
-            $this->ensureEntityManagerOpen();
+            $this->_ensureEntityManagerOpen();
         }
 
         $this->logger->warning(sprintf('[Cron] None of the %d authorized characters could read %s of corp %d.', count($characters), $label, $corpId));
@@ -113,14 +113,14 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         return $this->corporationNames[$corpId];
     }
 
-    private function ensureEntityManagerOpen(): void
+    private function _ensureEntityManagerOpen(): void
     {
         if (!$this->entityManager->isOpen()) {
             $this->entityManager = $this->_resetEntityManager();
         }
     }
 
-    private function syncUpwellStructures(int $corpId, EveCharacter $director): void
+    private function _syncUpwellStructures(int $corpId, EveCharacter $director): void
     {
         $structuresData = $this->esiClient->requestAllPages(
             sprintf('corporations/%d/structures/', $corpId),
@@ -232,7 +232,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $this->logger->info(sprintf('[Cron] Successfully updated %d Upwell structures for corp %d.', count($structuresData), $corpId));
     }
 
-    private function syncStarbases(int $corpId, EveCharacter $director): void
+    private function _syncStarbases(int $corpId, EveCharacter $director): void
     {
         $starbasesData = $this->esiClient->requestAllPages(
             sprintf('corporations/%d/starbases/', $corpId),
