@@ -12,7 +12,7 @@ class AppSetting
     #[ORM\Column(name: 'setting_key', type: 'string', length: 100)]
     private string $key;
 
-    #[ORM\Column(name: 'setting_value', type: 'text', nullable: true)]
+    #[ORM\Column(name: 'setting_value', type: 'encrypted_text', nullable: true)]
     private ?string $value = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
