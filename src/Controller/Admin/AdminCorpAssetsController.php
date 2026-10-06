@@ -5,7 +5,7 @@ namespace App\Controller\Admin;
 use App\Entity\CorpAssetVisibility;
 use App\Entity\EveCharacter;
 use App\Entity\EveCorporationAsset;
-use App\Service\Esi\EsiClient;
+use App\Service\CorpDivisionService;
 use App\Service\LocationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,7 +21,7 @@ class AdminCorpAssetsController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly LocationService $locationService,
-        private readonly EsiClient $esiClient
+        private readonly CorpDivisionService $corpDivisionService
     ) {}
 
     #[Route('/corp-assets-visibility', name: 'app_admin_corp_assets_visibility', methods: ['GET', 'POST'])]
@@ -57,33 +57,7 @@ class AdminCorpAssetsController extends AbstractController
         // 2. Fetch division names for each corporation using its sync character
         $corpDivisions = [];
         foreach ($corpIds as $corpId) {
-            $syncCharacter = $this->entityManager->getRepository(EveCharacter::class)->createQueryBuilder('c')
-                ->where('c.corporationId = :corpId')
-                ->andWhere('c.lastCorpAssetsUpdate IS NOT NULL')
-                ->setParameter('corpId', $corpId)
-                ->orderBy('c.lastCorpAssetsUpdate', \SortDirection::Descending)
-                ->setMaxResults(1)
-                ->getQuery()
-                ->getOneOrNullResult();
-
-            $divisionNames = [];
-            if ($syncCharacter) {
-                try {
-                    $divData = $this->esiClient->request('GET', sprintf('corporations/%d/divisions/', $corpId), [], $syncCharacter);
-                    if (isset($divData['hangar']) && is_array($divData['hangar'])) {
-                        foreach ($divData['hangar'] as $div) {
-                            $name = $div['name'];
-                            if (!preg_match('/^Hangar\s*\d+$/ui', $name)) {
-                                $name = preg_replace('/\s*\d+$/u', '', $name);
-                            }
-                            $divisionNames[(int) $div['division']] = $name;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore
-                }
-            }
-            $corpDivisions[$corpId] = $divisionNames;
+            $corpDivisions[$corpId] = $this->corpDivisionService->getHangarDivisionNames((int)$corpId);
         }
 
         // 3. Resolve location names and systems
