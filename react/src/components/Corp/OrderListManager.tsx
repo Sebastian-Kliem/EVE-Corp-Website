@@ -4,6 +4,7 @@ import OrderWorkflowGuide from './OrderWorkflowGuide';
 import DeliveryPackingList from './DeliveryPackingList';
 import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
+import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 
 export interface OrderItem {
     id: number;
@@ -79,6 +80,7 @@ interface OrderListManagerProps {
     doctrineFits?: DoctrineFit[];
     currentUserId?: number;
     isOfficer?: boolean;
+    ownedStock?: OwnedStock;
 }
 
 export default function OrderListManager({
@@ -89,6 +91,7 @@ export default function OrderListManager({
     doctrineFits = [],
     currentUserId,
     isOfficer = false,
+    ownedStock,
 }: OrderListManagerProps) {
     const [selectedTab, setSelectedTab] = useState<'BUY' | 'SELL'>('BUY');
     const [viewMode, setViewMode] = useState<'active' | 'deliveries' | 'archived'>('active');
@@ -580,6 +583,7 @@ export default function OrderListManager({
                 <DeliveryPackingList
                     orders={myDeliveries}
                     currentUserId={currentUserId}
+                    ownedStock={ownedStock}
                     isOfficer={isOfficer}
                     onCopyUser={handleCopyUser}
                     onCopyAmount={handleCopyAmount}
@@ -884,6 +888,7 @@ export default function OrderListManager({
                                                                         >
                                                                             [Markt]
                                                                         </button>
+                                                                        <OwnedStockBadge stock={findOwnedStock(ownedStock, item.typeId)} requiredAmount={item.amount} />
                                                                     </div>
                                                                 </td>
                                                                 <td className="p-2">
