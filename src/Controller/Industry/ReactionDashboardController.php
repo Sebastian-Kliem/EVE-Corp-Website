@@ -87,7 +87,7 @@ class ReactionDashboardController extends AbstractController
             ];
         }
 
-        return $this->render('general/reactions/index.html.twig', [
+        return $this->render('industry/reactions.html.twig', [
             'structuresList' => $structuresList,
         ]);
     }

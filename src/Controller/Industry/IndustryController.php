@@ -48,7 +48,7 @@ class IndustryController extends AbstractController
             ];
         }
 
-        return $this->render('profile/profile_industry/industry_jobs.html.twig', [
+        return $this->render('industry/jobs.html.twig', [
             'charactersList' => $charactersList,
         ]);
     }

@@ -43,7 +43,7 @@ class MiningLedgerController extends AbstractController
             ];
         }
 
-        return $this->render('profile/profile_mining_ledger/mining_ledger.html.twig', [
+        return $this->render('industry/mining_ledger.html.twig', [
             'charactersList' => $charactersList,
         ]);
     }

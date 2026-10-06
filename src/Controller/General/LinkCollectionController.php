@@ -42,7 +42,7 @@ final class LinkCollectionController extends AbstractController
             $editingCategory = $entityManager->getRepository(LinkCollectionCategory::class)->find($editCategoryId);
         }
 
-        return $this->render('tool/link_collection/linkCollection.html.twig', [
+        return $this->render('general/link_collection.html.twig', [
             'groupedLinks' => $groupedLinks,
             'categories' => $categories,
             'editing_link' => $editingLink,

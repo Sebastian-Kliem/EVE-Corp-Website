@@ -53,7 +53,7 @@ final class OrderListController extends AbstractController
             ? $ownedStockService->getOwnedStock($user, $this->_collectItemTypeIds(array_merge($activeBuyOrders, $activeSellOrders)))
             : [];
 
-        return $this->render('tool/order_list/orderList.html.twig', [
+        return $this->render('corp/order_list.html.twig', [
             'initialBuyOrders' => $formattedBuy,
             'initialSellOrders' => $formattedSell,
             'initialArchivedBuyOrders' => $formattedArchivedBuy,

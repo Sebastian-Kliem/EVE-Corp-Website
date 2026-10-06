@@ -297,7 +297,7 @@ class BlueprintVaultController extends AbstractController
         // Sort blueprints by name
         usort($blueprintsData, fn($a, $b) => strcasecmp($a['name'], $b['name']));
 
-        return $this->render('corp/blueprints.html.twig', [
+        return $this->render('industry/blueprints.html.twig', [
             'blueprints' => $blueprintsData,
         ]);
     }

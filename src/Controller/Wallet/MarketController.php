@@ -34,7 +34,7 @@ class MarketController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('profile/profile_market/market_overview.html.twig');
+        return $this->render('wallet/market.html.twig');
     }
 
     #[Route('/data', name: 'app_dashboard_market_data', methods: ['GET'])]

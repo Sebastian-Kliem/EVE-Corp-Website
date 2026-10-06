@@ -376,7 +376,7 @@ class AssetsOverviewController extends AbstractController
         $charactersList = array_values($uniqueCharacters);
         usort($charactersList, fn($a, $b) => strcasecmp($a['name'], $b['name']));
 
-        return $this->render('profile/eve_account/assets_overview.html.twig', [
+        return $this->render('wallet/assets_overview.html.twig', [
             'totalWallet' => $totalWallet,
             'totalAssetVal' => $globalTotalAssetVal,
             'netWorth' => $netWorth,
