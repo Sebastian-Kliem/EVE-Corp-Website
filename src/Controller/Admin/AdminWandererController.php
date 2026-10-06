@@ -33,15 +33,11 @@ class AdminWandererController extends AbstractController
     public function index(): Response
     {
         $corpRules = $this->ruleRepository->findAllCorpRules();
-        $settings = $this->discordWebhookService->getAllSettings();
-        // The stored API key never leaves the server, the form only shows its last characters
-        $storedApiKey = $settings['wanderer_api_key'] ?? null;
-        unset($settings['wanderer_api_key']);
+        $settings = $this->discordWebhookService->getAllSettingsMasked();
 
         return $this->render('admin/admin_wanderer/index.html.twig', [
             'corpRules' => $corpRules,
             'settings' => $settings,
-            'apiKeyHint' => $storedApiKey !== null ? $this->_maskSecret($storedApiKey) : null,
         ]);
     }
 
@@ -53,22 +49,7 @@ class AdminWandererController extends AbstractController
             return $this->redirectToRoute('app_admin_wanderer_index');
         }
 
-        $submittedSettings = [
-            'discord_webhook_wanderer' => $request->request->get('discord_webhook_wanderer'),
-            'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
-            'wanderer_api_url' => $request->request->get('wanderer_api_url'),
-            'wanderer_map_slug' => $request->request->get('wanderer_map_slug'),
-        ];
-
-        // An empty key field keeps the stored key, only the remove checkbox clears it
-        $submittedApiKey = trim((string)$request->request->get('wanderer_api_key', ''));
-        if ($request->request->getBoolean('wanderer_api_key_remove')) {
-            $submittedSettings['wanderer_api_key'] = null;
-        } elseif ($submittedApiKey !== '') {
-            $submittedSettings['wanderer_api_key'] = $submittedApiKey;
-        }
-
-        $this->discordWebhookService->saveSettings($submittedSettings);
+        $this->discordWebhookService->saveSubmittedSettings($request->request->all(), $request->request->all('remove_settings'));
 
         $this->addFlash('success', 'Wanderer-Integrationseinstellungen wurden erfolgreich gespeichert.');
         return $this->redirectToRoute('app_admin_wanderer_index');
@@ -225,10 +206,5 @@ class AdminWandererController extends AbstractController
         $results = $this->sdeService->searchSolarSystems($query, 10);
 
         return new JsonResponse($results);
-    }
-
-    private function _maskSecret(string $secret): string
-    {
-        return mb_strlen($secret) > 8 ? '...' . mb_substr($secret, -4) : '...';
     }
 }

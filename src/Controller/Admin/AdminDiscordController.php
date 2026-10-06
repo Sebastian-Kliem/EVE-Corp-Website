@@ -26,7 +26,7 @@ class AdminDiscordController extends AbstractController
     #[Route('', name: 'app_admin_discord_index', methods: ['GET'])]
     public function index(): Response
     {
-        $settings = $this->discordWebhookService->getAllSettings();
+        $settings = $this->discordWebhookService->getAllSettingsMasked();
         
         $logRepo = $this->entityManager->getRepository(DiscordNotificationLog::class);
         $recentLogs = $logRepo->findBy([], ['createdAt' => 'DESC'], 20);
@@ -45,21 +45,8 @@ class AdminDiscordController extends AbstractController
             return $this->redirectToRoute('app_admin_discord_index');
         }
 
-        $submittedSettings = [
-            'discord_webhook_default' => $request->request->get('discord_webhook_default'),
-            'discord_webhook_fuel' => $request->request->get('discord_webhook_fuel'),
-            'discord_webhook_combat' => $request->request->get('discord_webhook_combat'),
-            'discord_webhook_structures' => $request->request->get('discord_webhook_structures'),
-            'discord_webhook_user_alerts' => $request->request->get('discord_webhook_user_alerts'),
-            'discord_webhook_industry' => $request->request->get('discord_webhook_industry'),
-            'discord_webhook_market' => $request->request->get('discord_webhook_market'),
-            'discord_webhook_wanderer' => $request->request->get('discord_webhook_wanderer'),
-            'discord_ping_role_structure_defense' => $request->request->get('discord_ping_role_structure_defense'),
-            'discord_ping_role_fuel' => $request->request->get('discord_ping_role_fuel'),
-            'discord_ping_role_wanderer' => $request->request->get('discord_ping_role_wanderer'),
-        ];
-
-        $this->discordWebhookService->saveSettings($submittedSettings);
+        // Only fields present in this form are saved, others (e.g. the Wanderer webhook) stay untouched
+        $this->discordWebhookService->saveSubmittedSettings($request->request->all(), $request->request->all('remove_settings'));
 
         $this->addFlash('success', 'Discord-Webhook-Einstellungen wurden erfolgreich gespeichert.');
         return $this->redirectToRoute('app_admin_discord_index');

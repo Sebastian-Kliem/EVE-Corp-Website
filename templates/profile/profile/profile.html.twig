@@ -1,5 +1,7 @@
 {% extends 'base.html.twig' %}
 
+{% import '_macros/secret_field.html.twig' as secret_field %}
+
 {% block title %}Mein Profil{% endblock %}
 
 {% block body %}
@@ -245,14 +247,17 @@
             <div class="p-4 bg-black/30 border border-eve-border/60 rounded-lg mb-6">
                 <h4 class="text-sm font-semibold text-white mb-2">Persoenlicher Discord-Webhook</h4>
                 <p class="text-xs text-eve-muted mb-3">Trage hier die Webhook-URL deines privaten Discord-Servers ein.</p>
-                <form action="{{ path('app_personal_wanderer_save_webhook') }}" method="POST" class="flex flex-col sm:flex-row gap-2">
+                <form action="{{ path('app_personal_wanderer_save_webhook') }}" method="POST">
                     <input type="hidden" name="_token" value="{{ csrf_token('personal_wanderer_webhook_save') }}">
-                    <input type="url" name="discord_webhook_wanderer" value="{{ personalWebhook }}" placeholder="https://discord.com/api/webhooks/..." class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none">
-                    <button type="submit" class="bg-eve-primary text-black font-semibold px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all text-xs whitespace-nowrap cursor-pointer">
-                        Speichern
-                    </button>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        {{ secret_field.input('discord_webhook_wanderer', personalWebhookHint, 'https://discord.com/api/webhooks/...', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none') }}
+                        <button type="submit" class="bg-eve-primary text-black font-semibold px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all text-xs whitespace-nowrap cursor-pointer">
+                            Speichern
+                        </button>
+                    </div>
+                    {{ secret_field.remove_checkbox('discord_webhook_wanderer', personalWebhookHint) }}
                 </form>
-                {% if personalWebhook %}
+                {% if personalWebhookHint %}
                     <form action="{{ path('app_personal_wanderer_test_webhook') }}" method="POST" class="mt-3">
                         <input type="hidden" name="_token" value="{{ csrf_token('personal_wanderer_test_webhook') }}">
                         <button type="submit" class="border border-eve-border hover:border-eve-primary text-eve-muted hover:text-white px-3 py-1.5 rounded text-xs transition-colors cursor-pointer">
