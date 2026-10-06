@@ -77,7 +77,7 @@ class CronRunCommand extends Command
 
         $writeLog('Starte Cronjob-Runner Ausführung...');
 
-        if ($this->esiClient->isOffline()) {
+        if ($this->esiClient->isOffline($isQuietLane)) {
             $writeLog('ESI ist offline (Downtime oder Circuit Breaker aktiv). Ausführung aller Cronjobs übersprungen.', $isQuietLane ? 'DEBUG' : 'WARNING');
             $io->warning('ESI is offline. Skipping cron job execution.');
             $writeLog('Cronjob-Runner Ausführung beendet.');

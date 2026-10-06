@@ -8,6 +8,8 @@ use App\Service\Esi\EsiClient;
 use App\Service\Esi\EsiMissingScopeException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Clock\MockClock;
@@ -177,6 +179,26 @@ class EsiClientTest extends TestCase
         $this->assertSame(0, $noRequests->getRequestsCount());
     }
 
+    public function testQuietDowntimeCheckLogsUnreachableClusterOnlyAsDebug(): void
+    {
+        $clock = new MockClock('2026-10-04 11:05:00', 'UTC');
+        $logger = new class extends AbstractLogger {
+            public array $levels = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->levels[] = $level;
+            }
+        };
+
+        $unreachable = new MockHttpClient([new MockResponse('', ['http_code' => 502]), new MockResponse('', ['http_code' => 502])]);
+        $this->assertTrue($this->_createClient($unreachable, clock: $clock, logger: $logger)->isOffline(true));
+        $this->assertSame(['debug'], $logger->levels);
+
+        $this->assertTrue($this->_createClient($unreachable, clock: $clock, logger: $logger)->isOffline());
+        $this->assertSame(['debug', 'info'], $logger->levels);
+    }
+
     public function testWebRequestShowsLastKnownDataDuringDowntime(): void
     {
         $clock = new MockClock('2026-10-04 10:30:00', 'UTC');
@@ -317,13 +339,13 @@ class EsiClientTest extends TestCase
         return new MockResponse($body, ['response_headers' => ['Expires' => gmdate('D, d M Y H:i:s \G\M\T', $expiresAt)]]);
     }
 
-    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false): EsiClient
+    private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false, ?LoggerInterface $logger = null): EsiClient
     {
         return new EsiClient(
             $httpClient,
             $this->createStub(EntityManagerInterface::class),
             $cachePool ?? new ArrayAdapter(),
-            new NullLogger(),
+            $logger ?? new NullLogger(),
             'client-id',
             'secret',
             'https://example.org/callback',
