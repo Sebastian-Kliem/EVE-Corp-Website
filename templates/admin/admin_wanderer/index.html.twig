@@ -90,7 +90,7 @@
                         <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Die Toolbox fragt damit jede Minute neue Verbindungen ab und prüft die Routenregeln.</p>
                         {{ secret_field.input('wanderer_api_key', settings.wanderer_api_key, 'API-Key aus den Map-Einstellungen', 'w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors', 'key') }}
                         {{ secret_field.remove_checkbox('wanderer_api_key', settings.wanderer_api_key) }}
-                        <button type="button" data-wanderer-connection-test-target="button" data-action="wanderer-connection-test#test" class="mt-2 w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-white py-1.5 px-4 rounded-lg transition-all text-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait">
+                        <button type="button" data-wanderer-connection-test-target="button" data-action="wanderer-connection-test#test" class="mt-4 w-full border border-eve-border hover:border-eve-primary text-eve-text hover:text-white py-1.5 px-4 rounded-lg transition-all text-xs cursor-pointer disabled:opacity-50 disabled:cursor-wait">
                             Verbindung testen
                         </button>
                         <p data-wanderer-connection-test-target="result" class="hidden"></p>
