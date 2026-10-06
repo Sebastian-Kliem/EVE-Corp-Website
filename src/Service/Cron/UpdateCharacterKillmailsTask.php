@@ -77,7 +77,7 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
             return;
         }
 
-        $killmailRepository = $this->entityManager->getRepository(EveKillmail::class);
+        $storedKillmailIds = $this->_loadStoredKillmailIds($character, $response);
 
         $newKillmailsCount = 0;
         $batchSize = 25;
@@ -95,11 +95,7 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
             $processedIds[] = $killmailId;
 
             // Check if this killmail already exists in the database to prevent integrity violations
-            $exists = $killmailRepository->findOneBy([
-                'character' => $character,
-                'killmailId' => $killmailId
-            ]);
-            if ($exists) {
+            if (isset($storedKillmailIds[$killmailId])) {
                 continue;
             }
 
@@ -169,5 +165,34 @@ class UpdateCharacterKillmailsTask implements CronTaskInterface
         if ($newKillmailsCount > 0) {
             $this->logger->info(sprintf('[Cron] Synchronized %d new killmails for character %s.', $newKillmailsCount, $character->getName()));
         }
+    }
+
+    /**
+     * @param array<int, array{killmail_id: int|string}> $recentKillmails
+     * @return array<string, true> Killmail IDs of the response that are already stored for the character
+     */
+    private function _loadStoredKillmailIds(EveCharacter $character, array $recentKillmails): array
+    {
+        $killmailIds = [];
+        foreach ($recentKillmails as $recent) {
+            $killmailIds[] = (string)$recent['killmail_id'];
+        }
+
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('k.killmailId')
+            ->from(EveKillmail::class, 'k')
+            ->where('k.character = :character')
+            ->andWhere('k.killmailId IN (:killmailIds)')
+            ->setParameter('character', $character)
+            ->setParameter('killmailIds', $killmailIds)
+            ->getQuery()
+            ->getScalarResult();
+
+        $storedKillmailIds = [];
+        foreach ($rows as $row) {
+            $storedKillmailIds[(string)$row['killmailId']] = true;
+        }
+
+        return $storedKillmailIds;
     }
 }

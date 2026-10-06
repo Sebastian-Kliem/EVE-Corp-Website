@@ -161,9 +161,10 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
             return [];
         }
 
-        $this->entityManager->wrapInTransaction(function() use ($character, $jobsData) {
+        $existingJobs = $this->_loadExistingJobs($jobsData);
+        $this->entityManager->wrapInTransaction(function() use ($character, $jobsData, $existingJobs) {
             foreach ($jobsData as $jobData) {
-                $this->saveJob($jobData, $character);
+                $this->saveJob($jobData, $character, $existingJobs);
             }
 
             $character->setLastIndustryJobsUpdate(new \DateTimeImmutable());
@@ -204,13 +205,14 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         }
 
         $savedCount = 0;
-        $this->entityManager->wrapInTransaction(function() use ($jobsData, $localCharactersMap, &$savedCount) {
+        $existingJobs = $this->_loadExistingJobs($jobsData);
+        $this->entityManager->wrapInTransaction(function() use ($jobsData, $localCharactersMap, $existingJobs, &$savedCount) {
             foreach ($jobsData as $jobData) {
                 $installerId = (int) $jobData['installer_id'];
 
                 // Only save the corporation job if the installer character belongs to our system
                 if (isset($localCharactersMap[$installerId])) {
-                    $this->saveJob($jobData, $localCharactersMap[$installerId]);
+                    $this->saveJob($jobData, $localCharactersMap[$installerId], $existingJobs);
                     $savedCount++;
                 }
             }
@@ -226,11 +228,14 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         return ['status' => 'success', 'jobs' => $jobsData];
     }
 
-    private function saveJob(array $jobData, EveCharacter $character): void
+    /**
+     * @param array<string, EveCharacterIndustryJob> $existingJobs
+     */
+    private function saveJob(array $jobData, EveCharacter $character, array $existingJobs): void
     {
         $jobId = (string) $jobData['job_id'];
 
-        $job = $this->entityManager->getRepository(EveCharacterIndustryJob::class)->find($jobId);
+        $job = $existingJobs[$jobId] ?? null;
         if (!$job) {
             $job = new EveCharacterIndustryJob();
             $job->setJobId($jobId);
@@ -261,5 +266,25 @@ class UpdateCharacterIndustryJobsTask implements CronTaskInterface
         $job->setLicenceLimit(isset($jobData['licence_limit']) ? (int) $jobData['licence_limit'] : null);
 
         $this->entityManager->persist($job);
+    }
+
+    /**
+     * @return array<string, EveCharacterIndustryJob> Stored jobs of the ESI response by job ID
+     */
+    private function _loadExistingJobs(array $jobsData): array
+    {
+        $jobIds = [];
+        foreach ($jobsData as $jobData) {
+            $jobIds[] = (string) $jobData['job_id'];
+        }
+
+        $jobs = $this->entityManager->getRepository(EveCharacterIndustryJob::class)->findBy(['jobId' => $jobIds]);
+
+        $jobsById = [];
+        foreach ($jobs as $job) {
+            $jobsById[(string) $job->getJobId()] = $job;
+        }
+
+        return $jobsById;
     }
 }

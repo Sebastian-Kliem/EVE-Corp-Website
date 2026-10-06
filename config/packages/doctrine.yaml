@@ -2,6 +2,7 @@ doctrine:
     dbal:
         types:
             encrypted_text: App\Doctrine\Type\EncryptedTextType
+            bigint_int: App\Doctrine\Type\IntegerBigIntType
         connections:
             default:
                 url: '%env(resolve:DATABASE_URL)%'
