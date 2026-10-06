@@ -63,8 +63,8 @@ security:
         # Baseline per area; finer rules stay in controller attributes (#[IsGranted])
         - { path: ^/admin, roles: ROLE_OFFICER }
         # Recruits only get the profile page (password change) until they are approved
-        - { path: ^/personal/profile$, roles: IS_AUTHENTICATED_FULLY }
-        - { path: ^/(personal|corp|general|auth/eve|online-status), roles: ROLE_MEMBER }
+        - { path: ^/(personal/)?profile$, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/(characters|industry|wallet|corp|general|profile|personal|auth/eve|online-status), roles: ROLE_MEMBER }
 
 when@test:
     security:

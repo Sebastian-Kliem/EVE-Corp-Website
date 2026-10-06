@@ -168,7 +168,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
         setManualLoading(true);
         setManualError(null);
 
-        fetch('/personal/performance/manual', {
+        fetch('/wallet/performance/manual', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             return;
         }
 
-        fetch(`/personal/performance/manual/${id}`, {
+        fetch(`/wallet/performance/manual/${id}`, {
             method: 'DELETE'
         })
         .then(res => {
@@ -230,7 +230,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             return;
         }
 
-        fetch('/personal/performance/exclude', {
+        fetch('/wallet/performance/exclude', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     };
 
     const handleRemoveExclusion = (id: number) => {
-        fetch(`/personal/performance/exclude/${id}`, {
+        fetch(`/wallet/performance/exclude/${id}`, {
             method: 'DELETE'
         })
         .then(res => {

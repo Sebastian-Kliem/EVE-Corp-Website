@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Industry;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -17,7 +17,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 use App\Service\JitaPriceService;
 
-#[Route('/personal/industry')]
+#[Route('/industry/jobs')]
 #[IsGranted('ROLE_MEMBER')]
 class IndustryController extends AbstractController
 {

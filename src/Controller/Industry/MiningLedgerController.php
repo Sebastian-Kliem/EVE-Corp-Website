@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Industry;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/personal/mining')]
+#[Route('/industry/mining')]
 #[IsGranted('ROLE_MEMBER')]
 class MiningLedgerController extends AbstractController
 {

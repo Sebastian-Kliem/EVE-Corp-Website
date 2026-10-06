@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Character;
 
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
@@ -30,7 +30,7 @@ class EveAccountController extends AbstractController
         private readonly JitaPriceService $jitaPriceService
     ) {}
 
-    #[Route('/personal/eve-account/create', name: 'app_eve_account_create', methods: ['POST'])]
+    #[Route('/profile/accounts/create', name: 'app_eve_account_create', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function create(Request $request): Response
     {
@@ -62,7 +62,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile_characters');
     }
 
-    #[Route('/personal/eve-account/{id}/update', name: 'app_eve_account_update', methods: ['POST'])]
+    #[Route('/profile/accounts/{id}/update', name: 'app_eve_account_update', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function update(int $id, Request $request): Response
     {
@@ -95,7 +95,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile_characters');
     }
 
-    #[Route('/personal/eve-account/{id}/delete', name: 'app_eve_account_delete', methods: ['POST'])]
+    #[Route('/profile/accounts/{id}/delete', name: 'app_eve_account_delete', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function delete(int $id, Request $request): Response
     {
@@ -125,7 +125,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile_characters');
     }
 
-    #[Route('/personal/eve-character/{id}/assign', name: 'app_eve_character_assign', methods: ['POST'])]
+    #[Route('/profile/characters/{id}/assign', name: 'app_eve_character_assign', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function assignCharacter(int $id, Request $request): Response
     {
@@ -161,7 +161,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile_characters');
     }
 
-    #[Route('/personal/eve-character/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]
+    #[Route('/characters/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]
     public function showAssets(int $id, SdeService $sdeService, LocationService $locationService): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
@@ -251,7 +251,7 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    #[Route('/personal/eve-character/{id}/details', name: 'app_dashboard_eve_character_details', methods: ['GET'])]
+    #[Route('/characters/{id}/details', name: 'app_dashboard_eve_character_details', methods: ['GET'])]
     public function showDetails(
         int $id,
         SdeService $sdeService,
@@ -325,7 +325,7 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    #[Route('/personal/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
+    #[Route('/wallet/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
     public function assetsOverview(
         LocationService $locationService,
         SdeService $sdeService,
@@ -684,7 +684,7 @@ class EveAccountController extends AbstractController
         ]);
     }
 
-    #[Route('/personal/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]
+    #[Route('/wallet/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]
     public function valueHistory(): Response
     {
         return $this->redirectToRoute('app_dashboard_assets_overview');
@@ -1209,7 +1209,7 @@ class EveAccountController extends AbstractController
         return $finalNodes;
     }
 
-    #[Route('/personal/eve-character/{id}/delete', name: 'app_eve_character_delete', methods: ['POST'])]
+    #[Route('/profile/characters/{id}/delete', name: 'app_eve_character_delete', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function deleteCharacter(int $id, Request $request): Response
     {
@@ -1234,7 +1234,7 @@ class EveAccountController extends AbstractController
         return $this->redirectToRoute('app_profile_characters');
     }
 
-    #[Route('/personal/eve-character/{id}/tags', name: 'app_eve_character_tags', methods: ['POST'])]
+    #[Route('/profile/characters/{id}/tags', name: 'app_eve_character_tags', methods: ['POST'])]
     public function updateTags(int $id, Request $request): Response
     {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);

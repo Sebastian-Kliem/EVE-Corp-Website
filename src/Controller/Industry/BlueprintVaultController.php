@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Corp;
+namespace App\Controller\Industry;
 
 use App\Entity\User;
 use App\Entity\EveCharacter;
@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/corp/blueprints')]
+#[Route('/industry/blueprints')]
 #[IsGranted('ROLE_MEMBER')]
 class BlueprintVaultController extends AbstractController
 {

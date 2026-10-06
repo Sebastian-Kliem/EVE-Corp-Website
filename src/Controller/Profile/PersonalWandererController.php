@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Personal;
+namespace App\Controller\Profile;
 
 use App\Entity\User;
 use App\Entity\WandererRouteRule;
@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/personal/wanderer')]
+#[Route('/profile/wanderer')]
 #[IsGranted('ROLE_MEMBER')]
 class PersonalWandererController extends AbstractController
 {

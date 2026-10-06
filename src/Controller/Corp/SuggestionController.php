@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\General;
+namespace App\Controller\Corp;
 
 use App\Entity\Suggestion;
 use App\Entity\User;
@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/general/suggestions')]
+#[Route('/corp/suggestions')]
 #[IsGranted('ROLE_MEMBER')]
 class SuggestionController extends AbstractController
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controller\Corp;
+namespace App\Controller\General;
 
 use App\Entity\DefenseDoctrineFit;
 use App\Repository\DefenseDoctrineFitRepository;
@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/corp')]
+#[Route('/general')]
 #[IsGranted('ROLE_MEMBER')]
 class JaniceAppraisalController extends AbstractController
 {
