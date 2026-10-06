@@ -246,7 +246,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                         </p>
                     ) : (
                         <p className="text-xs text-eve-muted">
-                            {blueprints.length} Blueprints im Tresor geteilt.
+                            {blueprints.length} Blueprints in der Bibliothek.
                         </p>
                     )}
                 </div>
@@ -351,7 +351,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                     </div>
                 ) : (
                     <div className="text-center py-12 rounded-lg bg-[#13192b] border border-white/5">
-                        <p className="text-eve-muted">Keine passenden Blueprints im Tresor gefunden.</p>
+                        <p className="text-eve-muted">Keine passenden Blueprints in der Bibliothek gefunden.</p>
                     </div>
                 )
             ) : (

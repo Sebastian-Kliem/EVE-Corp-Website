@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Corp Blueprint-Tresor{% endblock %}
+{% block title %}Blueprint-Bibliothek{% endblock %}
 
 {% block meta %}
     <meta name="turbo-cache-control" content="no-cache">
@@ -11,10 +11,12 @@
     <div class="flex flex-wrap gap-6 items-center mb-8">
         <div class="flex-1">
             <h1 class="text-3xl font-semibold mb-4 text-white text-gradient">
-                📑 Blueprint-Tresor
+                📑 Blueprint-Bibliothek
             </h1>
             <p class="text-sm text-eve-muted mb-4">
-                Gezielter Überblick über alle geteilten Blueprints der Corporation, um Produktion abzusprechen und doppelte Einkäufe zu vermeiden.
+                Alle Blueprints, auf die die Corp zugreifen kann: die Blueprints in den Corp-Hangaren und die persönlichen Blueprints aller Mitglieder, die ihre Sammlung in den
+                <a href="{{ path('app_profile') }}" class="text-eve-primary hover:underline">Profileinstellungen</a> freigegeben haben.
+                Jede Freigabe zahlt in diese gemeinsame Liste ein und hilft, Produktion abzusprechen und doppelte Einkäufe zu vermeiden.
             </p>
         </div>
     </div>
@@ -22,7 +24,7 @@
     <!-- Info / Hinweistext falls niemand teilt -->
     {% if blueprints is empty %}
         <div class="py-5 px-6 rounded-lg mb-6 bg-amber-500/10 border border-amber-500/30 text-white">
-            ⚠️ Aktuell hat kein Mitglied seine Blueprints im Tresor freigegeben oder es wurden noch keine Blueprints synchronisiert. 
+            ⚠️ Aktuell hat kein Mitglied seine Blueprints für die Bibliothek freigegeben oder es wurden noch keine Blueprints synchronisiert. 
             Du kannst deine Freigabe in deinen <a href="{{ path('app_profile') }}" class="text-eve-primary hover:underline">Profileinstellungen</a> aktivieren!
         </div>
     {% endif %}
