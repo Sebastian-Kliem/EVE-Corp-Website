@@ -243,7 +243,7 @@ class ProfileController extends AbstractController
             $response->setStatusCode(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return $this->render('profile/profile/profile.html.twig', [
+        return $this->render('profile/profile.html.twig', [
             'user' => $currentUser,
             'errors' => $errors,
             'success' => $success,

@@ -34,7 +34,7 @@ class CharacterManagementController extends AbstractController
         $characterList = $characterListBuilder->build($currentUser);
         $characterList['user'] = $currentUser;
 
-        return $this->render('profile/eve_account/character_management.html.twig', $characterList);
+        return $this->render('profile/character_management.html.twig', $characterList);
     }
 
     #[Route('/profile/accounts/create', name: 'app_eve_account_create', methods: ['POST'])]

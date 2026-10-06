@@ -240,7 +240,7 @@ class CorpAssetsController extends AbstractController
             return strcasecmp($a['corporation']['name'], $b['corporation']['name']);
         });
 
-        return $this->render('profile/eve_account/corp_assets_overview.html.twig', [
+        return $this->render('corp/assets_overview.html.twig', [
             'corpData' => $corpData,
         ]);
     }

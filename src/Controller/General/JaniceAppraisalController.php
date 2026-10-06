@@ -27,7 +27,7 @@ class JaniceAppraisalController extends AbstractController
             ];
         }, $fitRepository->findAllOrdered());
 
-        return $this->render('tool/appraisal/appraisal.html.twig', [
+        return $this->render('general/appraisal.html.twig', [
             'doctrineFits' => $doctrineFits,
         ]);
     }

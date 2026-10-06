@@ -230,7 +230,7 @@ class SkillExtractorFarmController extends AbstractController
             ];
         }
 
-        return $this->render('profile/profile_skill_farm/index.html.twig', [
+        return $this->render('character/skill_farm.html.twig', [
             'characters' => $charactersData,
             'plexPrice' => $plexPrice,
             'extractorPrice' => $extractorPrice,

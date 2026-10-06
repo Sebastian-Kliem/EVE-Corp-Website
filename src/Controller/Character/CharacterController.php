@@ -121,7 +121,7 @@ class CharacterController extends AbstractController
             return strcasecmp($a['name'], $b['name']);
         });
 
-        return $this->render('profile/eve_account/character_assets.html.twig', [
+        return $this->render('character/assets.html.twig', [
             'character' => $character,
             'groupedAssets' => $groupedAssets,
         ]);
@@ -191,7 +191,7 @@ class CharacterController extends AbstractController
             }
         }
 
-        return $this->render('profile/eve_account/character_details.html.twig', [
+        return $this->render('character/details.html.twig', [
             'character' => $character,
             'corporationName' => $corporationName,
             'allianceName' => $allianceName,

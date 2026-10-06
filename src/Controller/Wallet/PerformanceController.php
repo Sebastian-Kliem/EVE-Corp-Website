@@ -75,7 +75,7 @@ class PerformanceController extends AbstractController
             'isOmega' => true,
         ]);
 
-        return $this->render('profile/profile_performance/performance_ledger.html.twig', [
+        return $this->render('wallet/performance.html.twig', [
             'charactersList' => $charactersList,
             'omegaAccountCount' => $omegaAccountCount,
         ]);
