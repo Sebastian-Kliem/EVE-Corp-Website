@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
+import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import { Order, OrderItem } from './OrderListManager';
 
 interface DeliveryPackingListProps {
     orders: Order[];
     currentUserId?: number;
+    ownedStock?: OwnedStock;
     isOfficer?: boolean;
     onCopyUser: (order: Order) => void;
     onCopyAmount: (order: Order) => void;
@@ -25,6 +27,7 @@ interface DeliveryPackingListProps {
 export default function DeliveryPackingList({
     orders,
     currentUserId,
+    ownedStock,
     isOfficer = false,
     onCopyUser,
     onCopyAmount,
@@ -589,6 +592,7 @@ export default function DeliveryPackingList({
                                                                     >
                                                                         [Markt]
                                                                     </button>
+                                                                    <OwnedStockBadge stock={findOwnedStock(ownedStock, item.typeId)} requiredAmount={item.amount} />
                                                                 </div>
                                                             </td>
 
