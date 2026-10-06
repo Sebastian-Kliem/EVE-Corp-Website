@@ -24,7 +24,8 @@ class OwnedStockService
         private readonly EntityManagerInterface $entityManager,
         private readonly LocationService $locationService,
         private readonly SdeService $sdeService,
-        private readonly PersonalCorpAssetService $personalCorpAssetService
+        private readonly PersonalCorpAssetService $personalCorpAssetService,
+        private readonly CorpDivisionService $corpDivisionService
     ) {}
 
     /**
@@ -151,10 +152,16 @@ class OwnedStockService
         foreach ($this->_charactersByCorporation($characters) as $corporationId => $character) {
             $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy(['corporationId' => $corporationId]);
             $resolved = $this->personalCorpAssetService->resolvePersonalCorpAssets($corporationId, $corpAssets, $personalHangars, $personalContainers);
+            if ($resolved['roots'] === []) {
+                continue;
+            }
+
+            $syncCharacter = $this->corpDivisionService->findSyncCharacter($corporationId) ?? $character;
+            $divisionNames = $this->corpDivisionService->getHangarDivisionNames($corporationId, $syncCharacter);
 
             foreach ($resolved['roots'] as $root) {
-                $resolvedLocation = $this->locationService->resolveLocation($root->getLocationId(), $character);
-                $rootLabel = $this->_corpHangarLabel($root->getLocationFlag());
+                $resolvedLocation = $this->locationService->resolveLocation($root->getLocationId(), $syncCharacter);
+                $rootLabel = $this->_corpHangarLabel($root->getLocationFlag(), $divisionNames);
                 $this->_collectCorpBranch($root, [], $resolved['nested'], $wantedTypeIds, $resolvedLocation, $rootLabel, $entries);
             }
         }
@@ -197,7 +204,7 @@ class OwnedStockService
     }
 
     /**
-     * One character per player corporation (the lowest ID), used to resolve structure names.
+     * One character per player corporation (the lowest ID), fallback when no corp sync character exists.
      *
      * @param EveCharacter[] $characters
      * @return array<int, EveCharacter>
@@ -303,10 +310,17 @@ class OwnedStockService
         return $path;
     }
 
-    private function _corpHangarLabel(?string $locationFlag): string
+    /**
+     * @param array<int, string> $divisionNames
+     */
+    private function _corpHangarLabel(?string $locationFlag, array $divisionNames): string
     {
         if ($locationFlag !== null && preg_match('/^CorpSAG(\d)$/', $locationFlag, $matches)) {
-            return sprintf('Corp-Hangar %d (persönlich)', (int)$matches[1]);
+            $divisionNumber = (int)$matches[1];
+            $divisionName = $divisionNames[$divisionNumber] ?? '';
+            return $divisionName !== ''
+                ? sprintf('%s (persönlicher Corp-Hangar %d)', $divisionName, $divisionNumber)
+                : sprintf('Corp-Hangar %d (persönlich)', $divisionNumber);
         }
 
         return 'Corp-Hangar (persönlich)';

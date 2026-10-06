@@ -10,6 +10,7 @@ use App\Entity\EveCharacterWalletJournalEntry;
 use App\Entity\EveCorporationAsset;
 use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
+use App\Service\CorpDivisionService;
 use App\Service\LocationService;
 use App\Service\PersonalCorpAssetService;
 use App\Service\SdeService;
@@ -775,7 +776,7 @@ class EveAccountController extends AbstractController
     }
 
     #[Route('/corp/assets', name: 'app_dashboard_corp_assets_overview', methods: ['GET'])]
-    public function corpAssetsOverview(LocationService $locationService, SdeService $sdeService, \App\Service\Esi\EsiClient $esiClient): Response
+    public function corpAssetsOverview(LocationService $locationService, SdeService $sdeService, \App\Service\Esi\EsiClient $esiClient, CorpDivisionService $corpDivisionService): Response
     {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
@@ -844,23 +845,7 @@ class EveAccountController extends AbstractController
             }
 
             // Fetch division names
-            $divisionNames = [];
-            if ($syncCharacter) {
-                try {
-                    $divData = $esiClient->request('GET', sprintf('corporations/%d/divisions/', $corpId), [], $syncCharacter);
-                    if (isset($divData['hangar']) && is_array($divData['hangar'])) {
-                        foreach ($divData['hangar'] as $div) {
-                            $name = $div['name'];
-                            if (!preg_match('/^Hangar\s*\d+$/ui', $name)) {
-                                $name = preg_replace('/\s*\d+$/u', '', $name);
-                            }
-                            $divisionNames[(int) $div['division']] = $name;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore
-                }
-            }
+            $divisionNames = $syncCharacter ? $corpDivisionService->getHangarDivisionNames((int)$corpId, $syncCharacter) : [];
 
             $getDivisionName = function (string $flag) use ($divisionNames) {
                 if (preg_match('/^CorpSAG(\d)$/', $flag, $matches)) {
