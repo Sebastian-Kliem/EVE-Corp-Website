@@ -5,15 +5,10 @@ namespace App\Tests\Service;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterMarketTransaction;
 use App\Entity\EveCharacterWalletJournalEntry;
-use App\Repository\EveCharacterAssetRepository;
 use App\Repository\EveCharacterMarketTransactionRepository;
 use App\Repository\EveCharacterWalletJournalEntryRepository;
-use App\Repository\EveCorporationAssetRepository;
-use App\Service\Cron\UpdateCharacterDataTask;
+use App\Service\CharacterSync\WalletSyncService;
 use App\Service\Esi\EsiClient;
-use App\Service\JitaPriceService;
-use App\Service\PersonalCorpAssetService;
-use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -57,13 +52,13 @@ class MarketTransactionSyncTest extends TestCase
             }
         });
 
-        $task = $this->_createTask($entityManager, $esiClient);
+        $walletSyncService = $this->_createWalletSyncService($entityManager, $esiClient);
 
         $character = new EveCharacter();
         $character->setId(123);
         $character->setName('Trader');
 
-        (new \ReflectionMethod($task, '_syncMarketTransactions'))->invoke($task, $character);
+        $walletSyncService->syncMarketTransactions($character);
 
         $this->assertCount(count($allTransactionIds), $persistedIds);
         $this->assertSame([null, '4501', '2002'], $requestedFromIds);
@@ -99,26 +94,16 @@ class MarketTransactionSyncTest extends TestCase
         $character->setId(123);
         $character->setName('Trader');
 
-        $task = $this->_createTask($entityManager, $esiClient);
-        (new \ReflectionMethod($task, '_syncWalletJournal'))->invoke($task, $character);
+        $this->_createWalletSyncService($entityManager, $esiClient)->syncJournal($character);
 
         // Known entries stop the paging, so page 2 is never requested
         $this->assertSame(['5', '4'], $insertedRefIds);
         $this->assertSame(1, $lookupCount);
     }
 
-    private function _createTask(EntityManagerInterface $entityManager, EsiClient $esiClient): UpdateCharacterDataTask
+    private function _createWalletSyncService(EntityManagerInterface $entityManager, EsiClient $esiClient): WalletSyncService
     {
-        return new UpdateCharacterDataTask(
-            $entityManager,
-            $esiClient,
-            $this->createStub(EveCharacterAssetRepository::class),
-            $this->createStub(EveCorporationAssetRepository::class),
-            $this->createStub(SdeService::class),
-            new NullLogger(),
-            $this->createStub(JitaPriceService::class),
-            $this->createStub(PersonalCorpAssetService::class)
-        );
+        return new WalletSyncService($entityManager, $esiClient, new NullLogger());
     }
 
     private function _createJournalEntry(int $refId): array
