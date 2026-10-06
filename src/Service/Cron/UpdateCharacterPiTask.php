@@ -49,7 +49,7 @@ class UpdateCharacterPiTask implements CronTaskInterface
             }
 
             try {
-                $this->syncPiForCharacter($character);
+                $this->_syncPiForCharacter($character);
             } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
                 if ($e->getResponse()->getStatusCode() === 403) {
                     $this->logger->warning(sprintf(
@@ -77,7 +77,7 @@ class UpdateCharacterPiTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished sync-pi execution.');
     }
 
-    private function syncPiForCharacter(EveCharacter $character): void
+    private function _syncPiForCharacter(EveCharacter $character): void
     {
         $this->logger->info(sprintf('[Cron] Syncing PI data for character %s...', $character->getName()));
 

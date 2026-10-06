@@ -35,7 +35,7 @@ class UpdateCharacterContractsTask implements CronTaskInterface
             }
 
             try {
-                $this->syncCharacterContracts($character);
+                $this->_syncCharacterContracts($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync contracts for character %s (%d): %s',
@@ -49,7 +49,7 @@ class UpdateCharacterContractsTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished sync-contracts execution.');
     }
 
-    private function syncCharacterContracts(EveCharacter $character): void
+    private function _syncCharacterContracts(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing contracts for character %s...', $character->getName()));
 

@@ -99,7 +99,7 @@ class DefenseDoctrineController extends AbstractController
             return new JsonResponse(['error' => 'Das EFT-Fitting darf nicht leer sein.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $parsed = $this->parseEft($eft);
+        $parsed = $this->_parseEft($eft);
         
         $shipName = trim((string)($data['shipName'] ?? ''));
         if (empty($shipName) && !empty($parsed['shipName'])) {
@@ -175,7 +175,7 @@ class DefenseDoctrineController extends AbstractController
             return new JsonResponse(['error' => 'Das EFT-Fitting darf nicht leer sein.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $parsed = $this->parseEft($eft);
+        $parsed = $this->_parseEft($eft);
 
         $shipName = trim((string)($data['shipName'] ?? ''));
         if (empty($shipName) && !empty($parsed['shipName'])) {
@@ -245,7 +245,7 @@ class DefenseDoctrineController extends AbstractController
         return new JsonResponse(['success' => true]);
     }
 
-    private function parseEft(string $eft): array
+    private function _parseEft(string $eft): array
     {
         $lines = preg_split('/\r\n|\r|\n/', trim($eft));
         $firstLine = $lines[0] ?? '';

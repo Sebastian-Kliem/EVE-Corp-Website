@@ -44,30 +44,30 @@ class StructureNotificationParser
         }
 
         return match ($type) {
-            'StructureUnderAttack' => $this->handleStructureUnderAttack($data, $sentDate),
-            'StructureLostShields' => $this->handleStructureReinforce($data, $sentDate, 'Schild gefallen – Panzerungs-Timer aktiv', DiscordColor::ORANGE),
-            'StructureLostArmor' => $this->handleStructureReinforce($data, $sentDate, 'Panzerung gefallen – Finaler Rumpf-Timer aktiv', DiscordColor::DARK_RED, true),
-            'StructureWentLowPower' => $this->handleSimpleStructureEvent($data, $sentDate, '⚠️ [LOW POWER] Kein Treibstoff mehr', 'Die Struktur ist in den Low-Power-Modus gewechselt.', DiscordColor::ORANGE),
-            'StructureWentHighPower' => $this->handleSimpleStructureEvent($data, $sentDate, '✅ [HIGH POWER] Struktur aktiv', 'Die Struktur ist wieder im High-Power-Modus.', DiscordColor::GREEN),
-            'StructureFuelAlert' => $this->handleFuelAlertEvent($data, $sentDate),
-            'StructureServicesOffline' => $this->handleSimpleStructureEvent($data, $sentDate, '⚠️ [SERVICES OFFLINE] Dienste ausgefallen', 'Mindestens ein Dienstmodul der Struktur ist offline gegangen.', DiscordColor::ORANGE),
-            'StructureUnanchoring' => $this->handleUnanchoringEvent($data, $sentDate),
-            'StructureDestroyed' => $this->handleSimpleStructureEvent($data, $sentDate, '💥 [ZERSTÖRT] Struktur zerstört', 'Die Struktur wurde im Kampf zerstört.', DiscordColor::DARK_RED, true),
-            'TowerAlertMsg' => $this->handleTowerAlert($data, $sentDate),
-            'TowerResourceAlertMsg' => $this->handleTowerResourceAlert($data, $sentDate),
-            'OrbitalAttacked' => $this->handleOrbitalAttacked($data, $sentDate),
-            'OrbitalReinforced' => $this->handleOrbitalReinforced($data, $sentDate),
+            'StructureUnderAttack' => $this->_handleStructureUnderAttack($data, $sentDate),
+            'StructureLostShields' => $this->_handleStructureReinforce($data, $sentDate, 'Schild gefallen – Panzerungs-Timer aktiv', DiscordColor::ORANGE),
+            'StructureLostArmor' => $this->_handleStructureReinforce($data, $sentDate, 'Panzerung gefallen – Finaler Rumpf-Timer aktiv', DiscordColor::DARK_RED, true),
+            'StructureWentLowPower' => $this->_handleSimpleStructureEvent($data, $sentDate, '⚠️ [LOW POWER] Kein Treibstoff mehr', 'Die Struktur ist in den Low-Power-Modus gewechselt.', DiscordColor::ORANGE),
+            'StructureWentHighPower' => $this->_handleSimpleStructureEvent($data, $sentDate, '✅ [HIGH POWER] Struktur aktiv', 'Die Struktur ist wieder im High-Power-Modus.', DiscordColor::GREEN),
+            'StructureFuelAlert' => $this->_handleFuelAlertEvent($data, $sentDate),
+            'StructureServicesOffline' => $this->_handleSimpleStructureEvent($data, $sentDate, '⚠️ [SERVICES OFFLINE] Dienste ausgefallen', 'Mindestens ein Dienstmodul der Struktur ist offline gegangen.', DiscordColor::ORANGE),
+            'StructureUnanchoring' => $this->_handleUnanchoringEvent($data, $sentDate),
+            'StructureDestroyed' => $this->_handleSimpleStructureEvent($data, $sentDate, '💥 [ZERSTÖRT] Struktur zerstört', 'Die Struktur wurde im Kampf zerstört.', DiscordColor::DARK_RED, true),
+            'TowerAlertMsg' => $this->_handleTowerAlert($data, $sentDate),
+            'TowerResourceAlertMsg' => $this->_handleTowerResourceAlert($data, $sentDate),
+            'OrbitalAttacked' => $this->_handleOrbitalAttacked($data, $sentDate),
+            'OrbitalReinforced' => $this->_handleOrbitalReinforced($data, $sentDate),
             default => null,
         };
     }
 
-    private function handleStructureUnderAttack(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleStructureUnderAttack(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $structureId = (string)($data['structureID'] ?? '');
         $typeId = (int)($data['structureTypeID'] ?? 0);
         $systemId = (int)($data['solarsystemID'] ?? 0);
 
-        $structureName = $this->resolveStructureName($structureId, $typeId);
+        $structureName = $this->_resolveStructureName($structureId, $typeId);
         $typeName = $this->sdeService->getItemName($typeId) ?: 'Upwell Structure';
         $systemName = $this->sdeService->getLocationName($systemId) ?: sprintf('System #%d', $systemId);
 
@@ -78,7 +78,7 @@ class StructureNotificationParser
         $attackerCharId = (int)($data['aggressorID'] ?? 0);
         $attackerCorpId = (int)($data['aggressorCorpID'] ?? 0);
         $attackerAllianceId = (int)($data['aggressorAllianceID'] ?? 0);
-        $attackerNames = $this->resolveNames(array_filter([$attackerCharId, $attackerCorpId, $attackerAllianceId]));
+        $attackerNames = $this->_resolveNames(array_filter([$attackerCharId, $attackerCorpId, $attackerAllianceId]));
 
         $attackerChar = $attackerNames[$attackerCharId] ?? ($attackerCharId ? (string)$attackerCharId : 'Unbekannt');
         $attackerCorp = $attackerNames[$attackerCorpId] ?? null;
@@ -119,7 +119,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleStructureReinforce(
+    private function _handleStructureReinforce(
         array $data,
         \DateTimeImmutable $sentDate,
         string $titleSuffix,
@@ -130,7 +130,7 @@ class StructureNotificationParser
         $typeId = (int)($data['structureTypeID'] ?? 0);
         $systemId = (int)($data['solarsystemID'] ?? 0);
 
-        $structureName = $this->resolveStructureName($structureId, $typeId);
+        $structureName = $this->_resolveStructureName($structureId, $typeId);
         $typeName = $this->sdeService->getItemName($typeId) ?: 'Upwell Structure';
         $systemName = $this->sdeService->getLocationName($systemId) ?: sprintf('System #%d', $systemId);
 
@@ -142,7 +142,7 @@ class StructureNotificationParser
             ->addField('🌌 Sonnensystem', $systemName, true);
 
         if (isset($data['timeLeft'])) {
-            $seconds = $this->convertTimeLeftToSeconds($data['timeLeft']);
+            $seconds = $this->_convertTimeLeftToSeconds($data['timeLeft']);
             if ($seconds > 0) {
                 $exitTime = $sentDate->modify(sprintf('+%d seconds', (int)$seconds));
                 $hours = floor($seconds / 3600);
@@ -162,7 +162,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleSimpleStructureEvent(
+    private function _handleSimpleStructureEvent(
         array $data,
         \DateTimeImmutable $sentDate,
         string $title,
@@ -174,7 +174,7 @@ class StructureNotificationParser
         $typeId = (int)($data['structureTypeID'] ?? 0);
         $systemId = (int)($data['solarsystemID'] ?? 0);
 
-        $structureName = $this->resolveStructureName($structureId, $typeId);
+        $structureName = $this->_resolveStructureName($structureId, $typeId);
         $typeName = $this->sdeService->getItemName($typeId) ?: 'Upwell Structure';
         $systemName = $this->sdeService->getLocationName($systemId) ?: sprintf('System #%d', $systemId);
 
@@ -194,13 +194,13 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleFuelAlertEvent(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleFuelAlertEvent(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $structureId = (string)($data['structureID'] ?? '');
         $typeId = (int)($data['structureTypeID'] ?? 0);
         $systemId = (int)($data['solarsystemID'] ?? 0);
 
-        $structureName = $this->resolveStructureName($structureId, $typeId);
+        $structureName = $this->_resolveStructureName($structureId, $typeId);
         $typeName = $this->sdeService->getItemName($typeId) ?: 'Upwell Structure';
         $systemName = $this->sdeService->getLocationName($systemId) ?: sprintf('System #%d', $systemId);
 
@@ -218,13 +218,13 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleUnanchoringEvent(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleUnanchoringEvent(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $structureId = (string)($data['structureID'] ?? '');
         $typeId = (int)($data['structureTypeID'] ?? 0);
         $systemId = (int)($data['solarsystemID'] ?? 0);
 
-        $structureName = $this->resolveStructureName($structureId, $typeId);
+        $structureName = $this->_resolveStructureName($structureId, $typeId);
         $typeName = $this->sdeService->getItemName($typeId) ?: 'Upwell Structure';
         $systemName = $this->sdeService->getLocationName($systemId) ?: sprintf('System #%d', $systemId);
 
@@ -236,7 +236,7 @@ class StructureNotificationParser
             ->addField('🌌 Sonnensystem', $systemName, true);
 
         if (isset($data['timeLeft'])) {
-            $seconds = $this->convertTimeLeftToSeconds($data['timeLeft']);
+            $seconds = $this->_convertTimeLeftToSeconds($data['timeLeft']);
             if ($seconds > 0) {
                 $unanchorAt = $sentDate->modify(sprintf('+%d seconds', (int)$seconds));
                 $embed->addField('📅 Bereit zum Einsammeln am', $unanchorAt->format('d.m.Y H:i') . ' EVE Time', true);
@@ -251,7 +251,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleTowerAlert(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleTowerAlert(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $systemId = (int)($data['solarSystemID'] ?? 0);
         $typeId = (int)($data['typeID'] ?? 0);
@@ -264,7 +264,7 @@ class StructureNotificationParser
         $attackerCharId = (int)($data['aggressorID'] ?? 0);
         $attackerCorpId = (int)($data['aggressorCorpID'] ?? 0);
         $attackerAllianceId = (int)($data['aggressorAllianceID'] ?? 0);
-        $attackerNames = $this->resolveNames(array_filter([$attackerCharId, $attackerCorpId, $attackerAllianceId]));
+        $attackerNames = $this->_resolveNames(array_filter([$attackerCharId, $attackerCorpId, $attackerAllianceId]));
 
         $attackerFormatted = $attackerNames[$attackerCharId] ?? ($attackerCharId ? (string)$attackerCharId : 'Unbekannt');
         if (isset($attackerNames[$attackerCorpId])) {
@@ -288,7 +288,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleTowerResourceAlert(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleTowerResourceAlert(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $systemId = (int)($data['solarSystemID'] ?? 0);
         $typeId = (int)($data['typeID'] ?? 0);
@@ -312,7 +312,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleOrbitalAttacked(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleOrbitalAttacked(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $systemId = (int)($data['solarSystemID'] ?? 0);
         $planetId = (int)($data['planetID'] ?? 0);
@@ -336,7 +336,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function handleOrbitalReinforced(array $data, \DateTimeImmutable $sentDate): DiscordMessage
+    private function _handleOrbitalReinforced(array $data, \DateTimeImmutable $sentDate): DiscordMessage
     {
         $systemId = (int)($data['solarSystemID'] ?? 0);
         $planetId = (int)($data['planetID'] ?? 0);
@@ -358,7 +358,7 @@ class StructureNotificationParser
             ->addEmbed($embed);
     }
 
-    private function resolveStructureName(string $structureId, int $typeId): string
+    private function _resolveStructureName(string $structureId, int $typeId): string
     {
         if (empty($structureId)) {
             return $this->sdeService->getItemName($typeId) ?: 'Struktur';
@@ -380,7 +380,7 @@ class StructureNotificationParser
         return $typeName ? sprintf('%s #%s', $typeName, substr($structureId, -4)) : sprintf('Struktur #%s', $structureId);
     }
 
-    private function resolveNames(array $ids): array
+    private function _resolveNames(array $ids): array
     {
         $ids = array_values(array_unique(array_filter($ids)));
         if (empty($ids)) {
@@ -407,7 +407,7 @@ class StructureNotificationParser
         }
     }
 
-    private function convertTimeLeftToSeconds(mixed $timeLeft): float
+    private function _convertTimeLeftToSeconds(mixed $timeLeft): float
     {
         $val = (float)$timeLeft;
         if ($val > 100000000) {

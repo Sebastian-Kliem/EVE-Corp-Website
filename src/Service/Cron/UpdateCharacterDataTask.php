@@ -54,11 +54,11 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
             // Sync Wallet, Journal, Market Transactions & Orders
             try {
-                $this->syncRoles($character);
-                $this->syncWallet($character);
-                $this->syncWalletJournal($character);
-                $this->syncMarketTransactions($character);
-                $this->syncMarketOrders($character);
+                $this->_syncRoles($character);
+                $this->_syncWallet($character);
+                $this->_syncWalletJournal($character);
+                $this->_syncMarketTransactions($character);
+                $this->_syncMarketOrders($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync wallet/journal/orders for character %s (%d): %s',
@@ -70,7 +70,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
             // Sync Skills, Skill Queue, Attributes & Implants
             try {
-                $this->syncSkillsAttributesImplants($character);
+                $this->_syncSkillsAttributesImplants($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync skills/attributes/implants for character %s (%d): %s',
@@ -84,7 +84,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
             $corpId = $character->getCorporationId();
             if ($corpId && !in_array($corpId, $syncedCorpIds, true)) {
                 try {
-                    $this->syncCorpAssets($character);
+                    $this->_syncCorpAssets($character);
                     $syncedCorpIds[] = $corpId;
                 } catch (\Exception $e) {
                     $this->logger->warning(sprintf(
@@ -98,7 +98,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
             // Sync Assets (Inventory)
             try {
-                $this->syncAssets($character);
+                $this->_syncAssets($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync assets for character %s (%d): %s',
@@ -112,7 +112,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished sync-wallet-assets execution.');
     }
 
-    private function syncRoles(EveCharacter $character): void
+    private function _syncRoles(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing roles and affiliation for character %s...', $character->getName()));
         
@@ -161,7 +161,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
     }
 
-    private function syncWallet(EveCharacter $character): void
+    private function _syncWallet(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing wallet for character %s...', $character->getName()));
         
@@ -187,7 +187,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         ));
     }
 
-    private function syncWalletJournal(EveCharacter $character): void
+    private function _syncWalletJournal(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing wallet journal for character %s...', $character->getName()));
         
@@ -287,7 +287,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
     }
 
-    private function syncMarketTransactions(EveCharacter $character): void
+    private function _syncMarketTransactions(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing market transactions for character %s...', $character->getName()));
 
@@ -385,7 +385,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
     }
 
-    private function syncAssets(EveCharacter $character): void
+    private function _syncAssets(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing assets for character %s...', $character->getName()));
 
@@ -544,7 +544,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
-        $namesMap = $this->fetchCharacterAssetNames($character, $customizableItemIds);
+        $namesMap = $this->_fetchCharacterAssetNames($character, $customizableItemIds);
 
         // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
         $blueprintsMap = [];
@@ -569,7 +569,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $this->entityManager->wrapInTransaction(function() use ($character, $allAssets, $namesMap, $blueprintsMap) {
             // A. Calculate asset changes (increases) for tracked items
             try {
-                $trackedTypeIds = $this->getTrackedTypeIds();
+                $trackedTypeIds = $this->_getTrackedTypeIds();
 
                 if ($character->getLastAssetsUpdate() !== null && !empty($trackedTypeIds)) {
                     // Plain rows instead of entities: managed old assets would be flushed as bogus UPDATEs after the delete below
@@ -758,7 +758,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         ));
     }
 
-    private function syncCorpAssets(EveCharacter $character): void
+    private function _syncCorpAssets(EveCharacter $character): void
     {
         $corpId = $character->getCorporationId();
         if (!$corpId || $character->isInNpcCorporation()) {
@@ -809,7 +809,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
-        $namesMap = $this->fetchCorpAssetNames($character, $corpId, $customizableItemIds);
+        $namesMap = $this->_fetchCorpAssetNames($character, $corpId, $customizableItemIds);
 
         // Fetch blueprints to enrich assets with ME/TE/runs (paginated)
         $blueprintsMap = [];
@@ -884,7 +884,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         ));
     }
 
-    private function fetchCharacterAssetNames(EveCharacter $character, array $itemIds): array
+    private function _fetchCharacterAssetNames(EveCharacter $character, array $itemIds): array
     {
         if (empty($itemIds)) {
             return [];
@@ -927,7 +927,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         return $namesMap;
     }
 
-    private function fetchCorpAssetNames(EveCharacter $character, int $corpId, array $itemIds): array
+    private function _fetchCorpAssetNames(EveCharacter $character, int $corpId, array $itemIds): array
     {
         if (empty($itemIds)) {
             return [];
@@ -971,7 +971,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         return $namesMap;
     }
 
-    private function syncSkillsAttributesImplants(EveCharacter $character): void
+    private function _syncSkillsAttributesImplants(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing skills, attributes, and implants for character %s...', $character->getName()));
 
@@ -1038,7 +1038,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         $this->entityManager->flush();
     }
 
-    private function getTrackedTypeIds(): array
+    private function _getTrackedTypeIds(): array
     {
         $listItems = $this->entityManager->getRepository(TrackingListItem::class)->findAll();
         $trackedTypeIds = [];
@@ -1052,7 +1052,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         return array_values(array_unique(array_filter($trackedTypeIds)));
     }
 
-    private function syncMarketOrders(EveCharacter $character): void
+    private function _syncMarketOrders(EveCharacter $character): void
     {
         $this->logger->debug(sprintf('[Cron] Syncing market orders for character %s...', $character->getName()));
 

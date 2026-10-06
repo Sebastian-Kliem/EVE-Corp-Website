@@ -40,18 +40,18 @@ class LocationService
             return $this->resolvedLocations[$locationId];
         }
 
-        $result = $this->doResolveLocation($locationId, $character, $forceRefresh);
+        $result = $this->_doResolveLocation($locationId, $character, $forceRefresh);
         $this->resolvedLocations[$locationId] = $result;
 
         return $result;
     }
 
-    private function doResolveLocation(int $locationId, ?EveCharacter $character = null, bool $forceRefresh = false): array
+    private function _doResolveLocation(int $locationId, ?EveCharacter $character = null, bool $forceRefresh = false): array
     {
         // 0. Check if this is a corporation office (type ID 27) nested within another location
         $corpAsset = $this->entityManager->getRepository(\App\Entity\EveCorporationAsset::class)->findOneBy(['itemId' => $locationId]);
         if ($corpAsset && $corpAsset->getTypeId() === 27 && $corpAsset->getLocationId() > 0 && $corpAsset->getLocationId() !== $locationId) {
-            return $this->doResolveLocation($corpAsset->getLocationId(), $character, $forceRefresh);
+            return $this->_doResolveLocation($corpAsset->getLocationId(), $character, $forceRefresh);
         }
 
         // 1. Check if NPC Station (IDs 60000000 to 64000000)
@@ -101,7 +101,7 @@ class LocationService
 
         // 3. Check if Player-Owned Structure (IDs >= 1000000000000)
         if ($locationId >= 1000000000000) {
-            return $this->resolvePlayerStructure($locationId, $character, $forceRefresh);
+            return $this->_resolvePlayerStructure($locationId, $character, $forceRefresh);
         }
 
         // 4. Default Fallback
@@ -115,7 +115,7 @@ class LocationService
     /**
      * Resolves player-owned structure name and solar system.
      */
-    private function resolvePlayerStructure(int $locationId, ?EveCharacter $character = null, bool $forceRefresh = false): array
+    private function _resolvePlayerStructure(int $locationId, ?EveCharacter $character = null, bool $forceRefresh = false): array
     {
         // Check if we can find this location in corporation assets (e.g. Customs Offices)
         $corpAsset = $this->entityManager->getRepository(\App\Entity\EveCorporationAsset::class)->findOneBy(['itemId' => $locationId]);
@@ -364,7 +364,7 @@ class LocationService
                                     ];
                                 }
 
-                                $this->cacheStructureData($cStructId, $cStructName, $cSystemId, $corpIdToQuery);
+                                $this->_cacheStructureData($cStructId, $cStructName, $cSystemId, $corpIdToQuery);
                             }
 
                             if ($foundData) {
@@ -506,11 +506,11 @@ class LocationService
             
             // Bypass in-memory cache to force a fresh check
             unset($this->resolvedLocations[$locationId]);
-            $this->doResolveLocation($locationId, null, true);
+            $this->_doResolveLocation($locationId, null, true);
         }
     }
 
-    private function cacheStructureData(int $locationId, string $name, int $solarSystemId, int $ownerId): void
+    private function _cacheStructureData(int $locationId, string $name, int $solarSystemId, int $ownerId): void
     {
         $structureRepo = $this->entityManager->getRepository(EveStructure::class);
         $structure = $structureRepo->find((string)$locationId);

@@ -34,7 +34,7 @@ class AdminCronController extends AbstractController
         $logContent = '';
         if (file_exists($logFile)) {
             // Memory-efficient reading of the last 35 lines to prevent OutOfMemoryError on large logfiles
-            $rawLogs = $this->getLastLines($logFile, 35);
+            $rawLogs = $this->_getLastLines($logFile, 35);
             $lines = explode("\n", $rawLogs);
             
             $formattedLines = [];
@@ -226,7 +226,7 @@ class AdminCronController extends AbstractController
         return CronLanes::laneOf((string)$job->getCommand()) === CronLanes::DEFAULT;
     }
 
-    private function getLastLines(string $filename, int $numLines = 50): string
+    private function _getLastLines(string $filename, int $numLines = 50): string
     {
         if (!file_exists($filename) || !is_readable($filename)) {
             return '';

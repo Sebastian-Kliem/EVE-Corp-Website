@@ -52,7 +52,7 @@ class PerformanceEngine
         }
 
         // Get tracked type IDs for filtering
-        $trackedTypeIds = $this->getTrackedTypeIds();
+        $trackedTypeIds = $this->_getTrackedTypeIds();
         $trackedTypeIdsMap = array_fill_keys($trackedTypeIds, true);
 
         // Fetch exclusions for the user
@@ -276,10 +276,10 @@ class PerformanceEngine
         $typeIds = array_values(array_unique(array_filter($typeIds)));
 
         // 7. Resolve SDE item metadata in bulk
-        $itemMetadata = $this->resolveItemMetadata($typeIds);
+        $itemMetadata = $this->_resolveItemMetadata($typeIds);
 
         // 8. Load Abyss Loot template type IDs to flag them
-        $abyssTypeIds = $this->getAbyssTypeIds();
+        $abyssTypeIds = $this->_getAbyssTypeIds();
 
         // 9. Fetch global Jita prices
         $globalPrices = $this->jitaPriceService->getGlobalPrices();
@@ -290,7 +290,7 @@ class PerformanceEngine
         // Resolve raw equivalents for all type IDs
         $compressionMap = [];
         foreach ($typeIds as $tid) {
-            $compressionMap[$tid] = $this->resolveCompression($tid, $itemMetadata);
+            $compressionMap[$tid] = $this->_resolveCompression($tid, $itemMetadata);
         }
 
         // Aggregate market transactions (buys and sells): [date][rawTypeId] => quantity
@@ -875,7 +875,7 @@ class PerformanceEngine
      * @param int[] $typeIds
      * @return array
      */
-    private function resolveItemMetadata(array $typeIds): array
+    private function _resolveItemMetadata(array $typeIds): array
     {
         if (empty($typeIds)) {
             return [];
@@ -912,7 +912,7 @@ class PerformanceEngine
      * 
      * @return int[]
      */
-    private function getAbyssTypeIds(): array
+    private function _getAbyssTypeIds(): array
     {
         try {
             $abyssList = $this->entityManager->getRepository(TrackingList::class)
@@ -935,7 +935,7 @@ class PerformanceEngine
      * For example, "Compressed Veldspar" -> "Veldspar" (ratio 1).
      * In modern EVE, compressing any item results in 1 unit of compressed item from 1 unit of raw item.
      */
-    private function resolveCompression(int $typeId, array $itemMetadata): array
+    private function _resolveCompression(int $typeId, array $itemMetadata): array
     {
         $meta = $itemMetadata[$typeId] ?? null;
         if (!$meta) {
@@ -977,7 +977,7 @@ class PerformanceEngine
      * 
      * @return int[]
      */
-    private function getTrackedTypeIds(): array
+    private function _getTrackedTypeIds(): array
     {
         try {
             $listItems = $this->entityManager->getRepository(TrackingListItem::class)->findAll();
