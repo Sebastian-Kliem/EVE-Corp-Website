@@ -51,13 +51,13 @@ class EveSsoController extends AbstractController
 
         if (!$savedState || $savedState !== $requestState) {
             $this->addFlash('error', 'Ungültiger CSRF-Status (State). Bitte versuche es erneut.');
-            return $this->redirectToRoute('app_profile_characters');
+            return $this->redirectToRoute('app_profile_character_management');
         }
 
         $code = $request->query->get('code');
         if (!$code) {
             $this->addFlash('error', 'Kein Autorisierungscode von EVE Online erhalten.');
-            return $this->redirectToRoute('app_profile_characters');
+            return $this->redirectToRoute('app_profile_character_management');
         }
 
         try {
@@ -145,6 +145,6 @@ class EveSsoController extends AbstractController
             $this->addFlash('error', 'Fehler bei der SSO-Verknüpfung: ' . $e->getMessage());
         }
 
-        return $this->redirectToRoute('app_profile_characters');
+        return $this->redirectToRoute('app_profile_character_management');
     }
 }

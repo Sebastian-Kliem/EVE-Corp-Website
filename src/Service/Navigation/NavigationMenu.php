@@ -186,6 +186,7 @@ class NavigationMenu
                 'role' => 'ROLE_MEMBER',
                 'items' => [
                     ['label' => 'Mein Profil', 'route' => 'app_profile'],
+                    ['label' => 'Charaktere verwalten', 'route' => 'app_profile_character_management'],
                 ],
             ],
         ];

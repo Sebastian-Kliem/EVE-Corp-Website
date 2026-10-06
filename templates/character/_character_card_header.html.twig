@@ -1,0 +1,31 @@
+{# Card header of a character: portrait, name, tags and wallet balance. Expects "char". #}
+<div class="flex items-center mb-3">
+    <figure class="w-8 h-8 rounded-full mr-3">
+        <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="rounded-full">
+    </figure>
+    <div>
+        <div class="font-semibold text-sm text-white">{{ char.name }}</div>
+        <div class="text-xs text-eve-muted mb-1">ID: {{ char.id }}</div>
+        {% if char.tags is not empty %}
+            <div class="flex flex-wrap gap-1">
+                {% for tag in char.tags %}
+                    <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Wallet Balance & Sync Status -->
+<div class="text-xs border-t border-dashed border-white/15 pt-2 my-2">
+    <div class="flex justify-between items-center">
+        <span class="text-eve-muted">Wallet:</span>
+        <span class="font-semibold text-[#00ffaa]">
+            {% if char.walletBalance is not null %}
+                {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+            {% else %}
+                <span class="text-eve-muted/70">Keine Daten</span>
+            {% endif %}
+        </span>
+    </div>
+</div>

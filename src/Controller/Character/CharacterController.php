@@ -6,7 +6,7 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
-use App\Service\Esi\EsiClient;
+use App\Service\Character\CharacterListBuilder;
 use App\Service\LocationService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,38 +27,14 @@ class CharacterController extends AbstractController
     ) {}
 
     #[Route('', name: 'app_profile_characters', methods: ['GET'])]
-    public function characters(EsiClient $esiClient): Response
+    public function characters(CharacterListBuilder $characterListBuilder): Response
     {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
         }
 
-        $unassignedCharacters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
-            'user' => $currentUser,
-            'account' => null,
-        ]);
-
-        $accounts = iterator_to_array($currentUser->getEveAccounts());
-        usort($accounts, function($a, $b) {
-            return strcasecmp($a->getName(), $b->getName());
-        });
-
-        // Characters linked before new scopes were added need a re-auth
-        $missingScopesByCharacter = [];
-        foreach ($this->entityManager->getRepository(EveCharacter::class)->findBy(['user' => $currentUser]) as $character) {
-            $missingScopes = $esiClient->getMissingScopes($character);
-            if ($missingScopes !== []) {
-                $missingScopesByCharacter[$character->getId()] = $missingScopes;
-            }
-        }
-
-        return $this->render('profile/eve_account/characters.html.twig', [
-            'user' => $currentUser,
-            'unassignedCharacters' => $unassignedCharacters,
-            'accounts' => $accounts,
-            'missingScopesByCharacter' => $missingScopesByCharacter,
-        ]);
+        return $this->render('character/overview.html.twig', $characterListBuilder->build($currentUser));
     }
 
     #[Route('/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]
