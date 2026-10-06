@@ -15,19 +15,19 @@ class EveCorporationAsset
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'bigint_int')]
     private ?int $corporationId = null;
 
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'bigint_int')]
     private ?int $itemId = null;
 
     #[ORM\Column]
     private ?int $typeId = null;
 
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'bigint_int')]
     private ?int $quantity = null;
 
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'bigint_int')]
     private ?int $locationId = null;
 
     #[ORM\Column(length: 100)]

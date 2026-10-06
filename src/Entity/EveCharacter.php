@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 class EveCharacter
 {
     #[ORM\Id]
-    #[ORM\Column(type: 'bigint')]
+    #[ORM\Column(type: 'bigint_int')]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]

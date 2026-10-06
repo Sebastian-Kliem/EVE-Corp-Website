@@ -83,17 +83,14 @@ class UpdateCharacterContractsTask implements CronTaskInterface
             return;
         }
 
-        $repo = $this->entityManager->getRepository(EveCharacterContract::class);
+        $existingContracts = $this->_loadExistingContracts($character);
 
-        $this->entityManager->wrapInTransaction(function() use ($character, $allContracts, $repo) {
+        $this->entityManager->wrapInTransaction(function() use ($character, $allContracts, $existingContracts) {
             foreach ($allContracts as $cData) {
                 $contractId = (string)$cData['contract_id'];
                 
                 // Fetch existing contract to update or create new one
-                $contract = $repo->findOneBy([
-                    'character' => $character,
-                    'contractId' => $contractId
-                ]);
+                $contract = $existingContracts[$contractId] ?? null;
 
                 if (!$contract) {
                     $contract = new EveCharacterContract();
@@ -119,9 +116,9 @@ class UpdateCharacterContractsTask implements CronTaskInterface
                 $contract->setAcceptorId((int)$cData['acceptor_id']);
 
                 // Fetch contract items if not already stored, or if contract was recently updated
-                $items = [];
-                // Only request items for item_exchange or auction, courier contracts don't list specific item outputs
-                if ($cData['type'] !== 'courier') {
+                $items = $contract->getItems();
+                // Only request items for item_exchange or auction, courier contracts don't list specific item outputs; items never change once stored
+                if ($cData['type'] !== 'courier' && $items === []) {
                     try {
                         $itemsData = $this->esiClient->request(
                             'GET',
@@ -154,5 +151,20 @@ class UpdateCharacterContractsTask implements CronTaskInterface
             count($allContracts),
             $character->getName()
         ));
+    }
+
+    /**
+     * @return array<string, EveCharacterContract> Stored contracts of the character by contract ID
+     */
+    private function _loadExistingContracts(EveCharacter $character): array
+    {
+        $contracts = $this->entityManager->getRepository(EveCharacterContract::class)->findBy(['character' => $character]);
+
+        $contractsById = [];
+        foreach ($contracts as $contract) {
+            $contractsById[(string)$contract->getContractId()] = $contract;
+        }
+
+        return $contractsById;
     }
 }
