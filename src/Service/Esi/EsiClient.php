@@ -14,6 +14,9 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
 class EsiClient
 {
     private const BASE_URL = 'https://esi.evetech.net/latest/';
+    // Gate-connected (known space) solar systems; wormhole systems start at 31000000
+    private const KNOWN_SPACE_SYSTEM_ID_MIN = 30000000;
+    private const KNOWN_SPACE_SYSTEM_ID_MAX = 30999999;
     private const SSO_AUTH_URL = 'https://login.eveonline.com/v2/oauth/authorize';
     private const SSO_TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token';
 
@@ -589,6 +592,11 @@ class EsiClient
             return [$originSolarSystemId];
         }
 
+        // Wormhole and abyssal systems have no gates, ESI would only answer 404 "No route found"
+        if (!$this->_isKnownSpaceSystem($originSolarSystemId) || !$this->_isKnownSpaceSystem($destinationSolarSystemId)) {
+            return null;
+        }
+
         try {
             $path = sprintf('route/%d/%d/', $originSolarSystemId, $destinationSolarSystemId);
             $result = $this->request('GET', $path, [
@@ -615,6 +623,11 @@ class EsiClient
         }
 
         return null;
+    }
+
+    private function _isKnownSpaceSystem(int $solarSystemId): bool
+    {
+        return $solarSystemId >= self::KNOWN_SPACE_SYSTEM_ID_MIN && $solarSystemId <= self::KNOWN_SPACE_SYSTEM_ID_MAX;
     }
 
     // ESI explains client errors in the body (e.g. invalid IDs); the exception message omits it

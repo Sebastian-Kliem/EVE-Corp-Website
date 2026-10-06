@@ -179,6 +179,16 @@ class EsiClientTest extends TestCase
         $this->assertSame(0, $noRequests->getRequestsCount());
     }
 
+    public function testRouteIsNotRequestedForWormholeSystems(): void
+    {
+        $noRequests = new MockHttpClient([]);
+        $esiClient = $this->_createClient($noRequests);
+
+        $this->assertNull($esiClient->getRoute(31001506, 30000142, 'shortest'));
+        $this->assertNull($esiClient->getRoute(30000142, 31001506, 'shortest'));
+        $this->assertSame(0, $noRequests->getRequestsCount());
+    }
+
     public function testQuietDowntimeCheckLogsUnreachableClusterOnlyAsDebug(): void
     {
         $clock = new MockClock('2026-10-04 11:05:00', 'UTC');
