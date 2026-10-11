@@ -27,7 +27,8 @@ class LegacyRedirectController extends AbstractController
         '/personal/assets' => 'app_dashboard_assets_overview',
         '/personal/value-history' => 'app_dashboard_assets_overview',
         '/corp/blueprints' => 'app_corp_blueprints',
-        '/corp/appraisal' => 'app_corp_appraisal',
+        '/corp/appraisal' => 'app_order_list',
+        '/general/appraisal' => 'app_order_list',
         '/general/reactions' => 'app_general_reactions',
         '/general/suggestions' => 'app_suggestions',
         '/general/link/collection' => 'link_collection',
@@ -42,7 +43,7 @@ class LegacyRedirectController extends AbstractController
     #[Route(
         '/{legacyPath}',
         name: 'app_legacy_redirect',
-        requirements: ['legacyPath' => 'personal/(profile(/characters|/skill-farm)?|wanderer|industry|pi|mining|market|performance|assets|value-history)|corp/(blueprints|appraisal)|general/(reactions|suggestions|link/collection)'],
+        requirements: ['legacyPath' => 'personal/(profile(/characters|/skill-farm)?|wanderer|industry|pi|mining|market|performance|assets|value-history)|corp/(blueprints|appraisal)|general/(reactions|suggestions|link/collection|appraisal)'],
         methods: ['GET'],
         priority: -10
     )]

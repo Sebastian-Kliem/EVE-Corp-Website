@@ -96,7 +96,7 @@ export default function OrderListManager({
     const [selectedTab, setSelectedTab] = useState<'BUY' | 'SELL'>('BUY');
     const [viewMode, setViewMode] = useState<'active' | 'deliveries' | 'archived'>('active');
     const [searchQuery, setSearchQuery] = useState('');
-    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(true);
 
     // Orders state
     const [buyOrders, setBuyOrders] = useState<Order[]>(initialBuyOrders);
@@ -160,7 +160,6 @@ export default function OrderListManager({
     }, [currentOrders, searchQuery]);
 
     const handleOrderCreated = (newOrder: Order) => {
-        setIsCreateOpen(false);
         if (newOrder.type === 'BUY') {
             setBuyOrders(prev => [newOrder, ...prev]);
             setSelectedTab('BUY');
@@ -475,8 +474,8 @@ export default function OrderListManager({
                     className="w-full flex items-center justify-between p-4 bg-black/20 hover:bg-white/5 text-left transition-colors cursor-pointer"
                 >
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">Neue Bestellung / Angebot erstellen</span>
-                        <span className="text-xs text-eve-muted">(EFT-Fit, Hangar-Liste oder Multibuy)</span>
+                        <span className="text-sm font-semibold text-white">Janice-Rechner &amp; neue Bestellung</span>
+                        <span className="text-xs text-eve-muted">(EFT-Fit, Hangar-Liste oder Multibuy bewerten und als Order aufgeben)</span>
                     </div>
                     <div className={`text-eve-primary transition-transform duration-300 ${isCreateOpen ? 'rotate-180' : ''}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

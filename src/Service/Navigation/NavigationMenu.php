@@ -165,7 +165,6 @@ class NavigationMenu
                 'role' => 'ROLE_MEMBER',
                 'items' => [
                     ['label' => 'Linksammlung', 'route' => 'link_collection'],
-                    ['label' => 'Janice-Rechner', 'route' => 'app_corp_appraisal'],
                 ],
             ],
             [
