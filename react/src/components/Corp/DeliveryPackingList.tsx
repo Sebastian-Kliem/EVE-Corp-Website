@@ -3,6 +3,7 @@ import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import { Order, OrderItem } from './OrderListManager';
+import { getFulfillerShares, toDeliveryView } from './orderShares';
 
 interface DeliveryPackingListProps {
     orders: Order[];
@@ -25,7 +26,7 @@ interface DeliveryPackingListProps {
 }
 
 export default function DeliveryPackingList({
-    orders,
+    orders: fullOrders,
     currentUserId,
     ownedStock,
     isOfficer = false,
@@ -43,6 +44,9 @@ export default function DeliveryPackingList({
     actionLoadingId,
     itemLoadingId,
 }: DeliveryPackingListProps) {
+    // Orders shared with other users only list, price and copy the current user's items
+    const orders = useMemo(() => fullOrders.map(order => toDeliveryView(order, currentUserId ?? null)), [fullOrders, currentUserId]);
+    const fullOrdersById = useMemo(() => new Map(fullOrders.map(order => [order.id, order])), [fullOrders]);
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedOrderIds, setExpandedOrderIds] = useState<number[]>([]);
     const [checkedItemIds, setCheckedItemIds] = useState<number[]>(() => {
@@ -328,6 +332,9 @@ export default function DeliveryPackingList({
                     const packedCount = order.items.filter(i => checkedItemIds.includes(i.id)).length;
                     const isFullyPacked = packedCount === order.items.length && order.items.length > 0;
                     const canManage = isOfficer || (currentUserId && order.user.id === currentUserId);
+                    const fullOrder = fullOrdersById.get(order.id) ?? order;
+                    const otherFulfillers = getFulfillerShares(fullOrder).filter(share => share.fulfillerId !== currentUserId);
+                    const otherItemCount = fullOrder.items.length - order.items.length;
 
                     return (
                         <div
@@ -370,6 +377,12 @@ export default function DeliveryPackingList({
                                         <p className="text-[11px] text-eve-muted mt-0.5">
                                             Order #{order.id} • {order.items.length} Posten • {formatThousands(order.totalVolume)} m³
                                         </p>
+                                        {otherItemCount > 0 && (
+                                            <p className="text-[11px] text-amber-300/90 mt-0.5">
+                                                Dein Anteil. Weitere {otherItemCount} Posten
+                                                {otherFulfillers.length > 0 ? ` übernehmen: ${otherFulfillers.map(share => share.displayName).join(', ')}` : ' sind noch offen'}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -387,7 +400,7 @@ export default function DeliveryPackingList({
                                     </div>
 
                                     <div className="text-right">
-                                        <span className="text-[10px] text-eve-muted block">Zu fordern (ISK):</span>
+                                        <span className="text-[10px] text-eve-muted block">{otherItemCount > 0 ? 'Dein Anteil (ISK):' : 'Zu fordern (ISK):'}</span>
                                         <span className="text-sm font-bold text-eve-primary font-mono">
                                             {formatThousands(order.totalPrice)} ISK
                                         </span>

@@ -5,6 +5,7 @@ import DeliveryPackingList from './DeliveryPackingList';
 import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
+import FulfillerSharesPanel from './FulfillerSharesPanel';
 
 export interface OrderItem {
     id: number;
@@ -395,9 +396,23 @@ export default function OrderListManager({
     const handleCopyMultibuy = (order: Order) => {
         const unfulfilledItems = order.items.filter(i => !i.isFulfilled);
         const targetItems = unfulfilledItems.length > 0 ? unfulfilledItems : order.items;
-        const lines = targetItems.map(i => `${i.name} ${i.amount}`);
-        navigator.clipboard.writeText(lines.join('\n'));
+        _copyMultibuyLines(targetItems);
         showFeedbackMessage(`Multibuy-Liste für Order #${order.id} kopiert.`);
+    };
+
+    const _copyMultibuyLines = (items: OrderItem[]) => {
+        const lines = items.map(i => `${i.name} ${i.amount}`);
+        navigator.clipboard.writeText(lines.join('\n'));
+    };
+
+    const handleCopyShareMultibuy = (items: OrderItem[], fulfillerName: string) => {
+        _copyMultibuyLines(items);
+        showFeedbackMessage(`Multibuy-Liste für den Anteil von ${fulfillerName} kopiert.`);
+    };
+
+    const handleCopyShareAmount = (amount: number, fulfillerName: string) => {
+        navigator.clipboard.writeText(amount.toString());
+        showFeedbackMessage(`Anteil von ${fulfillerName}: ${formatThousands(amount)} ISK kopiert.`);
     };
 
     const handleCopyAmount = (order: Order) => {
@@ -713,6 +728,13 @@ export default function OrderListManager({
                                 {/* Expanded Content */}
                                 {isExpanded && (
                                     <div className="p-4 border-t border-eve-border/60 bg-black/30">
+                                        <FulfillerSharesPanel
+                                            order={order}
+                                            currentUserId={currentUserId ?? null}
+                                            onCopyAmount={handleCopyShareAmount}
+                                            onCopyMultibuy={handleCopyShareMultibuy}
+                                        />
+
                                         {/* Action Bar */}
                                         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-lg bg-black/40 border border-eve-border/40 text-xs">
                                             <div className="flex flex-wrap items-center gap-2">
