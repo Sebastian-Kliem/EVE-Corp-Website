@@ -5,7 +5,7 @@ import DeliveryPackingList from './DeliveryPackingList';
 import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
-import FulfillerSharesPanel from './FulfillerSharesPanel';
+import OrderAmountsList from './OrderAmountsList';
 
 export interface OrderItem {
     id: number;
@@ -405,14 +405,14 @@ export default function OrderListManager({
         navigator.clipboard.writeText(lines.join('\n'));
     };
 
-    const handleCopyShareMultibuy = (items: OrderItem[], fulfillerName: string) => {
+    const handleCopyShareMultibuy = (items: OrderItem[], label: string) => {
         _copyMultibuyLines(items);
-        showFeedbackMessage(`Multibuy-Liste für den Anteil von ${fulfillerName} kopiert.`);
+        showFeedbackMessage(`Multibuy-Liste (${label}) kopiert.`);
     };
 
-    const handleCopyShareAmount = (amount: number, fulfillerName: string) => {
+    const handleCopyShareAmount = (amount: number, label: string) => {
         navigator.clipboard.writeText(amount.toString());
-        showFeedbackMessage(`Anteil von ${fulfillerName}: ${formatThousands(amount)} ISK kopiert.`);
+        showFeedbackMessage(`${label}: ${formatThousands(amount)} ISK kopiert.`);
     };
 
     const handleCopyAmount = (order: Order) => {
@@ -728,128 +728,115 @@ export default function OrderListManager({
                                 {/* Expanded Content */}
                                 {isExpanded && (
                                     <div className="p-4 border-t border-eve-border/60 bg-black/30">
-                                        <FulfillerSharesPanel
-                                            order={order}
-                                            currentUserId={currentUserId ?? null}
-                                            onCopyAmount={handleCopyShareAmount}
-                                            onCopyMultibuy={handleCopyShareMultibuy}
-                                        />
-
-                                        {/* Action Bar */}
-                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-lg bg-black/40 border border-eve-border/40 text-xs">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-eve-muted font-semibold mr-1">Kopierhilfe:</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCopyMultibuy(order)}
-                                                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
-                                                >
-                                                    Multibuy kopieren
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCopyAmount(order)}
-                                                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
-                                                >
-                                                    Betrag ({formatThousands(order.totalPrice)} ISK)
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCopyTitle(order)}
-                                                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
-                                                >
-                                                    Titel (WH-Order #{order.id})
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCopyUser(order)}
-                                                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
-                                                >
-                                                    Ziel: {order.user.displayName}
-                                                </button>
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                {order.contractId && (
+                                        {/* Action Bar with all amounts */}
+                                        <div className="mb-4 rounded-lg bg-black/40 border border-eve-border/40 text-xs overflow-hidden">
+                                            <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-eve-muted font-semibold mr-1">Kopierhilfe:</span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleOpenInGame(order.id)}
-                                                        className="px-3 py-1 rounded bg-eve-primary/15 border border-eve-primary/50 text-eve-primary hover:brightness-115 cursor-pointer font-semibold"
-                                                    >
-                                                        Im EVE-Client öffnen
-                                                    </button>
-                                                )}
-
-                                                {/* Mass Button: Take all remaining open positions at once */}
-                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount < order.totalItemCount && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAcceptOrder(order.id)}
-                                                        disabled={actionLoadingId === order.id}
-                                                        className="px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer font-semibold"
-                                                        title="Nimmt alle noch offenen Positionen dieser Bestellung auf einmal an"
-                                                    >
-                                                        {order.fulfilledItemCount > 0 ? 'Restliche Posten annehmen' : 'Alle Posten annehmen'}
-                                                    </button>
-                                                )}
-
-                                                {/* Completion: Creator, fulfiller or officer can complete order */}
-                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0) && (
-                                                    canManageOrder ||
-                                                    (order.fulfiller && currentUserId === order.fulfiller.id) ||
-                                                    (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
-                                                ) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCompleteOrder(order.id)}
-                                                        disabled={actionLoadingId === order.id}
-                                                        className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                                                        title="Schließt die gesamte Bestellung ab und archiviert sie"
-                                                    >
-                                                        Bestellung abschließen
-                                                    </button>
-                                                )}
-
-                                                {/* Release items: Fulfiller, creator or officer can cancel acceptance / release back to OPEN */}
-                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount > 0 && (
-                                                    canManageOrder ||
-                                                    (order.fulfiller && currentUserId === order.fulfiller.id) ||
-                                                    (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
-                                                ) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleUnacceptOrder(order.id)}
-                                                        disabled={actionLoadingId === order.id}
-                                                        className="px-2.5 py-1 rounded bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer"
-                                                        title="Gibt deine übernommenen Positionen wieder frei"
-                                                    >
-                                                        Posten freigeben
-                                                    </button>
-                                                )}
-
-                                                {/* Stornieren: OPEN or IN_PROGRESS */}
-                                                {(order.status === 'OPEN' || order.status === 'IN_PROGRESS') && canManageOrder && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCancelOrder(order.id)}
-                                                        disabled={actionLoadingId === order.id}
-                                                        className="px-2.5 py-1 rounded bg-red-500/15 border border-red-500/40 text-red-300 hover:brightness-115 cursor-pointer"
-                                                    >
-                                                        Stornieren
-                                                    </button>
-                                                )}
-
-                                                {(order.status === 'CANCELLED' || order.status === 'FULFILLED') && canManageOrder && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleReopenOrder(order.id)}
-                                                        disabled={actionLoadingId === order.id}
+                                                        onClick={() => handleCopyTitle(order)}
                                                         className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
                                                     >
-                                                        Wiedereröffnen
+                                                        Titel (WH-Order #{order.id})
                                                     </button>
-                                                )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopyUser(order)}
+                                                        className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
+                                                    >
+                                                        Ziel: {order.user.displayName}
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {order.contractId && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenInGame(order.id)}
+                                                            className="px-3 py-1 rounded bg-eve-primary/15 border border-eve-primary/50 text-eve-primary hover:brightness-115 cursor-pointer font-semibold"
+                                                        >
+                                                            Im EVE-Client öffnen
+                                                        </button>
+                                                    )}
+
+                                                    {/* Mass Button: Take all remaining open positions at once */}
+                                                    {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount < order.totalItemCount && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAcceptOrder(order.id)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className="px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer font-semibold"
+                                                            title="Nimmt alle noch offenen Positionen dieser Bestellung auf einmal an"
+                                                        >
+                                                            {order.fulfilledItemCount > 0 ? 'Restliche Posten annehmen' : 'Alle Posten annehmen'}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Completion: Creator, fulfiller or officer can complete order */}
+                                                    {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0) && (
+                                                        canManageOrder ||
+                                                        (order.fulfiller && currentUserId === order.fulfiller.id) ||
+                                                        (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
+                                                    ) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCompleteOrder(order.id)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                                                            title="Schließt die gesamte Bestellung ab und archiviert sie"
+                                                        >
+                                                            Bestellung abschließen
+                                                        </button>
+                                                    )}
+
+                                                    {/* Release items: Fulfiller, creator or officer can cancel acceptance / release back to OPEN */}
+                                                    {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount > 0 && (
+                                                        canManageOrder ||
+                                                        (order.fulfiller && currentUserId === order.fulfiller.id) ||
+                                                        (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
+                                                    ) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleUnacceptOrder(order.id)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className="px-2.5 py-1 rounded bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer"
+                                                            title="Gibt deine übernommenen Positionen wieder frei"
+                                                        >
+                                                            Posten freigeben
+                                                        </button>
+                                                    )}
+
+                                                    {/* Stornieren: OPEN or IN_PROGRESS */}
+                                                    {(order.status === 'OPEN' || order.status === 'IN_PROGRESS') && canManageOrder && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCancelOrder(order.id)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className="px-2.5 py-1 rounded bg-red-500/15 border border-red-500/40 text-red-300 hover:brightness-115 cursor-pointer"
+                                                        >
+                                                            Stornieren
+                                                        </button>
+                                                    )}
+
+                                                    {(order.status === 'CANCELLED' || order.status === 'FULFILLED') && canManageOrder && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleReopenOrder(order.id)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white cursor-pointer"
+                                                        >
+                                                            Wiedereröffnen
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
+                                            <OrderAmountsList
+                                                order={order}
+                                                currentUserId={currentUserId ?? null}
+                                                onCopyAmount={handleCopyShareAmount}
+                                                onCopyMultibuy={handleCopyShareMultibuy}
+                                            />
                                         </div>
 
                                         {/* Items Table */}
