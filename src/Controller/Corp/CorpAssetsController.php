@@ -7,6 +7,7 @@ use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\Assets\AssetTreeBuilder;
 use App\Service\CorpDivisionService;
+use App\Service\CorpHangarVisibilityService;
 use App\Service\JitaPriceService;
 use App\Service\LocationService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,7 +25,8 @@ class CorpAssetsController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly JitaPriceService $jitaPriceService,
-        private readonly AssetTreeBuilder $assetTreeBuilder
+        private readonly AssetTreeBuilder $assetTreeBuilder,
+        private readonly CorpHangarVisibilityService $corpHangarVisibilityService
     ) {}
 
     #[Route('/corp/assets', name: 'app_dashboard_corp_assets_overview', methods: ['GET'])]
@@ -38,23 +40,7 @@ class CorpAssetsController extends AbstractController
         $prices = $this->jitaPriceService->getGlobalPrices();
 
         $isCeoOrAdmin = $this->isGranted('ROLE_CEO') || $this->isGranted('ROLE_ADMIN');
-        $visibilityMap = [];
-        if (!$isCeoOrAdmin) {
-            $visibilities = $this->entityManager->getRepository(\App\Entity\CorpAssetVisibility::class)->findBy(['isVisible' => true]);
-            foreach ($visibilities as $visibility) {
-                $allowedUsers = $visibility->getUsers();
-                if ($allowedUsers->isEmpty()) {
-                    $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
-                } else {
-                    foreach ($allowedUsers as $allowedUser) {
-                        if ($allowedUser->getId() === $currentUser->getId()) {
-                            $visibilityMap[$visibility->getLocationId()][$visibility->getLocationFlag()] = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        $visibilityMap = $isCeoOrAdmin ? [] : $this->corpHangarVisibilityService->getVisibleHangars($currentUser);
 
         $characters = $this->entityManager->getRepository(EveCharacter::class)->findBy([
             'user' => $currentUser
