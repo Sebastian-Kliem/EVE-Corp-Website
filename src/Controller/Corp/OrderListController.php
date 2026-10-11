@@ -50,7 +50,11 @@ final class OrderListController extends AbstractController
 
         $user = $this->getUser();
         $ownedStock = $user instanceof User
-            ? $ownedStockService->getOwnedStock($user, $this->_collectItemTypeIds(array_merge($activeBuyOrders, $activeSellOrders)))
+            ? $ownedStockService->getOwnedStock(
+                $user,
+                $this->_collectItemTypeIds(array_merge($activeBuyOrders, $activeSellOrders)),
+                $this->isGranted('ROLE_CEO') || $this->isGranted('ROLE_ADMIN')
+            )
             : [];
 
         return $this->render('corp/order_list.html.twig', [

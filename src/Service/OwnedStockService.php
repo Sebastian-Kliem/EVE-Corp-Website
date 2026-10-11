@@ -10,7 +10,8 @@ use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Collects how many items of given types a user owns and where, from all of the user's
- * characters and the corp hangars/containers the user marked as personal.
+ * characters, the corp hangars/containers the user marked as personal and the shared corp
+ * hangars the user may look into.
  */
 class OwnedStockService
 {
@@ -20,19 +21,23 @@ class OwnedStockService
     // Maximum container nesting that is walked up to find the root location
     private const MAX_NESTING_DEPTH = 10;
 
+    private const SHARED_HANGAR_FLAG_PATTERN = '/^CorpSAG[1-7]$/';
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly LocationService $locationService,
         private readonly SdeService $sdeService,
         private readonly PersonalCorpAssetService $personalCorpAssetService,
-        private readonly CorpDivisionService $corpDivisionService
+        private readonly CorpDivisionService $corpDivisionService,
+        private readonly CorpHangarVisibilityService $corpHangarVisibilityService
     ) {}
 
     /**
      * @param int[] $typeIds
+     * @param bool $canSeeAllCorpHangars CEO/admin, ignores the hangar visibility settings
      * @return array<int, array{total: int, locations: list<array{location: string, system: ?string, path: string, owner: string, quantity: int}>}>
      */
-    public function getOwnedStock(User $user, array $typeIds): array
+    public function getOwnedStock(User $user, array $typeIds, bool $canSeeAllCorpHangars = false): array
     {
         $typeIds = array_values(array_unique(array_filter($typeIds)));
         if ($typeIds === []) {
@@ -46,7 +51,7 @@ class OwnedStockService
 
         $entries = [];
         $this->_collectCharacterStock($characters, $typeIds, $entries);
-        $this->_collectPersonalCorpStock($user, $characters, $typeIds, $entries);
+        $this->_collectCorpStock($user, $characters, $typeIds, $canSeeAllCorpHangars, $entries);
 
         return $this->_groupEntries($entries);
     }
@@ -80,11 +85,20 @@ class OwnedStockService
             $containerNames = [];
             $rootLocationId = $asset->getLocationId();
             $depth = 0;
+            $isInsideShip = false;
             while (isset($parentsByItemId[$rootLocationId]) && $depth < self::MAX_NESTING_DEPTH) {
                 $parent = $parentsByItemId[$rootLocationId];
+                // Cargo, drone bay and other ship hangars are not stock either
+                if ($this->sdeService->isShip((int)$parent->getTypeId())) {
+                    $isInsideShip = true;
+                    break;
+                }
                 array_unshift($containerNames, $this->_containerName($parent->getTypeId(), $parent->getCustomName()));
                 $rootLocationId = $parent->getLocationId();
                 $depth++;
+            }
+            if ($isInsideShip) {
+                continue;
             }
 
             $entries[] = $this->_buildEntry(
@@ -136,49 +150,121 @@ class OwnedStockService
     }
 
     /**
+     * Personal corp hangars/containers of the user first, then the shared hangars the user may see.
+     * Hangars and containers other users marked as personal are left out.
+     *
      * @param EveCharacter[] $characters
      * @param int[] $typeIds
      * @param list<array{typeId: int, location: string, system: ?string, path: string, owner: string, quantity: int}> $entries
      */
-    private function _collectPersonalCorpStock(User $user, array $characters, array $typeIds, array &$entries): void
+    private function _collectCorpStock(User $user, array $characters, array $typeIds, bool $canSeeAllCorpHangars, array &$entries): void
     {
-        $personalHangars = $user->getPersonalCorpHangars();
-        $personalContainers = $user->getPersonalCorpContainers();
-        if ($personalHangars === [] && $personalContainers === []) {
-            return;
-        }
-
+        $visibleHangars = $canSeeAllCorpHangars ? null : $this->corpHangarVisibilityService->getVisibleHangars($user);
+        $foreignPersonalAssets = $this->_loadForeignPersonalAssets($user);
         $wantedTypeIds = array_flip($typeIds);
+
         foreach ($this->_charactersByCorporation($characters) as $corporationId => $character) {
             $corpAssets = $this->entityManager->getRepository(EveCorporationAsset::class)->findBy(['corporationId' => $corporationId]);
-            $resolved = $this->personalCorpAssetService->resolvePersonalCorpAssets($corporationId, $corpAssets, $personalHangars, $personalContainers);
-            if ($resolved['roots'] === []) {
+            if ($corpAssets === []) {
                 continue;
             }
 
+            $resolved = $this->personalCorpAssetService->resolvePersonalCorpAssets($corporationId, $corpAssets, $user->getPersonalCorpHangars(), $user->getPersonalCorpContainers());
             $syncCharacter = $this->corpDivisionService->findSyncCharacter($corporationId) ?? $character;
             $divisionNames = $this->corpDivisionService->getHangarDivisionNames($corporationId, $syncCharacter);
+            $foreignHangars = $foreignPersonalAssets['hangars'][$corporationId] ?? [];
+            $skippedItemIds = $foreignPersonalAssets['containers'][$corporationId] ?? [];
 
             foreach ($resolved['roots'] as $root) {
-                $resolvedLocation = $this->locationService->resolveLocation($root->getLocationId(), $syncCharacter);
-                $rootLabel = $this->_corpHangarLabel($root->getLocationFlag(), $divisionNames);
-                $this->_collectCorpBranch($root, [], $resolved['nested'], $wantedTypeIds, $resolvedLocation, $rootLabel, $entries);
+                $rootLabel = $this->_corpHangarLabel($root->getLocationFlag(), $divisionNames, true);
+                $resolvedLocation = $this->locationService->resolveLocation((int)$root->getLocationId(), $syncCharacter);
+                $this->_collectCorpBranch($root, [], $resolved['nested'], $wantedTypeIds, $resolvedLocation, $rootLabel, $skippedItemIds, $entries);
+                // Already counted as personal stock, the shared hangar walk below must not count it again
+                $skippedItemIds[$root->getItemId()] = true;
+            }
+
+            foreach ($corpAssets as $asset) {
+                if (!$this->_isVisibleSharedHangarRoot($asset, $resolved['byItemId'], $foreignHangars, $visibleHangars)) {
+                    continue;
+                }
+                $rootLabel = $this->_corpHangarLabel($asset->getLocationFlag(), $divisionNames, false);
+                $resolvedLocation = $this->locationService->resolveLocation((int)$asset->getLocationId(), $syncCharacter);
+                $this->_collectCorpBranch($asset, [], $resolved['nested'], $wantedTypeIds, $resolvedLocation, $rootLabel, $skippedItemIds, $entries);
             }
         }
     }
 
     /**
-     * Walks a personal corp asset and everything nested in it.
+     * Hangars and containers other users marked as personal, grouped by corporation.
+     *
+     * @return array{hangars: array<int, array<string, true>>, containers: array<int, array<int, true>>}
+     */
+    private function _loadForeignPersonalAssets(User $user): array
+    {
+        $foreignPersonalAssets = ['hangars' => [], 'containers' => []];
+        foreach ($this->entityManager->getRepository(User::class)->findAll() as $otherUser) {
+            if ($otherUser->getId() === $user->getId()) {
+                continue;
+            }
+            foreach ($otherUser->getPersonalCorpHangars() as $hangar) {
+                $hangarKey = $this->_hangarKey((int)($hangar['locationId'] ?? 0), (string)($hangar['locationFlag'] ?? ''));
+                $foreignPersonalAssets['hangars'][(int)($hangar['corporationId'] ?? 0)][$hangarKey] = true;
+            }
+            foreach ($otherUser->getPersonalCorpContainers() as $container) {
+                $foreignPersonalAssets['containers'][(int)($container['corporationId'] ?? 0)][(int)($container['itemId'] ?? 0)] = true;
+            }
+        }
+
+        return $foreignPersonalAssets;
+    }
+
+    /**
+     * True for a top-level item in a corp hangar division the user may see and nobody marked as personal.
+     *
+     * @param array<int, EveCorporationAsset> $byItemId
+     * @param array<string, true> $foreignHangars
+     * @param array<int|string, array<string, true>>|null $visibleHangars null when every hangar is visible
+     */
+    private function _isVisibleSharedHangarRoot(EveCorporationAsset $asset, array $byItemId, array $foreignHangars, ?array $visibleHangars): bool
+    {
+        $flag = (string)$asset->getLocationFlag();
+        if (!preg_match(self::SHARED_HANGAR_FLAG_PATTERN, $flag)) {
+            return false;
+        }
+
+        $officeId = (int)$asset->getLocationId();
+        if (isset($foreignHangars[$this->_hangarKey($officeId, $flag)])) {
+            return false;
+        }
+        if ($visibleHangars === null) {
+            return true;
+        }
+
+        // Visibility is configured per station/structure, the office sits directly in it
+        $office = $byItemId[$officeId] ?? null;
+        $stationId = $office !== null ? (int)$office->getLocationId() : $officeId;
+
+        return isset($visibleHangars[$stationId][$flag]);
+    }
+
+    private function _hangarKey(int $locationId, string $locationFlag): string
+    {
+        return $locationId . '|' . $locationFlag;
+    }
+
+    /**
+     * Walks a corp asset and everything nested in it, ships are counted but not opened.
      *
      * @param string[] $containerNames
      * @param array<int, array<int, EveCorporationAsset>> $nested
      * @param array<int, int> $wantedTypeIds
      * @param array<string, mixed> $resolvedLocation
+     * @param array<int, true> $skippedItemIds
      * @param list<array{typeId: int, location: string, system: ?string, path: string, owner: string, quantity: int}> $entries
      */
-    private function _collectCorpBranch(EveCorporationAsset $asset, array $containerNames, array $nested, array $wantedTypeIds, array $resolvedLocation, string $rootLabel, array &$entries): void
+    private function _collectCorpBranch(EveCorporationAsset $asset, array $containerNames, array $nested, array $wantedTypeIds, array $resolvedLocation, string $rootLabel, array $skippedItemIds, array &$entries): void
     {
-        if ($this->_isExcludedFlag($asset->getLocationFlag())) {
+        if (isset($skippedItemIds[$asset->getItemId()]) || $this->_isExcludedFlag($asset->getLocationFlag())) {
             return;
         }
 
@@ -192,14 +278,17 @@ class OwnedStockService
             );
         }
 
-        if (count($containerNames) >= self::MAX_NESTING_DEPTH) {
+        if (!isset($nested[$asset->getItemId()]) || count($containerNames) >= self::MAX_NESTING_DEPTH) {
+            return;
+        }
+        if ($this->sdeService->isShip((int)$asset->getTypeId())) {
             return;
         }
 
         $childContainerNames = $containerNames;
         $childContainerNames[] = $this->_containerName($asset->getTypeId(), $asset->getCustomName());
-        foreach ($nested[$asset->getItemId()] ?? [] as $child) {
-            $this->_collectCorpBranch($child, $childContainerNames, $nested, $wantedTypeIds, $resolvedLocation, $rootLabel, $entries);
+        foreach ($nested[$asset->getItemId()] as $child) {
+            $this->_collectCorpBranch($child, $childContainerNames, $nested, $wantedTypeIds, $resolvedLocation, $rootLabel, $skippedItemIds, $entries);
         }
     }
 
@@ -313,16 +402,19 @@ class OwnedStockService
     /**
      * @param array<int, string> $divisionNames
      */
-    private function _corpHangarLabel(?string $locationFlag, array $divisionNames): string
+    private function _corpHangarLabel(?string $locationFlag, array $divisionNames, bool $isPersonal): string
     {
         if ($locationFlag !== null && preg_match('/^CorpSAG(\d)$/', $locationFlag, $matches)) {
             $divisionNumber = (int)$matches[1];
             $divisionName = $divisionNames[$divisionNumber] ?? '';
-            return $divisionName !== ''
+            if ($divisionName === '') {
+                return $isPersonal ? sprintf('Corp-Hangar %d (persönlich)', $divisionNumber) : sprintf('Corp-Hangar %d', $divisionNumber);
+            }
+            return $isPersonal
                 ? sprintf('%s (persönlicher Corp-Hangar %d)', $divisionName, $divisionNumber)
-                : sprintf('Corp-Hangar %d (persönlich)', $divisionNumber);
+                : sprintf('%s (Corp-Hangar %d)', $divisionName, $divisionNumber);
         }
 
-        return 'Corp-Hangar (persönlich)';
+        return $isPersonal ? 'Corp-Hangar (persönlich)' : 'Corp-Hangar';
     }
 }

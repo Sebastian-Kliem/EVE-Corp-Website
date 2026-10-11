@@ -31,7 +31,7 @@ interface OwnedStockBadgeProps {
 
 const POPOVER_WIDTH = 340;
 
-// Shows how many of an item the current user owns, hovering lists every location
+// Shows how many of an item the current user owns or can take from shared corp hangars, hovering lists every location
 export default function OwnedStockBadge({ stock, requiredAmount }: OwnedStockBadgeProps) {
     const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
 
@@ -65,7 +65,7 @@ export default function OwnedStockBadge({ stock, requiredAmount }: OwnedStockBad
                     style={{ top: popoverPosition.top, left: popoverPosition.left, width: POPOVER_WIDTH }}
                 >
                     <span className="block mb-2 text-[11px] font-semibold text-white">
-                        Dein Bestand: {formatThousands(stock.total)} Stück{' '}
+                        Verfügbar (eigene Charaktere und Corp-Hangars): {formatThousands(stock.total)} Stück{' '}
                         <span className={coversOrder ? 'text-emerald-300' : 'text-amber-300'}>
                             ({coversOrder ? 'deckt' : 'deckt nicht'} die bestellten {formatThousands(requiredAmount)})
                         </span>
