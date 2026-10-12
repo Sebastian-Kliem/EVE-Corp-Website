@@ -110,6 +110,8 @@ class WalletSyncService
                     $entry->setTaxReceiverId($entryData['tax_receiver_id'] ?? null);
 
                     $this->entityManager->persist($entry);
+                    // ESI pages can contain the same entry twice
+                    $existingRefIds[$refId] = true;
                     $insertedCount++;
                 }
 
@@ -214,6 +216,8 @@ class WalletSyncService
                     $transaction->setJournalRefId((string) $tData['journal_ref_id']);
 
                     $this->entityManager->persist($transaction);
+                    // ESI pages can contain the same transaction twice
+                    $existingTransactionIds[$transId] = true;
                     $insertedCount++;
                 }
 

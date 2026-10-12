@@ -9,6 +9,7 @@ use App\Service\CharacterSync\CorpAssetSyncService;
 use App\Service\CharacterSync\MarketOrderSyncService;
 use App\Service\CharacterSync\WalletSyncService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,7 +18,8 @@ use Psr\Log\LoggerInterface;
 class UpdateCharacterDataTask implements CronTaskInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
+        private EntityManagerInterface $entityManager,
+        private readonly ManagerRegistry $doctrine,
         private readonly CharacterProfileSyncService $profileSyncService,
         private readonly WalletSyncService $walletSyncService,
         private readonly MarketOrderSyncService $marketOrderSyncService,
@@ -39,9 +41,20 @@ class UpdateCharacterDataTask implements CronTaskInterface
 
         $this->logger->info(sprintf('[Cron] Starting sync-wallet-assets for %d characters.', count($characters)));
 
+        $characterIds = [];
+        foreach ($characters as $character) {
+            $characterIds[] = $character->getId();
+        }
+
         $syncedCorpIds = [];
 
-        foreach ($characters as $character) {
+        foreach ($characterIds as $characterId) {
+            // A failed flush closes the EntityManager, which must not block the remaining characters
+            $character = $this->_loadCharacter($characterId);
+            if ($character === null) {
+                continue;
+            }
+
             if (empty($character->getRefreshToken())) {
                 $this->logger->warning(sprintf('[Cron] Skipping character %s (%d): No refresh token.', $character->getName(), $character->getId()));
                 continue;
@@ -104,6 +117,32 @@ class UpdateCharacterDataTask implements CronTaskInterface
             }
         }
 
+        $this->_ensureEntityManagerOpen();
         $this->logger->info('[Cron] Finished sync-wallet-assets execution.');
+    }
+
+    private function _loadCharacter(int $characterId): ?EveCharacter
+    {
+        if ($this->entityManager->isOpen()) {
+            return $this->entityManager->find(EveCharacter::class, $characterId);
+        }
+
+        $this->logger->warning(sprintf('[Cron] EntityManager was closed by a failed write. Resetting before character %d.', $characterId));
+        $this->_ensureEntityManagerOpen();
+
+        return $this->entityManager->find(EveCharacter::class, $characterId);
+    }
+
+    private function _ensureEntityManagerOpen(): void
+    {
+        if ($this->entityManager->isOpen()) {
+            return;
+        }
+
+        $entityManager = $this->doctrine->resetManager();
+        if (!$entityManager instanceof EntityManagerInterface) {
+            throw new \LogicException('Default Doctrine manager is not an ORM EntityManager.');
+        }
+        $this->entityManager = $entityManager;
     }
 }
