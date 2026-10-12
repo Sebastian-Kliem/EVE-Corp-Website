@@ -174,17 +174,15 @@ class CronRunCommand extends Command
                     $executionTime = microtime(true) - $startTime;
                     $collectedErrors = $this->errorCollector->stop();
                     
-                    $job->setLastExecutionTime($executionTime);
-
                     if (empty($collectedErrors)) {
-                        $job->setLastStatus('success');
-                        $job->setLastError(null);
+                        $lastStatus = 'success';
+                        $lastError = null;
 
                         $io->success(sprintf('Job "%s" finished successfully in %.2f seconds.', $job->getName(), $executionTime));
                         $writeLog(sprintf('Job "%s" erfolgreich beendet in %.2f Sekunden.', $job->getName(), $executionTime));
                     } else {
-                        $job->setLastStatus('warning');
-                        $job->setLastError($this->_formatCollectedErrors($collectedErrors));
+                        $lastStatus = 'warning';
+                        $lastError = $this->_formatCollectedErrors($collectedErrors);
 
                         $io->warning(sprintf('Job "%s" finished in %.2f seconds with %d error(s).', $job->getName(), $executionTime, count($collectedErrors)));
                         $writeLog(sprintf('Job "%s" beendet in %.2f Sekunden mit %d Fehler(n).', $job->getName(), $executionTime, count($collectedErrors)), 'WARNING');
@@ -193,28 +191,22 @@ class CronRunCommand extends Command
                     $executionTime = microtime(true) - $startTime;
                     $this->errorCollector->stop();
                     
-                    $errorDetails = $e->getMessage() . "\n" . $e->getTraceAsString();
+                    $lastStatus = 'error';
+                    $lastError = $e->getMessage() . "\n" . $e->getTraceAsString();
                     $io->error(sprintf('Job "%s" failed after %.2f seconds: %s', $job->getName(), $executionTime, $e->getMessage()));
                     $writeLog(sprintf('Job "%s" fehlgeschlagen nach %.2f Sekunden: %s', $job->getName(), $executionTime, $e->getMessage()), 'ERROR');
-
-                    if (!$this->entityManager->isOpen()) {
-                        $this->entityManager = $this->_resetEntityManager();
-                        $job = $this->entityManager->find(CronJob::class, $job->getId());
-                    }
-
-                    if ($job) {
-                        $job->setLastStatus('error');
-                        $job->setLastError($errorDetails);
-                        $job->setLastExecutionTime($executionTime);
-                    }
                 }
 
+                // A task may close the EntityManager; the reloaded job must still receive the result
                 if (!$this->entityManager->isOpen()) {
                     $this->entityManager = $this->_resetEntityManager();
                     $job = $this->entityManager->find(CronJob::class, $job->getId());
                 }
 
                 if ($job) {
+                    $job->setLastStatus($lastStatus);
+                    $job->setLastError($lastError);
+                    $job->setLastExecutionTime($executionTime);
                     $job->setLastRunAt($now);
                     $this->entityManager->flush();
                 }

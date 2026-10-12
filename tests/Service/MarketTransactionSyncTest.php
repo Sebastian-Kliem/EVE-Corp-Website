@@ -64,6 +64,38 @@ class MarketTransactionSyncTest extends TestCase
         $this->assertSame([null, '4501', '2002'], $requestedFromIds);
     }
 
+    public function testDuplicateTransactionInOneResponseIsPersistedOnce(): void
+    {
+        $persistedIds = [];
+
+        $esiClient = $this->createStub(EsiClient::class);
+        $esiClient->method('request')->willReturn([
+            $this->_createTransaction(3),
+            $this->_createTransaction(2),
+            $this->_createTransaction(2),
+            $this->_createTransaction(1),
+        ]);
+
+        $transactionRepository = $this->createStub(EveCharacterMarketTransactionRepository::class);
+        $transactionRepository->method('findExistingTransactionIds')->willReturn([]);
+
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getRepository')->willReturn($transactionRepository);
+        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persistedIds): void {
+            if ($entity instanceof EveCharacterMarketTransaction) {
+                $persistedIds[] = $entity->getTransactionId();
+            }
+        });
+
+        $character = new EveCharacter();
+        $character->setId(123);
+        $character->setName('Trader');
+
+        $this->_createWalletSyncService($entityManager, $esiClient)->syncMarketTransactions($character);
+
+        $this->assertSame(['3', '2', '1'], $persistedIds);
+    }
+
     public function testWalletJournalInsertsOnlyNewEntriesWithOneLookupPerPage(): void
     {
         $storedRefIds = ['3' => true, '2' => true, '1' => true];
