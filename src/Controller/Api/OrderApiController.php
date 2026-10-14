@@ -52,6 +52,17 @@ class OrderApiController extends AbstractController
         return new JsonResponse($data);
     }
 
+    #[Route('/live-prices', name: 'api_orders_live_prices', methods: ['GET'])]
+    public function livePrices(): JsonResponse
+    {
+        $openOrders = array_merge(
+            $this->orderRepository->findActiveOrders(CorpOrder::TYPE_BUY),
+            $this->orderRepository->findActiveOrders(CorpOrder::TYPE_SELL)
+        );
+
+        return new JsonResponse($this->orderService->getLivePrices($openOrders));
+    }
+
     #[Route('/appraise', name: 'api_orders_appraise', methods: ['POST'])]
     public function appraise(Request $request): JsonResponse
     {

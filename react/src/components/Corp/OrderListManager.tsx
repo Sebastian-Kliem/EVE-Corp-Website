@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import JaniceAppraisal from './JaniceAppraisal';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
 import DeliveryPackingList from './DeliveryPackingList';
@@ -24,8 +24,6 @@ export interface OrderItem {
         displayName: string;
     } | null;
     fulfilledAt: string | null;
-    liveUnitPrice: number;
-    liveTotalPrice: number;
 }
 
 export interface Order {
@@ -59,6 +57,10 @@ export interface Order {
     fulfilledItemCount: number;
     totalItemCount: number;
     isFullyFulfilled: boolean;
+}
+
+// Current Jita value of an open order, loaded after the page as it needs ESI requests
+interface LivePrice {
     liveTotalPrice: number;
     priceDiff: number;
     priceDiffPercent: number;
@@ -109,6 +111,18 @@ export default function OrderListManager({
     const [feedback, setFeedback] = useState<string | null>(null);
     const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
     const [itemLoadingId, setItemLoadingId] = useState<number | null>(null);
+    const [livePrices, setLivePrices] = useState<Record<number, LivePrice>>({});
+
+    const loadLivePrices = useCallback(() => {
+        fetch('/api/orders/live-prices')
+            .then(res => (res.ok ? res.json() : {}))
+            .then(data => setLivePrices(Array.isArray(data) ? {} : data))
+            .catch(() => setLivePrices({}));
+    }, []);
+
+    useEffect(() => {
+        loadLivePrices();
+    }, [loadLivePrices]);
 
     const toggleExpand = (id: number) => {
         setExpandedOrderIds(prev =>
@@ -170,6 +184,7 @@ export default function OrderListManager({
         }
         setViewMode('active');
         setExpandedOrderIds(prev => [...prev, newOrder.id]);
+        loadLivePrices();
         showFeedbackMessage(`Bestellung #${newOrder.id} "${newOrder.title}" erfolgreich aufgegeben!`);
     };
 
@@ -702,9 +717,9 @@ export default function OrderListManager({
                                             <span className="text-sm font-bold text-eve-primary">
                                                 {formatThousands(order.totalPrice)} ISK
                                             </span>
-                                            {order.status === 'OPEN' && order.priceDiff !== 0 && (
-                                                <span className={`text-[10px] block ${order.priceDiffPercent > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                                    Markt: {formatThousands(order.liveTotalPrice)} ({order.priceDiffPercent > 0 ? '+' : ''}{order.priceDiffPercent}%)
+                                            {order.status === 'OPEN' && livePrices[order.id] && livePrices[order.id].priceDiff !== 0 && (
+                                                <span className={`text-[10px] block ${livePrices[order.id].priceDiffPercent > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                                    Markt: {formatThousands(livePrices[order.id].liveTotalPrice)} ({livePrices[order.id].priceDiffPercent > 0 ? '+' : ''}{livePrices[order.id].priceDiffPercent}%)
                                                 </span>
                                             )}
                                         </div>

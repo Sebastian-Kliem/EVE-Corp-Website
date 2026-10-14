@@ -308,22 +308,11 @@ class OrderService
      */
     public function formatOrderForApi(CorpOrder $order): array
     {
-        $isBuyOrder = $order->getType() === CorpOrder::TYPE_BUY;
-        $useJitaBuy = !$isBuyOrder;
-
         $itemsData = [];
-        $liveTotalPrice = 0.0;
         $fulfilledItemCount = 0;
         $totalItemCount = count($order->getItems());
 
-        $multiplier = max(0, $order->getPercentToJita()) / 100.0;
-
         foreach ($order->getItems() as $item) {
-            $livePriceInfo = $this->jitaPriceService->getAverageJitaPrice($item->getTypeId(), $useJitaBuy);
-            $liveUnitPrice = (float)($livePriceInfo['price'] ?? 0.0);
-            $liveItemTotal = ($liveUnitPrice * $multiplier) * $item->getAmount();
-            $liveTotalPrice += $liveItemTotal;
-
             if ($item->isFulfilled()) {
                 $fulfilledItemCount++;
             }
@@ -345,14 +334,8 @@ class OrderService
                     'displayName' => $item->getFulfiller()->getDisplayName() ?: $item->getFulfiller()->getUserIdentifier(),
                 ] : null,
                 'fulfilledAt' => $item->getFulfilledAt()?->format('d.m.Y H:i'),
-                'liveUnitPrice' => round($liveUnitPrice, 2),
-                'liveTotalPrice' => round($liveItemTotal, 2),
             ];
         }
-
-        $snapshotTotal = (float)$order->getTotalPrice();
-        $priceDiff = $liveTotalPrice - $snapshotTotal;
-        $priceDiffPercent = $snapshotTotal > 0 ? ($priceDiff / $snapshotTotal) * 100 : 0.0;
 
         $fulfillersMap = [];
         if ($order->getFulfiller()) {
@@ -382,7 +365,7 @@ class OrderService
             'isFitting' => $order->isFitting(),
             'shipTypeId' => $order->getShipTypeId(),
             'percentToJita' => $order->getPercentToJita(),
-            'totalPrice' => $snapshotTotal,
+            'totalPrice' => (float)$order->getTotalPrice(),
             'totalVolume' => (float)$order->getTotalVolume(),
             'note' => $order->getNote() ?? '',
             'contractId' => $order->getContractId(),
@@ -402,6 +385,48 @@ class OrderService
             'fulfilledItemCount' => $fulfilledItemCount,
             'totalItemCount' => $totalItemCount,
             'isFullyFulfilled' => $order->getStatus() === CorpOrder::STATUS_FULFILLED,
+        ];
+    }
+
+    /**
+     * Current Jita value of open orders compared to their snapshot price, loaded separately as it needs one ESI request per item type.
+     *
+     * @param CorpOrder[] $orders
+     * @return array<int, array{liveTotalPrice: float, priceDiff: float, priceDiffPercent: float}> Order ID => live price
+     */
+    public function getLivePrices(array $orders): array
+    {
+        $livePrices = [];
+        foreach ($orders as $order) {
+            if ($order->getStatus() !== CorpOrder::STATUS_OPEN) {
+                continue;
+            }
+            $livePrices[$order->getId()] = $this->_calculateLivePrice($order);
+        }
+
+        return $livePrices;
+    }
+
+    /**
+     * @return array{liveTotalPrice: float, priceDiff: float, priceDiffPercent: float}
+     */
+    private function _calculateLivePrice(CorpOrder $order): array
+    {
+        $useJitaBuy = $order->getType() !== CorpOrder::TYPE_BUY;
+        $multiplier = max(0, $order->getPercentToJita()) / 100.0;
+
+        $liveTotalPrice = 0.0;
+        foreach ($order->getItems() as $item) {
+            $livePriceInfo = $this->jitaPriceService->getAverageJitaPrice($item->getTypeId(), $useJitaBuy);
+            $liveUnitPrice = (float)($livePriceInfo['price'] ?? 0.0);
+            $liveTotalPrice += ($liveUnitPrice * $multiplier) * $item->getAmount();
+        }
+
+        $snapshotTotal = (float)$order->getTotalPrice();
+        $priceDiff = $liveTotalPrice - $snapshotTotal;
+        $priceDiffPercent = $snapshotTotal > 0 ? ($priceDiff / $snapshotTotal) * 100 : 0.0;
+
+        return [
             'liveTotalPrice' => round($liveTotalPrice, 2),
             'priceDiff' => round($priceDiff, 2),
             'priceDiffPercent' => round($priceDiffPercent, 1),
