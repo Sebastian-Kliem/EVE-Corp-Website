@@ -653,6 +653,23 @@ class SdeService
     }
 
     /**
+     * Region IDs of known space (incl. Pochven), wormhole and abyssal regions have no public market or contracts.
+     * @return int[]
+     */
+    public function getKnownSpaceRegionIds(): array
+    {
+        try {
+            $regionIds = [];
+            foreach ($this->connection->fetchFirstColumn('SELECT regionID FROM mapRegions WHERE regionID BETWEEN 10000000 AND 10999999 ORDER BY regionID') as $regionId) {
+                $regionIds[] = (int)$regionId;
+            }
+            return $regionIds;
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
+    /**
      * Resolves the market category and product type ID of the item produced by the blueprint.
      */
     public function getBlueprintProductInfo(int $blueprintTypeId): array

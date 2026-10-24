@@ -397,6 +397,32 @@ class EsiClientTest extends TestCase
         $this->assertFalse($result['consistent']);
     }
 
+    public function testPublicBatchTreatsGoneResourcesAsAnswersAndRetriesServerErrors(): void
+    {
+        $failedOnce = false;
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$failedOnce): MockResponse {
+            if (str_contains($url, '/items/1/')) {
+                return new MockResponse('{"error":"Contract not found!"}', ['http_code' => 404]);
+            }
+            if (str_contains($url, '/items/2/') && !$failedOnce) {
+                $failedOnce = true;
+                return new MockResponse('{"error":"Bad gateway"}', ['http_code' => 502]);
+            }
+
+            return new MockResponse('[{"record_id":7,"type_id":34}]', ['response_headers' => ['X-Pages' => '1']]);
+        });
+
+        $answers = $this->_createClient($httpClient)->requestPublicBatch([
+            1 => 'contracts/public/items/1/',
+            2 => 'contracts/public/items/2/',
+            3 => 'contracts/public/items/3/',
+        ]);
+
+        $this->assertSame(['status' => 404, 'data' => null, 'pages' => 0], $answers[1]);
+        $this->assertSame([['record_id' => 7, 'type_id' => 34]], $answers[2]['data']);
+        $this->assertSame(1, $answers[3]['pages']);
+    }
+
     private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false, ?LoggerInterface $logger = null): EsiClient
     {
         return new EsiClient(

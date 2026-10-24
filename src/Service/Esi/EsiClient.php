@@ -625,6 +625,86 @@ class EsiClient
     }
 
     /**
+     * Fetches many independent public paths in parallel batches, e.g. the items of thousands of contracts.
+     * 204, 403 and 404 are answers here, not failures: the resource is gone or no longer public.
+     *
+     * @param array<int|string, string> $paths Key => path
+     * @return array<int|string, array{status: int, data: ?array, pages: int}> Key => answer
+     */
+    public function requestPublicBatch(array $paths, int $concurrency = self::STREAM_CONCURRENCY): array
+    {
+        if ($this->isOffline()) {
+            throw new \RuntimeException('ESI is offline');
+        }
+
+        $answers = [];
+        foreach (array_chunk($paths, $concurrency, true) as $batchPaths) {
+            $this->_waitForErrorLimit('public batch');
+
+            $responses = [];
+            foreach ($batchPaths as $key => $path) {
+                $responses[$key] = $this->httpClient->request('GET', self::BASE_URL . ltrim($path, '/'), [
+                    'headers' => ['User-Agent' => self::USER_AGENT],
+                ]);
+            }
+
+            foreach ($responses as $key => $response) {
+                try {
+                    $answers[$key] = $this->_readPublicAnswer($response);
+                } catch (\Exception $e) {
+                    $answers[$key] = $this->_fetchPublicAnswer($batchPaths[$key]);
+                }
+            }
+        }
+
+        return $answers;
+    }
+
+    /**
+     * @return array{status: int, data: ?array, pages: int}
+     */
+    private function _fetchPublicAnswer(string $path): array
+    {
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            $this->_waitForErrorLimit($path);
+            try {
+                return $this->_readPublicAnswer($this->httpClient->request('GET', self::BASE_URL . ltrim($path, '/'), [
+                    'headers' => ['User-Agent' => self::USER_AGENT],
+                ]));
+            } catch (\Exception $e) {
+                if ($attempt >= self::STREAM_PAGE_RETRIES) {
+                    throw $e;
+                }
+                $this->_logCron(sprintf('[EsiClient] %s failed (attempt %d/%d): %s', $path, $attempt, self::STREAM_PAGE_RETRIES, $e->getMessage()), 'warning');
+                sleep(2);
+            }
+        }
+    }
+
+    /**
+     * @return array{status: int, data: ?array, pages: int}
+     */
+    private function _readPublicAnswer(ResponseInterface $response): array
+    {
+        $statusCode = $response->getStatusCode();
+        $headers = $response->getHeaders(false);
+        $this->_trackErrorLimit($headers);
+
+        if (in_array($statusCode, [204, 403, 404], true)) {
+            // Reading the body marks the response as handled, otherwise it throws on destruction
+            $response->getContent(false);
+            return ['status' => $statusCode, 'data' => null, 'pages' => 0];
+        }
+        if ($statusCode === 420) {
+            $this->_pauseForErrorLimit($headers);
+        }
+
+        return ['status' => $statusCode, 'data' => $response->toArray(), 'pages' => max(1, (int)($headers['x-pages'][0] ?? 1))];
+    }
+
+    /**
      * Starts the requests of one batch at once; the HTTP client runs them in parallel while they are read.
      *
      * @return array<int, array{data: array, headers: array}> Page number => page

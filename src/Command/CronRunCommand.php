@@ -112,6 +112,8 @@ class CronRunCommand extends Command
             'corporation:sync-notifications' => 9,
             'wanderer:sync-connections' => 10,
             'market:sync-hub-orders' => 11,
+            'market:sync-public-contracts' => 12,
+            'market:import-history' => 13,
         ];
         usort($activeJobs, function(CronJob $a, CronJob $b) use ($executionOrder) {
             $orderA = $executionOrder[$a->getCommand()] ?? 99;
@@ -318,6 +320,16 @@ class CronRunCommand extends Command
                 'name' => 'Markt-Orderbücher der Handelshubs synchronisieren',
                 'command' => 'market:sync-hub-orders',
                 'expression' => '*/5 * * * *', // every 5 minutes, market lane; each hub keeps its own interval
+            ],
+            [
+                'name' => 'Markthistorie importieren (EVE Ref)',
+                'command' => 'market:import-history',
+                'expression' => '20 * * * *', // hourly, market lane; only changed days are imported
+            ],
+            [
+                'name' => 'Öffentliche Verträge synchronisieren (alle Regionen)',
+                'command' => 'market:sync-public-contracts',
+                'expression' => '*/5 * * * *', // every 5 minutes, market lane; contract lists every 30 minutes, items in between
             ]
         ];
 

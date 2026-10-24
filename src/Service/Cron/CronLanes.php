@@ -19,6 +19,8 @@ final class CronLanes
 
     private const MARKET_LANE_COMMANDS = [
         'market:sync-hub-orders',
+        'market:import-history',
+        'market:sync-public-contracts',
     ];
 
     public static function laneOf(string $command): string
