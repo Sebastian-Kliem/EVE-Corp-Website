@@ -404,6 +404,9 @@ class EsiClientTest extends TestCase
             if (str_contains($url, '/items/1/')) {
                 return new MockResponse('{"error":"Contract not found!"}', ['http_code' => 404]);
             }
+            if (str_contains($url, '/items/4/')) {
+                return new MockResponse('', ['http_code' => 200]);
+            }
             if (str_contains($url, '/items/2/') && !$failedOnce) {
                 $failedOnce = true;
                 return new MockResponse('{"error":"Bad gateway"}', ['http_code' => 502]);
@@ -416,11 +419,14 @@ class EsiClientTest extends TestCase
             1 => 'contracts/public/items/1/',
             2 => 'contracts/public/items/2/',
             3 => 'contracts/public/items/3/',
+            4 => 'contracts/public/items/4/',
         ]);
 
         $this->assertSame(['status' => 404, 'data' => null, 'pages' => 0], $answers[1]);
         $this->assertSame([['record_id' => 7, 'type_id' => 34]], $answers[2]['data']);
         $this->assertSame(1, $answers[3]['pages']);
+        // An empty 200 means the same as 204
+        $this->assertSame(['status' => 204, 'data' => null, 'pages' => 0], $answers[4]);
     }
 
     private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false, ?LoggerInterface $logger = null): EsiClient

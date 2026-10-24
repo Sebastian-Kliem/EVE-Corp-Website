@@ -629,7 +629,7 @@ class EsiClient
      * 204, 403 and 404 are answers here, not failures: the resource is gone or no longer public.
      *
      * @param array<int|string, string> $paths Key => path
-     * @return array<int|string, array{status: int, data: ?array, pages: int}> Key => answer
+     * @return array<int|string, array{status: int, data: ?array, pages: int}> Key => answer, paths that failed on every attempt are left out
      */
     public function requestPublicBatch(array $paths, int $concurrency = self::STREAM_CONCURRENCY): array
     {
@@ -654,6 +654,10 @@ class EsiClient
                 } catch (\Exception $e) {
                     $answers[$key] = $this->_fetchPublicAnswer($batchPaths[$key]);
                 }
+                if ($answers[$key] === null) {
+                    // Failed permanently, the caller retries it later instead of losing the whole batch
+                    unset($answers[$key]);
+                }
             }
         }
 
@@ -661,9 +665,9 @@ class EsiClient
     }
 
     /**
-     * @return array{status: int, data: ?array, pages: int}
+     * @return array{status: int, data: ?array, pages: int}|null Null when the path failed on every attempt
      */
-    private function _fetchPublicAnswer(string $path): array
+    private function _fetchPublicAnswer(string $path): ?array
     {
         $attempt = 0;
         while (true) {
@@ -675,7 +679,8 @@ class EsiClient
                 ]));
             } catch (\Exception $e) {
                 if ($attempt >= self::STREAM_PAGE_RETRIES) {
-                    throw $e;
+                    $this->_logCron(sprintf('[EsiClient] %s failed permanently after %d attempts: %s', $path, $attempt, $e->getMessage()), 'warning');
+                    return null;
                 }
                 $this->_logCron(sprintf('[EsiClient] %s failed (attempt %d/%d): %s', $path, $attempt, self::STREAM_PAGE_RETRIES, $e->getMessage()), 'warning');
                 sleep(2);
@@ -699,6 +704,10 @@ class EsiClient
         }
         if ($statusCode === 420) {
             $this->_pauseForErrorLimit($headers);
+        }
+        // ESI sometimes answers 200 with an empty body for contracts that were just accepted or expired, same meaning as 204
+        if ($statusCode === 200 && $response->getContent() === '') {
+            return ['status' => 204, 'data' => null, 'pages' => 0];
         }
 
         return ['status' => $statusCode, 'data' => $response->toArray(), 'pages' => max(1, (int)($headers['x-pages'][0] ?? 1))];
