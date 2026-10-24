@@ -43,16 +43,29 @@ class MarketOrderBookAggregatorTest extends TestCase
         $this->assertSame(200, $station['sell_volume']);
     }
 
-    public function testPercentileAveragesTheBestFivePercentOfTheVolume(): void
+    public function testPercentileAveragesTheBestFivePercentOfTheVolumeNearTheBestPrice(): void
     {
-        // 5 % of 2000 units are 100 units: 50 at 10 ISK and 50 of the next order at 12 ISK
+        // 5 % of the 2000 units within 15 % of the best price are 100 units: 50 at 10 ISK and 50 at 11 ISK
         $rows = $this->_aggregate([
             $this->_order(34, false, 10.0, 50, MarketHub::JITA, '-2 days'),
-            $this->_order(34, false, 12.0, 950, MarketHub::JITA, '-2 days'),
+            $this->_order(34, false, 11.0, 1950, MarketHub::JITA, '-2 days'),
             $this->_order(34, false, 20.0, 1000, MarketHub::JITA, '-2 days'),
         ]);
 
-        $this->assertSame('11.00', $rows[MarketPrice::SCOPE_STATION]['sell_percentile']);
+        $this->assertSame('10.50', $rows[MarketPrice::SCOPE_STATION]['sell_percentile']);
+    }
+
+    public function testPercentileIgnoresLowballOrdersFarFromTheBestPrice(): void
+    {
+        // A huge buy order at a tenth of the price must not drag the percentile down
+        $rows = $this->_aggregate([
+            $this->_order(34, true, 100.0, 10, MarketHub::JITA, '-2 days'),
+            $this->_order(34, true, 98.0, 10, MarketHub::JITA, '-2 days'),
+            $this->_order(34, true, 10.0, 1000000, MarketHub::JITA, '-2 days'),
+        ]);
+
+        $this->assertSame('100.00', $rows[MarketPrice::SCOPE_STATION]['buy_percentile']);
+        $this->assertSame(1000020, $rows[MarketPrice::SCOPE_STATION]['buy_volume']);
     }
 
     public function testDepthAndActivityOnlyCountOrdersNearTheBestPrice(): void

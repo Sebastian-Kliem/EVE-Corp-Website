@@ -17,6 +17,8 @@ class MarketOrderBookAggregator
 
     // Best share of the volume that the percentile price averages over
     private const PERCENTILE_VOLUME_SHARE = 0.05;
+    // Only orders this close to the best price count for the percentile, huge lowball buy orders would drag it far down
+    private const PERCENTILE_PRICE_RANGE = 0.15;
 
     private int $regionId = 0;
     private ?int $hubStationId = null;
@@ -148,7 +150,7 @@ class MarketOrderBookAggregator
 
         return [
             'best' => $this->_formatPrice($bestPrice),
-            'percentile' => $this->_formatPrice($this->_calculatePercentilePrice($orders, $totalVolume)),
+            'percentile' => $this->_formatPrice($this->_calculatePercentilePrice($orders, $isBuy)),
             'volume' => (int)round($totalVolume),
             'order_count' => count($orders),
             'depth_volume' => (int)round($depthVolume),
@@ -160,16 +162,31 @@ class MarketOrderBookAggregator
     }
 
     /**
-     * Volume weighted average price of the best 5 % of the volume, robust against single bait orders.
+     * Volume weighted average price of the best 5 % of the volume within 15 % of the best price,
+     * robust against single bait orders and against lowball orders with huge volume.
      *
      * @param list<array{price: float, volume: float, issued: int}> $orders Best price first
      */
-    private function _calculatePercentilePrice(array $orders, float $totalVolume): float
+    private function _calculatePercentilePrice(array $orders, bool $isBuy): float
     {
-        $targetVolume = max($totalVolume * self::PERCENTILE_VOLUME_SHARE, 1.0);
+        $bestPrice = $orders[0]['price'];
+        $rangeLimit = $isBuy ? $bestPrice * (1 - self::PERCENTILE_PRICE_RANGE) : $bestPrice * (1 + self::PERCENTILE_PRICE_RANGE);
+
+        $ordersInRange = [];
+        $rangeVolume = 0.0;
+        foreach ($orders as $order) {
+            $isInRange = $isBuy ? $order['price'] >= $rangeLimit : $order['price'] <= $rangeLimit;
+            if (!$isInRange) {
+                break;
+            }
+            $ordersInRange[] = $order;
+            $rangeVolume += $order['volume'];
+        }
+
+        $targetVolume = max($rangeVolume * self::PERCENTILE_VOLUME_SHARE, 1.0);
         $collectedVolume = 0.0;
         $collectedValue = 0.0;
-        foreach ($orders as $order) {
+        foreach ($ordersInRange as $order) {
             $takenVolume = min($order['volume'], $targetVolume - $collectedVolume);
             $collectedVolume += $takenVolume;
             $collectedValue += $takenVolume * $order['price'];
@@ -178,7 +195,7 @@ class MarketOrderBookAggregator
             }
         }
 
-        return $collectedVolume > 0 ? $collectedValue / $collectedVolume : $orders[0]['price'];
+        return $collectedVolume > 0 ? $collectedValue / $collectedVolume : $bestPrice;
     }
 
     /**

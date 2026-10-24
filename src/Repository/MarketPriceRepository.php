@@ -63,6 +63,26 @@ class MarketPriceRepository extends ServiceEntityRepository
     }
 
     /**
+     * Price columns of one side of a type at a hub station, null when the type has no orders there at all.
+     *
+     * @return array{price: ?string, best: ?string, orderCount: int}|null
+     */
+    public function findStationSide(int $stationId, int $typeId, bool $isBuy): ?array
+    {
+        $side = $isBuy ? 'buy' : 'sell';
+        $row = $this->getEntityManager()->getConnection()->fetchAssociative(
+            sprintf('SELECT %1$s_percentile AS price, %1$s_best AS best, %1$s_order_count AS order_count FROM market_price WHERE scope = ? AND location_id = ? AND type_id = ?', $side),
+            [MarketPrice::SCOPE_STATION, $stationId, $typeId]
+        );
+
+        if ($row === false) {
+            return null;
+        }
+
+        return ['price' => $row['price'], 'best' => $row['best'], 'orderCount' => (int)$row['order_count']];
+    }
+
+    /**
      * @param list<array<string, mixed>> $rows
      */
     private function _insertChunk(\Doctrine\DBAL\Connection $connection, array $rows): void

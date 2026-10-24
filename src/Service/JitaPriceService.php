@@ -2,12 +2,20 @@
 
 namespace App\Service;
 
+use App\Repository\MarketPriceRepository;
 use App\Service\Esi\EsiClient;
+use App\Service\Market\MarketHub;
+use Psr\Clock\ClockInterface;
 
 class JitaPriceService
 {
     private const REGION_THE_FORGE = 10000002;
-    private const LOCATION_JITA_STATION = 60003760;
+    private const LOCATION_JITA_STATION = MarketHub::JITA;
+
+    // Imported order book data older than this counts as failed import, prices then come from ESI directly
+    private const STORED_PRICES_MAX_AGE_SECONDS = 1800;
+    // Below this many orders the price is flagged as uncertain, like the former top 10 average
+    private const MIN_ORDER_COUNT = 10;
 
     // Maximale Abweichung von der jeweils besten Order (15%)
     private const BEST_PRICE_TOLERANCE = 0.15;
@@ -18,8 +26,15 @@ class JitaPriceService
     // Loaded once per request or cron process; unserializing ~16k cached rows costs ~10 ms per call
     private ?array $globalPrices = null;
 
+    private ?bool $hasFreshStoredPrices = null;
+
+    /** @var array<string, array{price: float|null, count: int, warning: bool, message: string|null}> "typeId|side" => result */
+    private array $resolvedPrices = [];
+
     public function __construct(
-        private readonly EsiClient $esiClient
+        private readonly EsiClient $esiClient,
+        private readonly MarketPriceRepository $marketPriceRepository,
+        private readonly ClockInterface $clock
     ) {}
 
     /**
@@ -35,6 +50,75 @@ class JitaPriceService
      * }
      */
     public function getAverageJitaPrice(int $typeId, bool $isBuyOrder): array
+    {
+        $cacheKey = $typeId . '|' . ($isBuyOrder ? 'buy' : 'sell');
+        if (!isset($this->resolvedPrices[$cacheKey])) {
+            $this->resolvedPrices[$cacheKey] = $this->_hasFreshStoredPrices()
+                ? $this->_getStoredPrice($typeId, $isBuyOrder)
+                : $this->_fetchPriceFromEsi($typeId, $isBuyOrder);
+        }
+
+        return $this->resolvedPrices[$cacheKey];
+    }
+
+    /**
+     * Price from the imported Jita order book (market:sync-hub-orders): volume weighted best 5 % within 15 % of the best price.
+     *
+     * @return array{price: float|null, count: int, warning: bool, message: string|null}
+     */
+    private function _getStoredPrice(int $typeId, bool $isBuyOrder): array
+    {
+        $stationSide = $this->marketPriceRepository->findStationSide(self::LOCATION_JITA_STATION, $typeId, $isBuyOrder);
+        if ($stationSide === null || $stationSide['price'] === null) {
+            return $this->_globalPriceFallback($typeId, 'Keine Jita-Orders vorhanden.');
+        }
+
+        $orderCount = $stationSide['orderCount'];
+        $warning = $orderCount < self::MIN_ORDER_COUNT;
+
+        return [
+            'price' => (float)$stationSide['price'],
+            'count' => $orderCount,
+            'warning' => $warning,
+            'message' => $warning ? sprintf('Nur %d Orders in Jita vorhanden.', $orderCount) : null,
+        ];
+    }
+
+    /**
+     * @return array{price: float|null, count: int, warning: bool, message: string|null}
+     */
+    private function _globalPriceFallback(int $typeId, string $reason): array
+    {
+        $globalPrice = $this->getGlobalPrices()[$typeId] ?? null;
+        if ($globalPrice !== null) {
+            return ['price' => $globalPrice, 'count' => 0, 'warning' => true, 'message' => $reason . ' Nutze globalen ESI-Durchschnittspreis.'];
+        }
+
+        return ['price' => null, 'count' => 0, 'warning' => true, 'message' => $reason . ' Kein globaler ESI-Preis vorhanden.'];
+    }
+
+    // Checked once per request or cron process, a failed import falls back to the former per type ESI requests
+    private function _hasFreshStoredPrices(): bool
+    {
+        if ($this->hasFreshStoredPrices === null) {
+            try {
+                $lastFetchedAt = $this->marketPriceRepository->findLastFetchedAt(self::REGION_THE_FORGE);
+                $this->hasFreshStoredPrices = $lastFetchedAt !== null
+                    && $this->clock->now()->getTimestamp() - $lastFetchedAt->getTimestamp() <= self::STORED_PRICES_MAX_AGE_SECONDS;
+            } catch (\Exception $e) {
+                $this->hasFreshStoredPrices = false;
+            }
+        }
+
+        return $this->hasFreshStoredPrices;
+    }
+
+    /**
+     * Former price source, now only the fallback: average of the 10 best Jita orders after outlier filtering, one ESI request per type.
+     *
+     * @return array{price: float|null, count: int, warning: bool, message: string|null}
+     */
+    private function _fetchPriceFromEsi(int $typeId, bool $isBuyOrder): array
     {
         try {
             // EsiClient handles caching internally based on the HTTP Response headers (Expires)
