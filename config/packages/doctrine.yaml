@@ -3,6 +3,7 @@ doctrine:
         types:
             encrypted_text: App\Doctrine\Type\EncryptedTextType
             bigint_int: App\Doctrine\Type\IntegerBigIntType
+            date_key: App\Doctrine\Type\DateKeyType
         connections:
             default:
                 url: '%env(resolve:DATABASE_URL)%'

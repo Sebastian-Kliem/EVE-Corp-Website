@@ -14,6 +14,13 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_USERNAME', fields: ['username'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    // Character whose skills are used for trading fees and taxes
+    public const SETTING_TRADING_CHARACTER_ID = 'trading_character_id';
+    public const SETTING_TRADING_ROUTE_MODE = 'trading_route_mode';
+    public const TRADING_ROUTE_SHORTEST = 'shortest';
+    // High security systems only
+    public const TRADING_ROUTE_SECURE = 'secure';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -270,6 +277,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
         $this->settings[$key] = $value;
         return $this;
+    }
+
+    public function getTradingCharacterId(): ?int
+    {
+        $characterId = $this->getSetting(self::SETTING_TRADING_CHARACTER_ID);
+        return $characterId === null ? null : (int)$characterId;
+    }
+
+    public function setTradingCharacterId(?int $characterId): static
+    {
+        return $this->setSetting(self::SETTING_TRADING_CHARACTER_ID, $characterId);
+    }
+
+    public function getTradingRouteMode(): string
+    {
+        $routeMode = (string)$this->getSetting(self::SETTING_TRADING_ROUTE_MODE, self::TRADING_ROUTE_SHORTEST);
+        return in_array($routeMode, [self::TRADING_ROUTE_SHORTEST, self::TRADING_ROUTE_SECURE], true) ? $routeMode : self::TRADING_ROUTE_SHORTEST;
+    }
+
+    public function setTradingRouteMode(string $routeMode): static
+    {
+        return $this->setSetting(self::SETTING_TRADING_ROUTE_MODE, $routeMode);
     }
 
     public function isFluidLayout(): bool
