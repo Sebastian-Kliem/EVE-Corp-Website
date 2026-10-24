@@ -2,7 +2,9 @@
 
 namespace App\Service\Cron;
 
+use App\Repository\MarketTypeStatsRepository;
 use App\Service\Market\MarketHistoryImporter;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -15,6 +17,8 @@ class UpdateMarketHistoryTask implements CronTaskInterface
 
     public function __construct(
         private readonly MarketHistoryImporter $importer,
+        private readonly MarketTypeStatsRepository $typeStatsRepository,
+        private readonly ClockInterface $clock,
         private readonly CronLogWriter $cronLogWriter,
         private readonly LoggerInterface $logger
     ) {}
@@ -30,7 +34,12 @@ class UpdateMarketHistoryTask implements CronTaskInterface
         $importedDays = $this->importer->importPendingDays(self::MAX_DAYS_PER_RUN);
         $deletedRows = $this->importer->deleteExpired();
 
-        if ($importedDays === [] && $deletedRows === 0) {
+        $statsRows = null;
+        if ($importedDays !== [] || $this->typeStatsRepository->isEmpty()) {
+            $statsRows = $this->typeStatsRepository->rebuild($this->clock->now());
+        }
+
+        if ($importedDays === [] && $deletedRows === 0 && $statsRows === null) {
             return;
         }
 
@@ -41,11 +50,12 @@ class UpdateMarketHistoryTask implements CronTaskInterface
         $dateRange = $importedDays === [] ? '' : sprintf(' (%s to %s)', end($importedDays)['date'], $importedDays[0]['date']);
 
         $message = sprintf(
-            '[Market] History: %d days imported%s, %d rows written, %d expired rows deleted in %.1f s (peak memory %d MB).',
+            '[Market] History: %d days imported%s, %d rows written, %d expired rows deleted%s in %.1f s (peak memory %d MB).',
             count($importedDays),
             $dateRange,
             $writtenRows,
             $deletedRows,
+            $statsRows === null ? '' : sprintf(', %d type stats rebuilt', $statsRows),
             microtime(true) - $startTime,
             intdiv(memory_get_peak_usage(true), 1024 * 1024)
         );

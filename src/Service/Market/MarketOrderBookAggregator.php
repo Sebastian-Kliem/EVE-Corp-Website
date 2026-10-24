@@ -27,12 +27,37 @@ class MarketOrderBookAggregator
     private array $packedOrders = [];
     private int $orderCount = 0;
 
+    /** @var array<int, true> Type IDs at the hub station whose complete orders are kept for the trading order check */
+    private array $watchedTypeIds = [];
+    /** @var array<int, list<array{order_id: int, price: float, volume: int, is_buy: bool, issued: int}>> */
+    private array $watchedOrders = [];
+
     public function start(int $regionId, ?int $hubStationId): void
     {
         $this->regionId = $regionId;
         $this->hubStationId = $hubStationId;
         $this->packedOrders = [];
         $this->orderCount = 0;
+        $this->watchedTypeIds = [];
+        $this->watchedOrders = [];
+    }
+
+    /**
+     * @param int[] $typeIds Types at the hub station to keep all orders of, call after start()
+     */
+    public function watchStationTypes(array $typeIds): void
+    {
+        foreach ($typeIds as $typeId) {
+            $this->watchedTypeIds[(int)$typeId] = true;
+        }
+    }
+
+    /**
+     * @return array<int, list<array{order_id: int, price: float, volume: int, is_buy: bool, issued: int}>> Type ID => orders at the hub station
+     */
+    public function getWatchedOrders(): array
+    {
+        return $this->watchedOrders;
     }
 
     /**
@@ -48,6 +73,15 @@ class MarketOrderBookAggregator
             $this->_appendOrder(MarketPrice::SCOPE_REGION . '|' . $this->regionId . '|' . $typeId, $side, $packedOrder);
             if ($this->hubStationId !== null && (int)$order['location_id'] === $this->hubStationId) {
                 $this->_appendOrder(MarketPrice::SCOPE_STATION . '|' . $this->hubStationId . '|' . $typeId, $side, $packedOrder);
+                if (isset($this->watchedTypeIds[$typeId])) {
+                    $this->watchedOrders[$typeId][] = [
+                        'order_id' => (int)$order['order_id'],
+                        'price' => (float)$order['price'],
+                        'volume' => (int)$order['volume_remain'],
+                        'is_buy' => $side === 'buy',
+                        'issued' => $this->_toTimestamp((string)$order['issued']),
+                    ];
+                }
             }
             $this->orderCount++;
         }

@@ -18,6 +18,7 @@ import BlueprintVault from './components/Corp/BlueprintVault';
 import CorpStructuresOverview from './components/Corp/CorpStructuresOverview';
 import DefenseDoctrine from './components/Corp/DefenseDoctrine';
 import OrderListManager from './components/Corp/OrderListManager';
+import TradingDashboard from './components/Trading/TradingDashboard';
 
 // Object to register your React components so they can be selected in Twig
 const components: Record<string, React.ComponentType<any>> = {
@@ -39,6 +40,7 @@ const components: Record<string, React.ComponentType<any>> = {
     CorpStructuresOverview,
     DefenseDoctrine,
     OrderListManager,
+    TradingDashboard,
 };
 
 const mountedRoots = new Map<Element, Root>();

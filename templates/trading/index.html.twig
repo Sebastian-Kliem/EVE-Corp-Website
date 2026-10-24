@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Handel{% endblock %}
+
+{% block body %}
+{% set reactProps = {
+    urls: {
+        context: path('app_trading_context'),
+        settings: path('app_trading_settings'),
+        station: path('app_trading_station'),
+        item: path('app_trading_item'),
+        myOrders: path('app_trading_my_orders'),
+        openMarket: path('app_trading_open_market')
+    },
+    typeIconUrl: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' })
+} %}
+
+<div class="w-full px-6 mt-8 mb-12">
+    <div class="mb-6">
+        <h1 class="text-3xl font-semibold text-white mb-0 text-gradient">Handel</h1>
+        <p class="text-xs text-eve-muted mt-1">Station-Trading an den Handelsdrehkreuzen und Überwachung der Orders deines Handels-Charakters.</p>
+    </div>
+
+    <div data-react-component="TradingDashboard" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}

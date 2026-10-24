@@ -6,6 +6,7 @@ use App\Repository\MarketPriceRepository;
 use App\Service\Esi\EsiClient;
 use App\Service\Market\MarketHub;
 use App\Service\Market\MarketOrderBookAggregator;
+use App\Service\Trading\TradingOrderMonitor;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
@@ -24,6 +25,7 @@ class UpdateMarketHubOrdersTask implements CronTaskInterface
         private readonly EsiClient $esiClient,
         private readonly MarketOrderBookAggregator $aggregator,
         private readonly MarketPriceRepository $marketPriceRepository,
+        private readonly TradingOrderMonitor $tradingOrderMonitor,
         private readonly ClockInterface $clock,
         private readonly CronLogWriter $cronLogWriter,
         private readonly LoggerInterface $logger
@@ -76,14 +78,16 @@ class UpdateMarketHubOrdersTask implements CronTaskInterface
         }
 
         $orderCount = $this->aggregator->getOrderCount();
+        $checkedOrders = $this->tradingOrderMonitor->storeStationResults($stationId, $this->aggregator->getWatchedOrders(), $fetchedAt);
         $rowCount = $this->marketPriceRepository->replaceRegion($regionId, $this->aggregator->buildRows($fetchedAt));
 
         $this->_log(sprintf(
-            '[Market] %s: %d pages, %d orders, %d price rows in %.1f s (peak memory %d MB%s).',
+            '[Market] %s: %d pages, %d orders, %d price rows, %d trading orders checked in %.1f s (peak memory %d MB%s).',
             $hubName,
             $result['pages'],
             $orderCount,
             $rowCount,
+            $checkedOrders,
             microtime(true) - $startTime,
             intdiv(memory_get_peak_usage(true), 1024 * 1024),
             $result['consistent'] ? '' : ', pages from different ESI snapshots'
@@ -96,6 +100,7 @@ class UpdateMarketHubOrdersTask implements CronTaskInterface
     private function _fetchOrderBook(int $regionId, int $stationId): array
     {
         $this->aggregator->start($regionId, $stationId);
+        $this->aggregator->watchStationTypes($this->tradingOrderMonitor->prepareStation($stationId));
 
         return $this->esiClient->streamPublicPages(
             sprintf('markets/%d/orders/', $regionId),
