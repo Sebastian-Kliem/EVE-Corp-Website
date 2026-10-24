@@ -13,6 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: MarketHistoryRepository::class)]
 #[ORM\Table(name: 'market_history')]
 #[ORM\Index(columns: ['type_id', 'date'])]
+#[ORM\Index(columns: ['date'])]
 class MarketHistory
 {
     // Days kept locally, older days can be re-imported from EVE Ref on demand
