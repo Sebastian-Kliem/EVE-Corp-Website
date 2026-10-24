@@ -349,6 +349,54 @@ class EsiClientTest extends TestCase
         return new MockResponse($body, ['response_headers' => ['Expires' => gmdate('D, d M Y H:i:s \G\M\T', $expiresAt)]]);
     }
 
+    public function testStreamPublicPagesHandsOverEveryPageOnceAndRetriesAFailedPage(): void
+    {
+        $requestedPages = [];
+        $failedOnce = false;
+        $httpClient = new MockHttpClient(function (string $method, string $url) use (&$requestedPages, &$failedOnce): MockResponse {
+            parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+            $page = (int)$query['page'];
+            $requestedPages[] = $page;
+            if ($page === 3 && !$failedOnce) {
+                $failedOnce = true;
+                return new MockResponse('{"error":"Bad gateway"}', ['http_code' => 502]);
+            }
+
+            return new MockResponse(json_encode([['order_id' => $page]]), ['response_headers' => [
+                'X-Pages' => '4',
+                'Last-Modified' => 'Sat, 24 Oct 2026 12:00:00 GMT',
+                'Expires' => 'Sat, 24 Oct 2026 12:05:00 GMT',
+            ]]);
+        });
+
+        $receivedPages = [];
+        $result = $this->_createClient($httpClient)->streamPublicPages('markets/10000002/orders/', ['order_type' => 'all'], function (array $orders, int $page) use (&$receivedPages): void {
+            $receivedPages[$page] = $orders[0]['order_id'];
+        }, 2);
+
+        ksort($receivedPages);
+        $this->assertSame([1 => 1, 2 => 2, 3 => 3, 4 => 4], $receivedPages);
+        $this->assertSame(4, $result['pages']);
+        $this->assertTrue($result['consistent']);
+        $this->assertSame('2026-10-24 12:05:00', $result['expiresAt']?->format('Y-m-d H:i:s'));
+        // Page 3 was requested a second time after its failure
+        $this->assertSame(2, count(array_keys($requestedPages, 3, true)));
+    }
+
+    public function testStreamPublicPagesReportsPagesFromDifferentSnapshots(): void
+    {
+        $httpClient = new MockHttpClient(function (string $method, string $url): MockResponse {
+            parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+            $lastModified = (int)$query['page'] === 1 ? 'Sat, 24 Oct 2026 12:00:00 GMT' : 'Sat, 24 Oct 2026 12:05:00 GMT';
+
+            return new MockResponse('[{"order_id":1}]', ['response_headers' => ['X-Pages' => '2', 'Last-Modified' => $lastModified]]);
+        });
+
+        $result = $this->_createClient($httpClient)->streamPublicPages('markets/10000002/orders/', [], function (): void {});
+
+        $this->assertFalse($result['consistent']);
+    }
+
     private function _createClient(MockHttpClient $httpClient, string $configuredScopes = '', ?ArrayAdapter $cachePool = null, ?MockClock $clock = null, bool $isWebRequest = false, ?LoggerInterface $logger = null): EsiClient
     {
         return new EsiClient(

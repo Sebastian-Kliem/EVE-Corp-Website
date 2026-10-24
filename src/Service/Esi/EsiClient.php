@@ -49,6 +49,11 @@ class EsiClient
     // Web responses stay cached this long so they can be shown as last known state while ESI is unavailable
     private const STALE_CACHE_TTL = 604800;
 
+    private const USER_AGENT = 'WH-Toolbox/1.0 (Contact: Sebastian Kliem)';
+    // Parallel requests per batch when streaming large public endpoints (market order books)
+    private const STREAM_CONCURRENCY = 20;
+    private const STREAM_PAGE_RETRIES = 5;
+
     private int $consecutiveServerFailures = 0;
     private int $circuitOpenUntil = 0;
     private readonly bool $isWebRequest;
@@ -333,7 +338,7 @@ class EsiClient
         }
 
         $headers = $options['headers'] ?? [];
-        $headers['User-Agent'] = 'WH-Toolbox/1.0 (Contact: Sebastian Kliem)';
+        $headers['User-Agent'] = self::USER_AGENT;
 
         $attempt = 0;
         while (true) {
@@ -577,6 +582,133 @@ class EsiClient
     }
 
     /**
+     * Fetches all pages of a large public endpoint concurrently and hands each page to $onPage as it arrives.
+     * Nothing is cached or merged, so even the 400 pages of The Forge order book stay out of memory.
+     *
+     * @param callable(array<int, array<string, mixed>>, int): void $onPage Receives the page data and page number
+     * @return array{pages: int, expiresAt: ?\DateTimeImmutable, consistent: bool} consistent is false when pages came from different ESI snapshots
+     */
+    public function streamPublicPages(string $path, array $query, callable $onPage, int $concurrency = self::STREAM_CONCURRENCY): array
+    {
+        if ($this->isOffline()) {
+            throw new \RuntimeException('ESI is offline');
+        }
+
+        $firstPage = $this->_fetchStreamPage($path, $query, 1);
+        $totalPages = max(1, (int)($firstPage['headers']['x-pages'][0] ?? 1));
+        $lastModified = $firstPage['headers']['last-modified'][0] ?? null;
+        $expires = $firstPage['headers']['expires'][0] ?? null;
+        $onPage($firstPage['data'], 1);
+        unset($firstPage);
+
+        $isConsistent = true;
+        for ($batchStart = 2; $batchStart <= $totalPages; $batchStart += $concurrency) {
+            $batchEnd = min($totalPages, $batchStart + $concurrency - 1);
+            foreach ($this->_fetchStreamBatch($path, $query, $batchStart, $batchEnd) as $pageNumber => $page) {
+                if (($page['headers']['last-modified'][0] ?? null) !== $lastModified) {
+                    $isConsistent = false;
+                }
+                $onPage($page['data'], $pageNumber);
+            }
+        }
+
+        $expiresAt = null;
+        if ($expires !== null) {
+            try {
+                $expiresAt = new \DateTimeImmutable($expires);
+            } catch (\Exception $e) {
+                // Unknown expiry, the caller falls back to its own interval
+            }
+        }
+
+        return ['pages' => $totalPages, 'expiresAt' => $expiresAt, 'consistent' => $isConsistent];
+    }
+
+    /**
+     * Starts the requests of one batch at once; the HTTP client runs them in parallel while they are read.
+     *
+     * @return array<int, array{data: array, headers: array}> Page number => page
+     */
+    private function _fetchStreamBatch(string $path, array $query, int $firstPage, int $lastPage): array
+    {
+        $this->_waitForErrorLimit($path);
+
+        $responses = [];
+        for ($pageNumber = $firstPage; $pageNumber <= $lastPage; $pageNumber++) {
+            $responses[$pageNumber] = $this->httpClient->request('GET', self::BASE_URL . ltrim($path, '/'), [
+                'query' => $query + ['page' => $pageNumber],
+                'headers' => ['User-Agent' => self::USER_AGENT],
+            ]);
+        }
+
+        $pages = [];
+        foreach ($responses as $pageNumber => $response) {
+            try {
+                $pages[$pageNumber] = $this->_readStreamResponse($response, $pageNumber);
+            } catch (\Exception $e) {
+                // A failed page is retried on its own, the rest of the batch is kept
+                $this->_logCron(sprintf('[EsiClient] Page %d of %s failed in parallel fetch (%s), retrying alone.', $pageNumber, $path, $e->getMessage()), 'warning');
+                $pages[$pageNumber] = $this->_fetchStreamPage($path, $query, $pageNumber);
+            }
+        }
+
+        return $pages;
+    }
+
+    /**
+     * @return array{data: array, headers: array}
+     */
+    private function _fetchStreamPage(string $path, array $query, int $pageNumber): array
+    {
+        $attempt = 0;
+        while (true) {
+            $attempt++;
+            $this->_waitForErrorLimit($path);
+            try {
+                $response = $this->httpClient->request('GET', self::BASE_URL . ltrim($path, '/'), [
+                    'query' => $query + ['page' => $pageNumber],
+                    'headers' => ['User-Agent' => self::USER_AGENT],
+                ]);
+
+                return $this->_readStreamResponse($response, $pageNumber);
+            } catch (\Exception $e) {
+                $statusCode = $e instanceof \Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface ? $e->getResponse()->getStatusCode() : 0;
+                if ($statusCode === 420) {
+                    $this->_pauseForErrorLimit($e->getResponse()->getHeaders(false));
+                }
+                $isClientError = $statusCode >= 400 && $statusCode < 500 && $statusCode !== 420 && $statusCode !== 429;
+                if ($isClientError || $attempt >= self::STREAM_PAGE_RETRIES) {
+                    throw $e;
+                }
+                $this->_logCron(sprintf('[EsiClient] Page %d of %s failed (attempt %d/%d): %s', $pageNumber, $path, $attempt, self::STREAM_PAGE_RETRIES, $e->getMessage()), 'warning');
+                sleep($statusCode === 429 ? $this->_getRateLimitWait($e->getResponse()->getHeaders(false)) : 2);
+            }
+        }
+    }
+
+    /**
+     * @return array{data: array, headers: array}
+     */
+    private function _readStreamResponse(ResponseInterface $response, int $pageNumber): array
+    {
+        try {
+            $data = $response->toArray();
+            $headers = $response->getHeaders();
+        } catch (\Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface $e) {
+            $this->_trackErrorLimit($e->getResponse()->getHeaders(false));
+            throw $e;
+        }
+        $this->_trackErrorLimit($headers);
+
+        // ESI pagination hiccup: pages > 1 sometimes come back empty on HTTP 200
+        if ($pageNumber > 1 && $data === []) {
+            throw new \RuntimeException(sprintf('ESI returned an empty page %d.', $pageNumber));
+        }
+
+        return ['data' => $data, 'headers' => $headers];
+    }
+
+    /**
      * Calculates the solar system route between origin and destination.
      * Supported flags: 'secure' (prefer/only Highsec), 'shortest', 'insecure' (prefer Low/Null).
      * Returns an array of solar system IDs along the path or null if no route found.
@@ -729,7 +861,7 @@ class EsiClient
         $clusterStatus = [];
         try {
             $response = $this->httpClient->request('GET', self::BASE_URL . 'status/', [
-                'headers' => ['User-Agent' => 'WH-Toolbox/1.0 (Contact: Sebastian Kliem)'],
+                'headers' => ['User-Agent' => self::USER_AGENT],
                 'timeout' => self::CLUSTER_STATUS_TIMEOUT,
             ]);
             $clusterStatus = $response->toArray();

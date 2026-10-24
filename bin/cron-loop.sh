@@ -10,6 +10,14 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] Starting cron scheduler loop..."
     done
 ) &
 
+# Market lane: order book pulls take up to a minute and must not delay the character syncs
+(
+    while true; do
+        sleep "$((60 - $(date +%s) % 60))"
+        php bin/console app:cron:run --lane=market --no-interaction
+    done
+) &
+
 # Run once on startup
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Initial run..."
 php bin/console app:cron:run --no-interaction

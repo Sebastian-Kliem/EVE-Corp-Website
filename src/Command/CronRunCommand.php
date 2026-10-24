@@ -52,7 +52,7 @@ class CronRunCommand extends Command
     protected function configure(): void
     {
         $this->addOption('job', null, InputOption::VALUE_OPTIONAL, 'Only execute a specific cron job command');
-        $this->addOption('lane', null, InputOption::VALUE_REQUIRED, 'Only execute jobs of this lane (default, fast)', CronLanes::DEFAULT);
+        $this->addOption('lane', null, InputOption::VALUE_REQUIRED, 'Only execute jobs of this lane (default, fast, market)', CronLanes::DEFAULT);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -66,8 +66,8 @@ class CronRunCommand extends Command
             return Command::INVALID;
         }
 
-        // The fast lane runs every minute, keep its routine messages out of the info log
-        $isQuietLane = $jobOption === null && $lane === CronLanes::FAST;
+        // The fast and market lanes run every minute, keep their routine messages out of the info log
+        $isQuietLane = $jobOption === null && $lane !== CronLanes::DEFAULT;
         $writeLog = function(string $message, string $level = 'INFO') use ($isQuietLane) {
             if ($isQuietLane && $level === 'INFO') {
                 $level = 'DEBUG';
@@ -85,7 +85,7 @@ class CronRunCommand extends Command
         }
 
         // 1. Auto-seed default cron jobs if database is empty or missing them (one lane only, avoids duplicate inserts)
-        if (!$isQuietLane) {
+        if ($lane === CronLanes::DEFAULT) {
             $this->_seedDefaultJobs();
         }
 
@@ -111,6 +111,7 @@ class CronRunCommand extends Command
             'corporation:sync-structures' => 8,
             'corporation:sync-notifications' => 9,
             'wanderer:sync-connections' => 10,
+            'market:sync-hub-orders' => 11,
         ];
         usort($activeJobs, function(CronJob $a, CronJob $b) use ($executionOrder) {
             $orderA = $executionOrder[$a->getCommand()] ?? 99;
@@ -312,6 +313,11 @@ class CronRunCommand extends Command
                 'name' => 'Wanderer-Verbindungen prüfen (Routen-Alarme)',
                 'command' => 'wanderer:sync-connections',
                 'expression' => '* * * * *', // every minute, fast lane
+            ],
+            [
+                'name' => 'Markt-Orderbücher der Handelshubs synchronisieren',
+                'command' => 'market:sync-hub-orders',
+                'expression' => '*/5 * * * *', // every 5 minutes, market lane; each hub keeps its own interval
             ]
         ];
 

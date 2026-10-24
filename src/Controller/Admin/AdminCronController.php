@@ -223,7 +223,7 @@ class AdminCronController extends AbstractController
     // Fast lane jobs run every minute and would keep the page reloading
     private function _isTrackedForRefresh(CronJob $job): bool
     {
-        return CronLanes::laneOf((string)$job->getCommand()) === CronLanes::DEFAULT;
+        return CronLanes::laneOf((string)$job->getCommand()) !== CronLanes::FAST;
     }
 
     private function _getLastLines(string $filename, int $numLines = 50): string
