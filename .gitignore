@@ -33,3 +33,7 @@
 
 /.gemini/
 
+
+###> JetBrains IDE ###
+/.idea/
+###< JetBrains IDE ###
