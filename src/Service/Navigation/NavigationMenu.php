@@ -174,6 +174,7 @@ class NavigationMenu
                 'role' => 'ROLE_MEMBER',
                 'items' => [
                     ['label' => 'Linksammlung', 'route' => 'link_collection'],
+                    ['label' => 'Wurmloch-Sites', 'route' => 'app_wormhole_sites'],
                 ],
             ],
             [

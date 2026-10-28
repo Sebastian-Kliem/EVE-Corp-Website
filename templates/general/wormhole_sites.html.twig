@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Wurmloch-Sites{% endblock %}
+
+{% block body %}
+{% set reactProps = {
+    sites: sites,
+    aliases: aliases,
+    gasPrices: gasPrices,
+    saveAliasUrl: path('app_wormhole_sites_save_alias'),
+    typeIconUrl: path('app_eve_image_proxy', { category: 'types', id: 12345, action: 'icon' })
+} %}
+
+<div class="w-full px-6 mt-8 mb-12">
+    <div class="mb-6">
+        <h1 class="text-3xl font-semibold text-white mb-0 text-gradient">Wurmloch-Sites</h1>
+        <p class="text-xs text-eve-muted mt-1">Combat-, Data-, Relic-, Gas- und Erz-Sites im J-Space mit Wellen, NPC-Werten und Vorkommen.</p>
+    </div>
+
+    <div data-react-component="WormholeSites" data-react-props="{{ reactProps|json_encode|e('html_attr') }}"></div>
+</div>
+{% endblock %}
