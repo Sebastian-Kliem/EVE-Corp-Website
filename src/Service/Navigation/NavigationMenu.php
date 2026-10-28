@@ -105,6 +105,15 @@ class NavigationMenu
     {
         return [
             [
+                'label' => 'Allgemein',
+                'placement' => self::PLACEMENT_MAIN,
+                'role' => 'ROLE_MEMBER',
+                'items' => [
+                    ['label' => 'Linksammlung', 'route' => 'link_collection'],
+                    ['label' => 'Wurmloch-Sites', 'route' => 'app_wormhole_sites'],
+                ],
+            ],
+            [
                 'label' => 'Charaktere',
                 'placement' => self::PLACEMENT_MAIN,
                 'role' => 'ROLE_MEMBER',
@@ -166,15 +175,6 @@ class NavigationMenu
                     ['label' => 'Stationen', 'route' => 'app_corp_structures'],
                     ['label' => 'Verteidigungsdoktrin', 'route' => 'app_corp_defense_doctrine'],
                     ['label' => 'Vorschläge', 'route' => 'app_suggestions'],
-                ],
-            ],
-            [
-                'label' => 'Allgemein',
-                'placement' => self::PLACEMENT_MAIN,
-                'role' => 'ROLE_MEMBER',
-                'items' => [
-                    ['label' => 'Linksammlung', 'route' => 'link_collection'],
-                    ['label' => 'Wurmloch-Sites', 'route' => 'app_wormhole_sites'],
                 ],
             ],
             [

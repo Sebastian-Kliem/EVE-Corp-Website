@@ -23,7 +23,7 @@ class NavigationMenuTest extends KernelTestCase
 
         $labels = $this->_getCategoryLabels($menu->getCategories(NavigationMenu::PLACEMENT_MAIN));
 
-        $this->assertSame(['Charaktere', 'Industrie', 'Wallet & Assets', 'Corp', 'Allgemein'], $labels);
+        $this->assertSame(['Allgemein', 'Charaktere', 'Industrie', 'Wallet & Assets', 'Corp'], $labels);
     }
 
     public function testOfficerSeesAdminCategoryWithoutCeoItems(): void
