@@ -140,6 +140,18 @@ class AppInstallCommand extends Command
             return Command::FAILURE;
         }
 
+        // 5b. Seed Wormhole Sites
+        $io->section('Step 5b: Seeding Wormhole Sites');
+        try {
+            $seedCommand = $application->find('app:seed:wormhole-sites');
+            $seedInput = new ArrayInput([]);
+            $seedInput->setInteractive(false);
+            $seedCommand->run($seedInput, $output);
+        } catch (\Exception $e) {
+            $io->error('Wormhole site seeding failed: ' . $e->getMessage());
+            return Command::FAILURE;
+        }
+
         // 6. Initialize Performance Cutoff Date for existing characters
         $io->section('Step 6: Initializing Performance Cutoff Dates');
         try {
