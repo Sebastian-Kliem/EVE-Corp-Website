@@ -30,6 +30,19 @@
     color: inherit;
     font-family: inherit;
   }
+
+  /* Native selects render light by default, dark scheme also darkens the opened option list */
+  select {
+    color-scheme: dark;
+    background-color: #080d1a;
+    color: inherit;
+    font-family: inherit;
+  }
+
+  option, optgroup {
+    background-color: #080d1a;
+    color: var(--color-eve-text);
+  }
 }
 
 /* Global base styles for the EVE theme */
