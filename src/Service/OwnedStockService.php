@@ -151,7 +151,7 @@ class OwnedStockService
 
     /**
      * Personal corp hangars/containers of the user first, then the shared hangars the user may see.
-     * Hangars and containers other users marked as personal are left out.
+     * Hangars and containers other users marked as personal stay visible, access is decided by the hangar visibility only.
      *
      * @param EveCharacter[] $characters
      * @param int[] $typeIds
@@ -160,7 +160,6 @@ class OwnedStockService
     private function _collectCorpStock(User $user, array $characters, array $typeIds, bool $canSeeAllCorpHangars, array &$entries): void
     {
         $visibleHangars = $canSeeAllCorpHangars ? null : $this->corpHangarVisibilityService->getVisibleHangars($user);
-        $foreignPersonalAssets = $this->_loadForeignPersonalAssets($user);
         $wantedTypeIds = array_flip($typeIds);
 
         foreach ($this->_charactersByCorporation($characters) as $corporationId => $character) {
@@ -172,8 +171,7 @@ class OwnedStockService
             $resolved = $this->personalCorpAssetService->resolvePersonalCorpAssets($corporationId, $corpAssets, $user->getPersonalCorpHangars(), $user->getPersonalCorpContainers());
             $syncCharacter = $this->corpDivisionService->findSyncCharacter($corporationId) ?? $character;
             $divisionNames = $this->corpDivisionService->getHangarDivisionNames($corporationId, $syncCharacter);
-            $foreignHangars = $foreignPersonalAssets['hangars'][$corporationId] ?? [];
-            $skippedItemIds = $foreignPersonalAssets['containers'][$corporationId] ?? [];
+            $skippedItemIds = [];
 
             foreach ($resolved['roots'] as $root) {
                 $rootLabel = $this->_corpHangarLabel($root->getLocationFlag(), $divisionNames, true);
@@ -184,7 +182,7 @@ class OwnedStockService
             }
 
             foreach ($corpAssets as $asset) {
-                if (!$this->_isVisibleSharedHangarRoot($asset, $resolved['byItemId'], $foreignHangars, $visibleHangars)) {
+                if (!$this->_isVisibleSharedHangarRoot($asset, $resolved['byItemId'], $visibleHangars)) {
                     continue;
                 }
                 $rootLabel = $this->_corpHangarLabel($asset->getLocationFlag(), $divisionNames, false);
@@ -195,61 +193,28 @@ class OwnedStockService
     }
 
     /**
-     * Hangars and containers other users marked as personal, grouped by corporation.
-     *
-     * @return array{hangars: array<int, array<string, true>>, containers: array<int, array<int, true>>}
-     */
-    private function _loadForeignPersonalAssets(User $user): array
-    {
-        $foreignPersonalAssets = ['hangars' => [], 'containers' => []];
-        foreach ($this->entityManager->getRepository(User::class)->findAll() as $otherUser) {
-            if ($otherUser->getId() === $user->getId()) {
-                continue;
-            }
-            foreach ($otherUser->getPersonalCorpHangars() as $hangar) {
-                $hangarKey = $this->_hangarKey((int)($hangar['locationId'] ?? 0), (string)($hangar['locationFlag'] ?? ''));
-                $foreignPersonalAssets['hangars'][(int)($hangar['corporationId'] ?? 0)][$hangarKey] = true;
-            }
-            foreach ($otherUser->getPersonalCorpContainers() as $container) {
-                $foreignPersonalAssets['containers'][(int)($container['corporationId'] ?? 0)][(int)($container['itemId'] ?? 0)] = true;
-            }
-        }
-
-        return $foreignPersonalAssets;
-    }
-
-    /**
-     * True for a top-level item in a corp hangar division the user may see and nobody marked as personal.
+     * True for a top-level item in a corp hangar division the user may see.
      *
      * @param array<int, EveCorporationAsset> $byItemId
-     * @param array<string, true> $foreignHangars
      * @param array<int|string, array<string, true>>|null $visibleHangars null when every hangar is visible
      */
-    private function _isVisibleSharedHangarRoot(EveCorporationAsset $asset, array $byItemId, array $foreignHangars, ?array $visibleHangars): bool
+    private function _isVisibleSharedHangarRoot(EveCorporationAsset $asset, array $byItemId, ?array $visibleHangars): bool
     {
         $flag = (string)$asset->getLocationFlag();
         if (!preg_match(self::SHARED_HANGAR_FLAG_PATTERN, $flag)) {
             return false;
         }
 
-        $officeId = (int)$asset->getLocationId();
-        if (isset($foreignHangars[$this->_hangarKey($officeId, $flag)])) {
-            return false;
-        }
         if ($visibleHangars === null) {
             return true;
         }
 
         // Visibility is configured per station/structure, the office sits directly in it
+        $officeId = (int)$asset->getLocationId();
         $office = $byItemId[$officeId] ?? null;
         $stationId = $office !== null ? (int)$office->getLocationId() : $officeId;
 
         return isset($visibleHangars[$stationId][$flag]);
-    }
-
-    private function _hangarKey(int $locationId, string $locationFlag): string
-    {
-        return $locationId . '|' . $locationFlag;
     }
 
     /**
