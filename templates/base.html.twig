@@ -48,6 +48,29 @@
                 </a>
             {% endif %}
 
+            {% set pending_corporations = get_pending_corporations() %}
+            {% if pending_corporations is not empty %}
+                <a href="{{ path('app_admin_corporations_index') }}" class="group block w-full bg-amber-950/40 hover:bg-amber-900/50 border-b border-amber-500/30 text-amber-200 transition-colors py-2 px-4 no-underline relative z-50">
+                    <div class="app-container px-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs sm:text-sm">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                                Neue Corp
+                            </span>
+                            <span class="text-eve-muted font-normal">Freigabe für Struktur-Sync ausstehend:</span>
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                {% for corporation in pending_corporations %}
+                                    <strong class="font-semibold text-white">{{ corporation.displayName }}</strong>
+                                    {% if not loop.last %}<span class="text-white/20">•</span>{% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <span class="text-xs text-amber-400/80 group-hover:text-white font-medium inline-flex items-center gap-1 transition-colors shrink-0 ml-auto sm:ml-0">
+                            Zur Corp-Verwaltung →
+                        </span>
+                    </div>
+                </a>
+            {% endif %}
+
             {% set fuel_warnings = get_fuel_warnings() %}
             {% if fuel_warnings is not empty %}
                 <a href="{{ path('app_corp_structures') }}" class="group block w-full bg-red-950/40 hover:bg-red-900/50 border-b border-red-500/30 text-red-200 transition-colors py-2 px-4 no-underline relative z-50">

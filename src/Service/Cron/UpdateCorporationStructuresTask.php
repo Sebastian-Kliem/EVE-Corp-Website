@@ -6,6 +6,8 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCorporationStructure;
 use App\Entity\EveCorporationStarbase;
 use App\Entity\EveStructure;
+use App\Entity\TrackedCorporation;
+use App\Service\Corporation\CorporationTrackingService;
 use App\Service\Discord\StructureAlertService;
 use App\Service\Esi\CorporationAccessResolver;
 use App\Service\Esi\EsiClient;
@@ -26,6 +28,8 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
 
     private EntityManagerInterface $entityManager;
     private array $corporationNames = [];
+    /** @var array<int, TrackedCorporation> */
+    private array $activeCorporations = [];
 
     public function __construct(
         private readonly ManagerRegistry $doctrine,
@@ -34,6 +38,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         private readonly SdeService $sdeService,
         private readonly StructureAlertService $structureAlertService,
         private readonly CorporationAccessResolver $corporationAccessResolver,
+        private readonly CorporationTrackingService $corporationTrackingService,
         private readonly LoggerInterface $logger
     ) {
         $this->entityManager = $entityManager;
@@ -50,9 +55,12 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
         $starbaseCharacters = $this->corporationAccessResolver->getCharactersByCorporation(self::STARBASE_ROLES, self::STARBASE_SCOPE);
         $corporationIds = array_unique(array_merge(array_keys($structureCharacters), array_keys($starbaseCharacters)));
 
-        $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d corporations with authorized characters.', count($corporationIds)));
+        // Only corporations approved in the admin panel are synced
+        $this->activeCorporations = $this->corporationTrackingService->registerAndGetActive($corporationIds);
 
-        foreach ($corporationIds as $corpId) {
+        $this->logger->info(sprintf('[Cron] Starting corporation structures sync for %d of %d corporations with authorized characters.', count($this->activeCorporations), count($corporationIds)));
+
+        foreach (array_keys($this->activeCorporations) as $corpId) {
             $this->_ensureEntityManagerOpen();
             $this->_syncWithFirstAuthorizedCharacter($corpId, 'Upwell structures', $structureCharacters[$corpId] ?? [], $this->_syncUpwellStructures(...));
 
@@ -193,7 +201,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             $structure->setLastUpdated($now);
 
             // Check fuel warnings and state transitions
-            $this->structureAlertService->checkUpwellStructure($structure);
+            $this->structureAlertService->checkUpwellStructure($structure, $this->activeCorporations[$corpId]);
 
             $this->entityManager->persist($structure);
 
@@ -316,7 +324,7 @@ class UpdateCorporationStructuresTask implements CronTaskInterface
             // For now, we leave the modules field empty or allow it to be hydrated later.
 
             // Check fuel warnings and state transitions
-            $this->structureAlertService->checkStarbase($starbase);
+            $this->structureAlertService->checkStarbase($starbase, $this->activeCorporations[$corpId]);
 
             $this->entityManager->persist($starbase);
         }

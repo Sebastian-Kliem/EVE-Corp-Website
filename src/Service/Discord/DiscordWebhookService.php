@@ -3,6 +3,7 @@
 namespace App\Service\Discord;
 
 use App\Entity\AppSetting;
+use App\Entity\TrackedCorporation;
 use App\Service\Discord\Model\DiscordMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -253,6 +254,39 @@ class DiscordWebhookService
     }
 
     /**
+     * Checks if alerts of the corporation have a delivery target; foreign corporations never fall back to the global channels.
+     */
+    public function isConfiguredForCorporation(TrackedCorporation $corporation, string $channel): bool
+    {
+        if ($corporation->usesGlobalChannels()) {
+            return $this->isConfigured($channel);
+        }
+
+        return !empty($corporation->getWebhookUrl());
+    }
+
+    /**
+     * Sends a structure alert of the corporation to the global channel or the corporation's own webhook.
+     */
+    public function sendForCorporation(DiscordMessage $message, string $channel, TrackedCorporation $corporation): bool
+    {
+        if ($corporation->usesGlobalChannels()) {
+            return $this->send($message, $channel);
+        }
+
+        if (empty($corporation->getWebhookUrl())) {
+            return false;
+        }
+
+        // Message content only carries the global ping, which is replaced by the corporation's own role
+        if ($message->getContent() !== null) {
+            $message->setContent($this->_formatPingRole($corporation->getPingRole()));
+        }
+
+        return $this->send($message, $channel, $corporation->getWebhookUrl());
+    }
+
+    /**
      * Sends a Discord message to the resolved channel or custom webhook URL.
      */
     public function send(
@@ -294,6 +328,20 @@ class DiscordWebhookService
         }
 
         return false;
+    }
+
+    private function _formatPingRole(?string $role): ?string
+    {
+        $role = trim((string)$role);
+        if ($role === '') {
+            return null;
+        }
+
+        if ($role === '@here' || $role === '@everyone' || str_starts_with($role, '<@&')) {
+            return $role;
+        }
+
+        return '<@&' . $role . '>';
     }
 
     // Returns null on success, seconds to wait for a retryable failure, or false for a permanent failure

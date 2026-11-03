@@ -185,6 +185,7 @@ class NavigationMenu
                     ['label' => 'Benutzerverwaltung', 'route' => 'app_admin_users'],
                     ['label' => 'Hangar-Sichtbarkeit', 'route' => 'app_admin_corp_assets_visibility', 'role' => 'ROLE_CEO'],
                     ['label' => 'Cron-Jobs', 'route' => 'app_admin_cron_index', 'role' => 'ROLE_CEO'],
+                    ['label' => 'Corporations', 'route' => 'app_admin_corporations_index', 'role' => 'ROLE_CEO'],
                     ['label' => 'Discord-Webhooks', 'route' => 'app_admin_discord_index', 'role' => 'ROLE_CEO'],
                     ['label' => 'Wanderer-Integration', 'route' => 'app_admin_wanderer_index', 'role' => 'ROLE_CEO'],
                 ],

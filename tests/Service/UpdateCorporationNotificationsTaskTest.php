@@ -4,6 +4,9 @@ namespace App\Tests\Service;
 
 use App\Entity\DiscordNotificationLog;
 use App\Entity\EveCharacter;
+use App\Entity\EveCorporationStructure;
+use App\Entity\TrackedCorporation;
+use App\Service\Corporation\CorporationTrackingService;
 use App\Service\Cron\UpdateCorporationNotificationsTask;
 use App\Service\Discord\DiscordWebhookService;
 use App\Service\Discord\Model\DiscordMessage;
@@ -22,8 +25,8 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
     public function testOldNotificationsAreNotPosted(): void
     {
         $webhookService = $this->createMock(DiscordWebhookService::class);
-        $webhookService->method('isConfigured')->willReturn(true);
-        $webhookService->expects($this->never())->method('send');
+        $webhookService->method('isConfiguredForCorporation')->willReturn(true);
+        $webhookService->expects($this->never())->method('sendForCorporation');
 
         $task = $this->_createTask([$this->_createNotification(1, '-2 days')], $webhookService);
         $task->execute();
@@ -34,8 +37,8 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
     public function testFailedDeliveryIsNotLoggedAndStopsTheRun(): void
     {
         $webhookService = $this->createMock(DiscordWebhookService::class);
-        $webhookService->method('isConfigured')->willReturn(true);
-        $webhookService->expects($this->once())->method('send')->willReturn(false);
+        $webhookService->method('isConfiguredForCorporation')->willReturn(true);
+        $webhookService->expects($this->once())->method('sendForCorporation')->willReturn(false);
 
         $notifications = [$this->_createNotification(1, '-5 minutes'), $this->_createNotification(2, '-4 minutes')];
         $task = $this->_createTask($notifications, $webhookService);
@@ -48,8 +51,8 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
     public function testDeliveredNotificationIsLogged(): void
     {
         $webhookService = $this->createStub(DiscordWebhookService::class);
-        $webhookService->method('isConfigured')->willReturn(true);
-        $webhookService->method('send')->willReturn(true);
+        $webhookService->method('isConfiguredForCorporation')->willReturn(true);
+        $webhookService->method('sendForCorporation')->willReturn(true);
 
         $task = $this->_createTask([$this->_createNotification(1, '-5 minutes')], $webhookService);
         $task->execute();
@@ -62,8 +65,8 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
     public function testNotificationIsLoggedWithoutWebhook(): void
     {
         $webhookService = $this->createMock(DiscordWebhookService::class);
-        $webhookService->method('isConfigured')->willReturn(false);
-        $webhookService->expects($this->never())->method('send');
+        $webhookService->method('isConfiguredForCorporation')->willReturn(false);
+        $webhookService->expects($this->never())->method('sendForCorporation');
 
         $task = $this->_createTask([$this->_createNotification(1, '-5 minutes')], $webhookService);
         $task->execute();
@@ -72,7 +75,35 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
         $this->assertFalse($this->persistedLogs[0]->getMetadata()['delivered']);
     }
 
-    private function _createTask(array $notifications, DiscordWebhookService $webhookService): UpdateCorporationNotificationsTask
+    public function testNotificationOfStructureWithDisabledAlertsIsSkipped(): void
+    {
+        $webhookService = $this->createMock(DiscordWebhookService::class);
+        $webhookService->method('isConfiguredForCorporation')->willReturn(true);
+        $webhookService->expects($this->once())->method('sendForCorporation')->willReturn(true);
+
+        $notifications = [
+            $this->_createNotification(1, '-5 minutes', 'structureID: 1035000000001'),
+            $this->_createNotification(2, '-5 minutes', 'structureID: 1035000000002'),
+        ];
+        $task = $this->_createTask($notifications, $webhookService, ['1035000000002']);
+        $task->execute();
+
+        $this->assertCount(1, $this->persistedLogs);
+        $this->assertSame('1', $this->persistedLogs[0]->getNotificationId());
+    }
+
+    public function testInactiveCorporationIsNotChecked(): void
+    {
+        $webhookService = $this->createMock(DiscordWebhookService::class);
+        $webhookService->expects($this->never())->method('sendForCorporation');
+
+        $task = $this->_createTask([$this->_createNotification(1, '-5 minutes')], $webhookService, [], false);
+        $task->execute();
+
+        $this->assertSame([], $this->persistedLogs);
+    }
+
+    private function _createTask(array $notifications, DiscordWebhookService $webhookService, array $disabledStructureIds = [], bool $corporationActive = true): UpdateCorporationNotificationsTask
     {
         $director = new EveCharacter();
         $director->setId(123);
@@ -86,6 +117,12 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
         $resolver->method('getCharactersByCorporation')->willReturn([98000001 => [$director]]);
         $logRepository = $this->createStub(EntityRepository::class);
         $logRepository->method('findOneBy')->willReturn(null);
+        $logRepository->method('find')->willReturnCallback(function (string $structureId) use ($disabledStructureIds): EveCorporationStructure {
+            $structure = new EveCorporationStructure();
+            $structure->setId($structureId);
+            $structure->setAlertsEnabled(!in_array($structureId, $disabledStructureIds, true));
+            return $structure;
+        });
 
         $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getRepository')->willReturn($logRepository);
@@ -99,16 +136,20 @@ class UpdateCorporationNotificationsTaskTest extends TestCase
         $parser = $this->createStub(StructureNotificationParser::class);
         $parser->method('parseNotification')->willReturn(DiscordMessage::create('alert'));
 
-        return new UpdateCorporationNotificationsTask($entityManager, $esiClient, $parser, $webhookService, $resolver, new NullLogger());
+        $corporation = (new TrackedCorporation('98000001'))->setUseGlobalChannels(true);
+        $trackingService = $this->createStub(CorporationTrackingService::class);
+        $trackingService->method('registerAndGetActive')->willReturn($corporationActive ? [98000001 => $corporation] : []);
+
+        return new UpdateCorporationNotificationsTask($entityManager, $esiClient, $parser, $webhookService, $resolver, $trackingService, new NullLogger());
     }
 
-    private function _createNotification(int $notificationId, string $age): array
+    private function _createNotification(int $notificationId, string $age, string $text = ''): array
     {
         return [
             'notification_id' => $notificationId,
             'type' => 'StructureUnderAttack',
             'timestamp' => (new \DateTimeImmutable($age))->format(\DateTimeInterface::ATOM),
-            'text' => '',
+            'text' => $text,
         ];
     }
 }

@@ -5,6 +5,8 @@ namespace App\Tests\Service;
 use App\Entity\EveCharacter;
 use App\Entity\EveCorporationStructure;
 use App\Service\Cron\UpdateCorporationStructuresTask;
+use App\Entity\TrackedCorporation;
+use App\Service\Corporation\CorporationTrackingService;
 use App\Service\Discord\StructureAlertService;
 use App\Service\Esi\CorporationAccessResolver;
 use App\Service\Esi\EsiClient;
@@ -81,6 +83,9 @@ class UpdateCorporationStructuresTaskTest extends TestCase
             $this->persistedEntities[] = $entity;
         });
 
+        $trackingService = $this->createStub(CorporationTrackingService::class);
+        $trackingService->method('registerAndGetActive')->willReturn([self::CORPORATION_ID => new TrackedCorporation((string)self::CORPORATION_ID)]);
+
         $sdeService = $this->createStub(SdeService::class);
         $sdeService->method('getItemName')->willReturn('Astrahus');
         $sdeService->method('getLocationName')->willReturn('J123456');
@@ -92,6 +97,7 @@ class UpdateCorporationStructuresTaskTest extends TestCase
             $sdeService,
             $this->createStub(StructureAlertService::class),
             $resolver,
+            $trackingService,
             new NullLogger()
         );
     }

@@ -54,6 +54,10 @@ class EveCorporationStructure
     #[ORM\Column]
     private ?\DateTimeImmutable $lastUpdated = null;
 
+    // Disabled structures are still synced, but post no Discord alerts
+    #[ORM\Column(options: ['default' => true])]
+    private bool $alertsEnabled = true;
+
     public function getId(): ?string
     {
         return $this->id;
@@ -216,6 +220,17 @@ class EveCorporationStructure
     public function setLastUpdated(\DateTimeImmutable $lastUpdated): static
     {
         $this->lastUpdated = $lastUpdated;
+        return $this;
+    }
+
+    public function isAlertsEnabled(): bool
+    {
+        return $this->alertsEnabled;
+    }
+
+    public function setAlertsEnabled(bool $alertsEnabled): static
+    {
+        $this->alertsEnabled = $alertsEnabled;
         return $this;
     }
 }

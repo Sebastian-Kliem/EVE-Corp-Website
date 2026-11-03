@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Corporations{% endblock %}
+
+{% block body %}
+<div class="w-full px-6 mt-10 mb-12">
+    <!-- Headline -->
+    <div class="flex justify-between items-center flex-wrap gap-4 mb-6">
+        <h1 class="text-3xl font-semibold text-white text-gradient">Corporations</h1>
+        <a href="{{ path('app_profile') }}" class="inline-flex items-center justify-center border border-eve-border hover:border-eve-primary text-eve-text hover:text-eve-primary bg-transparent rounded-lg px-4 py-2 font-medium transition-all duration-300 cursor-pointer">
+            Zurück zum Profil
+        </a>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="py-5 px-6 rounded-lg bg-black/20 border border-eve-border mb-8 text-sm leading-relaxed text-eve-text">
+        <ul class="list-disc list-inside space-y-1 text-eve-muted">
+            <li>Corps werden automatisch erkannt, sobald ein Charakter mit Station_Manager- oder Director-Rolle verknüpft ist. Ihre Strukturen werden erst nach der Aktivierung abgeholt.</li>
+            <li>Nach der Aktivierung sind alle Strukturen für Discord-Meldungen ausgewählt. Einzelne Strukturen lassen sich abwählen.</li>
+            <li>Nur Corps mit <strong>Globale Kanäle verwenden</strong> melden in die Kanäle aus den Discord-Webhooks. Alle anderen melden nur an ihren eigenen Webhook, ohne Webhook wird nichts gesendet.</li>
+            <li>Deaktivieren stoppt den Sync und entfernt die gespeicherten Strukturdaten der Corp.</li>
+        </ul>
+    </div>
+
+    <!-- Pending -->
+    {% if pendingCorporations is not empty %}
+        <div class="bg-eve-card border border-amber-500/40 shadow-eve p-6 rounded-lg mb-8">
+            <h3 class="text-lg font-semibold mb-4 text-amber-300">Neue Corps – Entscheidung ausstehend</h3>
+            <div class="space-y-3">
+                {% for corporation in pendingCorporations %}
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                        <div>
+                            <div class="text-sm font-medium text-white">{{ corporation.displayName }} <span class="text-xs text-eve-muted font-mono">#{{ corporation.id }}</span></div>
+                            <div class="text-xs text-eve-muted">Erkannt am {{ corporation.discoveredAt|date('d.m.Y H:i') }}</div>
+                        </div>
+                        {{ _self.status_buttons(corporation) }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Active -->
+    <h3 class="text-lg font-semibold mb-4 text-white">Aktive Corps</h3>
+    {% for corporation in activeCorporations %}
+        {% set structures = structuresByCorporation[corporation.id] %}
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                <div class="text-base font-semibold text-white">{{ corporation.displayName }} <span class="text-xs text-eve-muted font-mono">#{{ corporation.id }}</span></div>
+                <form action="{{ path('app_admin_corporations_disable', {'id': corporation.id}) }}" method="POST" onsubmit="return confirm('Corp deaktivieren und gespeicherte Strukturdaten entfernen?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('corporation_status_' ~ corporation.id) }}">
+                    <button type="submit" class="py-2 px-4 border border-eve-border hover:border-rose-400 text-xs font-medium rounded-lg text-white hover:text-rose-400 transition-colors bg-black/40 cursor-pointer">Deaktivieren</button>
+                </form>
+            </div>
+
+            <form action="{{ path('app_admin_corporations_save', {'id': corporation.id}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('corporation_save_' ~ corporation.id) }}">
+
+                <div class="p-4 rounded-lg bg-black/30 border border-eve-border/60 mb-4">
+                    <label class="flex items-center gap-2 text-sm font-medium text-white cursor-pointer mb-4">
+                        <input type="checkbox" name="use_global_channels" value="1" class="accent-eve-primary" {% if corporation.usesGlobalChannels %}checked{% endif %}>
+                        Globale Kanäle verwenden <span class="text-xs text-eve-muted">(nur für die eigene Corp)</span>
+                    </label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="webhook_url_{{ corporation.id }}" class="block text-xs font-medium text-eve-text mb-1">Eigener Webhook (wenn keine globalen Kanäle)</label>
+                            {% set hint = webhookHints[corporation.id] %}
+                            <input type="password" id="webhook_url_{{ corporation.id }}" name="webhook_url" value="" autocomplete="new-password"
+                                   placeholder="{{ hint ? 'Gespeichert (endet auf ' ~ hint ~ '), leer lassen zum Beibehalten' : 'https://discord.com/api/webhooks/...' }}"
+                                   class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                            {% if hint %}
+                                <label class="mt-1.5 flex items-center gap-2 text-[11px] text-eve-muted cursor-pointer">
+                                    <input type="checkbox" name="remove_webhook_url" value="1" class="accent-rose-500">
+                                    Gespeicherten Webhook entfernen
+                                </label>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="ping_role_{{ corporation.id }}" class="block text-xs font-medium text-eve-text mb-1">Ping-Rolle für den eigenen Webhook</label>
+                            <input type="text" id="ping_role_{{ corporation.id }}" name="ping_role" value="{{ corporation.pingRole }}" placeholder="@here oder Rollen-ID" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-4 py-2.5 text-sm text-white focus:border-eve-primary focus:outline-none transition-colors">
+                            <span class="text-[11px] text-eve-muted">Ersetzt die globalen Pings (Angriff, Fuel ≤ 7d).</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-xs font-medium text-eve-text mb-2">Discord-Meldungen für Strukturen</div>
+                {% if structures is not empty %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {% for structure in structures %}
+                            <label class="flex items-center gap-2 text-xs text-eve-text cursor-pointer">
+                                <input type="checkbox" name="alert_structure_ids[]" value="{{ structure.id }}" class="accent-eve-primary" {% if structure.alertsEnabled %}checked{% endif %}>
+                                <span>{{ structure.name ?? ('POS #' ~ structure.id) }}</span>
+                                <span class="text-eve-muted">({{ structure.typeName ?? '?' }}, {{ structure.solarSystemName ?? '?' }})</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-xs text-eve-muted">Noch keine Strukturen abgeholt, der nächste Sync läuft innerhalb von 10 Minuten.</div>
+                {% endif %}
+
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" class="inline-flex items-center justify-center border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] font-semibold text-sm px-6 py-2.5 shadow-eve transition-all duration-300 cursor-pointer">
+                        Speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        <div class="py-6 text-center text-eve-muted text-xs mb-6">Keine aktiven Corps.</div>
+    {% endfor %}
+
+    <!-- Disabled -->
+    {% if disabledCorporations is not empty %}
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-4 text-white">Deaktivierte Corps</h3>
+            <div class="space-y-3">
+                {% for corporation in disabledCorporations %}
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-black/30 border border-eve-border/60">
+                        <div class="text-sm text-eve-text">{{ corporation.displayName }} <span class="text-xs text-eve-muted font-mono">#{{ corporation.id }}</span></div>
+                        {{ _self.status_buttons(corporation, false) }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% macro status_buttons(corporation, showDisable = true) %}
+    <div class="flex items-center gap-2">
+        <form action="{{ path('app_admin_corporations_activate', {'id': corporation.id}) }}" method="POST">
+            <input type="hidden" name="_token" value="{{ csrf_token('corporation_status_' ~ corporation.id) }}">
+            <button type="submit" class="py-2 px-4 border border-eve-border hover:border-emerald-400 text-xs font-medium rounded-lg text-white hover:text-emerald-400 transition-colors bg-black/40 cursor-pointer">Aktivieren</button>
+        </form>
+        {% if showDisable %}
+            <form action="{{ path('app_admin_corporations_disable', {'id': corporation.id}) }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('corporation_status_' ~ corporation.id) }}">
+                <button type="submit" class="py-2 px-4 border border-eve-border hover:border-rose-400 text-xs font-medium rounded-lg text-white hover:text-rose-400 transition-colors bg-black/40 cursor-pointer">Ablehnen</button>
+            </form>
+        {% endif %}
+    </div>
+{% endmacro %}

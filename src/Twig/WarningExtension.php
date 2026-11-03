@@ -5,6 +5,8 @@ namespace App\Twig;
 use App\Entity\User;
 use App\Entity\EveCharacter;
 use App\Entity\EveCorporationStructure;
+use App\Entity\TrackedCorporation;
+use App\Repository\TrackedCorporationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\AbstractExtension;
@@ -14,7 +16,8 @@ class WarningExtension extends AbstractExtension
 {
     public function __construct(
         private readonly Security $security,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly TrackedCorporationRepository $trackedCorporationRepository
     ) {}
 
     public function getFunctions(): array
@@ -22,6 +25,7 @@ class WarningExtension extends AbstractExtension
         return [
             new TwigFunction('get_sso_warnings', [$this, 'getSsoWarnings']),
             new TwigFunction('get_fuel_warnings', [$this, 'getFuelWarnings']),
+            new TwigFunction('get_pending_corporations', [$this, 'getPendingCorporations']),
         ];
     }
 
@@ -43,6 +47,20 @@ class WarningExtension extends AbstractExtension
             'user' => $user,
             'tokenValid' => false,
         ]);
+    }
+
+    /**
+     * Corporations waiting for a CEO decision whether their structures are synced.
+     *
+     * @return TrackedCorporation[]
+     */
+    public function getPendingCorporations(): array
+    {
+        if (!$this->security->isGranted('ROLE_CEO')) {
+            return [];
+        }
+
+        return $this->trackedCorporationRepository->findBy(['status' => TrackedCorporation::STATUS_PENDING], ['discoveredAt' => 'ASC']);
     }
 
     /**
@@ -68,7 +86,8 @@ class WarningExtension extends AbstractExtension
                 $corpIds[] = (string)$char->getCorporationId();
             }
         }
-        $corpIds = array_values(array_unique($corpIds));
+        // Structures of corporations that are not active are outdated
+        $corpIds = array_values(array_intersect(array_unique($corpIds), $this->trackedCorporationRepository->findActiveIds()));
 
         if (empty($corpIds)) {
             return [];

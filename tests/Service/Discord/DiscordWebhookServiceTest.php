@@ -3,6 +3,7 @@
 namespace App\Tests\Service\Discord;
 
 use App\Entity\AppSetting;
+use App\Entity\TrackedCorporation;
 use App\Service\Discord\DiscordWebhookService;
 use App\Service\Discord\Model\DiscordMessage;
 use Doctrine\ORM\EntityManagerInterface;
@@ -106,6 +107,31 @@ class DiscordWebhookServiceTest extends TestCase
         $this->assertSame('...oken', $settings['discord_webhook_default']);
         $this->assertSame('https://wanderer.example', $settings['wanderer_api_url']);
         $this->assertNull($settings['discord_webhook_fuel']);
+    }
+
+    public function testForeignCorporationWithoutWebhookSendsNothing(): void
+    {
+        $httpClient = new MockHttpClient([new MockResponse('', ['http_code' => 204])]);
+        $corporation = new TrackedCorporation('98000002');
+
+        $this->assertFalse($this->_createService($httpClient)->sendForCorporation(DiscordMessage::create('<@&1>'), DiscordWebhookService::CHANNEL_FUEL, $corporation));
+        $this->assertSame(0, $httpClient->getRequestsCount());
+    }
+
+    public function testForeignCorporationUsesOwnWebhookAndPingRole(): void
+    {
+        $requestedUrls = [];
+        $requestBodies = [];
+        $httpClient = new MockHttpClient(function (string $method, string $url, array $options) use (&$requestedUrls, &$requestBodies) {
+            $requestedUrls[] = $url;
+            $requestBodies[] = json_decode($options['body'], true);
+            return new MockResponse('', ['http_code' => 204]);
+        });
+        $corporation = (new TrackedCorporation('98000002'))->setWebhookUrl(self::WEBHOOK_URL)->setPingRole('555');
+
+        $this->assertTrue($this->_createService($httpClient)->sendForCorporation(DiscordMessage::create('<@&1>'), DiscordWebhookService::CHANNEL_FUEL, $corporation));
+        $this->assertSame([self::WEBHOOK_URL], $requestedUrls);
+        $this->assertSame('<@&555>', $requestBodies[0]['content']);
     }
 
     /**

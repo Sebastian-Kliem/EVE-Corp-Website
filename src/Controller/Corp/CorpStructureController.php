@@ -7,6 +7,7 @@ use App\Entity\EveCorporationAsset;
 use App\Entity\EveCorporationStarbase;
 use App\Entity\EveCorporationStructure;
 use App\Entity\User;
+use App\Repository\TrackedCorporationRepository;
 use App\Service\Esi\EsiClient;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,7 +23,8 @@ class CorpStructureController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly SdeService $sdeService,
-        private readonly EsiClient $esiClient
+        private readonly EsiClient $esiClient,
+        private readonly TrackedCorporationRepository $trackedCorporationRepository
     ) {}
 
     #[Route('', name: 'app_corp_structures', methods: ['GET'])]
@@ -46,7 +48,15 @@ class CorpStructureController extends AbstractController
                 $corpIds[] = $corpId;
             }
         }
-        $corpIds = array_values(array_unique($corpIds));
+        // Only active corporations have current structure data
+        $activeCorpIds = $this->trackedCorporationRepository->findActiveIds();
+        $visibleCorpIds = [];
+        foreach (array_unique($corpIds) as $corpId) {
+            if (in_array((string)$corpId, $activeCorpIds, true)) {
+                $visibleCorpIds[] = $corpId;
+            }
+        }
+        $corpIds = $visibleCorpIds;
 
         $corpsData = [];
 

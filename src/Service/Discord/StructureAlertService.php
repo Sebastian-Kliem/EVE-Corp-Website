@@ -5,6 +5,7 @@ namespace App\Service\Discord;
 use App\Entity\DiscordNotificationLog;
 use App\Entity\EveCorporationStarbase;
 use App\Entity\EveCorporationStructure;
+use App\Entity\TrackedCorporation;
 use App\Service\Discord\Model\DiscordColor;
 use App\Service\Discord\Model\DiscordEmbed;
 use App\Service\Discord\Model\DiscordMessage;
@@ -22,6 +23,10 @@ class StructureAlertService
      */
     private const REFUEL_THRESHOLD_SECONDS = 21600; // 6 hours
 
+    // Tracking fields are always updated, but only structures with enabled alerts post to Discord
+    private bool $alertsEnabled = true;
+    private ?TrackedCorporation $corporation = null;
+
     public function __construct(
         private readonly DiscordWebhookService $discordWebhookService,
         private readonly EntityManagerInterface $entityManager
@@ -30,8 +35,10 @@ class StructureAlertService
     /**
      * Evaluates fuel status and state transitions for an Upwell structure.
      */
-    public function checkUpwellStructure(EveCorporationStructure $structure): void
+    public function checkUpwellStructure(EveCorporationStructure $structure, TrackedCorporation $corporation): void
     {
+        $this->alertsEnabled = $structure->isAlertsEnabled();
+        $this->corporation = $corporation;
         $now = new \DateTimeImmutable();
         $fuelExpires = $structure->getFuelExpires();
         $previousFuelExpires = $structure->getPreviousFuelExpires();
@@ -133,8 +140,10 @@ class StructureAlertService
     /**
      * Evaluates fuel and state for a Starbase (POS Control Tower).
      */
-    public function checkStarbase(EveCorporationStarbase $starbase): void
+    public function checkStarbase(EveCorporationStarbase $starbase, TrackedCorporation $corporation): void
     {
+        $this->alertsEnabled = $starbase->isAlertsEnabled();
+        $this->corporation = $corporation;
         $now = new \DateTimeImmutable();
         $currentState = $starbase->getState() ?? 'offline';
         $previousState = $starbase->getPreviousState();
@@ -320,7 +329,7 @@ class StructureAlertService
             ->setUsername('Structure Fuel Monitor')
             ->addEmbed($embed);
 
-        $sent = $this->discordWebhookService->send($message, DiscordWebhookService::CHANNEL_FUEL);
+        $sent = $this->_send($message, DiscordWebhookService::CHANNEL_FUEL);
 
         if ($sent) {
             $log = new DiscordNotificationLog();
@@ -376,7 +385,7 @@ class StructureAlertService
             ->setUsername('Structure Fuel Monitor')
             ->addEmbed($embed);
 
-        $sent = $this->discordWebhookService->send($message, DiscordWebhookService::CHANNEL_FUEL);
+        $sent = $this->_send($message, DiscordWebhookService::CHANNEL_FUEL);
 
         if ($sent) {
             $log = new DiscordNotificationLog();
@@ -423,7 +432,7 @@ class StructureAlertService
             ->setUsername('Structure Monitor')
             ->addEmbed($embed);
 
-        $sent = $this->discordWebhookService->send($message, DiscordWebhookService::CHANNEL_STRUCTURES);
+        $sent = $this->_send($message, DiscordWebhookService::CHANNEL_STRUCTURES);
 
         if ($sent) {
             $log = new DiscordNotificationLog();
@@ -440,5 +449,14 @@ class StructureAlertService
             ]);
             $this->entityManager->persist($log);
         }
+    }
+
+    private function _send(DiscordMessage $message, string $channel): bool
+    {
+        if (!$this->alertsEnabled || $this->corporation === null) {
+            return false;
+        }
+
+        return $this->discordWebhookService->sendForCorporation($message, $channel, $this->corporation);
     }
 }

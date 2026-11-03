@@ -4,6 +4,10 @@ namespace App\Service\Cron;
 
 use App\Entity\DiscordNotificationLog;
 use App\Entity\EveCharacter;
+use App\Entity\EveCorporationStarbase;
+use App\Entity\EveCorporationStructure;
+use App\Entity\TrackedCorporation;
+use App\Service\Corporation\CorporationTrackingService;
 use App\Service\Discord\DiscordWebhookService;
 use App\Service\Discord\StructureNotificationParser;
 use App\Service\Esi\CorporationAccessResolver;
@@ -11,6 +15,7 @@ use App\Service\Esi\EsiClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ObjectRepository;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Yaml\Yaml;
 
 class UpdateCorporationNotificationsTask implements CronTaskInterface
 {
@@ -47,6 +52,7 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         private readonly StructureNotificationParser $notificationParser,
         private readonly DiscordWebhookService $discordWebhookService,
         private readonly CorporationAccessResolver $corporationAccessResolver,
+        private readonly CorporationTrackingService $corporationTrackingService,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -59,11 +65,15 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
     {
         $charactersByCorp = $this->corporationAccessResolver->getCharactersByCorporation(self::NOTIFICATION_ROLES, self::NOTIFICATION_SCOPE);
 
-        $this->logger->info(sprintf('[Cron] Starting corporation notifications sync for %d corporations.', count($charactersByCorp)));
+        // Only corporations approved in the admin panel are checked
+        $activeCorporations = $this->corporationTrackingService->registerAndGetActive(array_keys($charactersByCorp));
+
+        $this->logger->info(sprintf('[Cron] Starting corporation notifications sync for %d of %d corporations.', count($activeCorporations), count($charactersByCorp)));
 
         $logRepo = $this->entityManager->getRepository(DiscordNotificationLog::class);
 
-        foreach ($charactersByCorp as $corpId => $characters) {
+        foreach ($activeCorporations as $corpId => $corporation) {
+            $characters = $charactersByCorp[$corpId];
             // First character that can read its notifications covers the corporation
             foreach ($characters as $character) {
                 $this->logger->info(sprintf(
@@ -86,7 +96,7 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
 
                     $dispatchedCount = 0;
                     foreach ($notifications as $notif) {
-                        $result = $this->_processNotification($notif, $character, $corpId, $logRepo);
+                        $result = $this->_processNotification($notif, $character, $corporation, $logRepo);
                         if ($result === self::RESULT_DISPATCHED) {
                             $dispatchedCount++;
                         } elseif ($result === self::RESULT_DELIVERY_FAILED) {
@@ -115,8 +125,9 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         $this->logger->info('[Cron] Finished corporation notifications sync execution.');
     }
 
-    private function _processNotification(array $notif, EveCharacter $director, int $corpId, ObjectRepository $logRepo): string
+    private function _processNotification(array $notif, EveCharacter $director, TrackedCorporation $corporation, ObjectRepository $logRepo): string
     {
+        $corpId = (int)$corporation->getId();
         $notifId = (string)($notif['notification_id'] ?? '');
         $type = $notif['type'] ?? '';
 
@@ -125,6 +136,10 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         }
 
         if (!$this->_isNotificationRecent($notif)) {
+            return self::RESULT_SKIPPED;
+        }
+
+        if (!$this->_hasAlertsEnabled($notif, $corpId)) {
             return self::RESULT_SKIPPED;
         }
 
@@ -143,8 +158,8 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
 
         // Without a webhook the notification is still logged so it is not re-processed later
         $sent = false;
-        if ($this->discordWebhookService->isConfigured($targetChannel)) {
-            $sent = $this->discordWebhookService->send($message, $targetChannel);
+        if ($this->discordWebhookService->isConfiguredForCorporation($corporation, $targetChannel)) {
+            $sent = $this->discordWebhookService->sendForCorporation($message, $targetChannel, $corporation);
             if (!$sent) {
                 $this->logger->warning(sprintf('[Cron] Discord delivery of notification %s (%s) failed, will retry on next run.', $notifId, $type));
                 return self::RESULT_DELIVERY_FAILED;
@@ -179,6 +194,59 @@ class UpdateCorporationNotificationsTask implements CronTaskInterface
         }
 
         return $sentDate >= new \DateTimeImmutable(sprintf('-%d hours', self::MAX_NOTIFICATION_AGE_HOURS));
+    }
+
+    /**
+     * Alerts are skipped only for known structures whose alerts were disabled in the admin panel.
+     */
+    private function _hasAlertsEnabled(array $notif, int $corpId): bool
+    {
+        $structures = $this->_findReferencedStructures($notif, $corpId);
+        if (empty($structures)) {
+            return true;
+        }
+
+        foreach ($structures as $structure) {
+            if ($structure->isAlertsEnabled()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Stored corporation structures a notification may refer to.
+     *
+     * @return array<int, EveCorporationStructure|EveCorporationStarbase>
+     */
+    private function _findReferencedStructures(array $notif, int $corpId): array
+    {
+        try {
+            $data = Yaml::parse((string)($notif['text'] ?? ''));
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (!is_array($data)) {
+            return [];
+        }
+
+        if (isset($data['structureID'])) {
+            $structure = $this->entityManager->getRepository(EveCorporationStructure::class)->find((string)$data['structureID']);
+            return $structure !== null ? [$structure] : [];
+        }
+
+        // Tower notifications carry no starbase ID, so towers of the same type in the same system match
+        if (str_starts_with((string)($notif['type'] ?? ''), 'Tower') && isset($data['solarSystemID'], $data['typeID'])) {
+            return $this->entityManager->getRepository(EveCorporationStarbase::class)->findBy([
+                'corporationId' => (string)$corpId,
+                'solarSystemId' => (int)$data['solarSystemID'],
+                'typeId' => (int)$data['typeID'],
+            ]);
+        }
+
+        return [];
     }
 
     private function _getTargetChannel(string $type): string
