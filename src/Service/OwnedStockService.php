@@ -77,7 +77,7 @@ class OwnedStockService
         $parentsByItemId = $this->_loadCharacterParents($characters, $assets);
 
         foreach ($assets as $asset) {
-            if ($this->_isExcludedFlag($asset->getLocationFlag())) {
+            if ($this->_isExcludedFlag($asset->getLocationFlag()) || $this->_isAssembledShip((int)$asset->getTypeId(), $asset->isSingleton())) {
                 continue;
             }
 
@@ -253,7 +253,7 @@ class OwnedStockService
     }
 
     /**
-     * Walks a corp asset and everything nested in it, ships are counted but not opened.
+     * Walks a corp asset and everything nested in it, packaged ships are counted, ships are never opened.
      *
      * @param string[] $containerNames
      * @param array<int, array<int, EveCorporationAsset>> $nested
@@ -268,7 +268,7 @@ class OwnedStockService
             return;
         }
 
-        if (isset($wantedTypeIds[$asset->getTypeId()])) {
+        if (isset($wantedTypeIds[$asset->getTypeId()]) && !$this->_isAssembledShip((int)$asset->getTypeId(), $asset->isSingleton())) {
             $entries[] = $this->_buildEntry(
                 (int)$asset->getTypeId(),
                 $resolvedLocation,
@@ -374,6 +374,12 @@ class OwnedStockService
         }
 
         return false;
+    }
+
+    // Assembled ships are in use, only packaged ships count as stock
+    private function _isAssembledShip(int $typeId, bool $isSingleton): bool
+    {
+        return $isSingleton && $this->sdeService->isShip($typeId);
     }
 
     private function _containerName(int $typeId, ?string $customName): string
