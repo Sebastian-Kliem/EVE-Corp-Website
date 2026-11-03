@@ -43,6 +43,29 @@
         </div>
     {% endfor %}
 
+    <!-- Short role overview for officers assigning roles -->
+    <details class="bg-eve-card border border-eve-border rounded-lg mt-6 text-xs text-eve-text">
+        <summary class="cursor-pointer select-none px-4 py-3 font-semibold text-eve-muted hover:text-eve-primary transition-colors">Welche Rolle darf was?</summary>
+        <div class="px-4 pb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="border border-amber-500/30 bg-amber-500/5 rounded p-3">
+                <p class="font-semibold text-amber-400 mb-1">Rekrut</p>
+                <p class="text-eve-muted">Neu registriert, noch nicht freigeschaltet. Sieht nur die Startseite und kann sein Passwort ändern. Für Bewerber oder unbekannte Accounts.</p>
+            </div>
+            <div class="border border-emerald-500/30 bg-emerald-500/5 rounded p-3">
+                <p class="font-semibold text-emerald-400 mb-1">Mitglied</p>
+                <p class="text-eve-muted">Normale Rolle für Corp-Mitglieder. Zugriff auf alle Tools: Charaktere, Industrie, Wallet, Corp-Seiten, Bestellungen, Vorschläge. <strong class="text-eve-text">Die richtige Wahl für neue Mitglieder.</strong></p>
+            </div>
+            <div class="border border-sky-500/30 bg-sky-500/5 rounded p-3">
+                <p class="font-semibold text-sky-400 mb-1">Officer</p>
+                <p class="text-eve-muted">Wie Mitglied, zusätzlich: Benutzer zwischen Rekrut und Mitglied schalten, deren Passwörter zurücksetzen, Linksammlung und Verteidigungsdoktrin pflegen, alle Bestellungen verwalten.</p>
+            </div>
+            <div class="border border-eve-primary/20 bg-eve-primary/5 rounded p-3">
+                <p class="font-semibold text-eve-primary mb-1">CEO</p>
+                <p class="text-eve-muted">Volle Verwaltung: vergibt auch Officer- und CEO-Rechte, verwaltet Corporations, Hangar-Sichtbarkeit, Cron-Jobs, Discord-Webhooks und Wanderer-Integration.</p>
+            </div>
+        </div>
+    </details>
+
     <!-- User Table inside a Glassmorphism box -->
     <div class="bg-eve-card border border-eve-border shadow-eve p-0 mt-8 rounded-lg overflow-x-auto">
         <table class="w-full border-collapse text-left bg-transparent text-eve-text mb-0">
