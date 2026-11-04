@@ -64,9 +64,6 @@ class CorpOrder
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $note = null;
 
-    #[ORM\Column(type: Types::BIGINT, nullable: true)]
-    private ?string $contractId = null;
-
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -219,17 +216,6 @@ class CorpOrder
     public function setNote(?string $note): static
     {
         $this->note = $note;
-        return $this;
-    }
-
-    public function getContractId(): ?string
-    {
-        return $this->contractId;
-    }
-
-    public function setContractId(?string $contractId): static
-    {
-        $this->contractId = $contractId;
         return $this;
     }
 

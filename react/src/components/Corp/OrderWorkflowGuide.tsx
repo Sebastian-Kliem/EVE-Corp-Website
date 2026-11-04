@@ -15,8 +15,8 @@ export default function OrderWorkflowGuide() {
                         i
                     </div>
                     <div>
-                        <h4 className="text-sm font-semibold text-white">Anleitung: Bestellungen & Ingame-Vertragsabwicklung</h4>
-                        <p className="text-xs text-eve-muted">So funktioniert das Bestellen, Einkaufen und automatische Erfassen via EVE-Online Verträgen</p>
+                        <h4 className="text-sm font-semibold text-white">Anleitung: Bestellungen, Lieferung & Empfang</h4>
+                        <p className="text-xs text-eve-muted">So funktioniert das Bestellen, Übernehmen, Liefern und Archivieren</p>
                     </div>
                 </div>
                 <div className={`text-eve-primary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
@@ -45,27 +45,27 @@ export default function OrderWorkflowGuide() {
                                 <span className="font-semibold text-white">Auftrag annehmen & Multibuy</span>
                             </div>
                             <p className="text-eve-muted leading-relaxed">
-                                Der Erfüller klickt auf <strong className="text-eve-primary">"Bestellung annehmen"</strong> (Auftrag geht auf "In Bearbeitung" und bleibt aktiv), kopiert die Liste mit <strong className="text-eve-primary">"Multibuy kopieren"</strong> und kauft in Jita 4-4 ein.
+                                Lieferanten übernehmen einzelne Posten, auf Wunsch nur eine Teilmenge (z. B. 10 von 30), oder alle offenen Posten auf einmal. Mit <strong className="text-eve-primary">"Multibuy kopieren"</strong> geht es zum Einkauf nach Jita 4-4.
                             </p>
                         </div>
 
                         <div className="p-3.5 rounded-lg border border-eve-border/40 bg-eve-card/60 flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-eve-primary/20 text-eve-primary font-bold flex items-center justify-center text-[10px]">3</span>
-                                <span className="font-semibold text-white">Vertrag in EVE</span>
+                                <span className="font-semibold text-white">Lieferstatus & Vertrag</span>
                             </div>
                             <p className="text-eve-muted leading-relaxed">
-                                Erstelle einen Item Exchange Vertrag in EVE. Nutze die 1-Klick Kopierbuttons für Betrag, Empfänger und Betreff (z. B. <strong className="text-eve-primary">"WH-Order #42"</strong>).
+                                Im Tab <strong className="text-eve-primary">"Meine Lieferungen"</strong> pflegst du pro Posten den Status (Kaufauftrag erstellt, wird hergestellt, geliefert). Für den Item Exchange Vertrag gibt es Kopierbuttons für Betrag, Empfänger und Titel.
                             </p>
                         </div>
 
                         <div className="p-3.5 rounded-lg border border-eve-border/40 bg-eve-card/60 flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px]">4</span>
-                                <span className="font-semibold text-white">Auto-Sync & Abschluss</span>
+                                <span className="font-semibold text-white">Empfang & Archiv</span>
                             </div>
                             <p className="text-eve-muted leading-relaxed">
-                                Das System matcht den Vertrag automatisch. Der Besteller kann ihn mit <strong className="text-eve-primary">"Im EVE-Client öffnen"</strong> direkt im Spiel annehmen.
+                                Der Besteller bestätigt, welche Posten er <strong className="text-eve-primary">erhalten</strong> hat. Ist alles da, archiviert er die Bestellung (Offiziere können ebenfalls archivieren).
                             </p>
                         </div>
                     </div>

@@ -11,6 +11,26 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'corp_order_items')]
 class CorpOrderItem
 {
+    public const DELIVERY_ACCEPTED = 'ACCEPTED';
+    public const DELIVERY_BUY_ORDER_PLACED = 'BUY_ORDER_PLACED';
+    public const DELIVERY_MANUFACTURING = 'MANUFACTURING';
+    public const DELIVERY_DELIVERED = 'DELIVERED';
+    public const DELIVERY_RECEIVED = 'RECEIVED';
+
+    public const DELIVERY_STATUSES = [
+        self::DELIVERY_ACCEPTED,
+        self::DELIVERY_BUY_ORDER_PLACED,
+        self::DELIVERY_MANUFACTURING,
+        self::DELIVERY_DELIVERED,
+        self::DELIVERY_RECEIVED,
+    ];
+
+    // Intermediate steps only make sense for BUY orders, SELL items are already on site
+    public const BUY_ONLY_DELIVERY_STATUSES = [
+        self::DELIVERY_BUY_ORDER_PLACED,
+        self::DELIVERY_MANUFACTURING,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -56,6 +76,13 @@ class CorpOrderItem
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $fulfilledAt = null;
+
+    // null = open, otherwise one of DELIVERY_STATUSES
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $deliveryStatus = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $deliveredAt = null;
 
     public function getId(): ?int
     {
@@ -179,6 +206,13 @@ class CorpOrderItem
 
     public function setIsFulfilled(bool $isFulfilled): static
     {
+        if ($isFulfilled && $this->deliveryStatus === null) {
+            $this->deliveryStatus = self::DELIVERY_ACCEPTED;
+        } elseif (!$isFulfilled) {
+            $this->deliveryStatus = null;
+            $this->deliveredAt = null;
+        }
+
         $this->isFulfilled = $isFulfilled;
         if ($isFulfilled && $this->fulfilledAt === null) {
             $this->fulfilledAt = new \DateTimeImmutable();
@@ -186,6 +220,42 @@ class CorpOrderItem
             $this->fulfilledAt = null;
         }
         return $this;
+    }
+
+    public function getDeliveryStatus(): ?string
+    {
+        return $this->deliveryStatus;
+    }
+
+    /**
+     * Sets the delivery status and keeps isFulfilled (taken by a supplier) in sync.
+     */
+    public function setDeliveryStatus(?string $deliveryStatus): static
+    {
+        $this->deliveryStatus = $deliveryStatus;
+        $this->setIsFulfilled($deliveryStatus !== null);
+
+        if ($this->isDelivered() && $this->deliveredAt === null) {
+            $this->deliveredAt = new \DateTimeImmutable();
+        } elseif (!$this->isDelivered()) {
+            $this->deliveredAt = null;
+        }
+        return $this;
+    }
+
+    public function isDelivered(): bool
+    {
+        return $this->deliveryStatus === self::DELIVERY_DELIVERED || $this->deliveryStatus === self::DELIVERY_RECEIVED;
+    }
+
+    public function isReceived(): bool
+    {
+        return $this->deliveryStatus === self::DELIVERY_RECEIVED;
+    }
+
+    public function getDeliveredAt(): ?\DateTimeImmutable
+    {
+        return $this->deliveredAt;
     }
 
     public function getFulfiller(): ?User

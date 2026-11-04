@@ -6,6 +6,8 @@ import { formatThousands } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import OrderAmountsList from './OrderAmountsList';
+import OrderProgress from './OrderProgress';
+import { DeliveryStatus, DELIVERY_STATUS_LABELS, DELIVERY_STATUS_STYLES, getCustomerStatus, hasOpenOwnDelivery, isDelivered } from './deliveryStatus';
 
 export interface OrderItem {
     id: number;
@@ -24,6 +26,8 @@ export interface OrderItem {
         displayName: string;
     } | null;
     fulfilledAt: string | null;
+    deliveryStatus: DeliveryStatus | null;
+    deliveredAt: string | null;
 }
 
 export interface Order {
@@ -37,7 +41,6 @@ export interface Order {
     totalPrice: number;
     totalVolume: number;
     note: string;
-    contractId: string | null;
     createdAt: string;
     updatedAt: string;
     fulfilledAt: string | null;
@@ -55,8 +58,11 @@ export interface Order {
     }[];
     items: OrderItem[];
     fulfilledItemCount: number;
+    deliveredItemCount: number;
+    receivedItemCount: number;
     totalItemCount: number;
     isFullyFulfilled: boolean;
+    isFullyReceived: boolean;
 }
 
 // Current Jita value of an open order, loaded after the page as it needs ESI requests
@@ -112,6 +118,8 @@ export default function OrderListManager({
     const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
     const [itemLoadingId, setItemLoadingId] = useState<number | null>(null);
     const [livePrices, setLivePrices] = useState<Record<number, LivePrice>>({});
+    // Partial amount per open item the current user wants to take
+    const [takeAmounts, setTakeAmounts] = useState<Record<number, number>>({});
 
     const loadLivePrices = useCallback(() => {
         fetch('/api/orders/live-prices')
@@ -149,9 +157,8 @@ export default function OrderListManager({
             if (!currentUserId) {
                 return order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0;
             }
-            const isFulfiller = order.fulfiller?.id === currentUserId;
-            const hasFulfilledItem = order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId);
-            return isFulfiller || hasFulfilledItem;
+            // Order leaves the tab once all own items are delivered
+            return hasOpenOwnDelivery(order, currentUserId);
         });
     }, [buyOrders, sellOrders, currentUserId]);
 
@@ -188,12 +195,12 @@ export default function OrderListManager({
         showFeedbackMessage(`Bestellung #${newOrder.id} "${newOrder.title}" erfolgreich aufgegeben!`);
     };
 
-    const handleFulfillItem = (itemId: number, currentStatus: boolean) => {
+    const handleFulfillItem = (itemId: number, currentStatus: boolean, amount?: number) => {
         setItemLoadingId(itemId);
         fetch(`/api/orders/items/${itemId}/fulfill`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: !currentStatus }),
+            body: JSON.stringify(amount !== undefined ? { status: !currentStatus, amount } : { status: !currentStatus }),
         })
             .then(async res => {
                 if (!res.ok) {
@@ -204,9 +211,14 @@ export default function OrderListManager({
             })
             .then(data => {
                 updateOrderInState(data.order);
+                setTakeAmounts(prev => {
+                    const next = { ...prev };
+                    delete next[itemId];
+                    return next;
+                });
                 showFeedbackMessage(
                     !currentStatus
-                        ? 'Position als erfüllt markiert.'
+                        ? 'Position übernommen.'
                         : 'Position wieder freigegeben.'
                 );
             })
@@ -215,6 +227,58 @@ export default function OrderListManager({
             })
             .finally(() => {
                 setItemLoadingId(null);
+            });
+    };
+
+    const handleSetItemDeliveryStatus = (itemId: number, status: DeliveryStatus) => {
+        setItemLoadingId(itemId);
+        fetch(`/api/orders/items/${itemId}/delivery-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Setzen des Lieferstatus.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                updateOrderInState(data.order);
+                showFeedbackMessage(`Lieferstatus: ${DELIVERY_STATUS_LABELS[status]}.`);
+            })
+            .catch(err => {
+                alert(err.message || 'Fehler beim Setzen des Lieferstatus.');
+            })
+            .finally(() => {
+                setItemLoadingId(null);
+            });
+    };
+
+    const handleSetOrderDeliveryStatus = (orderId: number, status: DeliveryStatus) => {
+        setActionLoadingId(orderId);
+        fetch(`/api/orders/${orderId}/delivery-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+        })
+            .then(async res => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => null);
+                    throw new Error(data?.error || data?.message || 'Fehler beim Setzen des Lieferstatus.');
+                }
+                return res.json();
+            })
+            .then(data => {
+                updateOrderInState(data.order);
+                showFeedbackMessage(`${data.changedCount} Posten auf "${DELIVERY_STATUS_LABELS[status]}" gesetzt.`);
+            })
+            .catch(err => {
+                alert(err.message || 'Fehler beim Setzen des Lieferstatus.');
+            })
+            .finally(() => {
+                setActionLoadingId(null);
             });
     };
 
@@ -270,9 +334,13 @@ export default function OrderListManager({
             });
     };
 
-    const handleCompleteOrder = (orderId: number) => {
-        if (!confirm('Möchtest du diese Bestellung wirklich als erledigt abschließen? Sie wird ins Archiv verschoben.')) return;
+    const handleCompleteOrder = (order: Order) => {
+        const question = order.isFullyReceived
+            ? 'Bestellung archivieren? Sie wird ins Archiv verschoben.'
+            : `Erst ${order.receivedItemCount} von ${order.totalItemCount} Posten sind als erhalten markiert. Trotzdem archivieren?`;
+        if (!confirm(question)) return;
 
+        const orderId = order.id;
         setActionLoadingId(orderId);
         fetch(`/api/orders/${orderId}/complete`, {
             method: 'POST',
@@ -281,16 +349,16 @@ export default function OrderListManager({
             .then(async res => {
                 if (!res.ok) {
                     const data = await res.json().catch(() => null);
-                    throw new Error(data?.error || data?.message || 'Fehler beim Abschließen der Bestellung.');
+                    throw new Error(data?.error || data?.message || 'Fehler beim Archivieren der Bestellung.');
                 }
                 return res.json();
             })
             .then(data => {
                 updateOrderInState(data.order);
-                showFeedbackMessage('Bestellung vollständig abgeschlossen und archiviert.');
+                showFeedbackMessage('Bestellung archiviert.');
             })
             .catch(err => {
-                alert(err.message || 'Fehler beim Abschließen.');
+                alert(err.message || 'Fehler beim Archivieren.');
             })
             .finally(() => {
                 setActionLoadingId(null);
@@ -346,24 +414,6 @@ export default function OrderListManager({
             })
             .finally(() => {
                 setActionLoadingId(null);
-            });
-    };
-
-    const handleOpenInGame = (orderId: number) => {
-        fetch(`/api/orders/${orderId}/open-in-game`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    showFeedbackMessage('Vertragsfenster im EVE-Client geöffnet.');
-                }
-            })
-            .catch(err => {
-                alert('Fehler beim Senden des ESI UI-Befehls: ' + err.message);
             });
     };
 
@@ -613,17 +663,16 @@ export default function OrderListManager({
                     orders={myDeliveries}
                     currentUserId={currentUserId}
                     ownedStock={ownedStock}
-                    isOfficer={isOfficer}
                     onCopyUser={handleCopyUser}
                     onCopyAmount={handleCopyAmount}
                     onCopyTitle={handleCopyTitle}
                     onCopyMultibuy={handleCopyMultibuy}
                     onCopyItemName={handleCopyItemName}
-                    onOpenInGame={handleOpenInGame}
                     onOpenMarketItem={handleOpenMarketItem}
-                    onCompleteOrder={handleCompleteOrder}
                     onUnacceptOrder={handleUnacceptOrder}
                     onFulfillItem={handleFulfillItem}
+                    onSetItemDeliveryStatus={handleSetItemDeliveryStatus}
+                    onSetOrderDeliveryStatus={handleSetOrderDeliveryStatus}
                     onGoToActiveOrders={() => setViewMode('active')}
                     actionLoadingId={actionLoadingId}
                     itemLoadingId={itemLoadingId}
@@ -636,8 +685,9 @@ export default function OrderListManager({
                 <div className="flex flex-col gap-4">
                     {filteredOrders.map(order => {
                         const isExpanded = expandedOrderIds.includes(order.id);
-                        const progressPercent = order.totalItemCount > 0 ? (order.fulfilledItemCount / order.totalItemCount) * 100 : 0;
+                        const isActiveOrder = order.status !== 'CANCELLED' && order.status !== 'FULFILLED';
                         const canManageOrder = isOfficer || (currentUserId && order.user.id === currentUserId);
+                        const hasUnreceivedTakenItems = order.items.some(i => i.isFulfilled && i.deliveryStatus !== 'RECEIVED');
 
                         return (
                             <div
@@ -670,6 +720,11 @@ export default function OrderListManager({
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="text-sm font-bold text-white">{order.title}</h3>
                                                 {getStatusBadge(order.status)}
+                                                {isActiveOrder && order.isFullyReceived && (
+                                                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-emerald-500/20 text-emerald-200 border-emerald-500/50">
+                                                        Vollständig erhalten, bereit zum Archivieren
+                                                    </span>
+                                                )}
                                                 {order.fulfillers && order.fulfillers.length > 0 ? (
                                                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-blue-500/15 text-blue-300 border-blue-500/30">
                                                         Wird bedient von: {order.fulfillers.map(f => f.displayName).join(', ')}
@@ -697,20 +752,7 @@ export default function OrderListManager({
 
                                     {/* Progress & Stats */}
                                     <div className="flex flex-wrap items-center gap-6">
-                                        <div className="min-w-[120px]">
-                                            <div className="flex justify-between text-[10px] text-eve-muted mb-1">
-                                                <span>Erfüllt:</span>
-                                                <span className="font-semibold text-slate-300">
-                                                    {order.fulfilledItemCount} / {order.totalItemCount} Posten
-                                                </span>
-                                            </div>
-                                            <div className="w-full bg-black/50 rounded-full h-1.5 overflow-hidden border border-white/10">
-                                                <div
-                                                    className={`h-full transition-all duration-300 ${progressPercent === 100 ? 'bg-emerald-400' : 'bg-eve-primary'}`}
-                                                    style={{ width: `${progressPercent}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
+                                        <OrderProgress order={order} />
 
                                         <div className="text-right">
                                             <span className="text-[10px] text-eve-muted block">Gesamtwert ({order.percentToJita}%):</span>
@@ -765,16 +807,6 @@ export default function OrderListManager({
                                                 </div>
 
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    {order.contractId && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleOpenInGame(order.id)}
-                                                            className="px-3 py-1 rounded bg-eve-primary/15 border border-eve-primary/50 text-eve-primary hover:brightness-115 cursor-pointer font-semibold"
-                                                        >
-                                                            Im EVE-Client öffnen
-                                                        </button>
-                                                    )}
-
                                                     {/* Mass Button: Take all remaining open positions at once */}
                                                     {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && order.fulfilledItemCount < order.totalItemCount && (
                                                         <button
@@ -788,20 +820,33 @@ export default function OrderListManager({
                                                         </button>
                                                     )}
 
-                                                    {/* Completion: Creator, fulfiller or officer can complete order */}
-                                                    {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (order.status === 'IN_PROGRESS' || order.fulfilledItemCount > 0) && (
-                                                        canManageOrder ||
-                                                        (order.fulfiller && currentUserId === order.fulfiller.id) ||
-                                                        (currentUserId && order.items.some(i => i.isFulfilled && i.fulfiller?.id === currentUserId))
-                                                    ) && (
+                                                    {/* Receipt: customer confirms all taken items at once */}
+                                                    {isActiveOrder && canManageOrder && hasUnreceivedTakenItems && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleCompleteOrder(order.id)}
+                                                            onClick={() => handleSetOrderDeliveryStatus(order.id, 'RECEIVED')}
                                                             disabled={actionLoadingId === order.id}
-                                                            className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                                                            title="Schließt die gesamte Bestellung ab und archiviert sie"
+                                                            className="px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer font-semibold"
+                                                            title="Bestätigt den Empfang aller übernommenen Posten"
                                                         >
-                                                            Bestellung abschließen
+                                                            Alle übernommenen Posten erhalten
+                                                        </button>
+                                                    )}
+
+                                                    {/* Archive: only the customer or officers */}
+                                                    {isActiveOrder && canManageOrder && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCompleteOrder(order)}
+                                                            disabled={actionLoadingId === order.id}
+                                                            className={`px-3 py-1 rounded cursor-pointer font-semibold ${
+                                                                order.isFullyReceived
+                                                                    ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                                                    : 'bg-[#0a0f1d] border border-white/10 text-slate-300 hover:text-white hover:bg-white/5'
+                                                            }`}
+                                                            title="Verschiebt die Bestellung ins Archiv"
+                                                        >
+                                                            Archivieren
                                                         </button>
                                                     )}
 
@@ -866,8 +911,8 @@ export default function OrderListManager({
                                                         <th className="p-2.5 text-right">Volumen</th>
                                                         <th className="p-2.5 text-right">Stückpreis (vereinbart)</th>
                                                         <th className="p-2.5 text-right">Gesamt (ISK)</th>
-                                                        <th className="p-2.5 text-center">Status / Erfüller</th>
-                                                        {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (
+                                                        <th className="p-2.5 text-center">Status / Lieferant</th>
+                                                        {isActiveOrder && (
                                                             <th className="p-2.5 text-center">Aktion</th>
                                                         )}
                                                     </tr>
@@ -875,7 +920,9 @@ export default function OrderListManager({
                                                 <tbody className="divide-y divide-white/5 bg-black/20">
                                                     {order.items.map(item => {
                                                         const isItemFulfiller = currentUserId && item.fulfiller?.id === currentUserId;
-                                                        const canReleaseItem = canManageOrder || isItemFulfiller;
+                                                        const canReleaseItem = (canManageOrder || isItemFulfiller) && !isDelivered(item);
+                                                        const customerStatus = getCustomerStatus(item);
+                                                        const takeAmount = takeAmounts[item.id] ?? item.amount;
 
                                                         return (
                                                             <tr key={item.id} className={`hover:bg-white/5 transition-colors ${item.isFulfilled ? 'bg-emerald-950/10' : ''}`}>
@@ -932,12 +979,9 @@ export default function OrderListManager({
                                                                     {formatThousands(item.totalPrice)}
                                                                 </td>
                                                                 <td className="p-2 text-center">
-                                                                    {item.isFulfilled ? (
-                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                                <polyline points="20 6 9 17 4 12"></polyline>
-                                                                            </svg>
-                                                                            Erfüllt {item.fulfiller ? `(${item.fulfiller.displayName})` : ''}
+                                                                    {customerStatus ? (
+                                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${DELIVERY_STATUS_STYLES[customerStatus]}`}>
+                                                                            {DELIVERY_STATUS_LABELS[customerStatus]} {item.fulfiller ? `(${item.fulfiller.displayName})` : ''}
                                                                         </span>
                                                                     ) : (
                                                                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 border border-white/10 text-eve-muted">
@@ -945,17 +989,63 @@ export default function OrderListManager({
                                                                         </span>
                                                                     )}
                                                                 </td>
-                                                                {order.status !== 'CANCELLED' && order.status !== 'FULFILLED' && (
+                                                                {isActiveOrder && (
                                                                     <td className="p-2 text-center">
                                                                         {!item.isFulfilled ? (
+                                                                            <div className="inline-flex items-center gap-1.5">
+                                                                                {item.amount > 1 && (
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        min={1}
+                                                                                        max={item.amount}
+                                                                                        value={takeAmount}
+                                                                                        onChange={(e) => setTakeAmounts(prev => ({ ...prev, [item.id]: Math.min(item.amount, Math.max(1, parseInt(e.target.value, 10) || 1)) }))}
+                                                                                        className="w-20 rounded px-1.5 py-0.5 text-[11px] text-right font-mono border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
+                                                                                        title="Menge, die du übernimmst (Rest bleibt offen)"
+                                                                                    />
+                                                                                )}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleFulfillItem(item.id, item.isFulfilled, takeAmount < item.amount ? takeAmount : undefined)}
+                                                                                    disabled={itemLoadingId === item.id}
+                                                                                    className="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer disabled:opacity-50"
+                                                                                    title="Diesen Posten (oder die eingegebene Teilmenge) übernehmen"
+                                                                                >
+                                                                                    {itemLoadingId === item.id ? '...' : 'Annehmen'}
+                                                                                </button>
+                                                                            </div>
+                                                                        ) : canManageOrder && item.deliveryStatus !== 'RECEIVED' ? (
+                                                                            <div className="inline-flex items-center gap-1.5">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleSetItemDeliveryStatus(item.id, 'RECEIVED')}
+                                                                                    disabled={itemLoadingId === item.id}
+                                                                                    className="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer disabled:opacity-50"
+                                                                                    title="Empfang dieses Postens bestätigen"
+                                                                                >
+                                                                                    {itemLoadingId === item.id ? '...' : 'Erhalten'}
+                                                                                </button>
+                                                                                {canReleaseItem && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleFulfillItem(item.id, item.isFulfilled)}
+                                                                                        disabled={itemLoadingId === item.id}
+                                                                                        className="px-2.5 py-1 rounded text-[11px] font-medium bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer disabled:opacity-50"
+                                                                                        title="Diesen Posten wieder freigeben"
+                                                                                    >
+                                                                                        Freigeben
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : canManageOrder ? (
                                                                             <button
                                                                                 type="button"
-                                                                                onClick={() => handleFulfillItem(item.id, item.isFulfilled)}
+                                                                                onClick={() => handleSetItemDeliveryStatus(item.id, 'DELIVERED')}
                                                                                 disabled={itemLoadingId === item.id}
-                                                                                className="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer disabled:opacity-50"
-                                                                                title="Diesen Posten annehmen / erfüllen"
+                                                                                className="px-2.5 py-1 rounded text-[11px] font-medium bg-black/40 border border-white/20 text-slate-300 hover:text-white hover:border-white/40 cursor-pointer disabled:opacity-50"
+                                                                                title="Empfangsbestätigung zurücknehmen"
                                                                             >
-                                                                                {itemLoadingId === item.id ? '...' : 'Annehmen'}
+                                                                                {itemLoadingId === item.id ? '...' : 'Nicht erhalten'}
                                                                             </button>
                                                                         ) : canReleaseItem ? (
                                                                             <button

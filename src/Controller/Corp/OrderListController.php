@@ -25,8 +25,6 @@ final class OrderListController extends AbstractController
         OrderService $orderService,
         OwnedStockService $ownedStockService
     ): Response {
-        $orderService->syncContractsWithOrders();
-
         $activeBuyOrders = $orderRepository->findActiveOrders(CorpOrder::TYPE_BUY);
         $activeSellOrders = $orderRepository->findActiveOrders(CorpOrder::TYPE_SELL);
         $archivedBuyOrders = $orderRepository->findArchivedOrders(CorpOrder::TYPE_BUY);

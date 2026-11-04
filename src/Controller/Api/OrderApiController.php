@@ -38,9 +38,6 @@ class OrderApiController extends AbstractController
         $type = strtoupper($request->query->get('type', CorpOrder::TYPE_BUY));
         $archived = filter_var($request->query->get('archived', false), FILTER_VALIDATE_BOOLEAN);
 
-        // Sync contracts with orders before listing
-        $this->orderService->syncContractsWithOrders();
-
         if ($archived) {
             $orders = $this->orderRepository->findArchivedOrders($type);
         } else {
@@ -158,21 +155,93 @@ class OrderApiController extends AbstractController
             return new JsonResponse(['error' => 'Position nicht gefunden.'], Response::HTTP_NOT_FOUND);
         }
 
+        $order = $item->getOrder();
+        if ($order->getStatus() === CorpOrder::STATUS_FULFILLED || $order->getStatus() === CorpOrder::STATUS_CANCELLED) {
+            return new JsonResponse(['error' => 'Dieser Auftrag ist bereits archiviert oder storniert.'], Response::HTTP_BAD_REQUEST);
+        }
+
         $body = json_decode($request->getContent(), true);
         $status = filter_var($body['status'] ?? !$item->isFulfilled(), FILTER_VALIDATE_BOOLEAN);
+        $amount = isset($body['amount']) ? (int)$body['amount'] : null;
+
+        if ($status && $item->isFulfilled()) {
+            return new JsonResponse(['error' => 'Diese Position wurde bereits übernommen.'], Response::HTTP_BAD_REQUEST);
+        }
+        if ($status && $amount !== null && ($amount < 1 || $amount > $item->getAmount())) {
+            return new JsonResponse(['error' => sprintf('Die Menge muss zwischen 1 und %d liegen.', $item->getAmount())], Response::HTTP_BAD_REQUEST);
+        }
 
         if (!$status && $item->isFulfilled()) {
             $isFulfiller = $item->getFulfiller() === $user;
-            $isOrderCreator = $item->getOrder() && $item->getOrder()->getUser() === $user;
+            $isOrderCreator = $order->getUser() === $user;
             if (!$isFulfiller && !$isOrderCreator && !$this->isGranted('ROLE_OFFICER')) {
                 return new JsonResponse(['error' => 'Nur der Erfüller, Ersteller oder Offiziere können diese Position freigeben.'], Response::HTTP_FORBIDDEN);
             }
+            if ($item->isDelivered()) {
+                return new JsonResponse(['error' => 'Gelieferte Positionen können nicht freigegeben werden. Setze zuerst den Lieferstatus zurück.'], Response::HTTP_BAD_REQUEST);
+            }
         }
 
-        $order = $this->orderService->fulfillItem($item, $user, $status);
+        $order = $this->orderService->fulfillItem($item, $user, $status, $amount);
 
         return new JsonResponse([
             'success' => true,
+            'order' => $this->orderService->formatOrderForApi($order),
+        ]);
+    }
+
+    #[Route('/items/{id}/delivery-status', name: 'api_orders_item_delivery_status', methods: ['POST'])]
+    public function itemDeliveryStatus(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $item = $this->itemRepository->find($id);
+        if (!$item) {
+            return new JsonResponse(['error' => 'Position nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $body = json_decode($request->getContent(), true);
+        $status = strtoupper((string)($body['status'] ?? ''));
+
+        if (!$this->orderService->canChangeDeliveryStatus($item, $user, $status, $this->isGranted('ROLE_OFFICER'))) {
+            return new JsonResponse(['error' => 'Du kannst den Lieferstatus dieser Position nicht auf diesen Wert setzen.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $order = $this->orderService->setItemDeliveryStatus($item, $status);
+
+        return new JsonResponse([
+            'success' => true,
+            'order' => $this->orderService->formatOrderForApi($order),
+        ]);
+    }
+
+    #[Route('/{id}/delivery-status', name: 'api_orders_delivery_status', methods: ['POST'])]
+    public function orderDeliveryStatus(int $id, Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $order = $this->orderRepository->find($id);
+        if (!$order) {
+            return new JsonResponse(['error' => 'Bestellung nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $body = json_decode($request->getContent(), true);
+        $status = strtoupper((string)($body['status'] ?? ''));
+
+        $changedCount = $this->orderService->setOrderDeliveryStatus($order, $user, $status, $this->isGranted('ROLE_OFFICER'));
+        if ($changedCount === 0) {
+            return new JsonResponse(['error' => 'Keine Position, deren Lieferstatus du auf diesen Wert setzen kannst.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse([
+            'success' => true,
+            'changedCount' => $changedCount,
             'order' => $this->orderService->formatOrderForApi($order),
         ]);
     }
@@ -255,7 +324,6 @@ class OrderApiController extends AbstractController
     }
 
     #[Route('/{id}/complete', name: 'api_orders_complete', methods: ['POST'])]
-    #[Route('/{id}/fulfill-all', name: 'api_orders_fulfill_all', methods: ['POST'])]
     public function complete(int $id): JsonResponse
     {
         $user = $this->getUser();
@@ -272,24 +340,16 @@ class OrderApiController extends AbstractController
             return new JsonResponse(['error' => 'Dieser Auftrag ist bereits archiviert.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $userHasFulfilledItems = false;
-        foreach ($order->getItems() as $item) {
-            if ($item->isFulfilled() && $item->getFulfiller() === $user) {
-                $userHasFulfilledItems = true;
-                break;
-            }
+        // Only the customer can confirm everything arrived, officers may archive to clean up
+        if ($order->getUser() !== $user && !$this->isGranted('ROLE_OFFICER')) {
+            return new JsonResponse(['error' => 'Nur der Besteller oder Offiziere können diese Bestellung archivieren.'], Response::HTTP_FORBIDDEN);
         }
 
-        // Order can be completed by creator, fulfiller, someone who fulfilled items, or officer
-        if ($order->getUser() !== $user && $order->getFulfiller() !== $user && !$userHasFulfilledItems && !$this->isGranted('ROLE_OFFICER')) {
-            return new JsonResponse(['error' => 'Keine Berechtigung zum Abschließen dieser Bestellung.'], Response::HTTP_FORBIDDEN);
-        }
-
-        $this->orderService->completeOrder($order, $user);
+        $this->orderService->completeOrder($order);
 
         return new JsonResponse([
             'success' => true,
-            'message' => 'Bestellung erfolgreich abgeschlossen.',
+            'message' => 'Bestellung archiviert.',
             'order' => $this->orderService->formatOrderForApi($order),
         ]);
     }
@@ -342,41 +402,6 @@ class OrderApiController extends AbstractController
             'success' => true,
             'order' => $this->orderService->formatOrderForApi($order),
         ]);
-    }
-
-    #[Route('/{id}/open-in-game', name: 'api_orders_open_in_game', methods: ['POST'])]
-    public function openInGame(int $id): JsonResponse
-    {
-        $user = $this->getUser();
-        if (!$user instanceof User) {
-            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $order = $this->orderRepository->find($id);
-        if (!$order) {
-            return new JsonResponse(['error' => 'Bestellung nicht gefunden.'], Response::HTTP_NOT_FOUND);
-        }
-
-        $contractId = $order->getContractId();
-        if (!$contractId) {
-            return new JsonResponse(['error' => 'Kein Ingame-Vertrag für diesen Auftrag hinterlegt.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        // Get user's active character with token
-        $character = $this->characterRepository->findOneBy(['user' => $user, 'tokenValid' => true]);
-        if (!$character) {
-            return new JsonResponse(['error' => 'Kein verknüpfter EVE-Charakter mit gültigem Token gefunden.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            $this->esiClient->request('POST', 'ui/openwindow/contract/', [
-                'query' => ['contract_id' => (int)$contractId]
-            ], $character);
-
-            return new JsonResponse(['success' => true, 'message' => 'Vertragsfenster im EVE-Client geöffnet.']);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Fehler beim Öffnen im Spielclient: ' . $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
     }
 
     #[Route('/open-market-item', name: 'api_orders_open_market_item', methods: ['POST'])]

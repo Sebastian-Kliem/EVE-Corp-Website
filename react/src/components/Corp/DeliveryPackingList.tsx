@@ -4,22 +4,22 @@ import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import { Order, OrderItem } from './OrderListManager';
 import { getFulfillerShares, toDeliveryView } from './orderShares';
+import { DeliveryStatus, DELIVERY_STATUS_LABELS, DELIVERY_STATUS_STYLES, getSupplierStatusOptions } from './deliveryStatus';
 
 interface DeliveryPackingListProps {
     orders: Order[];
     currentUserId?: number;
     ownedStock?: OwnedStock;
-    isOfficer?: boolean;
     onCopyUser: (order: Order) => void;
     onCopyAmount: (order: Order) => void;
     onCopyTitle: (order: Order) => void;
     onCopyMultibuy: (order: Order) => void;
     onCopyItemName: (name: string) => void;
-    onOpenInGame: (orderId: number) => void;
     onOpenMarketItem: (typeId: number) => void;
-    onCompleteOrder: (orderId: number) => void;
     onUnacceptOrder: (orderId: number) => void;
     onFulfillItem: (itemId: number, currentStatus: boolean) => void;
+    onSetItemDeliveryStatus: (itemId: number, status: DeliveryStatus) => void;
+    onSetOrderDeliveryStatus: (orderId: number, status: DeliveryStatus) => void;
     onGoToActiveOrders: () => void;
     actionLoadingId: number | null;
     itemLoadingId: number | null;
@@ -29,17 +29,16 @@ export default function DeliveryPackingList({
     orders: fullOrders,
     currentUserId,
     ownedStock,
-    isOfficer = false,
     onCopyUser,
     onCopyAmount,
     onCopyTitle,
     onCopyMultibuy,
     onCopyItemName,
-    onOpenInGame,
     onOpenMarketItem,
-    onCompleteOrder,
     onUnacceptOrder,
     onFulfillItem,
+    onSetItemDeliveryStatus,
+    onSetOrderDeliveryStatus,
     onGoToActiveOrders,
     actionLoadingId,
     itemLoadingId,
@@ -48,6 +47,7 @@ export default function DeliveryPackingList({
     const orders = useMemo(() => fullOrders.map(order => toDeliveryView(order, currentUserId ?? null)), [fullOrders, currentUserId]);
     const fullOrdersById = useMemo(() => new Map(fullOrders.map(order => [order.id, order])), [fullOrders]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<DeliveryStatus | ''>('');
     const [expandedOrderIds, setExpandedOrderIds] = useState<number[]>([]);
     const [checkedItemIds, setCheckedItemIds] = useState<number[]>(() => {
         try {
@@ -149,15 +149,33 @@ export default function DeliveryPackingList({
     }, [orders, checkedItemIds]);
 
     const filteredOrders = useMemo(() => {
-        if (!searchQuery.trim()) return orders;
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         return orders.filter(order => {
+            if (statusFilter && !order.items.some(i => i.deliveryStatus === statusFilter)) {
+                return false;
+            }
+            if (!q) {
+                return true;
+            }
             const matchesUser = order.user.displayName.toLowerCase().includes(q);
             const matchesTitle = order.title.toLowerCase().includes(q);
             const matchesItem = order.items.some(i => i.name.toLowerCase().includes(q));
             return matchesUser || matchesTitle || matchesItem;
         });
-    }, [orders, searchQuery]);
+    }, [orders, searchQuery, statusFilter]);
+
+    // Number of own items per delivery status across all deliveries
+    const statusCounts = useMemo(() => {
+        const counts: Partial<Record<DeliveryStatus, number>> = {};
+        for (const order of orders) {
+            for (const item of order.items) {
+                if (item.deliveryStatus) {
+                    counts[item.deliveryStatus] = (counts[item.deliveryStatus] ?? 0) + 1;
+                }
+            }
+        }
+        return counts;
+    }, [orders]);
 
     const getSlotBadgeStyle = (slot: string) => {
         switch (slot.toLowerCase()) {
@@ -219,6 +237,19 @@ export default function DeliveryPackingList({
                                 Häkchen zurücksetzen
                             </button>
                         )}
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as DeliveryStatus | '')}
+                            className="rounded-lg px-2 py-1.5 text-xs border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
+                            title="Nur Aufträge mit Posten in diesem Lieferstatus zeigen"
+                        >
+                            <option value="">Alle Lieferstatus</option>
+                            {(Object.keys(DELIVERY_STATUS_LABELS) as DeliveryStatus[]).map(status => (
+                                <option key={status} value={status}>
+                                    {DELIVERY_STATUS_LABELS[status]} ({statusCounts[status] ?? 0})
+                                </option>
+                            ))}
+                        </select>
                         <input
                             type="text"
                             value={searchQuery}
@@ -331,7 +362,8 @@ export default function DeliveryPackingList({
                     const orderItemIds = order.items.map(i => i.id);
                     const packedCount = order.items.filter(i => checkedItemIds.includes(i.id)).length;
                     const isFullyPacked = packedCount === order.items.length && order.items.length > 0;
-                    const canManage = isOfficer || (currentUserId && order.user.id === currentUserId);
+                    const statusOptions = getSupplierStatusOptions(order);
+                    const hasUndeliveredItems = order.items.some(i => i.isFulfilled && i.deliveryStatus !== 'DELIVERED' && i.deliveryStatus !== 'RECEIVED');
                     const fullOrder = fullOrdersById.get(order.id) ?? order;
                     const otherFulfillers = getFulfillerShares(fullOrder).filter(share => share.fulfillerId !== currentUserId);
                     const otherItemCount = fullOrder.items.length - order.items.length;
@@ -455,7 +487,7 @@ export default function DeliveryPackingList({
                                                     onCopyTitle(order);
                                                 }}
                                                 className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-white/10 hover:border-eve-primary/50 text-slate-200 hover:text-white cursor-pointer flex items-center gap-1.5"
-                                                title="In EVE als Vertragstitel einfügen (für Auto-Sync wichtig)"
+                                                title="In EVE als Vertragstitel einfügen"
                                             >
                                                 <span>Titel:</span>
                                                 <span className="text-slate-300 font-mono">WH-Order #{order.id}</span>
@@ -485,31 +517,20 @@ export default function DeliveryPackingList({
                                                 {isFullyPacked ? 'Häkchen aufheben' : 'Alle abhaken'}
                                             </button>
 
-                                            {order.contractId && (
+                                            {hasUndeliveredItems && (
                                                 <button
                                                     type="button"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onOpenInGame(order.id);
+                                                        onSetOrderDeliveryStatus(order.id, 'DELIVERED');
                                                     }}
-                                                    className="px-3 py-1 rounded bg-eve-primary/15 border border-eve-primary/50 text-eve-primary hover:brightness-115 cursor-pointer font-semibold"
+                                                    disabled={actionLoadingId === order.id}
+                                                    className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                                                    title="Markiert alle deine Posten dieser Bestellung als geliefert"
                                                 >
-                                                    Im EVE-Client öffnen
+                                                    Alle meine Posten geliefert
                                                 </button>
                                             )}
-
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onCompleteOrder(order.id);
-                                                }}
-                                                disabled={actionLoadingId === order.id}
-                                                className="px-3 py-1 rounded bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]"
-                                                title="Schließt die gesamte Bestellung ab und archiviert sie"
-                                            >
-                                                Bestellung abschließen
-                                            </button>
 
                                             <button
                                                 type="button"
@@ -538,7 +559,7 @@ export default function DeliveryPackingList({
                                                     <th className="p-2.5 text-right">Menge</th>
                                                     <th className="p-2.5 text-right">Volumen</th>
                                                     <th className="p-2.5 text-right">Wert (ISK)</th>
-                                                    <th className="p-2.5 text-center">Status</th>
+                                                    <th className="p-2.5 text-center">Lieferstatus</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-white/5 bg-black/20">
@@ -633,10 +654,23 @@ export default function DeliveryPackingList({
 
                                                             {/* Status */}
                                                             <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                                                {item.isFulfilled ? (
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                                                                        ✓ Erfüllt {item.fulfiller ? `(${item.fulfiller.displayName})` : ''}
+                                                                {item.deliveryStatus === 'RECEIVED' ? (
+                                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${DELIVERY_STATUS_STYLES.RECEIVED}`} title="Vom Besteller als erhalten bestätigt">
+                                                                        {DELIVERY_STATUS_LABELS.RECEIVED}
                                                                     </span>
+                                                                ) : item.deliveryStatus ? (
+                                                                    <select
+                                                                        value={item.deliveryStatus}
+                                                                        onChange={(e) => onSetItemDeliveryStatus(item.id, e.target.value as DeliveryStatus)}
+                                                                        disabled={itemLoadingId === item.id}
+                                                                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold border cursor-pointer focus:outline-none disabled:opacity-50 ${DELIVERY_STATUS_STYLES[item.deliveryStatus]}`}
+                                                                    >
+                                                                        {statusOptions.map(status => (
+                                                                            <option key={status} value={status}>
+                                                                                {DELIVERY_STATUS_LABELS[status]}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
                                                                 ) : (
                                                                     <button
                                                                         type="button"
