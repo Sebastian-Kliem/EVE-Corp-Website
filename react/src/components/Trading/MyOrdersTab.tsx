@@ -42,6 +42,12 @@ const COPIED_STORAGE_KEY = 'wh-trading-copied-prices';
 // A copied price older than this no longer marks the order as being adjusted
 const COPIED_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
+// Buy orders get overbid, sell orders get undercut
+const SIDES = [
+    { key: 'buy', isBuy: true, title: 'Kauforders', outbidLabel: 'überboten' },
+    { key: 'sell', isBuy: false, title: 'Verkaufsorders', outbidLabel: 'unterboten' },
+];
+
 interface MyOrdersTabProps {
     data: MyOrdersData | null;
     error: string | null;
@@ -100,39 +106,95 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, onOpenMarke
                 Orders von <span className="text-white">{data.characterName}</span>. Der Abgleich läuft mit jedem Abzug der Handelsdrehkreuze (Jita alle 10, die anderen alle 15 Minuten);
                 neue Orders erscheinen nach dem nächsten Order-Sync des Charakters (ESI-Cache bis 20 Minuten).
             </p>
+            <StatusSummary orders={data.orders} />
             {groups.map(group => {
                 const orders = data.orders.filter(order => order.status === group.status);
                 if (orders.length === 0) {
                     return null;
                 }
                 return (
-                    <div key={group.status} className="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-x-auto">
+                    <div key={group.status} className={`bg-eve-card border shadow-eve rounded-lg overflow-x-auto ${group.status === 'outbid' ? 'border-amber-500/40' : 'border-eve-border'}`}>
                         <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between gap-4 flex-wrap">
                             <h3 className={`text-xs font-bold uppercase tracking-wider ${group.status === 'outbid' ? 'text-amber-400' : 'text-eve-muted'}`}>
                                 {group.title} ({orders.length})
                             </h3>
                             {group.hint && <span className="text-[11px] text-eve-muted">{group.hint}</span>}
                         </div>
-                        <table className="w-full text-xs">
-                            <tbody>
-                                {orders.map(order => (
-                                    <OrderRow
-                                        key={order.orderId}
-                                        order={order}
-                                        copied={_activeCopy(copiedPrices[order.orderId], order, now)}
-                                        now={now}
-                                        typeIconTemplate={typeIconTemplate}
-                                        onClick={() => handleOrderClick(order)}
-                                    />
-                                ))}
-                            </tbody>
-                        </table>
+                        {SIDES.map(side => {
+                            const sideOrders = orders.filter(order => order.isBuy === side.isBuy);
+                            if (sideOrders.length === 0) {
+                                return null;
+                            }
+                            return (
+                                <table key={side.key} className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
+                                            <th className={`p-2.5 text-left font-bold ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                {side.title} ({sideOrders.length})
+                                            </th>
+                                            <th className="p-2.5 text-left font-normal">Status</th>
+                                            <th className="p-2.5 text-right font-normal">Mein Preis</th>
+                                            <th className="p-2.5 text-right font-normal">Bester Konkurrent</th>
+                                            <th className="p-2.5 text-right font-normal">Neuer Preis</th>
+                                            <th className="p-2.5 text-right font-normal">Marge</th>
+                                            <th className="p-2.5 text-right font-normal">Abgleich</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sideOrders.map(order => (
+                                            <OrderRow
+                                                key={order.orderId}
+                                                order={order}
+                                                copied={_activeCopy(copiedPrices[order.orderId], order, now)}
+                                                now={now}
+                                                typeIconTemplate={typeIconTemplate}
+                                                onClick={() => handleOrderClick(order)}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            );
+                        })}
                     </div>
                 );
             })}
             {data.orders.length === 0 && (
                 <div className="bg-eve-card border border-eve-border rounded-lg p-6 text-center text-eve-muted text-sm">Keine aktiven Orders.</div>
             )}
+        </div>
+    );
+}
+
+// Outbid and best counts per side at a glance
+function StatusSummary({ orders }: { orders: TradingOrder[] }) {
+    if (orders.length === 0) {
+        return null;
+    }
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {SIDES.map(side => {
+                let outbidCount = 0;
+                let bestCount = 0;
+                for (const order of orders) {
+                    if (order.isBuy !== side.isBuy) {
+                        continue;
+                    }
+                    if (order.status === 'outbid') {
+                        outbidCount++;
+                    } else if (order.status === 'best') {
+                        bestCount++;
+                    }
+                }
+                return (
+                    <div key={side.key} className="bg-eve-card border border-eve-border rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>{side.title}</span>
+                        <div className="flex gap-4 text-xs tabular-nums">
+                            <span className={outbidCount > 0 ? 'text-amber-400 font-semibold' : 'text-eve-muted'}>{outbidCount} {side.outbidLabel}</span>
+                            <span className="text-eve-muted">{bestCount} vorn</span>
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -149,7 +211,9 @@ function OrderRow({ order, copied, now, typeIconTemplate, onClick }: { order: Tr
                     </div>
                 </div>
             </td>
-            <td className={`p-2.5 font-semibold ${order.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>{order.isBuy ? 'Kauf' : 'Verkauf'}</td>
+            <td className="p-2.5">
+                <StatusBadge order={order} />
+            </td>
             <td className="p-2.5 text-right tabular-nums">
                 <div className="text-white">{formatIsk(order.price)}</div>
                 <div className="text-[10px] text-eve-muted">{formatNumber(order.volumeRemain)} / {formatNumber(order.volumeTotal)} Stk.</div>
@@ -157,19 +221,12 @@ function OrderRow({ order, copied, now, typeIconTemplate, onClick }: { order: Tr
             <td className="p-2.5 text-right tabular-nums">
                 {order.bestCompetitorPrice !== null ? (
                     <>
-                        <div>{formatIsk(order.bestCompetitorPrice)}</div>
-                        <div className="text-[10px] text-eve-muted">bester Konkurrent</div>
+                        <div className={order.status === 'outbid' ? 'text-amber-400' : ''}>{formatIsk(order.bestCompetitorPrice)}</div>
+                        <div className="text-[10px] text-eve-muted">{_competitorGapText(order)}</div>
                     </>
                 ) : order.status === 'best' ? (
                     <span className="text-eve-muted">keine Konkurrenz</span>
                 ) : null}
-            </td>
-            <td className="p-2.5 text-right tabular-nums">
-                {order.status === 'outbid' && (
-                    <div className="text-[11px] text-amber-400">
-                        {order.competitorsAhead} Orders vor dir ({formatNumber(order.competitorVolumeAhead)} Stk.)
-                    </div>
-                )}
             </td>
             <td className="p-2.5 text-right tabular-nums">
                 {order.suggestedPrice !== null && (
@@ -197,6 +254,41 @@ function OrderRow({ order, copied, now, typeIconTemplate, onClick }: { order: Tr
             </td>
         </tr>
     );
+}
+
+function StatusBadge({ order }: { order: TradingOrder }) {
+    if (order.status === 'outbid') {
+        return (
+            <>
+                <span className="inline-block bg-amber-500/15 text-amber-400 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border border-amber-500/30">
+                    {order.isBuy ? 'überboten' : 'unterboten'}
+                </span>
+                <div className="text-[10px] text-eve-muted mt-0.5 whitespace-nowrap">
+                    {order.competitorsAhead} vor dir ({formatNumber(order.competitorVolumeAhead)} Stk.)
+                </div>
+            </>
+        );
+    }
+    if (order.status === 'best') {
+        return <span className="inline-block bg-emerald-500/15 text-emerald-400 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border border-emerald-500/30">vorn</span>;
+    }
+    return <span className="text-[10px] text-eve-muted">{order.status === 'gone' ? 'nicht im Buch' : 'ungeprüft'}</span>;
+}
+
+// Distance from the own price to the best competitor, positive means the competitor is ahead
+function _competitorGapText(order: TradingOrder): string {
+    if (order.bestCompetitorPrice === null || order.price <= 0) {
+        return '';
+    }
+    const gap = order.isBuy ? order.bestCompetitorPrice - order.price : order.price - order.bestCompetitorPrice;
+    const gapShare = gap / order.price;
+    if (gap > 0) {
+        return `${formatIsk(gap)} besser (${formatPercent(gapShare)})`;
+    }
+    if (gap < 0) {
+        return `${formatIsk(-gap)} Vorsprung (${formatPercent(-gapShare)})`;
+    }
+    return 'gleicher Preis';
 }
 
 function _loadCopiedPrices(): Record<string, CopiedPrice> {
