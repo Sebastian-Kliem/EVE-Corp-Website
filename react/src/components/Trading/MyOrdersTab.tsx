@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-    formatAge, formatIsk, formatNumber, formatPercent, formatPriceForClipboard, loadStored, saveStored, typeIconUrl,
+    formatAge, formatIsk, formatNumber, formatPercent, formatPriceForClipboard, isLastOpened, LAST_OPENED_ROW_CLASS,
+    LastOpenedBadge, LastOpenedItem, loadStored, saveStored, typeIconUrl,
 } from './tradingShared';
 
 // Larger jumps are flagged, the competitor may have placed a bait order
@@ -52,11 +53,12 @@ interface MyOrdersTabProps {
     data: MyOrdersData | null;
     error: string | null;
     typeIconTemplate: string;
-    onOpenMarket: (typeId: number) => Promise<void>;
+    lastOpened: LastOpenedItem | null;
+    onOpenMarket: (typeId: number, orderId?: string | null) => Promise<void>;
     onNotice: (message: string, isError?: boolean) => void;
 }
 
-export default function MyOrdersTab({ data, error, typeIconTemplate, onOpenMarket, onNotice }: MyOrdersTabProps) {
+export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened, onOpenMarket, onNotice }: MyOrdersTabProps) {
     const [copiedPrices, setCopiedPrices] = useState<Record<string, CopiedPrice>>(() => _loadCopiedPrices());
     const [now, setNow] = useState(Date.now());
 
@@ -90,7 +92,7 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, onOpenMarke
                 onNotice('Zwischenablage nicht verfügbar, Preis bitte von Hand übernehmen.', true);
             }
         }
-        await onOpenMarket(order.typeId);
+        await onOpenMarket(order.typeId, order.orderId);
     };
 
     const groups: { status: TradingOrder['status']; title: string; hint: string }[] = [
@@ -146,6 +148,7 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, onOpenMarke
                                                 key={order.orderId}
                                                 order={order}
                                                 copied={_activeCopy(copiedPrices[order.orderId], order, now)}
+                                                isLastOpened={isLastOpened(lastOpened, order.typeId, order.orderId)}
                                                 now={now}
                                                 typeIconTemplate={typeIconTemplate}
                                                 onClick={() => handleOrderClick(order)}
@@ -199,14 +202,14 @@ function StatusSummary({ orders }: { orders: TradingOrder[] }) {
     );
 }
 
-function OrderRow({ order, copied, now, typeIconTemplate, onClick }: { order: TradingOrder; copied: CopiedPrice | null; now: number; typeIconTemplate: string; onClick: () => void }) {
+function OrderRow({ order, copied, isLastOpened, now, typeIconTemplate, onClick }: { order: TradingOrder; copied: CopiedPrice | null; isLastOpened: boolean; now: number; typeIconTemplate: string; onClick: () => void }) {
     return (
-        <tr onClick={onClick} className="border-b border-white/5 cursor-pointer hover:bg-white/5">
+        <tr onClick={onClick} className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${isLastOpened ? LAST_OPENED_ROW_CLASS : ''}`}>
             <td className="p-2.5">
                 <div className="flex items-center gap-2">
                     <img src={typeIconUrl(typeIconTemplate, order.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
                     <div>
-                        <div className="text-white">{order.itemName}</div>
+                        <div className="text-white flex items-center gap-2">{order.itemName}{isLastOpened && <LastOpenedBadge />}</div>
                         <div className="text-[10px] text-eve-muted">{order.locationName}</div>
                     </div>
                 </div>

@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import TradingItemDetail from './TradingItemDetail';
 import {
-    fetchJson, formatIsk, formatIskShort, formatNumber, formatPercent, loadStored, saveStored,
+    fetchJson, formatIsk, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS, LastOpenedBadge,
+    LastOpenedItem, loadStored, saveStored,
     Spinner, TradingFees, TradingSettings, TradingUrls, typeIconUrl,
 } from './tradingShared';
 
@@ -66,10 +67,11 @@ interface StationTradingTabProps {
     urls: TradingUrls;
     settings: TradingSettings;
     typeIconTemplate: string;
+    lastOpened: LastOpenedItem | null;
     onOpenMarket: (typeId: number) => void;
 }
 
-export default function StationTradingTab({ urls, settings, typeIconTemplate, onOpenMarket }: StationTradingTabProps) {
+export default function StationTradingTab({ urls, settings, typeIconTemplate, lastOpened, onOpenMarket }: StationTradingTabProps) {
     const [filters, setFilters] = useState<StationFilters>(() => loadStored(FILTER_STORAGE_KEY, DEFAULT_FILTERS));
     const [page, setPage] = useState(1);
     const [data, setData] = useState<StationResponse | null>(null);
@@ -192,12 +194,13 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, on
                             <Fragment key={row.typeId}>
                                 <tr
                                     onClick={() => setOpenTypeId(openTypeId === row.typeId ? null : row.typeId)}
-                                    className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${openTypeId === row.typeId ? 'bg-white/5' : ''}`}
+                                    className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${_rowHighlightClass(row.typeId, openTypeId, lastOpened)}`}
                                 >
                                     <td className="p-2.5">
                                         <div className="flex items-center gap-2">
                                             <img src={typeIconUrl(typeIconTemplate, row.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
                                             <span className="text-white">{row.itemName}</span>
+                                            {isLastOpened(lastOpened, row.typeId) && <LastOpenedBadge />}
                                         </div>
                                     </td>
                                     <td className="p-2.5 text-right tabular-nums text-emerald-400">{formatIskShort(row.buyBest)}</td>
@@ -253,6 +256,13 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, on
 }
 
 // Accepts 1.5m, 2b, 300k and German separators
+function _rowHighlightClass(typeId: number, openTypeId: number | null, lastOpened: LastOpenedItem | null): string {
+    if (isLastOpened(lastOpened, typeId)) {
+        return LAST_OPENED_ROW_CLASS;
+    }
+    return openTypeId === typeId ? 'bg-white/5' : '';
+}
+
 export function parseShortNumber(input: string): number {
     const cleaned = input.trim().toLowerCase().replace(/\s/g, '');
     if (cleaned === '') {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import MyOrdersTab, { MyOrdersData } from './MyOrdersTab';
 import StationTradingTab from './StationTradingTab';
 import {
-    DEFAULT_SETTINGS, fetchJson, formatAge, formatPercent, loadStored, postJson, saveStored,
+    DEFAULT_SETTINGS, fetchJson, formatAge, formatPercent, LastOpenedItem, loadStored, postJson, saveStored,
     Spinner, TradingContext, TradingSettings, TradingUrls,
 } from './tradingShared';
 
@@ -15,6 +15,7 @@ type TabKey = 'station' | 'orders';
 
 const SETTINGS_STORAGE_KEY = 'wh-trading-settings';
 const TAB_STORAGE_KEY = 'wh-trading-tab';
+const LAST_OPENED_STORAGE_KEY = 'wh-trading-last-opened';
 // Reading the order checks is a cheap database query, the checks themselves change every 10 to 15 minutes
 const ORDER_REFRESH_MS = 60000;
 
@@ -29,6 +30,7 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
     const [myOrdersError, setMyOrdersError] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ message: string; isError: boolean } | null>(null);
     const [savingCharacter, setSavingCharacter] = useState(false);
+    const [lastOpened, setLastOpened] = useState<LastOpenedItem | null>(() => loadStored<LastOpenedItem | null>(LAST_OPENED_STORAGE_KEY, null));
 
     const loadContext = useCallback(() => {
         fetchJson<TradingContext>(urls.context)
@@ -87,7 +89,11 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
 
     const showNotice = (message: string, isError = false) => setNotice({ message, isError });
 
-    const openMarket = async (typeId: number) => {
+    const openMarket = async (typeId: number, orderId: string | null = null) => {
+        // Marked before the request so the row stays findable when switching back from the game
+        const opened = { typeId, orderId, openedAt: Date.now() };
+        setLastOpened(opened);
+        saveStored(LAST_OPENED_STORAGE_KEY, opened);
         try {
             await postJson(urls.openMarket, { typeId });
         } catch (e) {
@@ -213,12 +219,12 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
 
             {visitedTabs.station && (
                 <div className={activeTab === 'station' ? '' : 'hidden'}>
-                    <StationTradingTab urls={urls} settings={settings} typeIconTemplate={typeIconUrl} onOpenMarket={openMarket} />
+                    <StationTradingTab urls={urls} settings={settings} typeIconTemplate={typeIconUrl} lastOpened={lastOpened} onOpenMarket={openMarket} />
                 </div>
             )}
             {visitedTabs.orders && (
                 <div className={activeTab === 'orders' ? '' : 'hidden'}>
-                    <MyOrdersTab data={myOrders} error={myOrdersError} typeIconTemplate={typeIconUrl} onOpenMarket={openMarket} onNotice={showNotice} />
+                    <MyOrdersTab data={myOrders} error={myOrdersError} typeIconTemplate={typeIconUrl} lastOpened={lastOpened} onOpenMarket={openMarket} onNotice={showNotice} />
                 </div>
             )}
         </div>

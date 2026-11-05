@@ -43,6 +43,33 @@ export const DEFAULT_SETTINGS: TradingSettings = {
     brokerFeeOverride: '',
 };
 
+// Item whose market window was opened last, highlighted to find the place again after switching windows
+export interface LastOpenedItem {
+    typeId: number;
+    orderId: string | null;
+    openedAt: number;
+}
+
+export function isLastOpened(lastOpened: LastOpenedItem | null, typeId: number, orderId: string | null = null): boolean {
+    if (lastOpened === null) {
+        return false;
+    }
+    if (lastOpened.orderId !== null && orderId !== null) {
+        return lastOpened.orderId === orderId;
+    }
+    return lastOpened.typeId === typeId;
+}
+
+export function LastOpenedBadge() {
+    return (
+        <span className="inline-block bg-eve-primary/15 text-eve-primary text-[9px] font-bold uppercase px-1 py-px rounded border border-eve-primary/40 whitespace-nowrap">
+            zuletzt geöffnet
+        </span>
+    );
+}
+
+export const LAST_OPENED_ROW_CLASS = 'bg-eve-primary/10 outline outline-1 -outline-offset-1 outline-eve-primary/60';
+
 export function loadStored<T>(key: string, fallback: T): T {
     try {
         const raw = window.localStorage.getItem(key);
