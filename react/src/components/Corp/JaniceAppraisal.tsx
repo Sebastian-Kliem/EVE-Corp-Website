@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
 import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import { cleanItemSearch } from '../../utils/itemSearch';
@@ -465,7 +465,7 @@ export default function JaniceAppraisal({
                     <div ref={searchContainerRef} className="relative">
                         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                             {/* Autocomplete Input */}
-                            <div className="relative flex-1 min-w-[220px]">
+                            <div className="relative flex-1 min-w-55">
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -528,7 +528,7 @@ export default function JaniceAppraisal({
 
                         {/* Suggestions Dropdown */}
                         {isSuggestionsOpen && suggestions.length > 0 && (
-                            <div className="absolute left-0 right-0 top-full mt-1.5 max-h-[260px] overflow-y-auto z-50 rounded-lg bg-[#0d121fe6] backdrop-blur-md border border-eve-border shadow-2xl divide-y divide-white/5">
+                            <div className="absolute left-0 right-0 top-full mt-1.5 max-h-65 overflow-y-auto z-50 rounded-lg bg-[#0d121fe6] backdrop-blur-md border border-eve-border shadow-2xl divide-y divide-white/5">
                                 {suggestions.map((suggestion, index) => {
                                     const isSelected = index === activeSuggestionIndex || selectedItem?.id === suggestion.id;
                                     return (
@@ -543,7 +543,7 @@ export default function JaniceAppraisal({
                                                 <img
                                                     src={`/eve/image/types/${suggestion.id}/${suggestion.variation || 'icon'}?size=32`}
                                                     alt={suggestion.name}
-                                                    className="w-6 h-6 rounded bg-black/40 border border-white/10 object-contain flex-shrink-0"
+                                                    className="w-6 h-6 rounded bg-black/40 border border-white/10 object-contain shrink-0"
                                                     loading="lazy"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).src = '/assets/images/fallback_item.png';

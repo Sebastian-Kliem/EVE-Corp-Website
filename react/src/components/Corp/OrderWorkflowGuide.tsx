@@ -107,7 +107,7 @@ export default function OrderWorkflowGuide() {
                         </div>
 
                         <div className="p-3.5 rounded-lg bg-eve-primary/10 border border-eve-primary/30 flex items-start gap-3 mt-3">
-                            <span className="text-base flex-shrink-0">📦</span>
+                            <span className="text-base shrink-0">📦</span>
                             <div className="text-[11px] leading-relaxed text-slate-300">
                                 <strong className="text-white block font-semibold mb-0.5">
                                     Logistik-Profi-Tipp für Frachter-Piloten (Null Sortieraufwand am Zielort):

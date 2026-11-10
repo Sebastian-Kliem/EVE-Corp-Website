@@ -9,7 +9,7 @@ export function formatThousands(val: string | number): string {
 
     const isNegative = str.trim().startsWith('-');
 
-    let integerPart = str;
+    let integerPart: string;
     let decimalPart = '';
 
     if (str.includes(',')) {

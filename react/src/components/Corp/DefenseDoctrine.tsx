@@ -91,7 +91,7 @@ export default function DefenseDoctrine({
         const lines = newEft.trim().split(/\r?\n/);
         if (lines.length > 0) {
             const firstLine = lines[0].trim();
-            const match = firstLine.match(/^\s*\[\s*([^,\]]+?)\s*,\s*([^\]]+?)\s*\]/);
+            const match = firstLine.match(/^\s*\[\s*([^,\]]+?)\s*,\s*([^\]]+?)\s*]/);
             if (match) {
                 const parsedShip = match[1].trim();
                 const parsedTitle = match[2].trim();
@@ -102,7 +102,7 @@ export default function DefenseDoctrine({
                     setFormTitle(parsedTitle);
                 }
             } else {
-                const singleMatch = firstLine.match(/^\s*\[\s*([^\]]+?)\s*\]/);
+                const singleMatch = firstLine.match(/^\s*\[\s*([^\]]+?)\s*]/);
                 if (singleMatch && !formShipName) {
                     setFormShipName(singleMatch[1].trim());
                 }
@@ -121,7 +121,8 @@ export default function DefenseDoctrine({
             });
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Fehler beim Speichern der Notizen.');
+                showFeedback('error', data.error || 'Fehler beim Speichern der Notizen.');
+                return;
             }
             setNotes(data.notes);
             setNotesUpdatedAt(data.updatedAt);
@@ -185,7 +186,8 @@ export default function DefenseDoctrine({
 
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Fehler beim Speichern des Fits.');
+                showFeedback('error', data.error || 'Fehler beim Speichern des Fits.');
+                return;
             }
 
             if (isEditing) {
@@ -217,7 +219,8 @@ export default function DefenseDoctrine({
             });
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Fehler beim Löschen.');
+                showFeedback('error', data.error || 'Fehler beim Löschen.');
+                return;
             }
 
             setFits((prev) => prev.filter((f) => f.id !== fit.id));
@@ -518,7 +521,7 @@ export default function DefenseDoctrine({
                                         {/* Card Header: Ship Icon + Titles + Role Badge */}
                                         <div className="flex items-start justify-between gap-3 mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="relative flex-shrink-0 w-12 h-12 rounded-lg bg-black/50 border border-white/10 p-1 flex items-center justify-center overflow-hidden">
+                                                <div className="relative shrink-0 w-12 h-12 rounded-lg bg-black/50 border border-white/10 p-1 flex items-center justify-center overflow-hidden">
                                                     <img
                                                         src={getShipIconUrl(fit)}
                                                         alt={fit.shipName}

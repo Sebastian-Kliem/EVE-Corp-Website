@@ -576,7 +576,7 @@ export default function OrderListManager({
                     onClick={() => toggleExpand(order.id)}
                     className="p-4 bg-black/20 hover:bg-white/5 cursor-pointer flex flex-wrap items-center justify-between gap-4 transition-colors"
                 >
-                    <div className="flex items-center gap-3 min-w-[220px]">
+                    <div className="flex items-center gap-3 min-w-55">
                         {order.shipTypeId ? (
                             <img
                                 src={`/eve/image/types/${order.shipTypeId}/render?size=64`}
@@ -823,7 +823,7 @@ export default function OrderListManager({
                                                             className="text-left font-medium text-white hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 cursor-pointer text-xs"
                                                         >
                                                             <span>{item.name}</span>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white/30 group-hover:text-amber-400 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white/30 group-hover:text-amber-400 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                             </svg>
                                                         </button>

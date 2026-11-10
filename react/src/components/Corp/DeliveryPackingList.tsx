@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
-import { Order, OrderItem } from './OrderListManager';
+import { Order } from './OrderListManager';
 import { getFulfillerShares, toDeliveryView } from './orderShares';
 import { DeliveryStatus, DELIVERY_STATUS_LABELS, DELIVERY_STATUS_STYLES, getSupplierStatusOptions } from './deliveryStatus';
 
@@ -301,7 +301,7 @@ export default function DeliveryPackingList({
 
             {/* Freight Container Pro-Tip Alert */}
             <div className="p-4 rounded-lg bg-eve-primary/10 border border-eve-primary/30 flex items-start gap-3 text-xs text-slate-300">
-                <span className="text-xl flex-shrink-0">💡</span>
+                <span className="text-xl shrink-0">💡</span>
                 <div className="leading-relaxed">
                     <strong className="text-white block font-semibold mb-0.5">
                         Profi-Tipp für Frachter-Piloten (Null Sortieraufwand am Zielort):
@@ -359,7 +359,6 @@ export default function DeliveryPackingList({
             <div className="flex flex-col gap-5">
                 {filteredOrders.map(order => {
                     const isExpanded = expandedOrderIds.includes(order.id);
-                    const orderItemIds = order.items.map(i => i.id);
                     const packedCount = order.items.filter(i => checkedItemIds.includes(i.id)).length;
                     const isFullyPacked = packedCount === order.items.length && order.items.length > 0;
                     const statusOptions = getSupplierStatusOptions(order);
@@ -380,7 +379,7 @@ export default function DeliveryPackingList({
                                 onClick={() => toggleExpand(order.id)}
                                 className="p-4 bg-black/30 hover:bg-white/5 cursor-pointer flex flex-wrap items-center justify-between gap-4 transition-colors"
                             >
-                                <div className="flex items-center gap-3 min-w-[220px]">
+                                <div className="flex items-center gap-3 min-w-55">
                                     {order.shipTypeId ? (
                                         <img
                                             src={`/eve/image/types/${order.shipTypeId}/render?size=64`}
@@ -612,7 +611,7 @@ export default function DeliveryPackingList({
                                                                         title="Klicke zum Kopieren (für EVE Hangar-Filter)"
                                                                     >
                                                                         <span className="font-semibold">{item.name}</span>
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-eve-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-eve-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                                                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                                                         </svg>

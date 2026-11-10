@@ -141,12 +141,7 @@ export default function CorpStructuresOverview({
         const days = Math.floor(totalHours / 24);
         const hours = totalHours % 24;
 
-        let label = '';
-        if (days > 0) {
-            label = `${days}d ${hours}h`;
-        } else {
-            label = `${hours}h`;
-        }
+        const label = days > 0 ? `${days}d ${hours}h` : `${hours}h`;
 
         return {
             expired: false,
@@ -162,12 +157,7 @@ export default function CorpStructuresOverview({
     // Filter structures & starbases
     const filteredCorps = useMemo(() => {
         return corpsData
-            .filter(cData => {
-                if (selectedCorpId !== 'all' && cData.corporation?.id !== selectedCorpId) {
-                    return false;
-                }
-                return true;
-            })
+            .filter(cData => selectedCorpId === 'all' || cData.corporation?.id === selectedCorpId)
             .map(cData => {
                 const query = cleanItemSearch(searchQuery).toLowerCase().trim();
                 const structures = cData.structures || [];
@@ -200,9 +190,7 @@ export default function CorpStructuresOverview({
                     if (statusFilter === 'online' && stateLower !== 'online') return false;
                     if (statusFilter === 'offline' && stateLower !== 'offline') return false;
                     if (statusFilter === 'reinforced' && !stateLower.includes('reinforce') && !stateLower.includes('armor') && !stateLower.includes('hull')) return false;
-                    if (statusFilter === 'low_fuel' && (!fuelInfo || !fuelInfo.isLow)) return false;
-
-                    return true;
+                    return statusFilter !== 'low_fuel' || !!fuelInfo?.isLow;
                 });
 
                 // Filter Starbases
@@ -221,9 +209,7 @@ export default function CorpStructuresOverview({
                     if (statusFilter === 'online' && stateLower !== 'online') return false;
                     if (statusFilter === 'offline' && stateLower !== 'offline') return false;
                     if (statusFilter === 'reinforced' && !stateLower.includes('reinforce')) return false;
-                    if (statusFilter === 'low_fuel') return false;
-
-                    return true;
+                    return statusFilter !== 'low_fuel';
                 });
 
                 return {
@@ -531,7 +517,7 @@ export default function CorpStructuresOverview({
                 const structures = corpData.structures || [];
                 const starbases = corpData.starbases || [];
                 const totalCorpStructures = structures.length + starbases.length;
-                const isCorpExpanded = !!expandedCorps[corporation.id];
+                const isCorpExpanded = expandedCorps[corporation.id];
 
                 return (
                     <div key={corporation.id} className="bg-eve-card border border-eve-border rounded-xl shadow-eve overflow-hidden transition-all duration-300">
@@ -595,7 +581,7 @@ export default function CorpStructuresOverview({
 
                                                 <div className="grid grid-cols-1 gap-3.5">
                                                     {structures.map((s) => {
-                                                        const isExpanded = !!expandedStructureIds[s.id];
+                                                        const isExpanded = expandedStructureIds[s.id];
                                                         const fuelInfo = getFuelRemaining(s.fuelExpires);
                                                         const fittings = s.fittings || {};
                                                         const serviceFittings = fittings.services || [];
@@ -636,7 +622,7 @@ export default function CorpStructuresOverview({
                                                                         <img
                                                                             src={getTypeRenderUrl(s.typeId)}
                                                                             alt={s.typeName}
-                                                                            className="w-12 h-12 rounded-lg bg-[#111625] border border-white/10 object-contain p-1 flex-shrink-0"
+                                                                            className="w-12 h-12 rounded-lg bg-[#111625] border border-white/10 object-contain p-1 shrink-0"
                                                                             onError={(e) => {
                                                                                 (e.target as HTMLImageElement).src = getTypeIconUrl(s.typeId);
                                                                             }}
@@ -763,7 +749,7 @@ export default function CorpStructuresOverview({
                                                                                                 <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5">
                                                                                                     <div className="flex items-center justify-between gap-2 text-xs text-white">
                                                                                                         <div className="flex items-center gap-2 truncate">
-                                                                                                            <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                            <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                             <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                         </div>
                                                                                                         <span className={`text-[10px] px-2 py-0.5 rounded font-medium border ${
@@ -811,7 +797,7 @@ export default function CorpStructuresOverview({
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5">
                                                                                                 <div className="flex items-center justify-between gap-2 text-xs text-white">
                                                                                                     <div className="flex items-center gap-2 truncate">
-                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                         <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                     </div>
                                                                                                     <span className="text-[10px] text-eve-muted font-mono">{f.locationFlag}</span>
@@ -846,7 +832,7 @@ export default function CorpStructuresOverview({
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5">
                                                                                                 <div className="flex items-center justify-between gap-2 text-xs text-white">
                                                                                                     <div className="flex items-center gap-2 truncate">
-                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                         <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                     </div>
                                                                                                     <span className="text-[10px] text-eve-muted font-mono">{f.locationFlag}</span>
@@ -881,7 +867,7 @@ export default function CorpStructuresOverview({
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5">
                                                                                                 <div className="flex items-center justify-between gap-2 text-xs text-white">
                                                                                                     <div className="flex items-center gap-2 truncate">
-                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                         <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                     </div>
                                                                                                     <span className="text-[10px] text-eve-muted font-mono">{f.locationFlag}</span>
@@ -903,7 +889,7 @@ export default function CorpStructuresOverview({
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5">
                                                                                                 <div className="flex items-center justify-between gap-2 text-xs text-white">
                                                                                                     <div className="flex items-center gap-2 truncate">
-                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                        <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                         <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                     </div>
                                                                                                     <span className="text-[10px] text-eve-muted font-mono">{f.locationFlag}</span>
@@ -924,7 +910,7 @@ export default function CorpStructuresOverview({
                                                                                         {fuelFittings.map((f, i) => (
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-2 text-xs text-white">
                                                                                                 <div className="flex items-center gap-2 truncate">
-                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                     <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                 </div>
                                                                                                 <span className="font-mono text-emerald-400 font-bold">{(f.quantity || 0).toLocaleString()}</span>
@@ -944,7 +930,7 @@ export default function CorpStructuresOverview({
                                                                                         {cargoFittings.map((f, i) => (
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-2 text-xs text-white">
                                                                                                 <div className="flex items-center gap-2 truncate">
-                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                     <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                 </div>
                                                                                                 <span className="font-mono text-amber-300 font-bold">{(f.quantity || 1).toLocaleString()}x</span>
@@ -964,7 +950,7 @@ export default function CorpStructuresOverview({
                                                                                         {fighterFittings.map((f, i) => (
                                                                                             <div key={f.itemId || i} className="bg-[#0c101c]/80 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-2 text-xs text-white">
                                                                                                 <div className="flex items-center gap-2 truncate">
-                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain flex-shrink-0" />
+                                                                                                    <img src={getTypeIconUrl(f.typeId)} alt="" className="w-6 h-6 rounded object-contain shrink-0" />
                                                                                                     <span className="truncate font-semibold">{f.typeName}</span>
                                                                                                 </div>
                                                                                                 <span className="font-mono text-white/80 font-bold">{f.quantity || 1}x</span>
@@ -1007,7 +993,7 @@ export default function CorpStructuresOverview({
                                                                     <img
                                                                         src={getTypeIconUrl(sb.typeId)}
                                                                         alt={sb.typeName}
-                                                                        className="w-10 h-10 rounded-lg bg-[#111625] border border-white/10 p-1 object-contain flex-shrink-0"
+                                                                        className="w-10 h-10 rounded-lg bg-[#111625] border border-white/10 p-1 object-contain shrink-0"
                                                                         loading="lazy"
                                                                     />
                                                                     <div className="min-w-0">

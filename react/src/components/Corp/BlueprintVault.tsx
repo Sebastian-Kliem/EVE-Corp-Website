@@ -151,9 +151,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
             if (filterType === 'job' && bp.activeJob === null) return false;
 
             // Category filter
-            if (selectedCategory !== 'all' && bp.category !== selectedCategory) return false;
-
-            return true;
+            return selectedCategory === 'all' || bp.category === selectedCategory;
         });
     }, [matchingBlueprints, filterType, selectedCategory]);
 
@@ -250,7 +248,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                         </p>
                     )}
                 </div>
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                     <div className="mb-0">
                         <div className="relative block">
                             <select
@@ -267,7 +265,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                     </div>
                 </div>
                 {categories.length > 0 && (
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                         <div className="mb-0">
                             <div className="relative block">
                                 <select
@@ -289,7 +287,7 @@ export default function BlueprintVault({ blueprints, imagePaths }: BlueprintVaul
                         </div>
                     </div>
                 )}
-                <div className="flex-shrink-0">
+                <div className="shrink-0">
                     <div className="mb-0">
                         <div className="relative">
                             <input
