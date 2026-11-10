@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { formatThousands } from '../../utils/numberFormat';
+import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import { Order, OrderItem } from './OrderListManager';
@@ -264,7 +264,7 @@ export default function DeliveryPackingList({
                     <div className="p-3 rounded-lg bg-black/40 border border-white/5">
                         <span className="text-[11px] text-eve-muted block mb-1">Gesamterlös (ISK):</span>
                         <span className="text-base font-bold text-eve-primary font-mono">
-                            {formatThousands(totalISK)} ISK
+                            {formatIsk(totalISK)} ISK
                         </span>
                     </div>
 
@@ -434,7 +434,7 @@ export default function DeliveryPackingList({
                                     <div className="text-right">
                                         <span className="text-[10px] text-eve-muted block">{otherItemCount > 0 ? 'Dein Anteil (ISK):' : 'Zu fordern (ISK):'}</span>
                                         <span className="text-sm font-bold text-eve-primary font-mono">
-                                            {formatThousands(order.totalPrice)} ISK
+                                            {formatIsk(order.totalPrice)} ISK
                                         </span>
                                     </div>
 
@@ -477,7 +477,7 @@ export default function DeliveryPackingList({
                                                 title="In EVE in das Feld 'I will receive' einfügen"
                                             >
                                                 <span>💰 Betrag:</span>
-                                                <strong className="text-eve-primary">{formatThousands(order.totalPrice)} ISK</strong>
+                                                <strong className="text-eve-primary">{formatIsk(order.totalPrice)} ISK</strong>
                                                 <span className="text-[10px] text-eve-muted">📋</span>
                                             </button>
                                             <button
@@ -649,7 +649,7 @@ export default function DeliveryPackingList({
 
                                                             {/* Total Price */}
                                                             <td className="p-2 text-right font-mono font-semibold text-eve-primary">
-                                                                {formatThousands(item.totalPrice)}
+                                                                {formatIsk(item.totalPrice)}
                                                             </td>
 
                                                             {/* Status */}

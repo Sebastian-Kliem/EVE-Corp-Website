@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatThousands } from '../../utils/numberFormat';
+import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import type { Order, OrderItem } from './OrderListManager';
 import { getFulfillerShares, getOpenItems, sumItemPrices, sumItemVolumes } from './orderShares';
 
@@ -34,7 +34,7 @@ function AmountRow({ label, items, amount, volume, copyLabel, rowClassName = '',
                 </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-                <span className={`font-mono font-bold ${amountClassName}`}>{formatThousands(amount)} ISK</span>
+                <span className={`font-mono font-bold ${amountClassName}`}>{formatIsk(amount)} ISK</span>
                 <button type="button" onClick={() => onCopyAmount(amount, copyLabel)} className={buttonClass}>
                     Betrag kopieren
                 </button>

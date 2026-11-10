@@ -65,3 +65,17 @@ export function parseThousands(val: string | number): number {
     if (isNaN(num)) return 0;
     return isNegative ? -Math.abs(num) : Math.abs(num);
 }
+
+/**
+ * Rounds an ISK amount to whole ISK, so copied values contain no decimal separator.
+ */
+export function roundIsk(val: number): number {
+    return Math.round(val || 0);
+}
+
+/**
+ * Formats an ISK amount as whole ISK with German thousands separators (1.234.568).
+ */
+export function formatIsk(val: number): string {
+    return formatThousands(roundIsk(val));
+}

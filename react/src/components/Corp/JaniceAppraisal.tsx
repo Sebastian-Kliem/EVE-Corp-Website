@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
-import { formatThousands } from '../../utils/numberFormat';
+import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import { cleanItemSearch } from '../../utils/itemSearch';
 
 interface SdeSuggestion {
@@ -733,13 +733,13 @@ export default function JaniceAppraisal({
                         <div>
                             <span className="text-[11px] text-eve-muted block mb-1">Gesamtwert (vereinbart {result.percent}%):</span>
                             <span className="text-xl font-bold text-eve-primary">
-                                {formatThousands(result.totalPrice)} ISK
+                                {formatIsk(result.totalPrice)} ISK
                             </span>
                         </div>
                         <div>
                             <span className="text-[11px] text-eve-muted block mb-1">100% Jita Basiswert:</span>
                             <span className="text-sm font-semibold text-slate-300">
-                                {formatThousands(result.totalBasePrice)} ISK
+                                {formatIsk(result.totalBasePrice)} ISK
                             </span>
                         </div>
                         <div>
@@ -843,7 +843,7 @@ export default function JaniceAppraisal({
                                             {formatThousands(item.adjustedUnitPrice)}
                                         </td>
                                         <td className="p-2.5 text-right font-mono font-semibold text-eve-primary">
-                                            {formatThousands(item.totalPrice)}
+                                            {formatIsk(item.totalPrice)}
                                         </td>
                                         <td className="p-2.5 text-center">
                                             <button
@@ -907,7 +907,7 @@ export default function JaniceAppraisal({
                             <div className="p-3 rounded-lg bg-black/40 border border-eve-border/60 text-xs text-slate-300 flex justify-between">
                                 <div>
                                     <span className="text-eve-muted block">Gesamtsumme ({percent}%):</span>
-                                    <span className="font-bold text-eve-primary text-sm">{formatThousands(result?.totalPrice || 0)} ISK</span>
+                                    <span className="font-bold text-eve-primary text-sm">{formatIsk(result?.totalPrice || 0)} ISK</span>
                                 </div>
                                 <div>
                                     <span className="text-eve-muted block">Gesamtvolumen:</span>

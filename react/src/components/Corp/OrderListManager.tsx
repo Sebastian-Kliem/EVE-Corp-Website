@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import JaniceAppraisal from './JaniceAppraisal';
 import OrderWorkflowGuide from './OrderWorkflowGuide';
 import DeliveryPackingList from './DeliveryPackingList';
-import { formatThousands } from '../../utils/numberFormat';
+import { formatThousands, formatIsk, roundIsk } from '../../utils/numberFormat';
 import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import OrderAmountsList from './OrderAmountsList';
@@ -501,13 +501,13 @@ export default function OrderListManager({
     };
 
     const handleCopyShareAmount = (amount: number, label: string) => {
-        navigator.clipboard.writeText(amount.toString());
-        showFeedbackMessage(`${label}: ${formatThousands(amount)} ISK kopiert.`);
+        navigator.clipboard.writeText(roundIsk(amount).toString());
+        showFeedbackMessage(`${label}: ${formatIsk(amount)} ISK kopiert.`);
     };
 
     const handleCopyAmount = (order: Order) => {
-        navigator.clipboard.writeText(order.totalPrice.toString());
-        showFeedbackMessage(`Betrag ${formatThousands(order.totalPrice)} ISK kopiert.`);
+        navigator.clipboard.writeText(roundIsk(order.totalPrice).toString());
+        showFeedbackMessage(`Betrag ${formatIsk(order.totalPrice)} ISK kopiert.`);
     };
 
     const handleCopyTitle = (order: Order) => {
@@ -634,11 +634,11 @@ export default function OrderListManager({
                         <div className="text-right">
                             <span className="text-[10px] text-eve-muted block">Gesamtwert ({order.percentToJita}%):</span>
                             <span className="text-sm font-bold text-eve-primary">
-                                {formatThousands(order.totalPrice)} ISK
+                                {formatIsk(order.totalPrice)} ISK
                             </span>
                             {order.status === 'OPEN' && livePrices[order.id] && livePrices[order.id].priceDiff !== 0 && (
                                 <span className={`text-[10px] block ${livePrices[order.id].priceDiffPercent > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                    Markt: {formatThousands(livePrices[order.id].liveTotalPrice)} ({livePrices[order.id].priceDiffPercent > 0 ? '+' : ''}{livePrices[order.id].priceDiffPercent}%)
+                                    Markt: {formatIsk(livePrices[order.id].liveTotalPrice)} ({livePrices[order.id].priceDiffPercent > 0 ? '+' : ''}{livePrices[order.id].priceDiffPercent}%)
                                 </span>
                             )}
                         </div>
@@ -853,7 +853,7 @@ export default function OrderListManager({
                                                     {formatThousands(item.unitPrice)}
                                                 </td>
                                                 <td className="p-2 text-right font-mono font-semibold text-eve-primary">
-                                                    {formatThousands(item.totalPrice)}
+                                                    {formatIsk(item.totalPrice)}
                                                 </td>
                                                 <td className="p-2 text-center">
                                                     {customerStatus ? (
