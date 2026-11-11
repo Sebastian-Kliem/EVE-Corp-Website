@@ -2,12 +2,49 @@
 
 {% block title %}Charakterübersicht{% endblock %}
 
-{% macro character_card(char, missingScopesByCharacter) %}
+{% macro stat_row(label, value_html, value_class) %}
+    <div class="flex justify-between items-start gap-2">
+        <span class="text-eve-muted shrink-0">{{ label }}:</span>
+        <span class="text-right {{ value_class|default('text-white') }}">{{ value_html|raw }}</span>
+    </div>
+{% endmacro %}
+
+{% macro character_card(entry, missingScopesByCharacter) %}
+    {% set char = entry.character %}
+    {% set training = entry.training %}
+    {% set romanLevels = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V' } %}
     <div class="flex-1 min-w-[260px] max-w-[calc(33.333%-11px)]">
-        <div class="p-3 bg-black/20 rounded-md border border-white/10 h-full">
+        <div class="p-3 bg-black/20 rounded-md border border-white/10 h-full flex flex-col">
             {% include 'character/_character_card_header.html.twig' with { char: char } only %}
 
-            <div class="flex gap-2">
+            <div class="text-xs flex flex-col gap-1 border-t border-dashed border-white/15 pt-2 mb-3">
+                {{ _self.stat_row('Skillpunkte', entry.totalSkillPoints is not null ? entry.totalSkillPoints|number_format(0, ',', '.') ~ ' SP' : '<span class="text-eve-muted/70">Keine Daten</span>', 'font-semibold text-eve-primary') }}
+
+                {% if entry.unallocatedSkillPoints > 0 %}
+                    {{ _self.stat_row('Unverteilt', entry.unallocatedSkillPoints|number_format(0, ',', '.') ~ ' SP', 'font-semibold text-amber-400') }}
+                {% endif %}
+
+                {% if training.status == 'active' %}
+                    {{ _self.stat_row('Training', (training.skillName|e) ~ ' ' ~ (romanLevels[training.level] ?? training.level) ~ '<br><span class="text-eve-muted">noch ' ~ training.skillRemaining ~ '</span>') }}
+                    {{ _self.stat_row('Queue', training.queueLength ~ (training.queueLength == 1 ? ' Skill' : ' Skills') ~ ', noch ' ~ training.queueRemaining, training.queueEndsSoon ? 'text-amber-400' : 'text-white') }}
+                {% elseif training.status == 'paused' %}
+                    {{ _self.stat_row('Training', 'Pausiert (' ~ (training.skillName|e) ~ ' ' ~ (romanLevels[training.level] ?? training.level) ~ ')', 'text-amber-400') }}
+                {% else %}
+                    {{ _self.stat_row('Training', 'Kein Skill in Training', 'text-rose-400') }}
+                {% endif %}
+
+                {% if char.online %}
+                    {{ _self.stat_row('Status', '<span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>Online', 'text-emerald-400') }}
+                {% elseif char.lastLogin %}
+                    {{ _self.stat_row('Letzter Login', char.lastLogin|date('d.m.Y H:i')) }}
+                {% endif %}
+
+                {% if char.director %}
+                    {{ _self.stat_row('Corp-Rolle', 'Director', 'font-semibold text-amber-400') }}
+                {% endif %}
+            </div>
+
+            <div class="flex gap-2 mt-auto">
                 <a href="{{ path('app_dashboard_eve_character_details', { id: char.id }) }}" class="flex-1 h-[26px] inline-flex items-center justify-center gap-1 px-2 py-1 text-xs rounded border border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 transition-all cursor-pointer">
                     Details
                 </a>
@@ -30,6 +67,14 @@
     </div>
 {% endmacro %}
 
+{% macro group_summary(group) %}
+    <span class="text-xs font-normal text-eve-muted flex flex-wrap gap-x-3">
+        <span>{{ group.characters|length }} {{ group.characters|length == 1 ? 'Charakter' : 'Charaktere' }}</span>
+        <span class="text-eve-primary">{{ group.totalSkillPoints|number_format(0, ',', '.') }} SP</span>
+        <span class="text-[#00ffaa]">{{ group.totalWallet|number_format(0, ',', '.') }} ISK</span>
+    </span>
+{% endmacro %}
+
 {% block body %}
 <div class="w-full max-w-[900px] mx-auto px-6 mt-10 mb-12">
     <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
@@ -41,17 +86,32 @@
         </a>
     </div>
 
-    {% if accounts is empty and unassignedCharacters is empty %}
+    {% if accountGroups is empty and unassignedGroup.characters is empty %}
         <div class="py-5 px-6 rounded-lg mb-6 bg-sky-500/10 border border-sky-500/30 text-sky-400 mt-3">
             Bisher sind keine EVE Online Charaktere verknüpft. Unter
             <a href="{{ path('app_profile_character_management') }}" class="text-eve-primary hover:underline">Charaktere verwalten</a>
             kannst du einen Charakter über EVE SSO hinzufügen.
         </div>
+    {% else %}
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {% for tile in [
+                { label: 'Charaktere', value: totals.characterCount, class: 'text-white' },
+                { label: 'Omega-Accounts', value: totals.omegaAccountCount ~ ' / ' ~ totals.accountCount, class: 'text-amber-400' },
+                { label: 'Skillpunkte gesamt', value: totals.totalSkillPoints|number_format(0, ',', '.'), class: 'text-eve-primary' },
+                { label: 'Wallet gesamt', value: totals.totalWallet|number_format(0, ',', '.') ~ ' ISK', class: 'text-[#00ffaa]' },
+            ] %}
+                <div class="bg-eve-card border border-eve-border rounded-lg px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-wide text-eve-muted">{{ tile.label }}</div>
+                    <div class="text-lg font-semibold {{ tile.class }}">{{ tile.value }}</div>
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
 
-    {% for account in accounts %}
+    {% for group in accountGroups %}
+        {% set account = group.account %}
         <div class="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg p-4 mb-4">
-            <div class="border-b border-white/10 pb-2.5 mb-4">
+            <div class="border-b border-white/10 pb-2.5 mb-4 flex flex-wrap justify-between items-center gap-2">
                 <span class="font-bold text-lg text-white flex items-center gap-2">
                     {{ account.name }}
                     {% if account.isOmega %}
@@ -60,11 +120,14 @@
                         <span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-white/10 text-white border border-white/10 ml-2">Alpha</span>
                     {% endif %}
                 </span>
+                {% if group.characters is not empty %}
+                    {{ _self.group_summary(group) }}
+                {% endif %}
             </div>
 
             <div class="flex flex-wrap gap-4">
-                {% for char in account.characters %}
-                    {{ _self.character_card(char, missingScopesByCharacter) }}
+                {% for entry in group.characters %}
+                    {{ _self.character_card(entry, missingScopesByCharacter) }}
                 {% else %}
                     <p class="w-full text-xs text-eve-muted text-center py-4">Keine Charaktere in diesem Account.</p>
                 {% endfor %}
@@ -72,14 +135,15 @@
         </div>
     {% endfor %}
 
-    {% if unassignedCharacters is not empty %}
+    {% if unassignedGroup.characters is not empty %}
         <div class="bg-eve-card border border-dashed border-eve-border backdrop-blur-md shadow-eve rounded-lg p-4 mb-4">
-            <div class="border-b border-white/10 pb-2.5 mb-4">
+            <div class="border-b border-white/10 pb-2.5 mb-4 flex flex-wrap justify-between items-center gap-2">
                 <span class="font-bold text-lg text-white">Ohne Account-Ordner</span>
+                {{ _self.group_summary(unassignedGroup) }}
             </div>
             <div class="flex flex-wrap gap-4">
-                {% for char in unassignedCharacters %}
-                    {{ _self.character_card(char, missingScopesByCharacter) }}
+                {% for entry in unassignedGroup.characters %}
+                    {{ _self.character_card(entry, missingScopesByCharacter) }}
                 {% endfor %}
             </div>
         </div>

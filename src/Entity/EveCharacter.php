@@ -385,6 +385,19 @@ class EveCharacter
         return $this;
     }
 
+    // Null when the skills endpoint was never synced
+    public function getTotalSkillPoints(): ?int
+    {
+        $skills = $this->getSkills();
+
+        return isset($skills['total_sp']) ? (int) $skills['total_sp'] : null;
+    }
+
+    public function getUnallocatedSkillPoints(): int
+    {
+        return (int) ($this->getSkills()['unallocated_sp'] ?? 0);
+    }
+
     public function getSkillQueue(): array
     {
         return $this->skillQueue ?? [];

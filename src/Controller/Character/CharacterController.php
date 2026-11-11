@@ -6,7 +6,7 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
-use App\Service\Character\CharacterListBuilder;
+use App\Service\Character\CharacterOverviewBuilder;
 use App\Service\LocationService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -27,14 +27,14 @@ class CharacterController extends AbstractController
     ) {}
 
     #[Route('', name: 'app_profile_characters', methods: ['GET'])]
-    public function characters(CharacterListBuilder $characterListBuilder): Response
+    public function characters(CharacterOverviewBuilder $characterOverviewBuilder): Response
     {
         $currentUser = $this->getUser();
         if (!$currentUser instanceof User) {
             return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('character/overview.html.twig', $characterListBuilder->build($currentUser));
+        return $this->render('character/overview.html.twig', $characterOverviewBuilder->build($currentUser));
     }
 
     #[Route('/{id}/assets', name: 'app_dashboard_eve_character_assets', methods: ['GET'])]

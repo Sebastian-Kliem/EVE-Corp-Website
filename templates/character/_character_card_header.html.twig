@@ -1,7 +1,7 @@
 {# Card header of a character: portrait, name, tags and wallet balance. Expects "char". #}
 <div class="flex items-center mb-3">
-    <figure class="w-8 h-8 rounded-full mr-3">
-        <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="rounded-full">
+    <figure class="w-8 h-8 shrink-0 m-0 mr-3 rounded-full">
+        <img src="{{ path('app_eve_image_proxy', { category: 'characters', id: char.id, action: 'portrait' }) }}?size=64" alt="{{ char.name }}" class="block w-full h-full object-cover rounded-full">
     </figure>
     <div>
         <div class="font-semibold text-sm text-white">{{ char.name }}</div>
