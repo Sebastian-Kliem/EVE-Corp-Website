@@ -67,6 +67,7 @@ class MarketOrderSyncService
                     $order->setEscrow(number_format((float)$oData['escrow'], 2, '.', ''));
                 }
                 $order->setIsBuy((bool)($oData['is_buy_order'] ?? false));
+                $order->setIsCorporation((bool)($oData['is_corporation'] ?? false));
                 $order->setIssued(new \DateTimeImmutable($oData['issued']));
                 $order->setDuration((int)$oData['duration']);
                 $order->setRange((string)$oData['range']);

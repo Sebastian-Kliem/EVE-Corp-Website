@@ -114,11 +114,16 @@ class UpdateCharacterContractsTask implements CronTaskInterface
                 $contract->setTitle(isset($cData['title']) ? $cData['title'] : null);
                 $contract->setIssuerId((int)$cData['issuer_id']);
                 $contract->setAcceptorId((int)$cData['acceptor_id']);
+                $contract->setForCorporation((bool)($cData['for_corporation'] ?? false));
 
                 // Fetch contract items if not already stored, or if contract was recently updated
                 $items = $contract->getItems();
                 // Only request items for item_exchange or auction, courier contracts don't list specific item outputs; items never change once stored
-                if ($cData['type'] !== 'courier' && $items === []) {
+                // Exception: open couriers issued by this character, their package counts towards the character's value
+                $isOwnOpenCourier = $cData['type'] === 'courier'
+                    && (int)$cData['issuer_id'] === $character->getId()
+                    && in_array($cData['status'], ['outstanding', 'in_progress'], true);
+                if (($cData['type'] !== 'courier' || $isOwnOpenCourier) && $items === []) {
                     try {
                         $itemsData = $this->esiClient->request(
                             'GET',
@@ -131,7 +136,9 @@ class UpdateCharacterContractsTask implements CronTaskInterface
                                 $items[] = [
                                     'typeId' => (int)$iData['type_id'],
                                     'quantity' => (int)$iData['quantity'],
-                                    'isIncluded' => (bool)$iData['is_included']
+                                    'isIncluded' => (bool)$iData['is_included'],
+                                    // raw_quantity -2 marks a blueprint copy
+                                    'isBlueprintCopy' => ($iData['raw_quantity'] ?? null) === -2,
                                 ];
                             }
                         }

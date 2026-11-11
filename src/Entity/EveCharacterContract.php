@@ -71,6 +71,10 @@ class EveCharacterContract
     #[ORM\Column(nullable: true)]
     private ?int $acceptorId = null;
 
+    // Contract issued on behalf of the corporation
+    #[ORM\Column(options: ['default' => false])]
+    private bool $forCorporation = false;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -263,6 +267,17 @@ class EveCharacterContract
         return $this;
     }
 
+    public function isForCorporation(): bool
+    {
+        return $this->forCorporation;
+    }
+
+    public function setForCorporation(bool $forCorporation): static
+    {
+        $this->forCorporation = $forCorporation;
+        return $this;
+    }
+
     public function __serialize(): array
     {
         return [
@@ -283,6 +298,7 @@ class EveCharacterContract
             'title' => $this->title,
             'issuerId' => $this->issuerId,
             'acceptorId' => $this->acceptorId,
+            'forCorporation' => $this->forCorporation,
         ];
     }
 
@@ -305,5 +321,6 @@ class EveCharacterContract
         $this->title = $data['title'] ?? null;
         $this->issuerId = $data['issuerId'] ?? null;
         $this->acceptorId = $data['acceptorId'] ?? null;
+        $this->forCorporation = $data['forCorporation'] ?? false;
     }
 }

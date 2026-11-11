@@ -58,6 +58,10 @@ class EveCharacterMarketOrder
     #[ORM\Column(nullable: true)]
     private ?int $minVolume = null;
 
+    // Order placed on behalf of the corporation (corp wallet)
+    #[ORM\Column(options: ['default' => false])]
+    private bool $isCorporation = false;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -206,6 +210,17 @@ class EveCharacterMarketOrder
         return $this;
     }
 
+    public function isCorporation(): bool
+    {
+        return $this->isCorporation;
+    }
+
+    public function setIsCorporation(bool $isCorporation): static
+    {
+        $this->isCorporation = $isCorporation;
+        return $this;
+    }
+
     public function __serialize(): array
     {
         return [
@@ -222,6 +237,7 @@ class EveCharacterMarketOrder
             'duration' => $this->duration,
             'range' => $this->range,
             'minVolume' => $this->minVolume,
+            'isCorporation' => $this->isCorporation,
         ];
     }
 
@@ -240,5 +256,6 @@ class EveCharacterMarketOrder
         $this->duration = $data['duration'] ?? null;
         $this->range = $data['range'] ?? null;
         $this->minVolume = $data['minVolume'] ?? null;
+        $this->isCorporation = $data['isCorporation'] ?? false;
     }
 }

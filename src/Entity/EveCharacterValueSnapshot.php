@@ -31,6 +31,13 @@ class EveCharacterValueSnapshot
     #[ORM\Column(type: 'decimal', precision: 20, scale: 2)]
     private ?string $assetsValue = null;
 
+    // Null for snapshots taken before market orders were tracked separately (then included in assetsValue)
+    #[ORM\Column(type: 'decimal', precision: 20, scale: 2, nullable: true)]
+    private ?string $marketValue = null;
+
+    #[ORM\Column(type: 'decimal', precision: 20, scale: 2, nullable: true)]
+    private ?string $contractsValue = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -84,8 +91,32 @@ class EveCharacterValueSnapshot
         return $this;
     }
 
+    public function getMarketValue(): ?string
+    {
+        return $this->marketValue;
+    }
+
+    public function setMarketValue(?string $marketValue): static
+    {
+        $this->marketValue = $marketValue;
+
+        return $this;
+    }
+
+    public function getContractsValue(): ?string
+    {
+        return $this->contractsValue;
+    }
+
+    public function setContractsValue(?string $contractsValue): static
+    {
+        $this->contractsValue = $contractsValue;
+
+        return $this;
+    }
+
     public function getTotalValue(): float
     {
-        return (float) $this->walletBalance + (float) $this->assetsValue;
+        return (float) $this->walletBalance + (float) $this->assetsValue + (float) $this->marketValue + (float) $this->contractsValue;
     }
 }

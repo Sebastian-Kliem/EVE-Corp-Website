@@ -3,20 +3,20 @@
 namespace App\Service\CharacterSync;
 
 use App\Entity\EveCharacter;
-use App\Entity\EveCharacterMarketOrder;
 use App\Entity\EveCharacterValueSnapshot;
 use App\Service\JitaPriceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Stores the daily wallet and asset value of a character for the value history.
+ * Stores the daily wallet, asset, market order and contract value of a character for the value history.
  */
 class CharacterValueSnapshotService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly JitaPriceService $jitaPriceService,
+        private readonly CharacterMarketContractValueService $marketContractValueService,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -29,8 +29,9 @@ class CharacterValueSnapshotService
         try {
             $today = new \DateTimeImmutable('today');
 
-            $totalAssetVal = $this->_calculateAssetsValue($allAssets, $blueprintsMap)
-                + $this->_calculateMarketOrdersValue($character);
+            $totalAssetVal = $this->_calculateAssetsValue($allAssets, $blueprintsMap);
+            $marketValue = $this->marketContractValueService->calculateMarketValue($character)['total'];
+            $contractsValue = $this->marketContractValueService->calculateContractsValue($character);
 
             // Personal Corporation Assets are now merged into $allAssets at the beginning of syncAssets
 
@@ -50,15 +51,19 @@ class CharacterValueSnapshotService
             }
             $valSnapshot->setWalletBalance(number_format($walletBalance, 2, '.', ''));
             $valSnapshot->setAssetsValue(number_format($totalAssetVal, 2, '.', ''));
+            $valSnapshot->setMarketValue(number_format($marketValue, 2, '.', ''));
+            $valSnapshot->setContractsValue(number_format($contractsValue, 2, '.', ''));
 
             $this->entityManager->persist($valSnapshot);
             $this->entityManager->flush();
 
             $this->logger->info(sprintf(
-                '[Cron] Successfully saved value snapshot for character %s. Wallet: %f, Assets: %f',
+                '[Cron] Successfully saved value snapshot for character %s. Wallet: %f, Assets: %f, Market: %f, Contracts: %f',
                 $character->getName(),
                 $walletBalance,
-                $totalAssetVal
+                $totalAssetVal,
+                $marketValue,
+                $contractsValue
             ));
         } catch (\Exception $e) {
             $this->logger->error(sprintf(
@@ -92,32 +97,5 @@ class CharacterValueSnapshotService
         }
 
         return $totalAssetVal;
-    }
-
-    // Add active market orders value (escrow for buy orders, items valued at Jita buy for sell orders)
-    private function _calculateMarketOrdersValue(EveCharacter $character): float
-    {
-        $prices = $this->jitaPriceService->getGlobalPrices();
-        $totalOrderVal = 0.0;
-        $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy(['character' => $character]);
-        foreach ($marketOrders as $order) {
-            if ($order->isBuy()) {
-                $totalOrderVal += (float)($order->getEscrow() ?? 0.0);
-            } else {
-                $typeId = $order->getTypeId();
-                $qty = $order->getVolumeRemain();
-                $jitaBuyPrice = null;
-                try {
-                    $priceInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
-                    $jitaBuyPrice = $priceInfo['price'];
-                } catch (\Exception $e) {
-                    // Ignore
-                }
-                $price = $jitaBuyPrice ?? ($prices[$typeId] ?? 0.0);
-                $totalOrderVal += ($price * $qty);
-            }
-        }
-
-        return $totalOrderVal;
     }
 }

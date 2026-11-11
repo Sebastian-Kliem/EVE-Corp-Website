@@ -10,6 +10,9 @@ interface Snapshot {
     date: string; // YYYY-MM-DD
     wallet: number;
     assets: number;
+    // Null for older snapshots, where market orders were still included in assets and contracts were not counted
+    market: number | null;
+    contracts: number | null;
     total: number;
 }
 
@@ -17,7 +20,20 @@ interface CurrentValue {
     characterId: number;
     wallet: number;
     assets: number;
+    market: number;
+    marketBuyEscrow: number;
+    marketSellOrders: number;
+    contracts: number;
     total: number;
+}
+
+interface DailyTotal {
+    wallet: number;
+    assets: number;
+    market: number;
+    contracts: number;
+    total: number;
+    hasSeparateMarket: boolean;
 }
 
 interface ValueHistoryProps {
@@ -44,7 +60,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
 
     // 1. Process and aggregate snapshots
     const processedData = useMemo(() => {
-        const dailyTotals: Record<string, { wallet: number; assets: number; total: number }> = {};
+        const dailyTotals: Record<string, DailyTotal> = {};
 
         // Process snapshots
         snapshots.forEach(s => {
@@ -52,37 +68,54 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                 return;
             }
             if (!dailyTotals[s.date]) {
-                dailyTotals[s.date] = { wallet: 0, assets: 0, total: 0 };
+                dailyTotals[s.date] = { wallet: 0, assets: 0, market: 0, contracts: 0, total: 0, hasSeparateMarket: true };
             }
             dailyTotals[s.date].wallet += s.wallet;
             dailyTotals[s.date].assets += s.assets;
+            dailyTotals[s.date].market += s.market ?? 0;
+            dailyTotals[s.date].contracts += s.contracts ?? 0;
             dailyTotals[s.date].total += s.total;
+            if (s.market === null) {
+                dailyTotals[s.date].hasSeparateMarket = false;
+            }
         });
 
         // Add current live values as the latest data point for today (to have real-time stats)
         let liveWallet = 0;
         let liveAssets = 0;
+        let liveMarket = 0;
+        let liveMarketBuyEscrow = 0;
+        let liveMarketSellOrders = 0;
+        let liveContracts = 0;
         currentValues.forEach(cv => {
             if (selectedCharacterId !== 'all' && cv.characterId !== selectedCharacterId) {
                 return;
             }
             liveWallet += cv.wallet;
             liveAssets += cv.assets;
+            liveMarket += cv.market;
+            liveMarketBuyEscrow += cv.marketBuyEscrow;
+            liveMarketSellOrders += cv.marketSellOrders;
+            liveContracts += cv.contracts;
         });
-        const liveTotal = liveWallet + liveAssets;
+        const liveTotal = liveWallet + liveAssets + liveMarket + liveContracts;
 
         // Overlay or add today's live data
-        dailyTotals[todayStr] = { wallet: liveWallet, assets: liveAssets, total: liveTotal };
+        dailyTotals[todayStr] = {
+            wallet: liveWallet,
+            assets: liveAssets,
+            market: liveMarket,
+            contracts: liveContracts,
+            total: liveTotal,
+            hasSeparateMarket: true
+        };
 
         // Sort dates chronologically
         const sortedDates = Object.keys(dailyTotals).sort();
 
         // Build list with profit/loss calculations
-        const historyList: Array<{
+        const historyList: Array<DailyTotal & {
             date: string;
-            wallet: number;
-            assets: number;
-            total: number;
             change: number;
             hasPrev: boolean;
         }> = [];
@@ -95,9 +128,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
 
             historyList.push({
                 date: d,
-                wallet: data.wallet,
-                assets: data.assets,
-                total: data.total,
+                ...data,
                 change: change,
                 hasPrev: hasPrev
             });
@@ -123,6 +154,10 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             historyList,
             currentWallet,
             currentAssets,
+            currentMarket: liveMarket,
+            currentMarketBuyEscrow: liveMarketBuyEscrow,
+            currentMarketSellOrders: liveMarketSellOrders,
+            currentContracts: liveContracts,
             currentTotal,
             todayEarned
         };
@@ -261,9 +296,13 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                         <p className="text-xl font-bold mb-1 text-white">
                             {formatIskShort(processedData.currentTotal)}
                         </p>
-                        <div className="text-xs text-eve-muted flex justify-between">
+                        <div className="text-xs text-eve-muted flex justify-between flex-wrap gap-x-3">
                             <span>Liquid: {formatIskShort(processedData.currentWallet)}</span>
                             <span>Assets: {formatIskShort(processedData.currentAssets)}</span>
+                            <span title={`Buy-Orders: ${formatIsk(processedData.currentMarketBuyEscrow)} / Sell-Orders: ${formatIsk(processedData.currentMarketSellOrders)}`}>
+                                Markt: {formatIskShort(processedData.currentMarket)}
+                            </span>
+                            <span>Verträge: {formatIskShort(processedData.currentContracts)}</span>
                         </div>
                     </div>
                 </div>
@@ -417,6 +456,8 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                                     <th className="text-left font-semibold text-eve-muted p-2">Datum</th>
                                     <th className="text-right font-semibold text-eve-muted p-2">Liquid (Wallet)</th>
                                     <th className="text-right font-semibold text-eve-muted p-2">Assets (Gegenstände)</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Markt</th>
+                                    <th className="text-right font-semibold text-eve-muted p-2">Verträge</th>
                                     <th className="text-right font-semibold text-eve-muted p-2">Gesamtwert</th>
                                     <th className="text-right font-semibold text-eve-muted p-2">Veränderung</th>
                                 </tr>
@@ -429,6 +470,12 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                                         </td>
                                         <td className="p-2 text-right font-mono">{formatIsk(entry.wallet)}</td>
                                         <td className="p-2 text-right font-mono">{formatIsk(entry.assets)}</td>
+                                        <td className="p-2 text-right font-mono" title={entry.hasSeparateMarket ? undefined : 'Vor der Aufteilung erfasst: Markt ist in Assets enthalten'}>
+                                            {entry.hasSeparateMarket ? formatIsk(entry.market) : '-'}
+                                        </td>
+                                        <td className="p-2 text-right font-mono">
+                                            {entry.hasSeparateMarket ? formatIsk(entry.contracts) : '-'}
+                                        </td>
                                         <td className="p-2 text-right font-bold font-mono">{formatIsk(entry.total)}</td>
                                         <td style={{ 
                                             textAlign: 'right', 

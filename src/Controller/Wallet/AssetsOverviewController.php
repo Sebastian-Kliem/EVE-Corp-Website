@@ -5,12 +5,12 @@ namespace App\Controller\Wallet;
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
-use App\Entity\EveCharacterMarketOrder;
 use App\Entity\EveCharacterValueSnapshot;
 use App\Entity\EveCharacterWalletJournalEntry;
 use App\Entity\EveCorporationAsset;
 use App\Entity\User;
 use App\Service\Assets\AssetTreeBuilder;
+use App\Service\CharacterSync\CharacterMarketContractValueService;
 use App\Service\JitaPriceService;
 use App\Service\LocationService;
 use App\Service\PersonalCorpAssetService;
@@ -29,7 +29,8 @@ class AssetsOverviewController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly JitaPriceService $jitaPriceService,
-        private readonly AssetTreeBuilder $assetTreeBuilder
+        private readonly AssetTreeBuilder $assetTreeBuilder,
+        private readonly CharacterMarketContractValueService $marketContractValueService
     ) {}
 
     #[Route('/wallet/assets', name: 'app_dashboard_assets_overview', methods: ['GET'])]
@@ -78,15 +79,9 @@ class AssetsOverviewController extends AbstractController
                 return $a->getLocationType() !== 'industry_job' && $a->getLocationType() !== 'personal_corp_asset';
             });
 
-            // Fetch active market orders (sell orders as pseudo assets, buy orders as escrow)
-            $marketOrders = $this->entityManager->getRepository(EveCharacterMarketOrder::class)->findBy([
-                'character' => $character
-            ]);
-            $escrowTotal = 0.0;
-            foreach ($marketOrders as $order) {
-                if ($order->isBuy()) {
-                    $escrowTotal += (float)($order->getEscrow() ?? 0.0);
-                } else {
+            // Show personal sell orders as pseudo assets; their value is counted separately as market value
+            foreach ($this->marketContractValueService->findPersonalMarketOrders($character) as $order) {
+                if (!$order->isBuy()) {
                     $pseudoAsset = new EveCharacterAsset();
                     $pseudoAsset->setCharacter($character);
                     $pseudoAsset->setItemId((int)$order->getOrderId());
@@ -146,23 +141,14 @@ class AssetsOverviewController extends AbstractController
                     continue;
                 }
                 if ($asset->getLocationFlag() === 'MarketOrder') {
-                    $typeId = $asset->getTypeId();
-                    $jitaBuyPrice = null;
-                    try {
-                        $priceInfo = $this->jitaPriceService->getAverageJitaPrice($typeId, true);
-                        $jitaBuyPrice = $priceInfo['price'];
-                    } catch (\Exception $e) {
-                        // Ignore
-                    }
-                    $price = $jitaBuyPrice ?? ($prices[$typeId] ?? 0.0);
-                } else {
-                    $price = $prices[$asset->getTypeId()] ?? 0.0;
+                    continue;
                 }
+                $price = $prices[$asset->getTypeId()] ?? 0.0;
                 $totalAssetVal += ($price * $asset->getQuantity());
             }
 
-            // Add escrow of buy orders to assets value
-            $totalAssetVal += $escrowTotal;
+            $marketValue = $this->marketContractValueService->calculateMarketValue($character);
+            $contractsValue = $this->marketContractValueService->calculateContractsValue($character);
 
             // Merge Personal Corporation Assets if this is the primary character for the corporation
             $corpId = $character->getCorporationId();
@@ -250,7 +236,11 @@ class AssetsOverviewController extends AbstractController
                 'characterId' => $character->getId(),
                 'wallet' => $walletBalance,
                 'assets' => $totalAssetVal,
-                'total' => $walletBalance + $totalAssetVal,
+                'market' => $marketValue['total'],
+                'marketBuyEscrow' => $marketValue['buyEscrow'],
+                'marketSellOrders' => $marketValue['sellOrders'],
+                'contracts' => $contractsValue,
+                'total' => $walletBalance + $totalAssetVal + $marketValue['total'] + $contractsValue,
             ];
 
             // Sort locations primarily by system name, then by location name
@@ -294,6 +284,8 @@ class AssetsOverviewController extends AbstractController
                 'date' => $snapshot->getSnapshotDate()->format('Y-m-d'),
                 'wallet' => (float)$snapshot->getWalletBalance(),
                 'assets' => (float)$snapshot->getAssetsValue(),
+                'market' => $snapshot->getMarketValue() !== null ? (float)$snapshot->getMarketValue() : null,
+                'contracts' => $snapshot->getContractsValue() !== null ? (float)$snapshot->getContractsValue() : null,
                 'total' => $snapshot->getTotalValue(),
             ];
         }
@@ -340,10 +332,18 @@ class AssetsOverviewController extends AbstractController
         }
 
         $globalTotalAssetVal = 0.0;
+        $totalMarketVal = 0.0;
+        $totalMarketBuyEscrow = 0.0;
+        $totalMarketSellOrders = 0.0;
+        $totalContractsVal = 0.0;
         foreach ($currentValues as $cv) {
             $globalTotalAssetVal += $cv['assets'];
+            $totalMarketVal += $cv['market'];
+            $totalMarketBuyEscrow += $cv['marketBuyEscrow'];
+            $totalMarketSellOrders += $cv['marketSellOrders'];
+            $totalContractsVal += $cv['contracts'];
         }
-        $netWorth = $totalWallet + $globalTotalAssetVal;
+        $netWorth = $totalWallet + $globalTotalAssetVal + $totalMarketVal + $totalContractsVal;
 
         // Build characters list for the Performance Ledger React component
         $charactersList = [];
@@ -379,6 +379,10 @@ class AssetsOverviewController extends AbstractController
         return $this->render('wallet/assets_overview.html.twig', [
             'totalWallet' => $totalWallet,
             'totalAssetVal' => $globalTotalAssetVal,
+            'totalMarketVal' => $totalMarketVal,
+            'totalMarketBuyEscrow' => $totalMarketBuyEscrow,
+            'totalMarketSellOrders' => $totalMarketSellOrders,
+            'totalContractsVal' => $totalContractsVal,
             'netWorth' => $netWorth,
             'characterData' => $characterData,
             'snapshotsData' => $snapshotsData,
