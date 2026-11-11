@@ -22,7 +22,7 @@
         <span class="text-eve-muted">Wallet:</span>
         <span class="font-semibold text-[#00ffaa]">
             {% if char.walletBalance is not null %}
-                {{ char.walletBalance|number_format(2, ',', '.') }} ISK
+                {{ char.walletBalance|number_format(0, ',', '.') }} ISK
             {% else %}
                 <span class="text-eve-muted/70">Keine Daten</span>
             {% endif %}

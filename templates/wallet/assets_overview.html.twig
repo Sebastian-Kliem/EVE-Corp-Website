@@ -13,19 +13,19 @@
                     GESAMTVERMÖGEN (Wallet + Assets)
                 </span>
                 <h1 class="text-3xl font-extrabold mt-1 mb-3 text-[#00ffaa] font-mono">
-                    {{ netWorth|number_format(2, ',', '.') }} <span class="text-xl">ISK</span>
+                    {{ netWorth|number_format(0, ',', '.') }} <span class="text-xl">ISK</span>
                 </h1>
                 <div class="flex gap-8 flex-wrap border-t border-white/8 pt-3">
                     <div>
                         <span class="text-eve-muted text-xs uppercase tracking-wider">Wallet</span>
                         <p class="font-semibold text-base text-white">
-                            {{ totalWallet|number_format(2, ',', '.') }} ISK
+                            {{ totalWallet|number_format(0, ',', '.') }} ISK
                         </p>
                     </div>
                     <div>
                         <span class="text-eve-muted text-xs uppercase tracking-wider">Assets</span>
                         <p class="font-semibold text-base text-eve-primary">
-                            {{ totalAssetVal|number_format(2, ',', '.') }} ISK
+                            {{ totalAssetVal|number_format(0, ',', '.') }} ISK
                         </p>
                     </div>
                 </div>

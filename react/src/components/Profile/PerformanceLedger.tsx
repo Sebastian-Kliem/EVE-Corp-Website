@@ -393,8 +393,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const formatISK = (val: number): string => {
         return new Intl.NumberFormat('de-DE', {
             style: 'decimal',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
+            maximumFractionDigits: 0
         }).format(val) + ' ISK';
     };
 

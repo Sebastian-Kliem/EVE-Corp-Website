@@ -41,7 +41,7 @@
                     <strong>Wallet:</strong>
 
                     {% if character.walletBalance is not null %}
-                        {{ character.walletBalance|number_format(2, ',', '.') }} ISK
+                        {{ character.walletBalance|number_format(0, ',', '.') }} ISK
                     {% else %}
                         <span class="text-eve-muted">Keine Daten</span>
                     {% endif %}

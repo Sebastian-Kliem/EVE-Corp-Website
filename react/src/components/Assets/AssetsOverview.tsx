@@ -355,16 +355,16 @@ export default function AssetsOverview({
                             {item.price && item.price > 0 ? (
                                 <>
                                     <span className="text-eve-muted text-[11px]">
-                                        Einzelwert: {item.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Einzelwert: {item.price.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                     <span className="text-eve-primary text-[11px] font-semibold">
-                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                 </>
                             ) : (
                                 getAssetValue(item) > 0 && (
                                     <span className="text-eve-primary text-[11px] font-semibold">
-                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                 )
                             )}
@@ -501,11 +501,11 @@ export default function AssetsOverview({
                                         return (
                                             <>
                                                 <span className="font-bold assets-character-wallet text-sm text-white">
-                                                    Gesamt: {charTotal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                    Gesamt: {charTotal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                                 </span>
                                                 <div className="text-xs text-eve-muted mt-0.5">
-                                                    Wallet: {data.walletBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK |
-                                                    Assets: {charAssetVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                    Wallet: {data.walletBalance.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK |
+                                                    Assets: {charAssetVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                                 </div>
                                             </>
                                         );

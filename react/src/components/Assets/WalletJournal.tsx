@@ -107,10 +107,10 @@ export default function WalletJournal({ journalEntries, characters }: WalletJour
                                     <td className={`p-3 text-xs vertical-middle text-right font-bold font-mono ${
                                         entry.amount > 0 ? 'text-emerald-400' : entry.amount < 0 ? 'text-rose-400' : 'text-[#ccc]'
                                     }`}>
-                                        {entry.amount > 0 ? '+' : ''}{entry.amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        {entry.amount > 0 ? '+' : ''}{entry.amount.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </td>
                                     <td className="p-3 text-xs vertical-middle text-right text-eve-muted font-mono">
-                                        {entry.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        {entry.balance.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </td>
                                 </tr>
                             ))

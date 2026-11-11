@@ -337,16 +337,16 @@ export default function CorpAssetsOverview({
                             {item.price && item.price > 0 ? (
                                 <>
                                     <span className="text-eve-muted text-[11px]">
-                                        Einzelwert: {item.price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Einzelwert: {item.price.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                     <span className="text-eve-primary text-[11px] font-semibold">
-                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                 </>
                             ) : (
                                 getAssetValue(item) > 0 && (
                                     <span className="text-eve-primary text-[11px] font-semibold">
-                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                        Gesamtwert: {getAssetValue(item).toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                     </span>
                                 )
                             )}
@@ -480,7 +480,7 @@ export default function CorpAssetsOverview({
 
                                                 return (
                                                     <span className="font-bold text-sm text-white">
-                                                        Wert: {corpVal.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ISK
+                                                        Wert: {corpVal.toLocaleString('de-DE', { maximumFractionDigits: 0 })} ISK
                                                     </span>
                                                 );
                                             })()}

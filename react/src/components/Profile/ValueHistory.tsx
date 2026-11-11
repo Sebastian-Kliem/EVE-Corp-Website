@@ -129,7 +129,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
     }, [snapshots, currentValues, selectedCharacterId, todayStr]);
 
     const formatIsk = (val: number): string => {
-        return val.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ISK';
+        return val.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' ISK';
     };
 
     const formatIskShort = (val: number): string => {
