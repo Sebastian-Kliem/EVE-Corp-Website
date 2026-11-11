@@ -40,13 +40,10 @@ interface ValueHistoryProps {
     characters: Character[];
     snapshots: Snapshot[];
     currentValues: CurrentValue[];
-    omegaAccountCount: number;
     today: string; // YYYY-MM-DD, server date of the snapshot still in progress
 }
 
-const OMEGA_COST_ISK = 2500000000; // 2.5 Billion ISK
-
-export default function ValueHistory({ characters, snapshots, currentValues, omegaAccountCount, today }: ValueHistoryProps) {
+export default function ValueHistory({ characters, snapshots, currentValues, today }: ValueHistoryProps) {
     const [selectedCharacterId, setSelectedCharacterId] = useState<number | 'all'>('all');
     const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; total: number } | null>(null);
 
@@ -154,7 +151,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
 
     const formatIskShort = (val: number): string => {
         const absVal = Math.abs(val);
-        let formatted = '';
+        let formatted: string;
         if (absVal >= 1e12) {
             formatted = (val / 1e12).toFixed(2) + 'T';
         } else if (absVal >= 1e9) {
