@@ -75,6 +75,9 @@ class AssetsOverviewController extends AbstractController
                 'character' => $character
             ]);
 
+            // Industry job inputs are hidden in the tree but count towards the value, like in the daily snapshot
+            $industryJobInputValue = $this->_calculateIndustryJobInputValue($assets, $prices);
+
             $assets = array_filter($assets, function (EveCharacterAsset $a) {
                 return $a->getLocationType() !== 'industry_job' && $a->getLocationType() !== 'personal_corp_asset';
             });
@@ -146,6 +149,8 @@ class AssetsOverviewController extends AbstractController
                 $price = $prices[$asset->getTypeId()] ?? 0.0;
                 $totalAssetVal += ($price * $asset->getQuantity());
             }
+
+            $totalAssetVal += $industryJobInputValue;
 
             $marketValue = $this->marketContractValueService->calculateMarketValue($character);
             $contractsValue = $this->marketContractValueService->calculateContractsValue($character);
@@ -391,7 +396,26 @@ class AssetsOverviewController extends AbstractController
             'journalEntriesData' => $journalEntriesData,
             'charactersData' => $charactersData,
             'charactersList' => $charactersList,
+            // Server date of the snapshot still being updated today
+            'snapshotToday' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
         ]);
+    }
+
+    /**
+     * @param EveCharacterAsset[] $assets
+     * @param array<int, float> $prices
+     */
+    private function _calculateIndustryJobInputValue(array $assets, array $prices): float
+    {
+        $value = 0.0;
+        foreach ($assets as $asset) {
+            if ($asset->getLocationType() !== 'industry_job' || $asset->isBlueprintCopy()) {
+                continue;
+            }
+            $value += ($prices[$asset->getTypeId()] ?? 0.0) * $asset->getQuantity();
+        }
+
+        return $value;
     }
 
     #[Route('/wallet/value-history', name: 'app_dashboard_value_history', methods: ['GET'])]

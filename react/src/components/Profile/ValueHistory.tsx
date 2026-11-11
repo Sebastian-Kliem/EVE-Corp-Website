@@ -41,22 +41,17 @@ interface ValueHistoryProps {
     snapshots: Snapshot[];
     currentValues: CurrentValue[];
     omegaAccountCount: number;
+    today: string; // YYYY-MM-DD, server date of the snapshot still in progress
 }
 
 const OMEGA_COST_ISK = 2500000000; // 2.5 Billion ISK
 
-export default function ValueHistory({ characters, snapshots, currentValues, omegaAccountCount }: ValueHistoryProps) {
+export default function ValueHistory({ characters, snapshots, currentValues, omegaAccountCount, today }: ValueHistoryProps) {
     const [selectedCharacterId, setSelectedCharacterId] = useState<number | 'all'>('all');
     const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; date: string; total: number } | null>(null);
 
-    // Get current date string in local timezone (YYYY-MM-DD)
-    const todayStr = useMemo(() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }, []);
+    // Today's snapshot is still changing hourly, so chart and table only show completed days
+    const todayStr = today;
 
     // 1. Process and aggregate snapshots
     const processedData = useMemo(() => {
@@ -65,6 +60,9 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
         // Process snapshots
         snapshots.forEach(s => {
             if (selectedCharacterId !== 'all' && s.characterId !== selectedCharacterId) {
+                return;
+            }
+            if (s.date >= todayStr) {
                 return;
             }
             if (!dailyTotals[s.date]) {
@@ -80,7 +78,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             }
         });
 
-        // Add current live values as the latest data point for today (to have real-time stats)
+        // Current live values feed the summary cards only
         let liveWallet = 0;
         let liveAssets = 0;
         let liveMarket = 0;
@@ -99,16 +97,6 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
             liveContracts += cv.contracts;
         });
         const liveTotal = liveWallet + liveAssets + liveMarket + liveContracts;
-
-        // Overlay or add today's live data
-        dailyTotals[todayStr] = {
-            wallet: liveWallet,
-            assets: liveAssets,
-            market: liveMarket,
-            contracts: liveContracts,
-            total: liveTotal,
-            hasSeparateMarket: true
-        };
 
         // Sort dates chronologically
         const sortedDates = Object.keys(dailyTotals).sort();
@@ -141,13 +129,10 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
         const currentAssets = liveAssets;
         const currentTotal = liveTotal;
 
-        // Earnings today so far
+        // Earnings today so far: live value against the last completed day
         let todayEarned = 0;
-        if (historyList.length > 1) {
-            const lastEntry = historyList[historyList.length - 1];
-            if (lastEntry.date === todayStr) {
-                todayEarned = lastEntry.change;
-            }
+        if (historyList.length > 0) {
+            todayEarned = liveTotal - historyList[historyList.length - 1].total;
         }
 
         return {
@@ -319,7 +304,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                         <p className={`text-xl font-bold mb-1 ${processedData.todayEarned > 0 ? 'text-emerald-400' : processedData.todayEarned < 0 ? 'text-rose-400' : 'text-white'}`}>
                             {processedData.todayEarned > 0 ? '+' : ''}{formatIsk(processedData.todayEarned)}
                         </p>
-                        <p className="text-xs text-eve-muted">Vergleich mit dem Stand von gestern</p>
+                        <p className="text-xs text-eve-muted">Aktueller Stand im Vergleich zum Ende des letzten Tages</p>
                     </div>
                 </div>
             </div>
@@ -466,7 +451,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, ome
                                 {processedData.historyList.slice().reverse().map((entry, index) => (
                                     <tr key={index} className="hover:bg-white/2">
                                         <td className="p-2 font-medium">
-                                            {formatDateGerman(entry.date)} {entry.date === todayStr ? ' (Heute)' : ''}
+                                            {formatDateGerman(entry.date)}
                                         </td>
                                         <td className="p-2 text-right font-mono">{formatIsk(entry.wallet)}</td>
                                         <td className="p-2 text-right font-mono">{formatIsk(entry.assets)}</td>
