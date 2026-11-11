@@ -201,3 +201,28 @@ export function gasValue(site: Site, gasPrices: Record<number, number>): number 
     }
     return hasPrice ? value : null;
 }
+
+export type ShipClass = 'frigate' | 'destroyer' | 'cruiser' | 'battlecruiser' | 'battleship';
+
+export const SHIP_CLASS_LABELS: Record<ShipClass, string> = {
+    frigate: 'Frigate',
+    destroyer: 'Destroyer',
+    cruiser: 'Cruiser',
+    battlecruiser: 'Battlecruiser',
+    battleship: 'Battleship',
+};
+
+// Sleeper hull size follows the name prefix, Drifters are battleship-sized; sentry towers have no class
+export function shipClassOf(ship: Ship): ShipClass | null {
+    const name = ship.name.toLowerCase();
+    if (name.startsWith('emergent ')) {
+        return 'frigate';
+    }
+    if (name.startsWith('awakened ')) {
+        return 'cruiser';
+    }
+    if (name.startsWith('sleepless ') || name.includes('battleship') || name.includes('avenger')) {
+        return 'battleship';
+    }
+    return null;
+}

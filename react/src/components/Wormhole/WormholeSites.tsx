@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import SignatureCalculator from './SignatureCalculator';
+import ShipClassIcon from './ShipClassIcon';
 import {
     CATEGORY_LABELS, DrifterMode, Resource, SPECIAL_EFFECTS, Ship, Site, SpecialEffects, Wave,
-    formatNumber, gasValue, hasEffect, prepareSite, sitePeaks, sortedSpecials, waveTotals,
+    formatNumber, gasValue, hasEffect, prepareSite, shipClassOf, sitePeaks, sortedSpecials, waveTotals,
 } from './siteModel';
 
 interface WormholeSitesProps {
@@ -66,6 +67,12 @@ function SpecialList({ specials, typeIconUrl }: { specials: SpecialEffects; type
     );
 }
 
+// Fixed-width slot keeps the names aligned when a ship has no class icon
+function ShipClassSlot({ ship }: { ship: Ship }) {
+    const shipClass = shipClassOf(ship);
+    return <span className="w-4 h-4 shrink-0 flex items-center justify-center">{shipClass && <ShipClassIcon shipClass={shipClass} />}</span>;
+}
+
 function ShipTable({ ships, typeIconUrl }: { ships: Ship[]; typeIconUrl: string }) {
     const headerClass = 'border border-eve-border px-2.5 py-1.5 text-left font-semibold';
     return (
@@ -90,6 +97,7 @@ function ShipTable({ ships, typeIconUrl }: { ships: Ship[]; typeIconUrl: string 
                             <td className="px-2.5 py-1.5">{ship.qty}</td>
                             <td className="px-2.5 py-1.5">
                                 <div className="flex items-center gap-2">
+                                    <ShipClassSlot ship={ship} />
                                     <TypeIcon typeId={ship.typeId} url={typeIconUrl} title={ship.name} />
                                     <span className="text-slate-100">{ship.name}</span>
                                     {ship.trigger && <span className="text-[10px] bg-red-700 text-white px-1 rounded-sm">Trigger</span>}
