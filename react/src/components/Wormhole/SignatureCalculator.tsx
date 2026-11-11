@@ -16,7 +16,25 @@ interface ScannedSignature {
     site: Site | null;
 }
 
-const SIGNATURE_ID_PATTERN = /^[A-Z]{3}-\d{3}$/;
+const LINE_PATTERN = /^\s*([A-Z]{3}-\d{3})(?:\t|\s+)(.*)$/;
+// Tabs, or runs of two or more spaces when the tabs got lost while copying
+const COLUMN_SEPARATOR = /\t| {2,}/;
+const SIGNAL_STRENGTH_PATTERN = /^\d+(?:[.,]\d+)?\s*%/;
+
+/**
+ * Splits the columns after the signature ID: group, type, name. Everything from the signal strength on is dropped.
+ */
+function _splitColumns(rest: string): string[] {
+    const columns: string[] = [];
+    for (const column of rest.split(COLUMN_SEPARATOR)) {
+        const trimmedColumn = column.trim();
+        if (SIGNAL_STRENGTH_PATTERN.test(trimmedColumn)) {
+            break;
+        }
+        columns.push(trimmedColumn);
+    }
+    return columns;
+}
 
 /**
  * Builds the lookup of lower-cased English names, German names and saved aliases to their site.
@@ -45,26 +63,68 @@ function buildNameLookup(sites: Site[], aliases: Record<string, string>): Map<st
 
 /**
  * Parses the tab separated probe scanner copy: ID, group, type, name, signal strength, distance.
+ * Also accepts copies whose tabs were converted to spaces.
  */
 function parseScannerCopy(text: string, lookup: Map<string, Site>): ScannedSignature[] {
     const signatures: ScannedSignature[] = [];
     const seenIds = new Set<string>();
     for (const line of text.split('\n')) {
-        const columns = line.split('\t').map((column) => column.trim());
-        const signatureId = columns[0] ?? '';
-        if (!SIGNATURE_ID_PATTERN.test(signatureId) || seenIds.has(signatureId)) {
+        const match = LINE_PATTERN.exec(line);
+        if (!match || seenIds.has(match[1])) {
             continue;
         }
+        const signatureId = match[1];
         seenIds.add(signatureId);
-        const pastedName = columns[3] ?? '';
+        const columns = _splitColumns(match[2]);
+        const pastedName = columns[2] ?? '';
         signatures.push({
             signatureId,
-            group: columns[2] ?? '',
+            group: columns[1] ?? '',
             pastedName,
             site: pastedName === '' ? null : lookup.get(pastedName.toLowerCase()) ?? null,
         });
     }
     return signatures;
+}
+
+type Category = Site['category'];
+
+const CATEGORY_ORDER: Category[] = ['combat', 'data', 'relic', 'gas', 'ore'];
+
+// Literal class names so Tailwind picks them up
+const CATEGORY_STYLES: Record<Category, { badge: string; text: string; header: string }> = {
+    combat: { badge: 'border-red-500/50 bg-red-500/10 text-red-300', text: 'text-red-300', header: 'bg-red-500/10 border-l-red-500' },
+    data: { badge: 'border-sky-500/50 bg-sky-500/10 text-sky-300', text: 'text-sky-300', header: 'bg-sky-500/10 border-l-sky-500' },
+    relic: { badge: 'border-violet-500/50 bg-violet-500/10 text-violet-300', text: 'text-violet-300', header: 'bg-violet-500/10 border-l-violet-500' },
+    gas: { badge: 'border-teal-500/50 bg-teal-500/10 text-teal-300', text: 'text-teal-300', header: 'bg-teal-500/10 border-l-teal-500' },
+    ore: { badge: 'border-amber-500/50 bg-amber-500/10 text-amber-300', text: 'text-amber-300', header: 'bg-amber-500/10 border-l-amber-500' },
+};
+
+interface CategoryGroup {
+    category: Category;
+    signatures: ScannedSignature[];
+    total: number;
+}
+
+/**
+ * Removes all lines of the given signature from the pasted scanner copy.
+ */
+function removeSignatureLines(text: string, signatureId: string): string {
+    const keptLines: string[] = [];
+    for (const line of text.split('\n')) {
+        if (LINE_PATTERN.exec(line)?.[1] !== signatureId) {
+            keptLines.push(line);
+        }
+    }
+    return keptLines.join('\n');
+}
+
+function RemoveButton({ signatureId, onRemove }: { signatureId: string; onRemove: (signatureId: string) => void }) {
+    return (
+        <button type="button" title={`${signatureId} entfernen`} onClick={() => onRemove(signatureId)} className="px-1.5 leading-none text-[14px] text-eve-muted hover:text-red-400 cursor-pointer">
+            ×
+        </button>
+    );
 }
 
 function siteLabel(site: Site): string {
@@ -107,26 +167,39 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, reso
     const unknown = signatures.filter((signature) => signature.site === null && signature.pastedName !== '');
     const unscannedCount = signatures.filter((signature) => signature.pastedName === '').length;
 
-    let totalLoot = 0;
-    let totalGas = 0;
-    let totalOre = 0;
     const valueBySignature = new Map<string, number | null>();
+    const groupsByCategory = new Map<Category, CategoryGroup>();
+    let grandTotal = 0;
     for (const signature of recognized) {
         const site = signature.site as Site;
-        const siteResourceValue = resourceValue(site, resourcePrices);
-        if (siteResourceValue !== null) {
-            valueBySignature.set(signature.signatureId, siteResourceValue);
-            if (site.category === 'gas') {
-                totalGas += siteResourceValue;
-            } else {
-                totalOre += siteResourceValue;
-            }
-            continue;
+        // Gas and ore sites are valued by their resources, everything else by blue loot
+        const value = resourceValue(site, resourcePrices) ?? prepareSite(site, drifterMode, false).blueLootIsk;
+        valueBySignature.set(signature.signatureId, value);
+        let group = groupsByCategory.get(site.category);
+        if (!group) {
+            group = { category: site.category, signatures: [], total: 0 };
+            groupsByCategory.set(site.category, group);
         }
-        const blueLoot = prepareSite(site, drifterMode, false).blueLootIsk;
-        valueBySignature.set(signature.signatureId, blueLoot);
-        totalLoot += blueLoot ?? 0;
+        group.signatures.push(signature);
+        group.total += value ?? 0;
+        grandTotal += value ?? 0;
     }
+    const categoryGroups: CategoryGroup[] = [];
+    for (const category of CATEGORY_ORDER) {
+        const group = groupsByCategory.get(category);
+        if (group) {
+            categoryGroups.push(group);
+        }
+    }
+
+    const removeSignature = (signatureId: string) => {
+        setScannerCopy(removeSignatureLines(scannerCopy, signatureId));
+    };
+
+    const clearList = () => {
+        setScannerCopy('');
+        setErrorMessage(null);
+    };
 
     const saveAlias = async (pastedName: string, siteName: string) => {
         setErrorMessage(null);
@@ -165,15 +238,29 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, reso
                     onChange={(event) => setScannerCopy(event.target.value)}
                 />
 
+                {scannerCopy.trim() !== '' && (
+                    <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                        {signatures.length > 0 ? (
+                            <>
+                                <div className="px-2 py-0.5 rounded border border-green-500/60 bg-green-500/15 text-green-300 font-semibold">Gesamt: {formatNumber(Math.round(grandTotal))} ISK</div>
+                                {categoryGroups.map((group) => (
+                                    <div key={group.category} className={`px-2 py-0.5 rounded border ${CATEGORY_STYLES[group.category].badge}`}>
+                                        {CATEGORY_LABELS[group.category]}: {formatNumber(Math.round(group.total))} ISK
+                                    </div>
+                                ))}
+                                <div className="text-eve-muted">{recognized.length} erkannt · {unscannedCount} nicht gescannt · {unknown.length} unbekannt</div>
+                            </>
+                        ) : (
+                            <div className="text-amber-300">Keine Signaturen erkannt. Erwartet wird eine Zeile pro Signatur, beginnend mit der ID (z. B. ABC-123).</div>
+                        )}
+                        <button type="button" onClick={clearList} className="ml-auto px-2 py-1 rounded-sm border border-red-500/60 text-[11px] text-red-300 hover:bg-red-500/10 cursor-pointer">
+                            Liste leeren
+                        </button>
+                    </div>
+                )}
+
                 {signatures.length > 0 && (
                     <>
-                        <div className="flex flex-wrap items-center gap-4 text-[12px]">
-                            <div className="text-slate-200">Gesamt: <span className="text-green-400 font-semibold">{formatNumber(Math.round(totalLoot + totalGas + totalOre))} ISK</span></div>
-                            <div className="text-slate-300">Blue Loot: {formatNumber(totalLoot)} ISK</div>
-                            <div className="text-slate-300">Gas: {formatNumber(Math.round(totalGas))} ISK</div>
-                            <div className="text-slate-300">Erz: {formatNumber(Math.round(totalOre))} ISK</div>
-                            <div className="text-eve-muted">{recognized.length} erkannt · {unscannedCount} nicht gescannt · {unknown.length} unbekannt</div>
-                        </div>
 
                         {recognized.length > 0 && (
                             <div className="overflow-x-auto border border-eve-border rounded">
@@ -185,23 +272,37 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, reso
                                             <th className="px-2.5 py-1.5 text-left font-semibold">Klasse</th>
                                             <th className="px-2.5 py-1.5 text-left font-semibold">Typ</th>
                                             <th className="px-2.5 py-1.5 text-right font-semibold">Wert</th>
+                                            <th className="px-1 py-1.5 w-6"></th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {recognized.map((signature) => {
-                                            const site = signature.site as Site;
-                                            const value = valueBySignature.get(signature.signatureId);
-                                            return (
-                                                <tr key={signature.signatureId} className="border-t border-eve-border">
-                                                    <td className="px-2.5 py-1.5 font-mono">{signature.signatureId}</td>
-                                                    <td className="px-2.5 py-1.5 text-slate-100">{siteLabel(site)}</td>
-                                                    <td className="px-2.5 py-1.5">{site.classes.join(', ')}</td>
-                                                    <td className="px-2.5 py-1.5">{CATEGORY_LABELS[site.category]}</td>
-                                                    <td className="px-2.5 py-1.5 text-right">{value ? `${formatNumber(Math.round(value))} ISK` : '–'}</td>
+                                    {categoryGroups.map((group) => {
+                                        const styles = CATEGORY_STYLES[group.category];
+                                        return (
+                                            <tbody key={group.category}>
+                                                <tr className={`border-t border-eve-border border-l-2 ${styles.header}`}>
+                                                    <td colSpan={4} className={`px-2.5 py-1.5 font-semibold ${styles.text}`}>
+                                                        {CATEGORY_LABELS[group.category]} <span className="font-normal text-eve-muted">· {group.signatures.length}</span>
+                                                    </td>
+                                                    <td className={`px-2.5 py-1.5 text-right font-semibold ${styles.text}`}>{formatNumber(Math.round(group.total))} ISK</td>
+                                                    <td></td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
+                                                {group.signatures.map((signature) => {
+                                                    const site = signature.site as Site;
+                                                    const value = valueBySignature.get(signature.signatureId);
+                                                    return (
+                                                        <tr key={signature.signatureId} className="border-t border-eve-border">
+                                                            <td className="px-2.5 py-1.5 font-mono">{signature.signatureId}</td>
+                                                            <td className="px-2.5 py-1.5 text-slate-100">{siteLabel(site)}</td>
+                                                            <td className="px-2.5 py-1.5">{site.classes.join(', ')}</td>
+                                                            <td className="px-2.5 py-1.5">{CATEGORY_LABELS[site.category]}</td>
+                                                            <td className={`px-2.5 py-1.5 text-right ${styles.text}`}>{value ? `${formatNumber(Math.round(value))} ISK` : '–'}</td>
+                                                            <td className="px-1 py-1.5 text-center"><RemoveButton signatureId={signature.signatureId} onRemove={removeSignature} /></td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        );
+                                    })}
                                 </table>
                             </div>
                         )}
@@ -216,7 +317,10 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, reso
                                             <span className="text-slate-100">{signature.pastedName}</span>
                                             {signature.group && <span className="ml-2 text-eve-muted">{signature.group}</span>}
                                         </span>
-                                        <AliasMapper pastedName={signature.pastedName} sites={sortedSites} onSave={saveAlias} />
+                                        <div className="flex items-center gap-1">
+                                            <AliasMapper pastedName={signature.pastedName} sites={sortedSites} onSave={saveAlias} />
+                                            <RemoveButton signatureId={signature.signatureId} onRemove={removeSignature} />
+                                        </div>
                                     </div>
                                 ))}
                                 {errorMessage && <div className="text-[11px] text-red-400">{errorMessage}</div>}
