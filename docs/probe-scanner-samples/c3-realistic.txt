@@ -1,0 +1,16 @@
+TVR-423	Kosmische Anomalie	Kampfgebiet	Bollwerk im Grenzgebiet	100,0 %	10,39 AE
+OVA-200	Kosmische Anomalie	Kampfgebiet	Bollwerk im Grenzgebiet	100,0 %	5,37 AE
+VTR-643	Kosmische Anomalie	Kampfgebiet	Das Oruze-Konstrukt	100,0 %	19,88 AE
+RAJ-780	Kosmische Anomalie	Kampfgebiet	Festung im Grenzgebiet	100,0 %	3,10 AE
+MWD-288	Kosmische Anomalie	Kampfgebiet	Festung im Grenzgebiet	100,0 %	16,54 AE
+VMH-734	Kosmische Anomalie	Kampfgebiet	Festung im Grenzgebiet	100,0 %	11,60 AE
+DSL-263	Kosmische Anomalie	Kampfgebiet	Wilder Drohnenfertiger	100,0 %	2,68 AE
+QKI-792	Kosmische Signatur	Gasgebiet	Gewöhnliches Gasvorkommen	100,0 %	15,72 AE
+JTE-369	Kosmische Signatur	Reliktgebiet	Vergessener Quarantäne-Außenposten im Grenzgebiet	100,0 %	2,09 AE
+HGZ-550	Kosmische Signatur	Reliktgebiet	Vergessenes Rücklauf-Depot im Grenzgebiet	100,0 %	13,58 AE
+KIO-880	Kosmische Signatur	Reliktgebiet	Vergessenes Rücklauf-Depot im Grenzgebiet	100,0 %	3,03 AE
+XME-130	Kosmische Signatur	Reliktgebiet	Zerstörtes Blood Raider-Denkmal	100,0 %	3,63 AE
+DBG-412	Kosmische Signatur	Datengebiet	Ungesicherte Datenbank im Grenzgebiet	100,0 %	13,31 AE
+REC-907	Kosmische Signatur	Datengebiet	Ungesicherter Empfänger im Grenzgebiet	100,0 %	24,98 AE
+QRY-888	Kosmische Signatur	Wurmloch	Instabiles Wurmloch	100,0 %	4,59 AE
+UPP-846	Kosmische Signatur	Wurmloch	Instabiles Wurmloch	100,0 %	7,47 AE

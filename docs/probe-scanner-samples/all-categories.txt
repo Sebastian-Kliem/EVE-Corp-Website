@@ -1,0 +1,21 @@
+CMB-101	Kosmische Anomalie	Kampfgebiet	Das Feld	100,0 %	19,20 AE
+CMB-102	Kosmische Anomalie	Kampfgebiet	Lager im Randgebiet	100,0 %	28,48 AE
+CMB-201	Kosmische Anomalie	Kampfgebiet	Hangar im Randgebiet	100,0 %	17,74 AE
+CMB-202	Kosmische Anomalie	Kampfgebiet	Die Ruinen von Enclave Cohort 27	100,0 %	12,50 AE
+DAT-101	Kosmische Signatur	Datengebiet	Ungesichertes Informationszentrum im Außenbereich	100,0 %	29,31 AE
+DAT-102	Kosmische Signatur	Datengebiet	Ungesicherter Verstärker im Außenbereich	100,0 %	2,35 AE
+DAT-201	Kosmische Signatur	Datengebiet	Ungesichertes Transponderfeld im Außenbereich	100,0 %	25,90 AE
+DAT-202	Kosmische Signatur	Datengebiet	Ungesichertes Kommunikationsrelais	100,0 %	9,40 AE
+REL-101	Kosmische Signatur	Reliktgebiet	Vergessene Einsatzplattform im Außenbereich	100,0 %	5,18 AE
+REL-102	Kosmische Signatur	Reliktgebiet	Vergessenes Energiefeld im Außenbereich	100,0 %	4,42 AE
+REL-201	Kosmische Signatur	Reliktgebiet	Vergessene Wohnsiedlung im Außenbereich	100,0 %	9,95 AE
+REL-202	Kosmische Signatur	Reliktgebiet	Vergessenes Tor im Außenbereich	100,0 %	24,67 AE
+GAS-101	Kosmische Signatur	Gasgebiet	Karges Gasvorkommen	100,0 %	6,24 AE
+GAS-102	Kosmische Signatur	Gasgebiet	Geringfügiges Gasvorkommen	100,0 %	17,87 AE
+GAS-103	Kosmische Signatur	Gasgebiet	Erhebliches Gasvorkommen	100,0 %	19,53 AE
+GAS-104	Kosmische Signatur	Gasgebiet	Üppiges Gasvorkommen im Grenzgebiet	100,0 %	11,80 AE
+ORE-101	Kosmische Anomalie	Erzgebiet	Gemeinschaftliche Erzvorkommen	100,0 %	16,88 AE
+ORE-102	Kosmische Anomalie	Erzgebiet	Gewöhnliche Erzvorkommen	100,0 %	2,82 AE
+ORE-103	Kosmische Anomalie	Erzgebiet	Gewöhnliche Erzvorkommen im Grenzgebiet	100,0 %	2,73 AE
+ORE-501	Kosmische Anomalie	Erzgebiet	Besondere grundlegende Erzvorkommen	100,0 %	6,97 AE
+ORE-502	Kosmische Anomalie	Erzgebiet	Unregelmäßig auftretende grundlegende Erzvorkommen	100,0 %	20,73 AE

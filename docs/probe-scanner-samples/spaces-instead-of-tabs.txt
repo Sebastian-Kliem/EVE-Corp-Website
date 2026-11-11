@@ -1,0 +1,5 @@
+CMB-101    Kosmische Anomalie    Kampfgebiet    Das Feld    100,0 %    19,20 AE
+CMB-102    Kosmische Anomalie    Kampfgebiet    Lager im Randgebiet    100,0 %    28,48 AE
+CMB-201    Kosmische Anomalie    Kampfgebiet    Hangar im Randgebiet    100,0 %    17,74 AE
+CMB-202    Kosmische Anomalie    Kampfgebiet    Die Ruinen von Enclave Cohort 27    100,0 %    12,50 AE
+SPC-900 Kosmische Signatur                      12,5 %  14,20 AE

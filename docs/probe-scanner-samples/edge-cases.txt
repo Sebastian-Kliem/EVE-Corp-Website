@@ -1,0 +1,11 @@
+# Not a signature line, must be ignored
+ABC-123	Kosmische Signatur			12,5 %	13,40 AE
+ABD-124	Kosmische Signatur			0,0 %	10,11 AE
+GRP-300	Kosmische Signatur	Reliktgebiet		47,3 %	17,98 AE
+QRY-888	Kosmische Signatur	Wurmloch	Instabiles Wurmloch	100,0 %	14,14 AE
+UNK-777	Kosmische Signatur	Datengebiet	Völlig unbekannte Site	100,0 %	9,69 AE
+TVR-423	Kosmische Anomalie	Kampfgebiet	Bollwerk im Grenzgebiet	100,0 %	24,04 AE
+TVR-423	Kosmische Anomalie	Kampfgebiet	Bollwerk im Grenzgebiet	100,0 %	21,27 AE
+ENG-001	Kosmische Anomalie	Combat Site	Frontier Barracks	100,0 %	8,08 AE
+abc-123	Kosmische Signatur	Kampfgebiet	Kleinbuchstaben-ID	100,0 %	1,00 AE
+
