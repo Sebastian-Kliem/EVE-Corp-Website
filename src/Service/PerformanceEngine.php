@@ -427,7 +427,22 @@ class PerformanceEngine
             $manualEntryAgg[$dateStr][] = $entry;
         }
 
-        // Aggregate mining records: [date][rawTypeId][characterName] => quantity
+        // Mined ore/ice is valued as its compressed type (1:1); gas stays raw since it is reacted, not compressed
+        $minedTypeIds = [];
+        /** @var EveCharacterMiningRecord $record */
+        foreach ($miningRecords as $record) {
+            $minedTypeIds[$record->getTypeId()] = true;
+        }
+        $compressedTypeMap = $this->_resolveCompressedTypeIds(array_keys($minedTypeIds), $itemMetadata);
+        $missingMetadataTypeIds = [];
+        foreach ($compressedTypeMap as $compressedTypeId) {
+            if (!isset($itemMetadata[$compressedTypeId])) {
+                $missingMetadataTypeIds[] = $compressedTypeId;
+            }
+        }
+        $itemMetadata += $this->_resolveItemMetadata($missingMetadataTypeIds);
+
+        // Aggregate mining records: [date][compressedTypeId][characterName] => quantity
         $miningAgg = [];
         $miningDates = [];
         /** @var EveCharacterMiningRecord $record */
@@ -440,11 +455,9 @@ class PerformanceEngine
 
             $dateStr = $record->getDate()->format('Y-m-d');
             $miningDates[] = $dateStr;
-            $rawTid = $record->getTypeId();
-            
-            $comp = $compressionMap[$rawTid] ?? ['typeId' => $rawTid, 'ratio' => 1];
-            $rawTid = $comp['typeId'];
-            $qty = (int)$record->getQuantity() * $comp['ratio'];
+            $minedTypeId = $record->getTypeId();
+            $rawTid = $compressedTypeMap[$minedTypeId] ?? $minedTypeId;
+            $qty = (int)$record->getQuantity();
 
             $charName = $record->getCharacter()->getName();
 
@@ -611,7 +624,9 @@ class PerformanceEngine
                         }
 
                         $exKey = sprintf('%s_%s_%s_%s', $dateStr, $category, $meta['name'], $charName);
-                        if (isset($exclusionMap[$exKey])) {
+                        // Older exclusions were stored with the raw (uncompressed) name
+                        $legacyExKey = sprintf('%s_%s_%s_%s', $dateStr, $category, preg_replace('/^Compressed /', '', $meta['name']), $charName);
+                        if (isset($exclusionMap[$exKey]) || isset($exclusionMap[$legacyExKey])) {
                             continue;
                         }
 
@@ -928,6 +943,58 @@ class PerformanceEngine
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    /**
+     * Maps raw ore/ice type IDs to their "Compressed <name>" type IDs; gas and types without a compressed variant are omitted.
+     *
+     * @param int[] $typeIds
+     * @return array<int, int>
+     */
+    private function _resolveCompressedTypeIds(array $typeIds, array $itemMetadata): array
+    {
+        $rawTypeIdsByCompressedName = [];
+        foreach ($typeIds as $typeId) {
+            $metadata = $itemMetadata[$typeId] ?? null;
+            if ($metadata === null || !$this->_isOreOrIce($metadata) || str_starts_with($metadata['name'], 'Compressed ')) {
+                continue;
+            }
+            $name = $metadata['name'];
+            $rawTypeIdsByCompressedName['Compressed ' . $name] = $typeId;
+        }
+
+        if (empty($rawTypeIdsByCompressedName)) {
+            return [];
+        }
+
+        try {
+            $sdeConn = $this->doctrine->getConnection('sde');
+            $compressedNames = array_keys($rawTypeIdsByCompressedName);
+            $placeholders = implode(',', array_fill(0, count($compressedNames), '?'));
+            $rows = $sdeConn->fetchAllAssociative(
+                "SELECT typeID, typeName FROM invTypes WHERE published = 1 AND typeName IN ($placeholders)",
+                $compressedNames
+            );
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $compressedTypeMap = [];
+        foreach ($rows as $row) {
+            $rawTypeId = $rawTypeIdsByCompressedName[$row['typeName']] ?? null;
+            if ($rawTypeId !== null) {
+                $compressedTypeMap[$rawTypeId] = (int)$row['typeID'];
+            }
+        }
+
+        return $compressedTypeMap;
+    }
+
+    private function _isOreOrIce(array $metadata): bool
+    {
+        $isGas = $metadata['groupId'] === 711 || $metadata['groupId'] === 4168;
+
+        return !$isGas && $metadata['categoryId'] === 25;
     }
 
     /**
