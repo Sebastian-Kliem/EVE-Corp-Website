@@ -8,6 +8,7 @@ use App\Entity\Wormhole\WormholeSiteAlias;
 use App\Repository\WormholeSiteAliasRepository;
 use App\Repository\WormholeSiteRepository;
 use App\Service\JitaPriceService;
+use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,19 +27,20 @@ final class WormholeSitesController extends AbstractController
         private readonly WormholeSiteRepository $wormholeSiteRepository,
         private readonly WormholeSiteAliasRepository $wormholeSiteAliasRepository,
         private readonly EntityManagerInterface $entityManager,
-        private readonly JitaPriceService $jitaPriceService
+        private readonly JitaPriceService $jitaPriceService,
+        private readonly SdeService $sdeService
     ) {}
 
     #[Route('', name: 'app_wormhole_sites', methods: ['GET'])]
     public function index(): Response
     {
         $sites = [];
-        $gasTypeIds = [];
+        $resourceTypeIds = [];
         foreach ($this->wormholeSiteRepository->findAllOrdered() as $site) {
             $sites[] = $this->_serializeSite($site);
-            if ($site->getCategory() === WormholeSite::CATEGORY_GAS) {
+            if ($this->_hasHarvestableResources($site)) {
                 foreach ($site->getResources() as $resource) {
-                    $gasTypeIds[$resource['typeId']] = true;
+                    $resourceTypeIds[$resource['typeId']] = true;
                 }
             }
         }
@@ -51,7 +53,7 @@ final class WormholeSitesController extends AbstractController
         return $this->render('general/wormhole_sites.html.twig', [
             'sites' => $sites,
             'aliases' => $aliases,
-            'gasPrices' => $this->_getGasPrices(array_keys($gasTypeIds)),
+            'resourcePrices' => $this->_getResourcePrices(array_keys($resourceTypeIds)),
         ]);
     }
 
@@ -87,23 +89,43 @@ final class WormholeSitesController extends AbstractController
         return new JsonResponse(['alias' => $aliasName, 'siteName' => $site->getName()]);
     }
 
+    // Gas, ore and ice sites are valued by their resources instead of blue loot
+    private function _hasHarvestableResources(WormholeSite $site): bool
+    {
+        return in_array($site->getCategory(), [WormholeSite::CATEGORY_GAS, WormholeSite::CATEGORY_ORE], true);
+    }
+
     /**
-     * Jita buy prices per unit, the value when selling the gas right away.
+     * Jita buy prices per raw unit, the value when selling the gas, ore or ice right away.
+     * Based on the compressed type (deeper market), falls back to the raw type without a compressed price.
      *
      * @param list<int> $typeIds
      * @return array<int, float>
      */
-    private function _getGasPrices(array $typeIds): array
+    private function _getResourcePrices(array $typeIds): array
     {
+        $compressedTypeIds = $this->sdeService->getCompressedTypeIds($typeIds);
+
         $prices = [];
         foreach ($typeIds as $typeId) {
-            $price = $this->jitaPriceService->getAverageJitaPrice($typeId, true)['price'];
+            $price = $this->_getCompressedPrice($compressedTypeIds[$typeId] ?? null)
+                ?? $this->jitaPriceService->getAverageJitaPrice($typeId, true)['price'];
             if ($price !== null) {
                 $prices[$typeId] = $price;
             }
         }
 
         return $prices;
+    }
+
+    // One compressed unit equals one raw unit
+    private function _getCompressedPrice(?int $compressedTypeId): ?float
+    {
+        if ($compressedTypeId === null) {
+            return null;
+        }
+
+        return $this->jitaPriceService->getAverageJitaPrice($compressedTypeId, true)['price'];
     }
 
     private function _serializeSite(WormholeSite $site): array

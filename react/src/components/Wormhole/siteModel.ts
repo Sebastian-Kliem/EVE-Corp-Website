@@ -184,16 +184,16 @@ export function prepareSite(site: Site, drifterMode: DrifterMode, referenceMode:
 }
 
 /**
- * Value of all gas clouds of a gas site at the given unit prices, null when no price is known.
+ * Value of all gas clouds or asteroids of a gas or ore site at the given unit prices, null when no price is known.
  */
-export function gasValue(site: Site, gasPrices: Record<number, number>): number | null {
-    if (site.category !== 'gas') {
+export function resourceValue(site: Site, resourcePrices: Record<number, number>): number | null {
+    if (site.category !== 'gas' && site.category !== 'ore') {
         return null;
     }
     let value = 0;
     let hasPrice = false;
     for (const resource of site.resources) {
-        const price = resource.typeId ? gasPrices[resource.typeId] : undefined;
+        const price = resource.typeId ? resourcePrices[resource.typeId] : undefined;
         if (price !== undefined && resource.amount !== null) {
             value += price * resource.amount;
             hasPrice = true;

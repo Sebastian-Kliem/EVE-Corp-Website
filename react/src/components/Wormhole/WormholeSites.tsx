@@ -3,14 +3,14 @@ import SignatureCalculator from './SignatureCalculator';
 import ShipClassIcon from './ShipClassIcon';
 import {
     CATEGORY_LABELS, DrifterMode, Resource, SPECIAL_EFFECTS, Ship, Site, SpecialEffects, Wave,
-    formatNumber, gasValue, hasEffect, prepareSite, shipClassOf, sitePeaks, sortedSpecials, waveTotals,
+    formatNumber, hasEffect, prepareSite, resourceValue, shipClassOf, sitePeaks, sortedSpecials, waveTotals,
 } from './siteModel';
 
 interface WormholeSitesProps {
     sites: Site[];
     aliases: Record<string, string>; // pasted site name => English site name
     saveAliasUrl: string;
-    gasPrices: Record<number, number>; // Jita buy price per unit by type id
+    resourcePrices: Record<number, number>; // Jita buy price per unit by type id
     typeIconUrl: string; // contains '12345' as placeholder for the type id
 }
 
@@ -163,7 +163,7 @@ function ResourceList({ resources, typeIconUrl }: { resources: Resource[]; typeI
     );
 }
 
-function SiteCard({ site, drifterMode, referenceMode, gasPrices, typeIconUrl }: { site: Site; drifterMode: DrifterMode; referenceMode: boolean; gasPrices: Record<number, number>; typeIconUrl: string }) {
+function SiteCard({ site, drifterMode, referenceMode, resourcePrices, typeIconUrl }: { site: Site; drifterMode: DrifterMode; referenceMode: boolean; resourcePrices: Record<number, number>; typeIconUrl: string }) {
     const [isOpen, setIsOpen] = useState(false);
     const { waves, blueLootIsk } = useMemo(() => prepareSite(site, drifterMode, referenceMode), [site, drifterMode, referenceMode]);
 
@@ -179,7 +179,7 @@ function SiteCard({ site, drifterMode, referenceMode, gasPrices, typeIconUrl }: 
     const tackleLabel = hasWebs && hasScrams ? 'Webs und Scrams' : hasWebs ? 'Webs' : hasScrams ? 'Scrams' : 'Keine Webs oder Scrams';
     const hasEnemies = allWaves.some((wave) => wave.ships.length > 0);
     const classLabel = site.occurrence ?? site.classes.join(', ');
-    const siteGasValue = gasValue(site, gasPrices);
+    const siteResourceValue = resourceValue(site, resourcePrices);
 
     return (
         <div className="bg-eve-card border border-eve-border backdrop-blur-md shadow-eve rounded-lg overflow-hidden">
@@ -196,7 +196,7 @@ function SiteCard({ site, drifterMode, referenceMode, gasPrices, typeIconUrl }: 
                 <span className={`text-xs text-eve-primary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
             </button>
 
-            {!referenceMode && (blueLootIsk !== null || siteGasValue !== null || hasEnemies) && (
+            {!referenceMode && (blueLootIsk !== null || siteResourceValue !== null || hasEnemies) && (
                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-t border-eve-border bg-black/20 text-[11px]">
                     <div className="flex flex-wrap items-center gap-3">
                         {blueLootIsk !== null && (
@@ -207,8 +207,11 @@ function SiteCard({ site, drifterMode, referenceMode, gasPrices, typeIconUrl }: 
                                 </div>
                             </>
                         )}
-                        {siteGasValue !== null && (
-                            <div className="text-slate-200" title="Alle Gaswolken zum aktuellen Jita-Buy-Preis">Gaswert: <span className="text-green-400 font-semibold">{formatNumber(Math.round(siteGasValue))} ISK</span></div>
+                        {siteResourceValue !== null && site.category === 'gas' && (
+                            <div className="text-slate-200" title="Alle Gaswolken zum aktuellen Jita-Buy-Preis des komprimierten Gases">Gaswert: <span className="text-green-400 font-semibold">{formatNumber(Math.round(siteResourceValue))} ISK</span></div>
+                        )}
+                        {siteResourceValue !== null && site.category === 'ore' && (
+                            <div className="text-slate-200" title="Alle Asteroiden zum aktuellen Jita-Buy-Preis des komprimierten Erzes bzw. Eises">Erzwert: <span className="text-green-400 font-semibold">{formatNumber(Math.round(siteResourceValue))} ISK</span></div>
                         )}
                     </div>
                     {hasEnemies && (
@@ -256,7 +259,7 @@ function ToggleButton({ active, onClick, children, title }: { active: boolean; o
     );
 }
 
-export default function WormholeSites({ sites, aliases, saveAliasUrl, gasPrices, typeIconUrl }: WormholeSitesProps) {
+export default function WormholeSites({ sites, aliases, saveAliasUrl, resourcePrices, typeIconUrl }: WormholeSitesProps) {
     const [selectedClass, setSelectedClass] = useState<string | null>(HOME_CLASS);
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [drifterMode, setDrifterMode] = useState<DrifterMode>('none');
@@ -308,7 +311,7 @@ export default function WormholeSites({ sites, aliases, saveAliasUrl, gasPrices,
                 </div>
             </div>
 
-            <SignatureCalculator sites={sites} aliases={aliases} saveAliasUrl={saveAliasUrl} gasPrices={gasPrices} drifterMode={drifterMode} />
+            <SignatureCalculator sites={sites} aliases={aliases} saveAliasUrl={saveAliasUrl} resourcePrices={resourcePrices} drifterMode={drifterMode} />
 
             <div className="text-[11px] text-eve-muted">{filteredSites.length} passende Sites</div>
 
@@ -319,7 +322,7 @@ export default function WormholeSites({ sites, aliases, saveAliasUrl, gasPrices,
                     </div>
                 )}
                 {filteredSites.map((site) => (
-                    <SiteCard key={site.name} site={site} drifterMode={drifterMode} referenceMode={referenceMode} gasPrices={gasPrices} typeIconUrl={typeIconUrl} />
+                    <SiteCard key={site.name} site={site} drifterMode={drifterMode} referenceMode={referenceMode} resourcePrices={resourcePrices} typeIconUrl={typeIconUrl} />
                 ))}
             </div>
         </div>

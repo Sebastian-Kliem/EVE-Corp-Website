@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { CATEGORY_LABELS, DrifterMode, Site, formatNumber, gasValue, prepareSite } from './siteModel';
+import { CATEGORY_LABELS, DrifterMode, Site, formatNumber, prepareSite, resourceValue } from './siteModel';
 
 interface SignatureCalculatorProps {
     sites: Site[];
     aliases: Record<string, string>; // pasted site name => English site name
     saveAliasUrl: string;
-    gasPrices: Record<number, number>; // Jita buy price per unit by type id
+    resourcePrices: Record<number, number>; // Jita buy price per unit by type id
     drifterMode: DrifterMode;
 }
 
@@ -94,7 +94,7 @@ function AliasMapper({ pastedName, sites, onSave }: { pastedName: string; sites:
     );
 }
 
-export default function SignatureCalculator({ sites, aliases, saveAliasUrl, gasPrices, drifterMode }: SignatureCalculatorProps) {
+export default function SignatureCalculator({ sites, aliases, saveAliasUrl, resourcePrices, drifterMode }: SignatureCalculatorProps) {
     const [scannerCopy, setScannerCopy] = useState('');
     const [knownAliases, setKnownAliases] = useState<Record<string, string>>(aliases);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -109,13 +109,18 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, gasP
 
     let totalLoot = 0;
     let totalGas = 0;
+    let totalOre = 0;
     const valueBySignature = new Map<string, number | null>();
     for (const signature of recognized) {
         const site = signature.site as Site;
-        const siteGasValue = gasValue(site, gasPrices);
-        if (siteGasValue !== null) {
-            valueBySignature.set(signature.signatureId, siteGasValue);
-            totalGas += siteGasValue;
+        const siteResourceValue = resourceValue(site, resourcePrices);
+        if (siteResourceValue !== null) {
+            valueBySignature.set(signature.signatureId, siteResourceValue);
+            if (site.category === 'gas') {
+                totalGas += siteResourceValue;
+            } else {
+                totalOre += siteResourceValue;
+            }
             continue;
         }
         const blueLoot = prepareSite(site, drifterMode, false).blueLootIsk;
@@ -151,7 +156,7 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, gasP
             <div className="px-4 pb-4 space-y-3 border-t border-eve-border pt-3">
                 <p className="text-[11px] text-eve-muted m-0">
                     Im Sondenscanner alle Einträge markieren (Strg+A), kopieren (Strg+C) und hier einfügen. Summiert werden der Blue Loot aller erkannten Sites
-                    {drifterMode !== 'none' ? ' (inklusive der gewählten Drifter-Wellen)' : ''} und der Gaswert ausgescannter Gas-Sites zum Jita-Buy-Preis.
+                    {drifterMode !== 'none' ? ' (inklusive der gewählten Drifter-Wellen)' : ''} sowie der Gas- und Erzwert ausgescannter Gas- und Erz-Sites zum Jita-Buy-Preis der komprimierten Ware.
                 </p>
                 <textarea
                     className="w-full h-32 bg-black/30 border border-eve-border rounded-sm px-2 py-1.5 text-[11px] font-mono text-eve-text focus:border-eve-primary focus:outline-none"
@@ -163,9 +168,10 @@ export default function SignatureCalculator({ sites, aliases, saveAliasUrl, gasP
                 {signatures.length > 0 && (
                     <>
                         <div className="flex flex-wrap items-center gap-4 text-[12px]">
-                            <div className="text-slate-200">Gesamt: <span className="text-green-400 font-semibold">{formatNumber(Math.round(totalLoot + totalGas))} ISK</span></div>
+                            <div className="text-slate-200">Gesamt: <span className="text-green-400 font-semibold">{formatNumber(Math.round(totalLoot + totalGas + totalOre))} ISK</span></div>
                             <div className="text-slate-300">Blue Loot: {formatNumber(totalLoot)} ISK</div>
                             <div className="text-slate-300">Gas: {formatNumber(Math.round(totalGas))} ISK</div>
+                            <div className="text-slate-300">Erz: {formatNumber(Math.round(totalOre))} ISK</div>
                             <div className="text-eve-muted">{recognized.length} erkannt · {unscannedCount} nicht gescannt · {unknown.length} unbekannt</div>
                         </div>
 

@@ -4,7 +4,9 @@ namespace App\Service;
 
 use App\Service\Eve\SecurityStatus;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 
 class SdeService
 {
@@ -18,7 +20,11 @@ class SdeService
     public function __construct(ManagerRegistry $doctrine)
     {
         // Get the specific connection named 'sde' as configured in doctrine.yaml
-        $this->connection = $doctrine->getConnection('sde');
+        $connection = $doctrine->getConnection('sde');
+        if (!$connection instanceof Connection) {
+            throw new \LogicException('Doctrine connection "sde" is not a DBAL connection.');
+        }
+        $this->connection = $connection;
     }
 
     /**
@@ -144,7 +150,7 @@ class SdeService
                     'limit' => $limit,
                 ],
                 [
-                    'limit' => \PDO::PARAM_INT,
+                    'limit' => ParameterType::INTEGER,
                 ]
             );
 
@@ -387,7 +393,7 @@ class SdeService
                     'limit' => $limit,
                 ],
                 [
-                    'limit' => \PDO::PARAM_INT
+                    'limit' => ParameterType::INTEGER
                 ]
             );
 
@@ -809,6 +815,36 @@ class SdeService
         } catch (\Exception $e) {
             return 0.0;
         }
+    }
+
+    /**
+     * Compressed counterpart of raw ore, ice and gas types (1:1 in units, only the volume shrinks).
+     *
+     * @param int[] $typeIds
+     * @return array<int, int> raw type id => compressed type id
+     */
+    public function getCompressedTypeIds(array $typeIds): array
+    {
+        if (empty($typeIds)) {
+            return [];
+        }
+
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT typeID, compressedTypeID FROM compressibleTypes WHERE typeID IN (:ids)',
+                ['ids' => array_values(array_map('intval', $typeIds))],
+                ['ids' => ArrayParameterType::INTEGER]
+            );
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $compressedTypeIds = [];
+        foreach ($rows as $row) {
+            $compressedTypeIds[(int) $row['typeID']] = (int) $row['compressedTypeID'];
+        }
+
+        return $compressedTypeIds;
     }
 
     /**
