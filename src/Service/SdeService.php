@@ -16,6 +16,10 @@ class SdeService
 
     private Connection $connection;
     private array $nameCache = [];
+    private ?array $skillCatalog = null;
+
+    private const SKILL_CATEGORY_ID = 16;
+    private const SKILL_RANK_ATTRIBUTE_ID = 275;
 
     public function __construct(ManagerRegistry $doctrine)
     {
@@ -338,6 +342,42 @@ class SdeService
         } catch (\Exception $e) {
             return 'other';
         }
+    }
+
+    /**
+     * Published skills with their in-game skill group and rank (training time multiplier).
+     *
+     * @return array<int, array{groupId: int, groupName: string, rank: float}>
+     */
+    public function getSkillCatalog(): array
+    {
+        if ($this->skillCatalog !== null) {
+            return $this->skillCatalog;
+        }
+
+        $this->skillCatalog = [];
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT t.typeID, g.groupID, g.groupName, COALESCE(a.valueFloat, a.valueInt, 1) AS skillRank
+                 FROM invTypes t
+                 JOIN invGroups g ON t.groupID = g.groupID
+                 LEFT JOIN dgmTypeAttributes a ON a.typeID = t.typeID AND a.attributeID = :rankAttribute
+                 WHERE g.categoryID = :skillCategory AND g.published = 1 AND t.published = 1',
+                ['rankAttribute' => self::SKILL_RANK_ATTRIBUTE_ID, 'skillCategory' => self::SKILL_CATEGORY_ID]
+            );
+        } catch (\Exception $e) {
+            return $this->skillCatalog;
+        }
+
+        foreach ($rows as $row) {
+            $this->skillCatalog[(int) $row['typeID']] = [
+                'groupId' => (int) $row['groupID'],
+                'groupName' => (string) $row['groupName'],
+                'rank' => (float) $row['skillRank'],
+            ];
+        }
+
+        return $this->skillCatalog;
     }
 
     /**

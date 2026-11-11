@@ -8,10 +8,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Syncs a character's affiliation, corporation roles, skills, attributes and implants from ESI.
+ * Syncs a character's affiliation, corporation roles, skills, attributes, implants and clones from ESI.
  */
 class CharacterProfileSyncService
 {
+    private const CLONES_SCOPE = 'esi-clones.read_clones.v1';
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly EsiClient $esiClient,
@@ -131,6 +133,30 @@ class CharacterProfileSyncService
             $this->logger->error(sprintf('[Cron] Failed to fetch implants for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
         }
 
+        $this->_syncClones($character);
+
         $this->entityManager->flush();
+    }
+
+    // Characters linked before the clones scope was granted are skipped until re-auth
+    private function _syncClones(EveCharacter $character): void
+    {
+        if (!$this->esiClient->hasScope($character, self::CLONES_SCOPE)) {
+            return;
+        }
+
+        try {
+            $clonesData = $this->esiClient->request(
+                'GET',
+                sprintf('characters/%d/clones/', $character->getId()),
+                [],
+                $character
+            );
+            if (is_array($clonesData)) {
+                $character->setClones($clonesData);
+            }
+        } catch (\Exception $e) {
+            $this->logger->error(sprintf('[Cron] Failed to fetch clones for character %s (%d): %s', $character->getName(), $character->getId(), $e->getMessage()));
+        }
     }
 }

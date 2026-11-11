@@ -90,6 +90,10 @@ class EveCharacter
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $tags = [];
 
+    // Raw ESI clones answer: home location, jump clones, last jump date
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $clones = [];
+
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $isOnline = false;
 
@@ -393,6 +397,18 @@ class EveCharacter
         return isset($skills['total_sp']) ? (int) $skills['total_sp'] : null;
     }
 
+    // Active level of a single skill, 0 when not trained
+    public function getSkillLevel(int $skillId): int
+    {
+        foreach ($this->getSkills()['skills'] ?? [] as $skill) {
+            if ((int) ($skill['skill_id'] ?? 0) === $skillId) {
+                return (int) ($skill['active_skill_level'] ?? $skill['trained_skill_level'] ?? 0);
+            }
+        }
+
+        return 0;
+    }
+
     public function getUnallocatedSkillPoints(): int
     {
         return (int) ($this->getSkills()['unallocated_sp'] ?? 0);
@@ -430,6 +446,18 @@ class EveCharacter
     public function setImplants(array $implants): static
     {
         $this->implants = $implants;
+
+        return $this;
+    }
+
+    public function getClones(): array
+    {
+        return $this->clones ?? [];
+    }
+
+    public function setClones(array $clones): static
+    {
+        $this->clones = $clones;
 
         return $this;
     }

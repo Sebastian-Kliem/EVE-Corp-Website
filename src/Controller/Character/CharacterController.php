@@ -6,7 +6,10 @@ use App\Entity\EveCharacter;
 use App\Entity\EveCharacterAsset;
 use App\Entity\EveCharacterMarketOrder;
 use App\Entity\User;
+use App\Service\Character\CharacterCloneOverviewBuilder;
 use App\Service\Character\CharacterOverviewBuilder;
+use App\Service\Character\SkillGroupProfileBuilder;
+use App\Service\Chart\RadarChartBuilder;
 use App\Service\LocationService;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -132,7 +135,10 @@ class CharacterController extends AbstractController
         int $id,
         SdeService $sdeService,
         LocationService $locationService,
-        \App\Service\Esi\EsiClient $esiClient
+        \App\Service\Esi\EsiClient $esiClient,
+        SkillGroupProfileBuilder $skillGroupProfileBuilder,
+        RadarChartBuilder $radarChartBuilder,
+        CharacterCloneOverviewBuilder $cloneOverviewBuilder
     ): Response {
         $character = $this->entityManager->getRepository(EveCharacter::class)->find($id);
 
@@ -191,6 +197,8 @@ class CharacterController extends AbstractController
             }
         }
 
+        $skillGroups = $skillGroupProfileBuilder->build($character);
+
         return $this->render('character/details.html.twig', [
             'character' => $character,
             'corporationName' => $corporationName,
@@ -198,6 +206,19 @@ class CharacterController extends AbstractController
             'currentLocation' => $currentLocation,
             'implantNames' => $implantNames,
             'skillNames' => $skillNames,
+            'skillGroups' => $skillGroups,
+            'skillRadar' => $this->_buildSkillRadar($skillGroups, $skillGroupProfileBuilder, $radarChartBuilder),
+            'cloneOverview' => $cloneOverviewBuilder->build($character),
         ]);
+    }
+
+    private function _buildSkillRadar(array $skillGroups, SkillGroupProfileBuilder $skillGroupProfileBuilder, RadarChartBuilder $radarChartBuilder): array
+    {
+        $axes = [];
+        foreach ($skillGroups as $skillGroup) {
+            $axes[] = ['label' => $skillGroup['name'], 'value' => $skillGroup['percent']];
+        }
+
+        return $radarChartBuilder->build($axes, $skillGroupProfileBuilder->getChartScaleMax($skillGroups));
     }
 }

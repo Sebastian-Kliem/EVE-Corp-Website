@@ -69,143 +69,203 @@
         </div>
     {% endif %}
 
-    <div class="flex flex-wrap gap-6">
-        <!-- Linke Spalte: Status & Daten -->
-        <div class="flex-1 min-w-[300px]">
-            <!-- General details box -->
-            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
-                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">📊 Status & Daten</h3>
-
-                <table class="w-full border-collapse text-left bg-transparent text-xs text-[#ccc]">
-                    <tbody>
-
-                        <tr>
-                            <td class="p-2 border-b border-white/5"><strong>Total Skillpunkte:</strong></td>
-                            <td class="p-2 border-b border-white/5 text-eve-primary">
-                                {% if character.skills.total_sp is defined %}
-                                    {{ character.skills.total_sp|number_format(0, ',', '.') }} SP
-                                {% else %}
-                                    <span class="text-eve-muted">Keine Daten</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td class="p-2 border-b border-white/5"><strong>Tags:</strong></td>
-                            <td class="p-2 border-b border-white/5">
-                                {% if character.tags is not empty %}
-                                    <div class="flex flex-wrap gap-1">
-                                        {% for tag in character.tags %}
-                                            <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">{{ tag }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <span class="text-eve-muted">Keine Tags</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+    <!-- Skill profile per in-game skill group -->
+    {% if skillRadar.axes is not empty and character.totalSkillPoints is not null %}
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+            <div class="flex flex-wrap justify-between items-baseline gap-x-6 gap-y-1 mb-1">
+                <h3 class="text-xl font-semibold mb-0 text-white text-gradient">Skill-Profil</h3>
+                <div class="text-sm">
+                    <span class="text-eve-muted">Gesamt:</span>
+                    <span class="font-semibold text-eve-primary">{{ character.totalSkillPoints|number_format(0, ',', '.') }} SP</span>
+                    {% if character.unallocatedSkillPoints > 0 %}
+                        <span class="text-eve-muted ml-3">Unverteilt:</span>
+                        <span class="font-semibold text-amber-400">{{ character.unallocatedSkillPoints|number_format(0, ',', '.') }} SP</span>
+                    {% endif %}
+                </div>
             </div>
+            <p class="text-xs text-eve-muted mb-4">Anteil der trainierten Skillpunkte am Maximum jeder Skill-Gruppe (alle Skills auf V). Skala bis {{ skillRadar.rings|last.value|number_format(0) }} %.</p>
 
-            <!-- Sync Timestamps Box -->
-            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
-                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🕒 Letzte Synchronisierungen</h3>
-                <table class="w-full border-collapse text-left bg-transparent text-xs text-[#ccc]">
+            <div class="flex flex-wrap gap-6 items-start">
+                <svg viewBox="0 0 {{ skillRadar.width }} {{ skillRadar.height }}" class="flex-[2] min-w-[300px] max-w-[640px] h-auto" role="img" aria-label="Skill-Profil">
+                    {% for ring in skillRadar.rings %}
+                        <polygon points="{{ ring.points }}" class="fill-none stroke-white/10" stroke-width="1"></polygon>
+                        <text x="{{ skillRadar.centerX + 3 }}" y="{{ ring.labelY - 2 }}" class="fill-eve-muted text-[9px]">{{ ring.value|number_format(0) }} %</text>
+                    {% endfor %}
+                    {% for axis in skillRadar.axes %}
+                        <line x1="{{ skillRadar.centerX }}" y1="{{ skillRadar.centerY }}" x2="{{ axis.x }}" y2="{{ axis.y }}" class="stroke-white/10" stroke-width="1"></line>
+                    {% endfor %}
+                    <polygon points="{{ skillRadar.valuePoints }}" class="fill-eve-primary/25 stroke-eve-primary" stroke-width="1.5"></polygon>
+                    {% for axis in skillRadar.axes %}
+                        {% set group = skillGroups[loop.index0] %}
+                        <circle cx="{{ axis.pointX }}" cy="{{ axis.pointY }}" r="3" class="fill-eve-primary">
+                            <title>{{ group.name }}: {{ group.percent|number_format(1, ',', '.') }} % ({{ group.trainedSkillPoints|number_format(0, ',', '.') }} SP)</title>
+                        </circle>
+                        <text x="{{ axis.labelX }}" y="{{ axis.labelY }}" text-anchor="{{ axis.labelAnchor }}" dominant-baseline="middle" class="fill-[#ccc] text-[11px]">{{ axis.label }}</text>
+                    {% endfor %}
+                </svg>
+
+                <table class="flex-1 min-w-[260px] border-collapse text-left bg-transparent text-xs text-[#ccc]">
+                    <thead>
+                        <tr class="text-eve-muted">
+                            <th class="p-1.5 border-b border-white/10 font-normal">Gruppe</th>
+                            <th class="p-1.5 border-b border-white/10 font-normal text-right">SP</th>
+                            <th class="p-1.5 border-b border-white/10 font-normal text-right">Skills</th>
+                            <th class="p-1.5 border-b border-white/10 font-normal text-right">Anteil</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr>
-                            <td class="p-2 border-b border-white/5 border-t-0 w-2/5"><strong>Wallet-Journal:</strong></td>
-                            <td class="p-2 border-b border-white/5 text-eve-muted border-t-0">
-                                {{ character.lastWalletUpdate ? character.lastWalletUpdate|date('d.m.Y H:i:s') : 'Nie' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="p-2 border-b border-white/5"><strong>Assets (Hangar):</strong></td>
-                            <td class="p-2 border-b border-white/5 text-eve-muted">
-                                {{ character.lastAssetsUpdate ? character.lastAssetsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="p-2 border-b border-white/5"><strong>Mining-Tagebuch:</strong></td>
-                            <td class="p-2 border-b border-white/5 text-eve-muted">
-                                {{ character.lastMiningUpdate ? character.lastMiningUpdate|date('d.m.Y H:i:s') : 'Nie' }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="p-2 border-b border-white/5"><strong>Industrie-Jobs:</strong></td>
-                            <td class="p-2 border-b border-white/5 text-eve-muted">
-                                {{ character.lastIndustryJobsUpdate ? character.lastIndustryJobsUpdate|date('d.m.Y H:i:s') : 'Nie' }}
-                            </td>
-                        </tr>
+                        {% for group in skillGroups %}
+                            <tr class="{{ group.trainedSkillPoints == 0 ? 'text-eve-muted/60' : '' }}">
+                                <td class="p-1.5 border-b border-white/5">{{ group.name }}</td>
+                                <td class="p-1.5 border-b border-white/5 text-right">{{ group.trainedSkillPoints|number_format(0, ',', '.') }}</td>
+                                <td class="p-1.5 border-b border-white/5 text-right" title="{{ group.maxedSkillCount }} auf Stufe V">{{ group.trainedSkillCount }} / {{ group.skillCount }}</td>
+                                <td class="p-1.5 border-b border-white/5 text-right text-eve-primary">{{ group.percent|number_format(1, ',', '.') }} %</td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+    {% endif %}
 
-        <!-- Rechte Spalte: Attribute, Implantate & Skillqueue -->
-        <div class="flex-1 min-w-[300px]">
-            <!-- Attributes box -->
-            {% if character.attributes is not empty %}
-                <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
-                    <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🧬 Charakter-Attribute</h3>
-                    <div class="flex flex-wrap gap-3">
-                        {% for key, val in character.attributes %}
-                            {% if key in ['intelligence', 'perception', 'willpower', 'charisma', 'memory'] %}
-                                <div class="flex-1 min-w-[100px] text-center">
-                                    <div class="bg-white/[0.03] border border-white/[0.05] p-2 rounded">
-                                        <div class="text-xs text-eve-muted mb-1">{{ key|capitalize }}</div>
-                                        <div class="text-lg font-bold text-eve-primary">{{ val }}</div>
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+    <!-- General details box -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-white text-gradient">📊 Status & Daten</h3>
+
+        <table class="w-full border-collapse text-left bg-transparent text-xs text-[#ccc]">
+            <tbody>
+                <tr>
+                    <td class="p-2 border-b border-white/5"><strong>Tags:</strong></td>
+                    <td class="p-2 border-b border-white/5">
+                        {% if character.tags is not empty %}
+                            <div class="flex flex-wrap gap-1">
+                                {% for tag in character.tags %}
+                                    <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="text-eve-muted">Keine Tags</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Attributes box -->
+    {% if character.attributes is not empty %}
+        <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+            <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🧬 Charakter-Attribute</h3>
+            <div class="flex flex-wrap gap-3">
+                {% for key, val in character.attributes %}
+                    {% if key in ['intelligence', 'perception', 'willpower', 'charisma', 'memory'] %}
+                        <div class="flex-1 min-w-[100px] text-center">
+                            <div class="bg-white/[0.03] border border-white/[0.05] p-2 rounded">
+                                <div class="text-xs text-eve-muted mb-1">{{ key|capitalize }}</div>
+                                <div class="text-lg font-bold text-eve-primary">{{ val }}</div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Skill Queue Box -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🎓 Skill-Warteschlange</h3>
+        {% if character.skillQueue is not empty %}
+            <div class="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
+                {% for item in character.skillQueue %}
+                    {% set skillName = skillNames[item.skill_id] ?? ('Skill #' ~ item.skill_id) %}
+                    <div class="p-2 bg-white/[0.03] rounded border border-white/[0.05] flex justify-between items-center">
+                        <div>
+                            <div class="font-semibold text-xs text-white">{{ skillName }}</div>
+                            <div class="text-xs text-eve-muted">
+                                {% if item.training_start_date is defined and item.training_end_date is defined %}
+                                    Ende: {{ item.training_end_date|date('d.m.Y H:i') }}
+                                {% else %}
+                                    In Warteschlange
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Stufe {{ item.finished_level }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-xs text-eve-muted">Die Warteschlange ist leer oder es wurden keine Daten synchronisiert.</p>
+        {% endif %}
+    </div>
+
+    <!-- Implantate Box -->
+    <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
+        <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🔌 Aktive Implantate</h3>
+        {% if character.implants is not empty %}
+            <ul class="m-0 pl-5 list-disc marker:text-eve-primary/70 text-xs text-eve-text space-y-1">
+                {% for typeId in character.implants %}
+                    <li class="mb-1">
+                        {{ implantNames[typeId] ?? ('Implantat #' ~ typeId) }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-xs text-eve-muted">Keine aktiven Implantate verknüpft oder synchronisiert.</p>
+        {% endif %}
+    </div>
+
+    <!-- Jump clones, collapsible -->
+    <details class="bg-eve-card border border-eve-border shadow-eve rounded-lg mb-6 overflow-hidden group">
+        <summary class="p-6 cursor-pointer list-none flex justify-between items-center select-none">
+            <h3 class="text-xl font-semibold mb-0 text-white text-gradient">
+                Sprungklone
+                {% if cloneOverview.hasData %}
+                    <span class="text-sm font-normal text-eve-muted">({{ cloneOverview.jumpClones|length }})</span>
+                {% endif %}
+            </h3>
+            <span class="text-xs text-eve-primary transition-transform duration-200 group-open:rotate-180">&#9660;</span>
+        </summary>
+        <div class="px-6 pb-6 text-xs text-[#ccc]">
+            {% if not cloneOverview.hasData %}
+                <p class="text-eve-muted">Noch keine Klon-Daten synchronisiert. Falls der Charakter vor der Freigabe des Klon-Scopes verknüpft wurde, ist ein Re-Auth nötig.</p>
+            {% else %}
+                <div class="flex flex-col gap-1 mb-3">
+                    <div><strong>Heimatstation:</strong> {{ cloneOverview.homeLocation ?? 'Unbekannt' }}</div>
+                    <div>
+                        <strong>Letzter Klonsprung:</strong>
+                        {{ cloneOverview.lastJumpAt ? cloneOverview.lastJumpAt|date('d.m.Y H:i') : 'Nie' }}
+                    </div>
+                    <div>
+                        <strong>Nächster Sprung:</strong>
+                        {% if cloneOverview.nextJumpAt %}
+                            <span class="text-amber-400">ab {{ cloneOverview.nextJumpAt|date('d.m.Y H:i') }}</span>
+                        {% else %}
+                            <span class="text-emerald-400">jetzt möglich</span>
+                        {% endif %}
                     </div>
                 </div>
-            {% endif %}
 
-            <!-- Skill Queue Box -->
-            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
-                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🎓 Skill-Warteschlange</h3>
-                {% if character.skillQueue is not empty %}
-                    <div class="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
-                        {% for item in character.skillQueue %}
-                            {% set skillName = skillNames[item.skill_id] ?? ('Skill #' ~ item.skill_id) %}
-                            <div class="p-2 bg-white/[0.03] rounded border border-white/[0.05] flex justify-between items-center">
-                                <div>
-                                    <div class="font-semibold text-xs text-white">{{ skillName }}</div>
-                                    <div class="text-xs text-eve-muted">
-                                        {% if item.training_start_date is defined and item.training_end_date is defined %}
-                                            Ende: {{ item.training_end_date|date('d.m.Y H:i') }}
-                                        {% else %}
-                                            In Warteschlange
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Stufe {{ item.finished_level }}</span>
-                            </div>
-                        {% endfor %}
+                {% for jumpClone in cloneOverview.jumpClones %}
+                    <div class="p-2 mb-2 bg-white/[0.03] rounded border border-white/[0.05]">
+                        <div class="font-semibold text-white">{{ jumpClone.location ?? 'Unbekannter Standort' }}</div>
+                        {% if jumpClone.name %}
+                            <div class="text-eve-muted">{{ jumpClone.name }}</div>
+                        {% endif %}
+                        {% if jumpClone.implants is not empty %}
+                            <ul class="m-0 mt-1 pl-5 list-disc marker:text-eve-primary/70 space-y-0.5">
+                                {% for implantName in jumpClone.implants %}
+                                    <li>{{ implantName }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-eve-muted mt-1">Keine Implantate</div>
+                        {% endif %}
                     </div>
                 {% else %}
-                    <p class="text-xs text-eve-muted">Die Warteschlange ist leer oder es wurden keine Daten synchronisiert.</p>
-                {% endif %}
-            </div>
-
-            <!-- Implantate Box -->
-            <div class="bg-eve-card border border-eve-border shadow-eve p-6 rounded-lg mb-6">
-                <h3 class="text-xl font-semibold mb-4 text-white text-gradient">🔌 Aktive Implantate</h3>
-                {% if character.implants is not empty %}
-                    <ul class="m-0 pl-5 list-disc marker:text-eve-primary/70 text-xs text-eve-text space-y-1">
-                        {% for typeId in character.implants %}
-                            <li class="mb-1">
-                                {{ implantNames[typeId] ?? ('Implantat #' ~ typeId) }}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-xs text-eve-muted">Keine aktiven Implantate verknüpft oder synchronisiert.</p>
-                {% endif %}
-            </div>
+                    <p class="text-eve-muted">Keine Sprungklone vorhanden.</p>
+                {% endfor %}
+            {% endif %}
         </div>
-    </div>
+    </details>
 </div>
 {% endblock %}
