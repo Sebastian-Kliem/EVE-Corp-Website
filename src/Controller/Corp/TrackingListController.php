@@ -7,6 +7,7 @@ use App\Entity\TrackingList;
 use App\Entity\TrackingListItem;
 use App\Entity\EveCharacterAssetChange;
 use App\Service\JitaPriceService;
+use App\Service\PerformanceLedgerCache;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -490,7 +491,7 @@ class TrackingListController extends AbstractController
     }
 
     #[Route('/api/changes/{id}', name: 'app_tracking_api_changes_delete', methods: ['DELETE'])]
-    public function deleteChange(int $id): JsonResponse
+    public function deleteChange(int $id, PerformanceLedgerCache $performanceLedgerCache): JsonResponse
     {
         $change = $this->entityManager->getRepository(EveCharacterAssetChange::class)->find($id);
         if (!$change) {
@@ -503,6 +504,7 @@ class TrackingListController extends AbstractController
 
         $this->entityManager->remove($change);
         $this->entityManager->flush();
+        $performanceLedgerCache->invalidate($this->_getCurrentUser());
 
         return new JsonResponse(['success' => true]);
     }

@@ -5,7 +5,7 @@ namespace App\Controller\Wallet;
 use App\Entity\User;
 use App\Entity\EveAccount;
 use App\Entity\EveCharacter;
-use App\Service\PerformanceEngine;
+use App\Service\PerformanceLedgerCache;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,7 +22,7 @@ class PerformanceController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly PerformanceEngine $performanceEngine
+        private readonly PerformanceLedgerCache $performanceLedgerCache
     ) {}
 
     #[Route('', name: 'app_dashboard_performance_ledger', methods: ['GET'])]
@@ -90,7 +90,7 @@ class PerformanceController extends AbstractController
         }
 
         try {
-            $ledger = $this->performanceEngine->calculateDailyPerformance($currentUser);
+            $cachedLedger = $this->performanceLedgerCache->get($currentUser);
             $exclusions = $this->entityManager->getRepository(PerformanceExclusion::class)->findBy(['user' => $currentUser]);
             
             $exclusionsData = [];
@@ -106,7 +106,8 @@ class PerformanceController extends AbstractController
             }
 
             return new JsonResponse([
-                'ledger' => $ledger,
+                'ledger' => $cachedLedger['ledger'],
+                'calculatedAt' => $cachedLedger['calculatedAt'],
                 'exclusions' => $exclusionsData,
             ]);
         } catch (\Exception $e) {
@@ -176,6 +177,7 @@ class PerformanceController extends AbstractController
 
         $this->entityManager->persist($entry);
         $this->entityManager->flush();
+        $this->performanceLedgerCache->invalidate($currentUser);
 
         return new JsonResponse(['success' => true]);
     }
@@ -199,6 +201,7 @@ class PerformanceController extends AbstractController
 
         $this->entityManager->remove($entry);
         $this->entityManager->flush();
+        $this->performanceLedgerCache->invalidate($currentUser);
 
         return new JsonResponse(['success' => true]);
     }
@@ -248,6 +251,7 @@ class PerformanceController extends AbstractController
 
             $this->entityManager->persist($exclusion);
             $this->entityManager->flush();
+            $this->performanceLedgerCache->invalidate($currentUser);
         }
 
         return new JsonResponse(['success' => true]);
@@ -272,6 +276,7 @@ class PerformanceController extends AbstractController
 
         $this->entityManager->remove($exclusion);
         $this->entityManager->flush();
+        $this->performanceLedgerCache->invalidate($currentUser);
 
         return new JsonResponse(['success' => true]);
     }

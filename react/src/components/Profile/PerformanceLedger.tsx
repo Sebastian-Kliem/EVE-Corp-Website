@@ -135,6 +135,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
     const [error, setError] = useState<string | null>(null);
     const [ledgerData, setLedgerData] = useState<Record<string, DailyPerformance>>({});
     const [exclusions, setExclusions] = useState<any[]>([]);
+    const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
 
     // Calculate dynamic Omega goal based on manually set Omega accounts
     const omegaGoal = useMemo(() => {
@@ -346,6 +347,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
             .then((data: { ledger: Record<string, DailyPerformance>; exclusions: any[] }) => {
                 setLedgerData(data.ledger || {});
                 setExclusions(data.exclusions || []);
+                setCalculatedAt(data.calculatedAt || null);
 
                 // Expand the first date by default
                 const dates = Object.keys(data.ledger || {});
@@ -628,6 +630,11 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
 
     return (
         <div className="perf-ledger-container">
+            {calculatedAt && (
+                <div className="text-xs text-eve-muted mb-2 text-right" title="Wird stündlich mit dem Inventar-Abruf neu berechnet">
+                    Stand: {new Date(calculatedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-[#0d132099] border border-eve-border rounded-lg p-4 flex flex-col justify-between" style={{ borderLeft: '4px solid var(--theme-primary)' }}>
                     <span className="text-xs text-eve-muted mb-1">Gesamtertrag (Netto)</span>

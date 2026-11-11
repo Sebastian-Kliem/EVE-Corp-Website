@@ -3,11 +3,13 @@
 namespace App\Service\Cron;
 
 use App\Entity\EveCharacter;
+use App\Entity\User;
 use App\Service\CharacterSync\CharacterAssetSyncService;
 use App\Service\CharacterSync\CharacterProfileSyncService;
 use App\Service\CharacterSync\CorpAssetSyncService;
 use App\Service\CharacterSync\MarketOrderSyncService;
 use App\Service\CharacterSync\WalletSyncService;
+use App\Service\PerformanceLedgerCache;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Log\LoggerInterface;
@@ -25,6 +27,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         private readonly MarketOrderSyncService $marketOrderSyncService,
         private readonly CorpAssetSyncService $corpAssetSyncService,
         private readonly CharacterAssetSyncService $characterAssetSyncService,
+        private readonly PerformanceLedgerCache $performanceLedgerCache,
         private readonly LoggerInterface $logger
     ) {}
 
@@ -47,6 +50,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         $syncedCorpIds = [];
+        $syncedUserIds = [];
 
         foreach ($characterIds as $characterId) {
             // A failed flush closes the EntityManager, which must not block the remaining characters
@@ -107,6 +111,10 @@ class UpdateCharacterDataTask implements CronTaskInterface
             // Sync Assets (Inventory)
             try {
                 $this->characterAssetSyncService->sync($character);
+                $userId = $character->getUser()?->getId();
+                if ($userId !== null) {
+                    $syncedUserIds[$userId] = true;
+                }
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync assets for character %s (%d): %s',
@@ -118,7 +126,26 @@ class UpdateCharacterDataTask implements CronTaskInterface
         }
 
         $this->_ensureEntityManagerOpen();
+        $this->_warmPerformanceLedgers(array_keys($syncedUserIds));
         $this->logger->info('[Cron] Finished sync-wallet-assets execution.');
+    }
+
+    /**
+     * @param int[] $userIds
+     */
+    private function _warmPerformanceLedgers(array $userIds): void
+    {
+        foreach ($userIds as $userId) {
+            try {
+                $user = $this->entityManager->find(User::class, $userId);
+                if ($user !== null) {
+                    $this->performanceLedgerCache->warm($user);
+                }
+            } catch (\Exception $e) {
+                $this->logger->error(sprintf('[Cron] Failed to warm performance ledger for user %d: %s', $userId, $e->getMessage()));
+                $this->_ensureEntityManagerOpen();
+            }
+        }
     }
 
     private function _loadCharacter(int $characterId): ?EveCharacter
