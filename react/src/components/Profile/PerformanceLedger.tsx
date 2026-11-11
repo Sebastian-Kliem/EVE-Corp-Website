@@ -76,6 +76,60 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const OMEGA_COST_ISK = 2500000000; // 2.5 Billion ISK
 
+// Same item aggregated over all characters of one day
+interface GroupedDetail {
+    key: string;
+    typeName: string;
+    category: string;
+    typeId: number;
+    isWallet: boolean;
+    manualEntryId?: number;
+    quantity: number;
+    price: number;
+    totalValue: number;
+    entries: PerformanceDetail[];
+}
+
+function groupDetailsByItem(details: PerformanceDetail[]): GroupedDetail[] {
+    const groupsByKey: Record<string, GroupedDetail> = {};
+    const groups: GroupedDetail[] = [];
+
+    for (const item of details) {
+        const key = item.manualEntryId
+            ? `manual_${item.manualEntryId}`
+            : `${item.category}|${item.typeId}|${item.typeName}|${item.isWallet ? 1 : 0}`;
+
+        let group = groupsByKey[key];
+        if (!group) {
+            group = {
+                key,
+                typeName: item.typeName,
+                category: item.category,
+                typeId: item.typeId,
+                isWallet: item.isWallet,
+                manualEntryId: item.manualEntryId,
+                quantity: 0,
+                price: item.price,
+                totalValue: 0,
+                entries: []
+            };
+            groupsByKey[key] = group;
+            groups.push(group);
+        }
+
+        group.quantity += item.quantity;
+        group.totalValue += item.totalValue;
+        group.entries.push(item);
+    }
+
+    for (const group of groups) {
+        group.entries.sort((first, second) => second.totalValue - first.totalValue);
+    }
+    groups.sort((first, second) => second.totalValue - first.totalValue);
+
+    return groups;
+}
+
 export default function PerformanceLedger({ charactersList, apiDataUrl, imagePaths, omegaAccountCount }: PerformanceLedgerProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -803,15 +857,17 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-white/5">
-                                                    {day.details.map((item, idx) => {
-                                                        const itemKey = item.manualEntryId ? `manual_${item.manualEntryId}` : `${day.date}_${item.typeId}_${idx}`;
+                                                    {groupDetailsByItem(day.details).map((item) => {
+                                                        const itemKey = `${day.date}_${item.key}`;
                                                         const isExpanded = expandedItemKey === itemKey;
+                                                        const hasMultipleCharacters = item.entries.length > 1;
+                                                        const isExpandable = !item.manualEntryId && (!item.isWallet || hasMultipleCharacters);
 
                                                         return (
-                                                            <React.Fragment key={idx}>
+                                                            <React.Fragment key={item.key}>
                                                                 <tr
-                                                                    onClick={() => !item.isWallet && !item.manualEntryId && setExpandedItemKey(isExpanded ? null : itemKey)}
-                                                                    className={`group transition-colors duration-150 ${(!item.isWallet && !item.manualEntryId) ? 'hover:bg-white/5 cursor-pointer' : ''}`}
+                                                                    onClick={() => isExpandable && setExpandedItemKey(isExpanded ? null : itemKey)}
+                                                                    className={`group transition-colors duration-150 ${isExpandable ? 'hover:bg-white/5 cursor-pointer' : ''}`}
                                                                 >
                                                                     <td className="p-3 text-center text-xs text-eve-muted align-middle">
                                                                         {item.manualEntryId ? (
@@ -827,19 +883,22 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                             </button>
                                                                         ) : (
                                                                             <div className="flex items-center gap-2 justify-center">
-                                                                                {!item.isWallet && (
+                                                                                {isExpandable && (
                                                                                     <span className={`inline-block text-[10px] text-eve-muted transition-transform duration-200 ease-out select-none ${isExpanded ? 'rotate-90 text-eve-primary' : ''}`}>▶</span>
                                                                                 )}
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        handleExcludeEntry(day.date, item);
-                                                                                    }}
-                                                                                    className="text-eve-muted hover:text-amber-600 hover:scale-110 transition-all duration-150 bg-transparent border-none p-0 text-sm cursor-pointer inline-flex items-center justify-center"
-                                                                                    title="Eintrag ausblenden (wird von der Berechnung abgezogen)"
-                                                                                >
-                                                                                    🗑️
-                                                                                </button>
+                                                                                {/* Exclusion is per character, so only offered directly for single-character rows */}
+                                                                                {!hasMultipleCharacters && (
+                                                                                    <button
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            handleExcludeEntry(day.date, item.entries[0]);
+                                                                                        }}
+                                                                                        className="text-eve-muted hover:text-amber-600 hover:scale-110 transition-all duration-150 bg-transparent border-none p-0 text-sm cursor-pointer inline-flex items-center justify-center"
+                                                                                        title="Eintrag ausblenden (wird von der Berechnung abgezogen)"
+                                                                                    >
+                                                                                        🗑️
+                                                                                    </button>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </td>
@@ -875,7 +934,13 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                             {CATEGORY_NAMES[item.category] || item.category}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="p-3 align-middle text-eve-text text-sm">{item.character}</td>
+                                                                    <td className="p-3 align-middle text-eve-text text-sm">
+                                                                        {hasMultipleCharacters ? (
+                                                                            <span className="text-eve-muted" title={item.entries.map(entry => entry.character).join(', ')}>
+                                                                                {item.entries.length} Charaktere
+                                                                            </span>
+                                                                        ) : item.entries[0].character}
+                                                                    </td>
                                                                     <td className="p-3 align-middle text-right font-mono text-sm text-eve-text">
                                                                         {item.manualEntryId ? '-' : formatNumber(item.quantity)}
                                                                     </td>
@@ -886,15 +951,25 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                                                                         {formatISK(item.totalValue)}
                                                                     </td>
                                                                 </tr>
-                                                                {isExpanded && !item.isWallet && (
+                                                                {isExpanded && (
                                                                     <tr>
                                                                         <td colSpan={8} style={{ background: 'rgba(0, 0, 0, 0.25)', borderTop: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '12px' }}>
-                                                                            <ItemChangesDetails
-                                                                                dateStr={day.date}
-                                                                                typeId={item.typeId}
-                                                                                formatNumber={formatNumber}
-                                                                                onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
-                                                                            />
+                                                                            {hasMultipleCharacters && (
+                                                                                <CharacterBreakdown
+                                                                                    entries={item.entries}
+                                                                                    formatISK={formatISK}
+                                                                                    formatNumber={formatNumber}
+                                                                                    onExclude={(entry) => handleExcludeEntry(day.date, entry)}
+                                                                                />
+                                                                            )}
+                                                                            {!item.isWallet && (
+                                                                                <ItemChangesDetails
+                                                                                    dateStr={day.date}
+                                                                                    typeId={item.typeId}
+                                                                                    formatNumber={formatNumber}
+                                                                                    onDeleteSuccess={() => setRefreshTrigger(prev => prev + 1)}
+                                                                                />
+                                                                            )}
                                                                         </td>
                                                                     </tr>
                                                                 )}
@@ -1032,6 +1107,43 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                     </div>
                 </details>
             )}
+        </div>
+    );
+}
+
+interface CharacterBreakdownProps {
+    entries: PerformanceDetail[];
+    formatISK: (val: number) => string;
+    formatNumber: (val: number) => string;
+    onExclude: (entry: PerformanceDetail) => void;
+}
+
+function CharacterBreakdown({ entries, formatISK, formatNumber, onExclude }: CharacterBreakdownProps) {
+    return (
+        <div className="mb-4">
+            <h5 className="text-xs font-bold mb-2" style={{ color: '#fff' }}>Aufteilung nach Charakter:</h5>
+            <table className="w-full border-collapse text-xs">
+                <tbody className="divide-y divide-white/5">
+                    {entries.map(entry => (
+                        <tr key={entry.character}>
+                            <td className="py-1.5 px-2 text-center" style={{ width: '30px' }}>
+                                <button
+                                    onClick={() => onExclude(entry)}
+                                    className="text-eve-muted hover:text-amber-600 hover:scale-110 transition-all duration-150 bg-transparent border-none p-0 text-sm cursor-pointer inline-flex items-center justify-center"
+                                    title="Eintrag dieses Charakters ausblenden (wird von der Berechnung abgezogen)"
+                                >
+                                    🗑️
+                                </button>
+                            </td>
+                            <td className="py-1.5 px-2 font-semibold" style={{ color: '#00ffaa' }}>{entry.character}</td>
+                            <td className="py-1.5 px-2 text-right font-mono text-eve-text">
+                                {entry.isWallet ? '-' : `${formatNumber(entry.quantity)} Stk.`}
+                            </td>
+                            <td className="py-1.5 px-2 text-right font-mono font-bold text-eve-primary">{formatISK(entry.totalValue)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
