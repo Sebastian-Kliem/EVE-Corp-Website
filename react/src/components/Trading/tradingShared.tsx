@@ -4,6 +4,7 @@ export interface TradingUrls {
     station: string;
     item: string;
     myOrders: string;
+    performance: string;
     openMarket: string;
 }
 

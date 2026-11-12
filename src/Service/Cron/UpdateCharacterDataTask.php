@@ -71,6 +71,7 @@ class UpdateCharacterDataTask implements CronTaskInterface
                 $this->walletSyncService->syncJournal($character);
                 $this->walletSyncService->syncMarketTransactions($character);
                 $this->marketOrderSyncService->sync($character);
+                $this->marketOrderSyncService->syncHistory($character);
             } catch (\Exception $e) {
                 $this->logger->error(sprintf(
                     '[Cron] Failed to sync wallet/journal/orders for character %s (%d): %s',

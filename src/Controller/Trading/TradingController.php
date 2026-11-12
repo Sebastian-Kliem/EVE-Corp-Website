@@ -12,6 +12,7 @@ use App\Service\Trading\StationTradingQuery;
 use App\Service\Trading\TradingFeeCalculator;
 use App\Service\Trading\TradingItemDetails;
 use App\Service\Trading\TradingOrderOverview;
+use App\Service\Trading\TradingPerformanceCalculator;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -169,6 +170,28 @@ class TradingController extends AbstractController
             'orders' => $orderOverview->build($tradingCharacter, $this->_resolveFees($request, $tradingCharacter)),
             'characterName' => $tradingCharacter->getName(),
         ]);
+    }
+
+    #[Route('/api/performance', name: 'app_trading_performance', methods: ['GET'])]
+    public function performance(Request $request, TradingPerformanceCalculator $calculator): JsonResponse
+    {
+        $user = $this->_user();
+        $utc = new \DateTimeZone('UTC');
+        try {
+            $from = new \DateTimeImmutable((string)$request->query->get('from', 'first day of this month'), $utc);
+            // The end date is inclusive in the UI
+            $to = (new \DateTimeImmutable((string)$request->query->get('to', 'today'), $utc))->setTime(0, 0)->modify('+1 day');
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Ungültiger Zeitraum.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // getInt() rejects the empty string of "all characters"
+        $characterId = (int)$request->query->get('characterId', '') ?: null;
+        if ($characterId !== null && $this->_findOwnCharacter($user, $characterId) === null) {
+            return new JsonResponse(['error' => 'Dieser Charakter gehört nicht zu deinem Konto.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse($calculator->calculate($this->_ownCharacters($user), $from->setTime(0, 0), $to, $characterId));
     }
 
     #[Route('/api/open-market', name: 'app_trading_open_market', methods: ['POST'])]

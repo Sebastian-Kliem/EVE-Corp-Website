@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import MyOrdersTab, { MyOrdersData } from './MyOrdersTab';
 import StationTradingTab from './StationTradingTab';
+import TradingPerformanceTab from './TradingPerformanceTab';
 import {
     DEFAULT_SETTINGS, fetchJson, formatAge, formatPercent, LastOpenedItem, loadStored, postJson, saveStored,
     Spinner, TradingContext, TradingSettings, TradingUrls,
@@ -11,7 +12,7 @@ interface TradingDashboardProps {
     typeIconUrl: string;
 }
 
-type TabKey = 'station' | 'orders';
+type TabKey = 'station' | 'orders' | 'performance';
 
 const SETTINGS_STORAGE_KEY = 'wh-trading-settings';
 const TAB_STORAGE_KEY = 'wh-trading-tab';
@@ -25,7 +26,7 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
     const [settings, setSettings] = useState<TradingSettings>(() => loadStored(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS));
     const [activeTab, setActiveTab] = useState<TabKey>(() => loadStored<TabKey>(TAB_STORAGE_KEY, 'station'));
     // Tabs mount on first visit and stay mounted to keep their state
-    const [visitedTabs, setVisitedTabs] = useState<Record<TabKey, boolean>>({ station: false, orders: false, [activeTab]: true } as Record<TabKey, boolean>);
+    const [visitedTabs, setVisitedTabs] = useState<Record<TabKey, boolean>>({ station: false, orders: false, performance: false, [activeTab]: true } as Record<TabKey, boolean>);
     const [myOrders, setMyOrders] = useState<MyOrdersData | null>(null);
     const [myOrdersError, setMyOrdersError] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ message: string; isError: boolean } | null>(null);
@@ -215,6 +216,7 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
                     isActive={activeTab === 'orders'}
                     onClick={() => switchTab('orders')}
                 />
+                <TabButton label="Handels-Performance" isActive={activeTab === 'performance'} onClick={() => switchTab('performance')} />
             </div>
 
             {visitedTabs.station && (
@@ -225,6 +227,11 @@ export default function TradingDashboard({ urls, typeIconUrl }: TradingDashboard
             {visitedTabs.orders && (
                 <div className={activeTab === 'orders' ? '' : 'hidden'}>
                     <MyOrdersTab data={myOrders} error={myOrdersError} typeIconTemplate={typeIconUrl} lastOpened={lastOpened} onOpenMarket={openMarket} onNotice={showNotice} />
+                </div>
+            )}
+            {visitedTabs.performance && (
+                <div className={activeTab === 'performance' ? '' : 'hidden'}>
+                    <TradingPerformanceTab urls={urls} context={context} typeIconTemplate={typeIconUrl} lastOpened={lastOpened} onOpenMarket={openMarket} />
                 </div>
             )}
         </div>
