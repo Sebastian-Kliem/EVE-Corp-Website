@@ -1,4 +1,6 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
+import ItemDetail, { TradingPosition } from './TradingPerformanceDetail';
+import TradingPositionsTable from './TradingPositionsTable';
 import {
     fetchJson, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS, LastOpenedBadge,
     LastOpenedItem, loadStored, saveStored, Spinner, TradingContext, TradingUrls, typeIconUrl,
@@ -61,6 +63,7 @@ interface PerformanceData {
     summary: PerformanceSummary;
     items: PerformanceItem[];
     contracts: PerformanceContract[];
+    positions: TradingPosition[];
     dataStart: string | null;
 }
 
@@ -112,20 +115,24 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: 'profit', descending: true });
+    const [expandedTypeId, setExpandedTypeId] = useState<number | null>(null);
+    const detailQuery = useMemo(() => {
+        const range = _periodRange(filter.period);
+        return { from: range.from, to: range.to, characterId: filter.characterId };
+    }, [filter]);
 
     useEffect(() => {
         saveStored(FILTER_STORAGE_KEY, filter);
-        const range = _periodRange(filter.period);
-        const query = new URLSearchParams({ from: range.from, to: range.to, characterId: filter.characterId });
         setLoading(true);
-        fetchJson<PerformanceData>(`${urls.performance}?${query.toString()}`)
+        setExpandedTypeId(null);
+        fetchJson<PerformanceData>(`${urls.performance}?${new URLSearchParams(detailQuery).toString()}`)
             .then(result => {
                 setData(result);
                 setError(null);
             })
             .catch((e: Error) => setError(e.message))
             .finally(() => setLoading(false));
-    }, [urls.performance, filter]);
+    }, [urls.performance, filter, detailQuery]);
 
     const sortedItems = useMemo(() => {
         if (!data) {
@@ -177,7 +184,8 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
                 <>
                     <SummaryCards summary={data.summary} />
                     <p className="text-[11px] text-eve-muted">
-                        Realisierter Gewinn aus Verkäufen von Items, die vorher gekauft wurden (Markt und Item-Tausch-Verträge mit Fremden, Einstandspreis als gleitender Durchschnitt über alle Charaktere).
+                        Realisierter Gewinn aus Verkäufen von Items, die vorher gekauft wurden (Markt und Item-Tausch-Verträge mit Fremden, über alle Charaktere).
+                        Jeder Verkauf wird gegen die jüngsten Einkäufe gerechnet (LIFO), so zeigt sich die Marge pro Flip; teurer Altbestand bleibt in der Bestandstabelle sichtbar.
                         Marktverkäufe ohne vorherigen Kauf (Loot, Produktion, Altbestand) zählen nicht, PLEX bleibt ganz außen vor (auch per Echtgeld kaufbar). Verkaufsverträge zählen als Ganzes, Items darin ohne Einkauf mit dem Jita-Buy-Preis des Verkaufstags.
                         Verkaufssteuer wird pro Verkauf zugeordnet. Broker-Gebühren über den Zeitstempel der Order oder geschätzt über den Orderwert; im Zeitraum gezahlt, auch für noch offene Orders.
                         {data.dataStart && ` Transaktionen liegen ab ${new Date(data.dataStart).toLocaleDateString('de-DE')} vor, ältere Einkäufe fehlen in der Rechnung.`}
@@ -200,15 +208,27 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedItems.map(item => (
-                                    <ItemRow
-                                        key={item.typeId}
-                                        item={item}
-                                        isLastOpened={isLastOpened(lastOpened, item.typeId)}
-                                        typeIconTemplate={typeIconTemplate}
-                                        onClick={() => onOpenMarket(item.typeId)}
-                                    />
-                                ))}
+                                {sortedItems.map(item => {
+                                    const isExpanded = expandedTypeId === item.typeId;
+                                    return (
+                                        <Fragment key={item.typeId}>
+                                            <ItemRow
+                                                item={item}
+                                                isExpanded={isExpanded}
+                                                isLastOpened={isLastOpened(lastOpened, item.typeId)}
+                                                typeIconTemplate={typeIconTemplate}
+                                                onClick={() => setExpandedTypeId(isExpanded ? null : item.typeId)}
+                                            />
+                                            {isExpanded && (
+                                                <tr className="border-b border-white/5">
+                                                    <td colSpan={SORT_COLUMNS.length + 1} className="p-0">
+                                                        <ItemDetail url={urls.performanceItem} query={detailQuery} typeId={item.typeId} onOpenMarket={onOpenMarket} />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
                                 {sortedItems.length === 0 && (
                                     <tr>
                                         <td colSpan={SORT_COLUMNS.length + 1} className="p-6 text-center text-eve-muted">Keine Handelsverkäufe im Zeitraum.</td>
@@ -217,6 +237,15 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
                             </tbody>
                         </table>
                     </div>
+                    {data.positions.length > 0 && (
+                        <TradingPositionsTable
+                            positions={data.positions}
+                            detailUrl={urls.performanceItem}
+                            detailQuery={detailQuery}
+                            typeIconTemplate={typeIconTemplate}
+                            onOpenMarket={onOpenMarket}
+                        />
+                    )}
                 </>
             )}
         </div>
@@ -261,11 +290,12 @@ function Card({ label, value, valueClass = 'text-white', children }: { label: st
     );
 }
 
-function ItemRow({ item, isLastOpened, typeIconTemplate, onClick }: { item: PerformanceItem; isLastOpened: boolean; typeIconTemplate: string; onClick: () => void }) {
+function ItemRow({ item, isExpanded, isLastOpened, typeIconTemplate, onClick }: { item: PerformanceItem; isExpanded: boolean; isLastOpened: boolean; typeIconTemplate: string; onClick: () => void }) {
     return (
-        <tr onClick={onClick} title="Marktfenster im Spiel öffnen" className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${isLastOpened ? LAST_OPENED_ROW_CLASS : ''}`}>
+        <tr onClick={onClick} title="Käufe, Verkäufe und Bestand anzeigen" className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${isLastOpened ? LAST_OPENED_ROW_CLASS : ''}`}>
             <td className="p-2.5">
                 <div className="flex items-center gap-2">
+                    <span className={`text-eve-muted text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
                     <img src={typeIconUrl(typeIconTemplate, item.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
                     <div>
                         <div className="text-white flex items-center gap-2">{item.itemName}{isLastOpened && <LastOpenedBadge />}</div>

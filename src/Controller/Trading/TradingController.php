@@ -176,22 +176,74 @@ class TradingController extends AbstractController
     public function performance(Request $request, TradingPerformanceCalculator $calculator): JsonResponse
     {
         $user = $this->_user();
+        $filter = $this->_resolvePerformanceFilter($request, $user);
+        if (is_string($filter)) {
+            return new JsonResponse(['error' => $filter], Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse($calculator->calculate($this->_ownCharacters($user), $filter['from'], $filter['to'], $filter['characterId']));
+    }
+
+    #[Route('/api/performance/item', name: 'app_trading_performance_item', methods: ['GET'])]
+    public function performanceItem(Request $request, TradingPerformanceCalculator $calculator): JsonResponse
+    {
+        $user = $this->_user();
+        $filter = $this->_resolvePerformanceFilter($request, $user);
+        $typeId = (int)$request->query->get('typeId', '');
+        if (is_string($filter) || $typeId <= 0) {
+            return new JsonResponse(['error' => is_string($filter) ? $filter : 'Ungültiges Item.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $result = $calculator->calculate($this->_ownCharacters($user), $filter['from'], $filter['to'], $filter['characterId'], $typeId);
+        $characterNames = [];
+        foreach ($this->_ownCharacters($user) as $character) {
+            $characterNames[(string)$character->getId()] = $character->getName();
+        }
+
+        return new JsonResponse([
+            'detail' => $result['detail'],
+            'item' => $this->_findByTypeId($result['items'], $typeId),
+            'position' => $this->_findByTypeId($result['positions'], $typeId),
+            'characterNames' => $characterNames,
+        ]);
+    }
+
+    /**
+     * @return array{from: \DateTimeImmutable, to: \DateTimeImmutable, characterId: ?int}|string Error message on invalid input
+     */
+    private function _resolvePerformanceFilter(Request $request, User $user): array|string
+    {
         $utc = new \DateTimeZone('UTC');
         try {
-            $from = new \DateTimeImmutable((string)$request->query->get('from', 'first day of this month'), $utc);
+            $from = (new \DateTimeImmutable((string)$request->query->get('from', 'first day of this month'), $utc))->setTime(0, 0);
             // The end date is inclusive in the UI
             $to = (new \DateTimeImmutable((string)$request->query->get('to', 'today'), $utc))->setTime(0, 0)->modify('+1 day');
         } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Ungültiger Zeitraum.'], Response::HTTP_BAD_REQUEST);
+            return 'Ungültiger Zeitraum.';
         }
 
         // getInt() rejects the empty string of "all characters"
         $characterId = (int)$request->query->get('characterId', '') ?: null;
         if ($characterId !== null && $this->_findOwnCharacter($user, $characterId) === null) {
-            return new JsonResponse(['error' => 'Dieser Charakter gehört nicht zu deinem Konto.'], Response::HTTP_BAD_REQUEST);
+            return 'Dieser Charakter gehört nicht zu deinem Konto.';
         }
 
-        return new JsonResponse($calculator->calculate($this->_ownCharacters($user), $from->setTime(0, 0), $to, $characterId));
+        return ['from' => $from, 'to' => $to, 'characterId' => $characterId];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return ?array<string, mixed>
+     */
+    private function _findByTypeId(array $rows, int $typeId): ?array
+    {
+        foreach ($rows as $row) {
+            if ($row['typeId'] === $typeId) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     #[Route('/api/open-market', name: 'app_trading_open_market', methods: ['POST'])]

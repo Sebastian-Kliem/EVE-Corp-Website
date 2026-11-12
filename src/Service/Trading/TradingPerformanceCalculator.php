@@ -10,7 +10,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 
 /**
- * Realised trading profit of a user: sales are matched against a moving average cost of all own purchases (market and contracts).
+ * Realised trading profit of a user: sales are matched against the newest own purchases (LIFO, market and contracts).
  *
  * Market sales without a preceding purchase (loot, production, old stock) carry no cost basis and are left out completely.
  * Sale contracts are reported as a whole, items in them without a purchase are valued at the Jita buy price of the sale day.
@@ -31,9 +31,10 @@ class TradingPerformanceCalculator
     /**
      * @param EveCharacter[] $characters All characters of the user, the cost basis is shared between them
      * @param ?int $characterId Only report sales of this character, null for all
+     * @param ?int $detailTypeId Also return every purchase and sale of this type in the period
      * @return array<string, mixed>
      */
-    public function calculate(array $characters, \DateTimeImmutable $from, \DateTimeImmutable $to, ?int $characterId): array
+    public function calculate(array $characters, \DateTimeImmutable $from, \DateTimeImmutable $to, ?int $characterId, ?int $detailTypeId = null): array
     {
         $characterIds = [];
         foreach ($characters as $character) {
@@ -47,8 +48,9 @@ class TradingPerformanceCalculator
         $taxBySale = $this->_loadSalesTax($characterIds);
         $reportedCharacterIds = $characterId === null ? $characterIds : [$characterId];
 
-        $holdings = [];
+        $stock = new TradingLotStock();
         $items = [];
+        $detailEntries = [];
         $contracts = [];
         $purchasedTypeIds = [];
         // Sold and cost-matched units per type over all time, the rest of the sales are loot or production
@@ -60,7 +62,7 @@ class TradingPerformanceCalculator
             $isReported = $isInPeriod && in_array($event['characterId'], $reportedCharacterIds, true);
 
             if ($event['kind'] === 'contractSale') {
-                [$holdings, $contract] = $this->_processContractSale($holdings, $event);
+                $contract = $this->_processContractSale($stock, $event);
                 if ($isReported) {
                     $contracts[] = $contract;
                 }
@@ -68,34 +70,35 @@ class TradingPerformanceCalculator
             }
 
             $typeId = $event['typeId'];
-            $holding = $holdings[$typeId] ?? ['quantity' => 0.0, 'averageCost' => 0.0, 'averageAcquiredAt' => 0.0];
-
+            $isDetail = $isReported && $typeId === $detailTypeId;
             if ($event['isBuy']) {
-                $holdings[$typeId] = $this->_addPurchase($holding, $event);
+                $stock->add($typeId, $event['quantity'], $event['unitPrice'], $event['timestamp']);
                 if ($event['timestamp'] < $to->getTimestamp()) {
                     $purchasedTypeIds[$typeId] = true;
+                }
+                if ($isDetail) {
+                    $detailEntries[] = $this->_detailEntry($event, null, 0.0);
                 }
                 continue;
             }
 
-            $matchedQuantity = min($event['quantity'], $holding['quantity']);
+            $taken = $stock->take($typeId, $event['quantity'], $event['timestamp']);
             $soldQuantities[$typeId] = ($soldQuantities[$typeId] ?? 0.0) + $event['quantity'];
-            $matchedQuantities[$typeId] = ($matchedQuantities[$typeId] ?? 0.0) + max(0.0, $matchedQuantity);
-            if ($matchedQuantity <= 0) {
-                continue;
+            $matchedQuantities[$typeId] = ($matchedQuantities[$typeId] ?? 0.0) + $taken['quantity'];
+            $tax = ($taxBySale[$event['taxKey']] ?? 0.0) * $event['taxShare'] * ($taken['quantity'] / $event['quantity']);
+            if ($isDetail) {
+                $detailEntries[] = $this->_detailEntry($event, $taken, $tax);
             }
-            $holdings[$typeId] = ['quantity' => $holding['quantity'] - $matchedQuantity] + $holding;
-            if (!$isReported) {
+            if ($taken['quantity'] <= 0 || !$isReported) {
                 continue;
             }
 
-            $matchedShare = $matchedQuantity / $event['quantity'];
             $sale = [
-                'quantity' => $matchedQuantity,
-                'revenue' => $matchedQuantity * $event['unitPrice'],
-                'cost' => $matchedQuantity * $holding['averageCost'],
-                'tax' => ($taxBySale[$event['taxKey']] ?? 0.0) * $event['taxShare'] * $matchedShare,
-                'holdingSeconds' => max(0.0, $event['timestamp'] - $holding['averageAcquiredAt']) * $matchedQuantity,
+                'quantity' => $taken['quantity'],
+                'revenue' => $taken['quantity'] * $event['unitPrice'],
+                'cost' => $taken['cost'],
+                'tax' => $tax,
+                'holdingSeconds' => $taken['holdingSeconds'],
             ];
             $items[$typeId] = $this->_addSaleToItem($items[$typeId] ?? null, $typeId, $sale);
             $saleCount++;
@@ -107,7 +110,140 @@ class TradingPerformanceCalculator
         }
         $brokerFees = $this->_splitBrokerFees($reportedCharacterIds, $from, $to, $purchasedTypeIds, $tradedSellShares);
 
-        return $this->_buildResult($items, $contracts, $saleCount, $brokerFees, $characterIds);
+        $result = $this->_buildResult($items, $contracts, $saleCount, $brokerFees, $characterIds);
+        // Types never sold on the market are production inputs, not trading stock
+        $tradedStock = array_intersect_key($stock->remaining(), $soldQuantities);
+        $result['positions'] = $this->_buildPositions($tradedStock, $characterIds);
+        if ($detailTypeId !== null) {
+            $result['detail'] = [
+                'typeId' => $detailTypeId,
+                'itemName' => $this->sdeService->getItemName($detailTypeId),
+                'entries' => array_reverse($detailEntries),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $event
+     * @param ?array{quantity: float, cost: float, holdingSeconds: float} $taken Null for purchases
+     * @return array<string, mixed>
+     */
+    private function _detailEntry(array $event, ?array $taken, float $tax): array
+    {
+        $entry = [
+            'date' => (new \DateTimeImmutable('@' . $event['timestamp']))->format(\DateTimeInterface::ATOM),
+            'characterId' => $event['characterId'],
+            'isBuy' => $event['isBuy'],
+            'isContract' => $event['isContract'] ?? false,
+            'quantity' => $event['quantity'],
+            'unitPrice' => $event['unitPrice'],
+        ];
+        if ($taken === null) {
+            return $entry;
+        }
+
+        $revenue = $taken['quantity'] * $event['unitPrice'];
+        return $entry + [
+            'matchedQuantity' => $taken['quantity'],
+            'unitCost' => $taken['quantity'] > 0 ? $taken['cost'] / $taken['quantity'] : null,
+            'salesTax' => $tax,
+            'profit' => $taken['quantity'] > 0 ? $revenue - $taken['cost'] - $tax : null,
+        ];
+    }
+
+    /**
+     * Remaining purchased lots, capped at what the characters still own (assets and sell orders); the rest was used or moved.
+     *
+     * @param array<int, array{quantity: float, cost: float, oldestAcquiredAt: int}> $remaining
+     * @param int[] $characterIds
+     * @return list<array<string, mixed>>
+     */
+    private function _buildPositions(array $remaining, array $characterIds): array
+    {
+        if ($remaining === []) {
+            return [];
+        }
+        $typeIds = array_keys($remaining);
+        $owned = $this->_loadOwnedQuantities($characterIds, $typeIds);
+        $marketPrices = $this->_loadJitaPrices($typeIds);
+
+        $positions = [];
+        foreach ($remaining as $typeId => $position) {
+            $quantity = min($position['quantity'], $owned[$typeId] ?? 0.0);
+            if ($quantity <= 0) {
+                continue;
+            }
+            // Of the remaining lots the oldest are left, their average cost applies
+            $cost = $position['cost'] * $quantity / $position['quantity'];
+            $sellPrice = $marketPrices[$typeId]['sell'] ?? null;
+            $value = $sellPrice === null ? null : $sellPrice * $quantity;
+            $positions[] = [
+                'typeId' => $typeId,
+                'itemName' => $this->sdeService->getItemName($typeId),
+                'quantity' => $quantity,
+                'cost' => $cost,
+                'unitCost' => $cost / $quantity,
+                'jitaSell' => $sellPrice,
+                'jitaBuy' => $marketPrices[$typeId]['buy'] ?? null,
+                'value' => $value,
+                'unrealizedProfit' => $value === null ? null : $value - $cost,
+                'oldestAcquiredAt' => (new \DateTimeImmutable('@' . $position['oldestAcquiredAt']))->format(\DateTimeInterface::ATOM),
+            ];
+        }
+        usort($positions, fn(array $first, array $second): int => $second['cost'] <=> $first['cost']);
+
+        return $positions;
+    }
+
+    /**
+     * @param int[] $characterIds
+     * @param int[] $typeIds
+     * @return array<int, float>
+     */
+    private function _loadOwnedQuantities(array $characterIds, array $typeIds): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT type_id, SUM(quantity) AS quantity FROM (
+                SELECT type_id, quantity FROM eve_character_asset WHERE character_id IN (:characterIds) AND type_id IN (:typeIds)
+                UNION ALL
+                SELECT type_id, volume_remain FROM eve_character_market_order
+                WHERE character_id IN (:characterIds) AND type_id IN (:typeIds) AND is_buy = 0 AND is_corporation = 0
+             ) owned GROUP BY type_id',
+            ['characterIds' => $characterIds, 'typeIds' => $typeIds],
+            ['characterIds' => ArrayParameterType::INTEGER, 'typeIds' => ArrayParameterType::INTEGER]
+        );
+
+        $owned = [];
+        foreach ($rows as $row) {
+            $owned[(int)$row['type_id']] = (float)$row['quantity'];
+        }
+
+        return $owned;
+    }
+
+    /**
+     * @param int[] $typeIds
+     * @return array<int, array{buy: ?float, sell: ?float}>
+     */
+    private function _loadJitaPrices(array $typeIds): array
+    {
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT type_id, buy_best, sell_best FROM market_price WHERE location_id = :stationId AND type_id IN (:typeIds)',
+            ['stationId' => MarketHub::JITA, 'typeIds' => $typeIds],
+            ['typeIds' => ArrayParameterType::INTEGER]
+        );
+
+        $prices = [];
+        foreach ($rows as $row) {
+            $prices[(int)$row['type_id']] = [
+                'buy' => $row['buy_best'] === null ? null : (float)$row['buy_best'],
+                'sell' => $row['sell_best'] === null ? null : (float)$row['sell_best'],
+            ];
+        }
+
+        return $prices;
     }
 
     /**
@@ -146,23 +282,21 @@ class TradingPerformanceCalculator
     }
 
     /**
-     * Takes the contract items out of the holdings and compares the contract price with their cost.
+     * Takes the contract items out of the stock and compares the contract price with their cost.
      *
-     * @param array<int, array{quantity: float, averageCost: float, averageAcquiredAt: float}> $holdings
      * @param array<string, mixed> $event
-     * @return array{0: array<int, array{quantity: float, averageCost: float, averageAcquiredAt: float}>, 1: array<string, mixed>}
+     * @return array<string, mixed>
      */
-    private function _processContractSale(array $holdings, array $event): array
+    private function _processContractSale(TradingLotStock $stock, array $event): array
     {
         $buyPrices = null;
         $positions = [];
         $totalCost = 0.0;
         foreach ($event['items'] as $typeId => $quantity) {
-            $holding = $holdings[$typeId] ?? ['quantity' => 0.0, 'averageCost' => 0.0, 'averageAcquiredAt' => 0.0];
-            $matchedQuantity = min($quantity, $holding['quantity']);
-            $holdings[$typeId] = ['quantity' => $holding['quantity'] - $matchedQuantity] + $holding;
+            $taken = $stock->take($typeId, $quantity, $event['timestamp']);
+            $matchedQuantity = $taken['quantity'];
 
-            $cost = $matchedQuantity * $holding['averageCost'];
+            $cost = $taken['cost'];
             $remainingQuantity = $quantity - $matchedQuantity;
             $costSource = 'purchase';
             if ($remainingQuantity > 0) {
@@ -186,7 +320,7 @@ class TradingPerformanceCalculator
 
         $profit = $event['price'] - $totalCost;
 
-        return [$holdings, [
+        return [
             'contractId' => $event['contractId'],
             'date' => (new \DateTimeImmutable('@' . $event['timestamp']))->format(\DateTimeInterface::ATOM),
             'mainItemName' => $positions[0]['itemName'] ?? '',
@@ -196,7 +330,7 @@ class TradingPerformanceCalculator
             'profit' => $profit,
             'margin' => $event['price'] > 0 ? $profit / $event['price'] : null,
             'positions' => $positions,
-        ]];
+        ];
     }
 
     /**
@@ -235,22 +369,6 @@ class TradingPerformanceCalculator
         }
 
         return $prices;
-    }
-
-    /**
-     * @param array{quantity: float, averageCost: float, averageAcquiredAt: float} $holding
-     * @param array<string, mixed> $event
-     * @return array{quantity: float, averageCost: float, averageAcquiredAt: float}
-     */
-    private function _addPurchase(array $holding, array $event): array
-    {
-        $newQuantity = $holding['quantity'] + $event['quantity'];
-
-        return [
-            'quantity' => $newQuantity,
-            'averageCost' => ($holding['quantity'] * $holding['averageCost'] + $event['quantity'] * $event['unitPrice']) / $newQuantity,
-            'averageAcquiredAt' => ($holding['quantity'] * $holding['averageAcquiredAt'] + $event['quantity'] * $event['timestamp']) / $newQuantity,
-        ];
     }
 
     /**
@@ -403,6 +521,7 @@ class TradingPerformanceCalculator
                     'quantity' => $split['quantity'],
                     'unitPrice' => $split['unitPrice'],
                     'isBuy' => true,
+                    'isContract' => true,
                     'taxKey' => '',
                     'taxShare' => 0.0,
                 ];
@@ -600,6 +719,7 @@ class TradingPerformanceCalculator
             ],
             'items' => [],
             'contracts' => [],
+            'positions' => [],
             'dataStart' => null,
         ];
     }
