@@ -126,12 +126,6 @@ export default function ValueHistory({ characters, snapshots, currentValues, tod
         const currentAssets = liveAssets;
         const currentTotal = liveTotal;
 
-        // Earnings today so far: live value against the last completed day
-        let todayEarned = 0;
-        if (historyList.length > 0) {
-            todayEarned = liveTotal - historyList[historyList.length - 1].total;
-        }
-
         return {
             historyList,
             currentWallet,
@@ -140,8 +134,7 @@ export default function ValueHistory({ characters, snapshots, currentValues, tod
             currentMarketBuyEscrow: liveMarketBuyEscrow,
             currentMarketSellOrders: liveMarketSellOrders,
             currentContracts: liveContracts,
-            currentTotal,
-            todayEarned
+            currentTotal
         };
     }, [snapshots, currentValues, selectedCharacterId, todayStr]);
 
@@ -215,13 +208,21 @@ export default function ValueHistory({ characters, snapshots, currentValues, tod
         // X-axis labels (up to 5 labels)
         const xLabels: Array<{ x: number; label: string }> = [];
         const labelInterval = Math.max(1, Math.floor(list.length / 5));
+        const lastIndex = list.length - 1;
+        let lastLabelIndex = -1;
         list.forEach((h, index) => {
-            if (index === 0 || index === list.length - 1 || index % labelInterval === 0) {
-                xLabels.push({
-                    x: points[index].x,
-                    label: formatDateGerman(h.date)
-                });
+            if (index !== lastIndex && index % labelInterval !== 0) {
+                return;
             }
+            // Drop the previous interval label if it would overlap the final date label
+            if (index === lastIndex && lastLabelIndex > 0 && lastIndex - lastLabelIndex < labelInterval / 2) {
+                xLabels.pop();
+            }
+            xLabels.push({
+                x: points[index].x,
+                label: formatDateGerman(h.date)
+            });
+            lastLabelIndex = index;
         });
 
         return {
@@ -286,22 +287,6 @@ export default function ValueHistory({ characters, snapshots, currentValues, tod
                             </span>
                             <span>Verträge: {formatIskShort(processedData.currentContracts)}</span>
                         </div>
-                    </div>
-                </div>
-                
-                <div className="flex-1 min-w-[280px]">
-                    <div className="bg-eve-card border border-eve-border shadow-eve p-5 rounded-lg relative overflow-hidden">
-                        <div 
-                            className="absolute top-0 left-0 right-0 h-[3px]"
-                            style={{ 
-                                background: processedData.todayEarned > 0 ? '#00ffaa' : processedData.todayEarned < 0 ? '#f14668' : 'var(--theme-text-muted)' 
-                            }}
-                        ></div>
-                        <p className="text-xs text-eve-muted mb-2 uppercase tracking-wider">Gewinn heute (Bisher)</p>
-                        <p className={`text-xl font-bold mb-1 ${processedData.todayEarned > 0 ? 'text-emerald-400' : processedData.todayEarned < 0 ? 'text-rose-400' : 'text-white'}`}>
-                            {processedData.todayEarned > 0 ? '+' : ''}{formatIsk(processedData.todayEarned)}
-                        </p>
-                        <p className="text-xs text-eve-muted">Aktueller Stand im Vergleich zum Ende des letzten Tages</p>
                     </div>
                 </div>
             </div>
