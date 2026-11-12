@@ -344,7 +344,7 @@ export default function PerformanceLedger({ charactersList, apiDataUrl, imagePat
                 }
                 return res.json();
             })
-            .then((data: { ledger: Record<string, DailyPerformance>; exclusions: any[] }) => {
+            .then((data: { ledger: Record<string, DailyPerformance>; exclusions: any[]; calculatedAt?: string }) => {
                 setLedgerData(data.ledger || {});
                 setExclusions(data.exclusions || []);
                 setCalculatedAt(data.calculatedAt || null);
