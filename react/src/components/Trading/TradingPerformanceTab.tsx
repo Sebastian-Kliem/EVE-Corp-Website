@@ -178,7 +178,7 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
                     <SummaryCards summary={data.summary} />
                     <p className="text-[11px] text-eve-muted">
                         Realisierter Gewinn aus Verkäufen von Items, die vorher gekauft wurden (Markt und Item-Tausch-Verträge mit Fremden, Einstandspreis als gleitender Durchschnitt über alle Charaktere).
-                        Marktverkäufe ohne vorherigen Kauf (Loot, Produktion, Altbestand) zählen nicht. Verkaufsverträge zählen als Ganzes, Items darin ohne Einkauf mit dem Jita-Buy-Preis des Verkaufstags.
+                        Marktverkäufe ohne vorherigen Kauf (Loot, Produktion, Altbestand) zählen nicht, PLEX bleibt ganz außen vor (auch per Echtgeld kaufbar). Verkaufsverträge zählen als Ganzes, Items darin ohne Einkauf mit dem Jita-Buy-Preis des Verkaufstags.
                         Verkaufssteuer wird pro Verkauf zugeordnet. Broker-Gebühren über den Zeitstempel der Order oder geschätzt über den Orderwert; im Zeitraum gezahlt, auch für noch offene Orders.
                         {data.dataStart && ` Transaktionen liegen ab ${new Date(data.dataStart).toLocaleDateString('de-DE')} vor, ältere Einkäufe fehlen in der Rechnung.`}
                     </p>

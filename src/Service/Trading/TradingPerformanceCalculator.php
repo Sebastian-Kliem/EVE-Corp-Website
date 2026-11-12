@@ -18,6 +18,8 @@ use Doctrine\DBAL\Connection;
 class TradingPerformanceCalculator
 {
     private const SECONDS_PER_DAY = 86400;
+    // PLEX can also be bought for real money into the vault, which ESI does not show
+    private const IGNORED_TYPE_IDS = [44992 => true];
 
     public function __construct(
         private readonly Connection $connection,
@@ -309,6 +311,9 @@ class TradingPerformanceCalculator
 
         $events = [];
         foreach ($rows as $row) {
+            if (isset(self::IGNORED_TYPE_IDS[(int)$row['type_id']])) {
+                continue;
+            }
             $taxKey = $row['character_id'] . '|' . $row['date'];
             $isBuy = (bool)$row['is_buy'];
             $events[] = [
@@ -409,10 +414,10 @@ class TradingPerformanceCalculator
             if (empty($item['isIncluded'])) {
                 return null;
             }
-            if (!empty($item['isBlueprintCopy'])) {
+            $typeId = (int)($item['typeId'] ?? 0);
+            if (!empty($item['isBlueprintCopy']) || isset(self::IGNORED_TYPE_IDS[$typeId])) {
                 continue;
             }
-            $typeId = (int)($item['typeId'] ?? 0);
             $items[$typeId] = ($items[$typeId] ?? 0.0) + (float)($item['quantity'] ?? 0);
         }
 
