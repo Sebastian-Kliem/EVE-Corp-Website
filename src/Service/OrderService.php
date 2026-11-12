@@ -95,6 +95,8 @@ class OrderService
      * @param array $items Array of [typeId, name, quantity, unitPrice, unitVolume, slot, sortOrder]
      * @param bool $isFitting
      * @param int|null $shipTypeId
+     * @param bool $completeOnly Order can only be accepted as a whole
+     * @param float|null $customPrice Fixed total price, only used for complete-only orders
      * @return CorpOrder
      */
     public function createOrder(
@@ -105,7 +107,9 @@ class OrderService
         ?string $note,
         array $items,
         bool $isFitting = false,
-        ?int $shipTypeId = null
+        ?int $shipTypeId = null,
+        bool $completeOnly = false,
+        ?float $customPrice = null
     ): CorpOrder {
         $order = new CorpOrder();
         $order->setUser($user);
@@ -115,6 +119,7 @@ class OrderService
         $order->setNote($note ? trim($note) : null);
         $order->setIsFitting($isFitting);
         $order->setShipTypeId($shipTypeId);
+        $order->setCompleteOnly($completeOnly);
         $order->setStatus(CorpOrder::STATUS_OPEN);
 
         $multiplier = max(0, $percent) / 100.0;
@@ -153,6 +158,10 @@ class OrderService
 
         $order->setTotalPrice(number_format($totalPrice, 2, '.', ''));
         $order->setTotalVolume(number_format($totalVolume, 2, '.', ''));
+
+        if ($completeOnly && $customPrice !== null && $customPrice > 0) {
+            $this->_applyCustomPrice($order, $customPrice);
+        }
 
         $this->entityManager->persist($order);
         $this->entityManager->flush();
@@ -371,7 +380,7 @@ class OrderService
     private function _splitItem(CorpOrderItem $item, int $amount): CorpOrderItem
     {
         $order = $item->getOrder();
-        $multiplier = max(0, $order->getPercentToJita()) / 100.0;
+        $multiplier = $this->_getPriceMultiplier($order);
 
         $splitItem = new CorpOrderItem();
         $splitItem->setTypeId($item->getTypeId());
@@ -404,7 +413,7 @@ class OrderService
                 continue;
             }
 
-            $multiplier = max(0, $order->getPercentToJita()) / 100.0;
+            $multiplier = $this->_getPriceMultiplier($order);
             $this->_setItemAmount($sibling, $sibling->getAmount() + $item->getAmount(), $multiplier);
             $order->removeItem($item);
             return;
@@ -416,6 +425,37 @@ class OrderService
         $item->setAmount($amount);
         $item->setTotalPrice(number_format(((float)$item->getUnitPrice() * $multiplier) * $amount, 2, '.', ''));
         $item->setTotalVolume(number_format((float)$item->getUnitVolume() * $amount, 2, '.', ''));
+    }
+
+    /**
+     * Factor from Jita base price to agreed price, derived from the fixed price if one is set.
+     */
+    private function _getPriceMultiplier(CorpOrder $order): float
+    {
+        if ($order->getCustomPrice() === null) {
+            return max(0, $order->getPercentToJita()) / 100.0;
+        }
+
+        $baseTotalPrice = 0.0;
+        foreach ($order->getItems() as $item) {
+            $baseTotalPrice += (float)$item->getUnitPrice() * $item->getAmount();
+        }
+
+        return $baseTotalPrice > 0 ? (float)$order->getCustomPrice() / $baseTotalPrice : 0.0;
+    }
+
+    /**
+     * Sets a fixed total price and spreads it over the items in proportion to their Jita value.
+     */
+    private function _applyCustomPrice(CorpOrder $order, float $customPrice): void
+    {
+        $order->setCustomPrice(number_format($customPrice, 2, '.', ''));
+        $multiplier = $this->_getPriceMultiplier($order);
+        foreach ($order->getItems() as $item) {
+            $this->_setItemAmount($item, $item->getAmount(), $multiplier);
+        }
+        $order->setPercentToJita((int)round($multiplier * 100));
+        $order->setTotalPrice($order->getCustomPrice());
     }
 
     private function _updateOrderFulfiller(CorpOrder $order): void
@@ -502,6 +542,8 @@ class OrderService
             'isFitting' => $order->isFitting(),
             'shipTypeId' => $order->getShipTypeId(),
             'percentToJita' => $order->getPercentToJita(),
+            'completeOnly' => $order->isCompleteOnly(),
+            'customPrice' => $order->getCustomPrice() !== null ? (float)$order->getCustomPrice() : null,
             'totalPrice' => (float)$order->getTotalPrice(),
             'totalVolume' => (float)$order->getTotalVolume(),
             'note' => $order->getNote() ?? '',
@@ -552,7 +594,7 @@ class OrderService
     private function _calculateLivePrice(CorpOrder $order): array
     {
         $useJitaBuy = $order->getType() !== CorpOrder::TYPE_BUY;
-        $multiplier = max(0, $order->getPercentToJita()) / 100.0;
+        $multiplier = $this->_getPriceMultiplier($order);
 
         $liveTotalPrice = 0.0;
         foreach ($order->getItems() as $item) {

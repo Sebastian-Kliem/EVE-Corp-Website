@@ -16,6 +16,11 @@ export function getItemFulfiller(order: Order, item: OrderItem): { id: number; d
     return item.fulfiller ?? order.fulfiller;
 }
 
+// Fixed-price orders show no Jita percentage
+export function getPriceLabel(order: Order): string {
+    return order.customPrice !== null ? 'Festpreis' : `${order.percentToJita}%`;
+}
+
 export function sumItemPrices(items: OrderItem[]): number {
     let total = 0;
     for (const item of items) {

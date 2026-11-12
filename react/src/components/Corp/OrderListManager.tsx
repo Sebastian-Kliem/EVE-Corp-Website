@@ -7,6 +7,7 @@ import OrderNote from './OrderNote';
 import OwnedStockBadge, { OwnedStock, findOwnedStock } from './OwnedStockBadge';
 import OrderAmountsList from './OrderAmountsList';
 import OrderProgress from './OrderProgress';
+import { getPriceLabel } from './orderShares';
 import { DeliveryStatus, DELIVERY_STATUS_LABELS, DELIVERY_STATUS_STYLES, getCustomerStatus, hasOpenOwnDelivery, isDelivered } from './deliveryStatus';
 
 export interface OrderItem {
@@ -38,6 +39,8 @@ export interface Order {
     isFitting: boolean;
     shipTypeId: number | null;
     percentToJita: number;
+    completeOnly: boolean;
+    customPrice: number | null;
     totalPrice: number;
     totalVolume: number;
     note: string;
@@ -155,7 +158,7 @@ export default function OrderListManager({
     const [itemLoadingId, setItemLoadingId] = useState<number | null>(null);
     const [livePrices, setLivePrices] = useState<Record<number, LivePrice>>({});
     // Partial amount per open item the current user wants to take
-    const [takeAmounts, setTakeAmounts] = useState<Record<number, number>>({});
+    const [takeAmounts, setTakeAmounts] = useState<Record<number, string>>({});
 
     const loadLivePrices = useCallback(() => {
         fetch('/api/orders/live-prices')
@@ -597,6 +600,11 @@ export default function OrderListManager({
                             <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="text-sm font-bold text-white">{order.title}</h3>
                                 {getStatusBadge(order.status)}
+                                {order.completeOnly && (
+                                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-amber-500/15 text-amber-300 border-amber-500/40" title="Dieser Auftrag kann nur als Ganzes angenommen werden">
+                                        Nur komplett
+                                    </span>
+                                )}
                                 {isActiveOrder && order.isFullyReceived && (
                                     <span className="px-2 py-0.5 rounded text-[11px] font-semibold border bg-emerald-500/20 text-emerald-200 border-emerald-500/50">
                                         Vollständig erhalten, bereit zum Archivieren
@@ -632,7 +640,7 @@ export default function OrderListManager({
                         <OrderProgress order={order} />
 
                         <div className="text-right">
-                            <span className="text-[10px] text-eve-muted block">Gesamtwert ({order.percentToJita}%):</span>
+                            <span className="text-[10px] text-eve-muted block">Gesamtwert ({getPriceLabel(order)}):</span>
                             <span className="text-sm font-bold text-eve-primary">
                                 {formatIsk(order.totalPrice)} ISK
                             </span>
@@ -693,7 +701,7 @@ export default function OrderListManager({
                                             className="px-3 py-1 rounded bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:brightness-115 cursor-pointer font-semibold"
                                             title="Nimmt alle noch offenen Positionen dieser Bestellung auf einmal an"
                                         >
-                                            {order.fulfilledItemCount > 0 ? 'Restliche Posten annehmen' : 'Alle Posten annehmen'}
+                                            {order.completeOnly ? 'Komplett annehmen' : order.fulfilledItemCount > 0 ? 'Restliche Posten annehmen' : 'Alle Posten annehmen'}
                                         </button>
                                     )}
 
@@ -797,9 +805,11 @@ export default function OrderListManager({
                                 <tbody className="divide-y divide-white/5 bg-black/20">
                                     {order.items.map(item => {
                                         const isItemFulfiller = currentUserId && item.fulfiller?.id === currentUserId;
-                                        const canReleaseItem = (canManageOrder || isItemFulfiller) && !isDelivered(item);
+                                        // Complete-only orders are released as a whole via the order action
+                                        const canReleaseItem = (canManageOrder || isItemFulfiller) && !isDelivered(item) && !order.completeOnly;
                                         const customerStatus = getCustomerStatus(item);
-                                        const takeAmount = takeAmounts[item.id] ?? item.amount;
+                                        const takeAmountInput = takeAmounts[item.id] ?? item.amount.toString();
+                                        const takeAmount = Math.min(item.amount, Math.max(1, parseInt(takeAmountInput, 10) || item.amount));
 
                                         return (
                                             <tr key={item.id} className={`hover:bg-white/5 transition-colors ${item.isFulfilled ? 'bg-emerald-950/10' : ''}`}>
@@ -868,15 +878,20 @@ export default function OrderListManager({
                                                 </td>
                                                 {isActiveOrder && (
                                                     <td className="p-2 text-center">
-                                                        {!item.isFulfilled ? (
+                                                        {!item.isFulfilled && order.completeOnly ? (
+                                                            <span className="text-[10px] text-eve-muted italic">
+                                                                Nur komplett
+                                                            </span>
+                                                        ) : !item.isFulfilled ? (
                                                             <div className="inline-flex items-center gap-1.5">
                                                                 {item.amount > 1 && (
                                                                     <input
                                                                         type="number"
                                                                         min={1}
                                                                         max={item.amount}
-                                                                        value={takeAmount}
-                                                                        onChange={(e) => setTakeAmounts(prev => ({ ...prev, [item.id]: Math.min(item.amount, Math.max(1, parseInt(e.target.value, 10) || 1)) }))}
+                                                                        value={takeAmountInput}
+                                                                        onChange={(e) => setTakeAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                                                        onBlur={() => setTakeAmounts(prev => ({ ...prev, [item.id]: takeAmount.toString() }))}
                                                                         className="w-20 rounded px-1.5 py-0.5 text-[11px] text-right font-mono border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
                                                                         title="Menge, die du übernimmst (Rest bleibt offen)"
                                                                     />

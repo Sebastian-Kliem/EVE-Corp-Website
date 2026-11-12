@@ -106,6 +106,8 @@ class OrderApiController extends AbstractController
         $items = $body['items'] ?? [];
         $isFitting = filter_var($body['isFitting'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $shipTypeId = !empty($body['shipTypeId']) ? (int)$body['shipTypeId'] : null;
+        $completeOnly = filter_var($body['completeOnly'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $customPrice = isset($body['customPrice']) ? (float)$body['customPrice'] : null;
 
         if (empty($items) || !is_array($items)) {
             return new JsonResponse(['error' => 'Keine Gegenstände für die Bestellung angegeben.'], Response::HTTP_BAD_REQUEST);
@@ -119,7 +121,9 @@ class OrderApiController extends AbstractController
             $note,
             $items,
             $isFitting,
-            $shipTypeId
+            $shipTypeId,
+            $completeOnly,
+            $customPrice
         );
 
         return new JsonResponse([
@@ -158,6 +162,10 @@ class OrderApiController extends AbstractController
         $order = $item->getOrder();
         if ($order->getStatus() === CorpOrder::STATUS_FULFILLED || $order->getStatus() === CorpOrder::STATUS_CANCELLED) {
             return new JsonResponse(['error' => 'Dieser Auftrag ist bereits archiviert oder storniert.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if ($order->isCompleteOnly()) {
+            return new JsonResponse(['error' => 'Dieser Auftrag kann nur komplett angenommen oder freigegeben werden.'], Response::HTTP_BAD_REQUEST);
         }
 
         $body = json_decode($request->getContent(), true);

@@ -58,6 +58,14 @@ class CorpOrder
     #[ORM\Column(type: Types::DECIMAL, precision: 20, scale: 2)]
     private string $totalPrice = '0.00';
 
+    // Order can only be accepted as a whole, e.g. assembled fits
+    #[ORM\Column(options: ['default' => false])]
+    private bool $completeOnly = false;
+
+    // Fixed total price replacing the Jita percentage, only for complete-only orders
+    #[ORM\Column(type: Types::DECIMAL, precision: 20, scale: 2, nullable: true)]
+    private ?string $customPrice = null;
+
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 2)]
     private string $totalVolume = '0.00';
 
@@ -197,6 +205,28 @@ class CorpOrder
         return $this;
     }
 
+    public function isCompleteOnly(): bool
+    {
+        return $this->completeOnly;
+    }
+
+    public function setCompleteOnly(bool $completeOnly): static
+    {
+        $this->completeOnly = $completeOnly;
+        return $this;
+    }
+
+    public function getCustomPrice(): ?string
+    {
+        return $this->customPrice;
+    }
+
+    public function setCustomPrice(?string $customPrice): static
+    {
+        $this->customPrice = $customPrice;
+        return $this;
+    }
+
     public function getTotalVolume(): string
     {
         return $this->totalVolume;
@@ -300,7 +330,8 @@ class CorpOrder
             }
         }
 
-        $this->totalPrice = number_format($totalPrice, 2, '.', '');
+        // A fixed price stays untouched by item rounding
+        $this->totalPrice = $this->customPrice ?? number_format($totalPrice, 2, '.', '');
         $this->totalVolume = number_format($totalVolume, 2, '.', '');
 
         if ($this->status !== self::STATUS_CANCELLED && $this->status !== self::STATUS_FULFILLED) {

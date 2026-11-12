@@ -162,6 +162,36 @@ class OrderServiceTest extends TestCase
         $this->assertNull($item->getFulfiller());
     }
 
+    public function testCustomPriceIsSpreadOverItemsByJitaValue(): void
+    {
+        $items = [
+            ['typeId' => 34, 'name' => 'Tritanium', 'quantity' => 100, 'unitPrice' => 5.0, 'unitVolume' => 0.01],
+            ['typeId' => 35, 'name' => 'Pyerite', 'quantity' => 50, 'unitPrice' => 30.0, 'unitVolume' => 0.01],
+        ];
+
+        $order = $this->service->createOrder(new User(), CorpOrder::TYPE_SELL, 'Fit', 90, null, $items, false, null, true, 1000.0);
+
+        // Jita value 2000 ISK, fixed price 1000 ISK
+        $this->assertTrue($order->isCompleteOnly());
+        $this->assertSame('1000.00', $order->getTotalPrice());
+        $this->assertSame(50, $order->getPercentToJita());
+        $this->assertSame('250.00', $order->getItems()->first()->getTotalPrice());
+        $this->assertSame('750.00', $order->getItems()->last()->getTotalPrice());
+
+        $this->service->acceptOrder($order, new User());
+        $this->assertSame('1000.00', $order->getTotalPrice());
+    }
+
+    public function testCustomPriceIsIgnoredWithoutCompleteOnly(): void
+    {
+        $items = [['typeId' => 34, 'name' => 'Tritanium', 'quantity' => 100, 'unitPrice' => 5.0, 'unitVolume' => 0.01]];
+
+        $order = $this->service->createOrder(new User(), CorpOrder::TYPE_SELL, 'Loot', 90, null, $items, false, null, false, 1000.0);
+
+        $this->assertNull($order->getCustomPrice());
+        $this->assertSame('450.00', $order->getTotalPrice());
+    }
+
     /**
      * @return array{CorpOrderItem, User, User}
      */

@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatThousands, formatIsk } from '../../utils/numberFormat';
 import type { Order, OrderItem } from './OrderListManager';
-import { getFulfillerShares, getOpenItems, sumItemPrices, sumItemVolumes } from './orderShares';
+import { getFulfillerShares, getOpenItems, getPriceLabel, sumItemPrices, sumItemVolumes } from './orderShares';
 
 interface OrderAmountsListProps {
     order: Order;
@@ -87,7 +87,7 @@ export default function OrderAmountsList({ order, currentUserId, onCopyAmount, o
                 />
             )}
             <AmountRow
-                label={<span className="font-semibold text-white">Gesamt ({order.percentToJita}%)</span>}
+                label={<span className="font-semibold text-white">Gesamt ({getPriceLabel(order)})</span>}
                 items={order.items}
                 amount={order.totalPrice}
                 volume={order.totalVolume}

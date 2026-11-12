@@ -71,6 +71,8 @@ export default function JaniceAppraisal({
     const [rawText, setRawText] = useState('');
     const [orderType, setOrderType] = useState<'BUY' | 'SELL'>(defaultType);
     const [percent, setPercent] = useState<number>(defaultType === 'BUY' ? 100 : 90);
+    // Raw text of the percent field so it can be emptied while typing
+    const [percentInput, setPercentInput] = useState<string>(defaultType === 'BUY' ? '100' : '90');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<AppraisalResult | null>(null);
@@ -79,6 +81,8 @@ export default function JaniceAppraisal({
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [orderTitle, setOrderTitle] = useState('');
     const [orderNote, setOrderNote] = useState('');
+    const [completeOnly, setCompleteOnly] = useState(false);
+    const [customPriceInput, setCustomPriceInput] = useState('');
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
     const [feedback, setFeedback] = useState<string | null>(null);
     const [showJitaInfo, setShowJitaInfo] = useState(false);
@@ -267,17 +271,30 @@ export default function JaniceAppraisal({
         showFeedbackMessage(`"${itemName}" entfernt.`);
     };
 
+    const applyPercent = (newPercent: number) => {
+        setPercent(newPercent);
+        setPercentInput(newPercent.toString());
+    };
+
+    const handlePercentInputChange = (value: string) => {
+        setPercentInput(value);
+        const parsedPercent = parseInt(value, 10);
+        if (!isNaN(parsedPercent)) {
+            setPercent(parsedPercent);
+        }
+    };
+
     const handleTypeChange = (newType: 'BUY' | 'SELL') => {
         setOrderType(newType);
         const newPercent = newType === 'BUY' ? 100 : 90;
-        setPercent(newPercent);
+        applyPercent(newPercent);
         if (rawText.trim()) {
             handleCalculate(rawText, newPercent, newType);
         }
     };
 
     const handlePercentPreset = (p: number) => {
-        setPercent(p);
+        applyPercent(p);
         if (rawText.trim()) {
             handleCalculate(rawText, p, orderType);
         }
@@ -296,6 +313,9 @@ export default function JaniceAppraisal({
         showFeedbackMessage('Multibuy-Liste in die Zwischenablage kopiert.');
     };
 
+    // Fixed price only counts while the order is complete-only
+    const customPrice = completeOnly ? parseInt(customPriceInput.replace(/\D/g, ''), 10) || 0 : 0;
+
     const handleCreateOrder = (e: React.FormEvent) => {
         e.preventDefault();
         if (!result || result.items.length === 0) return;
@@ -309,6 +329,8 @@ export default function JaniceAppraisal({
             note: orderNote.trim() || null,
             isFitting: result.isFitting,
             shipTypeId: result.shipTypeId,
+            completeOnly: completeOnly,
+            customPrice: customPrice > 0 ? customPrice : null,
             items: result.items.map(item => ({
                 typeId: item.typeId,
                 name: item.name,
@@ -339,6 +361,8 @@ export default function JaniceAppraisal({
                 setRawText('');
                 setResult(null);
                 setOrderNote('');
+                setCompleteOnly(false);
+                setCustomPriceInput('');
                 showFeedbackMessage('Bestellung erfolgreich aufgegeben!');
                 if (onOrderCreated) {
                     onOrderCreated(data.order);
@@ -616,8 +640,9 @@ export default function JaniceAppraisal({
                         <div className="flex items-center gap-1.5">
                             <input
                                 type="number"
-                                value={percent}
-                                onChange={(e) => setPercent(parseInt(e.target.value) || 100)}
+                                value={percentInput}
+                                onChange={(e) => handlePercentInputChange(e.target.value)}
+                                onBlur={() => setPercentInput(percent.toString())}
                                 className="w-20 rounded-lg px-2.5 py-1 text-xs border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
                             />
                             <span className="text-xs text-eve-muted">%</span>
@@ -904,10 +929,36 @@ export default function JaniceAppraisal({
                                 />
                             </div>
 
+                            <div className="p-3 rounded-lg bg-black/40 border border-eve-border/60 text-xs text-slate-300 flex flex-col gap-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={completeOnly}
+                                        onChange={(e) => setCompleteOnly(e.target.checked)}
+                                        className="accent-eve-primary cursor-pointer"
+                                    />
+                                    <span className="font-semibold text-white">Nur komplett abgeben</span>
+                                    <span className="text-eve-muted">(keine Einzelposten oder Teilmengen, z. B. fertige Fits)</span>
+                                </label>
+                                {completeOnly && (
+                                    <div>
+                                        <label className="block text-eve-muted mb-1">Eigener Gesamtpreis in ISK (optional, ersetzt die Jita-Anpassung):</label>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={customPriceInput}
+                                            onChange={(e) => setCustomPriceInput(e.target.value)}
+                                            placeholder={`leer = ${percent}% Jita`}
+                                            className="w-full rounded-lg px-3 py-2 text-xs font-mono border border-eve-border text-white bg-[#0f172a59] focus:outline-none focus:border-eve-primary"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="p-3 rounded-lg bg-black/40 border border-eve-border/60 text-xs text-slate-300 flex justify-between">
                                 <div>
-                                    <span className="text-eve-muted block">Gesamtsumme ({percent}%):</span>
-                                    <span className="font-bold text-eve-primary text-sm">{formatIsk(result?.totalPrice || 0)} ISK</span>
+                                    <span className="text-eve-muted block">Gesamtsumme ({customPrice > 0 ? 'Festpreis' : `${percent}%`}):</span>
+                                    <span className="font-bold text-eve-primary text-sm">{formatIsk(customPrice > 0 ? customPrice : result?.totalPrice || 0)} ISK</span>
                                 </div>
                                 <div>
                                     <span className="text-eve-muted block">Gesamtvolumen:</span>

@@ -45,7 +45,7 @@ export default function OrderWorkflowGuide() {
                                 <span className="font-semibold text-white">Auftrag annehmen & Multibuy</span>
                             </div>
                             <p className="text-eve-muted leading-relaxed">
-                                Lieferanten übernehmen einzelne Posten, auf Wunsch nur eine Teilmenge (z. B. 10 von 30), oder alle offenen Posten auf einmal. Mit <strong className="text-eve-primary">"Multibuy kopieren"</strong> geht es zum Einkauf nach Jita 4-4.
+                                Lieferanten übernehmen einzelne Posten, auf Wunsch nur eine Teilmenge (z. B. 10 von 30), oder alle offenen Posten auf einmal. Aufträge mit der Markierung "Nur komplett" (z. B. fertige Fits, auch mit Festpreis) lassen sich nur als Ganzes annehmen. Mit <strong className="text-eve-primary">"Multibuy kopieren"</strong> geht es zum Einkauf nach Jita 4-4.
                             </p>
                         </div>
 
