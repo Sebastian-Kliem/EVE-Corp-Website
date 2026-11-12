@@ -24,7 +24,7 @@ class TradingBrokerFeeAttributor
 
     /**
      * @param int[] $characterIds
-     * @return array{byType: array<int, float>, unassigned: float, exactCount: int, estimatedCount: int, totalCount: int}
+     * @return array{byType: array<int, array{buy: float, sell: float}>, unassigned: float, exactCount: int, estimatedCount: int, totalCount: int}
      */
     public function attribute(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
@@ -52,7 +52,7 @@ class TradingBrokerFeeAttributor
                 $unmatchedFees[] = $fee;
                 continue;
             }
-            $result['byType'][$state['typeId']] = ($result['byType'][$state['typeId']] ?? 0.0) + $fee['amount'];
+            $result['byType'] = $this->_addFee($result['byType'], $state, $fee['amount']);
             $result['exactCount']++;
             if ($state['value'] > 0) {
                 $feeRates[$fee['characterId']][] = $fee['amount'] / $state['value'];
@@ -61,12 +61,12 @@ class TradingBrokerFeeAttributor
 
         foreach ($unmatchedFees as $fee) {
             $feeRate = $this->_median($feeRates[$fee['characterId']] ?? []) ?? self::DEFAULT_FEE_RATE;
-            $typeId = $this->_estimateType($fee, $ordersByCharacter[$fee['characterId']] ?? [], $feeRate);
-            if ($typeId === null) {
+            $state = $this->_estimateState($fee, $ordersByCharacter[$fee['characterId']] ?? [], $feeRate);
+            if ($state === null) {
                 $result['unassigned'] += $fee['amount'];
                 continue;
             }
-            $result['byType'][$typeId] = ($result['byType'][$typeId] ?? 0.0) + $fee['amount'];
+            $result['byType'] = $this->_addFee($result['byType'], $state, $fee['amount']);
             $result['estimatedCount']++;
         }
 
@@ -74,15 +74,29 @@ class TradingBrokerFeeAttributor
     }
 
     /**
+     * @param array<int, array{buy: float, sell: float}> $byType
+     * @param array<string, mixed> $state
+     * @return array<int, array{buy: float, sell: float}>
+     */
+    private function _addFee(array $byType, array $state, float $amount): array
+    {
+        $byType[$state['typeId']] ??= ['buy' => 0.0, 'sell' => 0.0];
+        $byType[$state['typeId']][$state['isBuy'] ? 'buy' : 'sell'] += $amount;
+
+        return $byType;
+    }
+
+    /**
      * Running order of the character whose value times the fee rate is closest to the fee.
      *
      * @param array{characterId: int, date: string, amount: float} $fee
      * @param array<string, list<array<string, mixed>>> $orders Order ID => logged states, oldest first
+     * @return ?array<string, mixed>
      */
-    private function _estimateType(array $fee, array $orders, float $feeRate): ?int
+    private function _estimateState(array $fee, array $orders, float $feeRate): ?array
     {
         $feeTimestamp = strtotime($fee['date'] . ' UTC');
-        $bestTypeId = null;
+        $bestState = null;
         $bestDeviation = log(self::MAX_FEE_DEVIATION);
 
         foreach ($orders as $states) {
@@ -93,11 +107,11 @@ class TradingBrokerFeeAttributor
             $deviation = abs(log($fee['amount'] / ($nearestState['value'] * $feeRate)));
             if ($deviation < $bestDeviation) {
                 $bestDeviation = $deviation;
-                $bestTypeId = $nearestState['typeId'];
+                $bestState = $nearestState;
             }
         }
 
-        return $bestTypeId;
+        return $bestState;
     }
 
     /**
@@ -157,7 +171,7 @@ class TradingBrokerFeeAttributor
     private function _loadOrderStates(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT character_id, order_id, type_id, issued, price, volume_remain, duration FROM eve_character_market_order_log
+            'SELECT character_id, order_id, type_id, issued, price, volume_remain, is_buy, duration FROM eve_character_market_order_log
              WHERE character_id IN (:characterIds) AND issued >= :from AND issued < :to ORDER BY issued',
             ['characterIds' => $characterIds, 'from' => $from->format('Y-m-d H:i:s'), 'to' => $to->format('Y-m-d H:i:s')],
             ['characterIds' => ArrayParameterType::INTEGER]
@@ -172,6 +186,7 @@ class TradingBrokerFeeAttributor
                 'issued' => (string)$row['issued'],
                 'timestamp' => (int)strtotime($row['issued'] . ' UTC'),
                 'value' => (float)$row['price'] * (int)$row['volume_remain'],
+                'isBuy' => (bool)$row['is_buy'],
                 'duration' => (int)$row['duration'],
             ];
         }

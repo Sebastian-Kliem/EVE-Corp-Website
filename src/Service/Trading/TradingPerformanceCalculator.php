@@ -51,6 +51,9 @@ class TradingPerformanceCalculator
         $items = [];
         $contracts = [];
         $purchasedTypeIds = [];
+        // Sold and cost-matched units per type over all time, the rest of the sales are loot or production
+        $soldQuantities = [];
+        $matchedQuantities = [];
         $saleCount = 0;
         foreach ($events as $event) {
             $isInPeriod = $event['timestamp'] >= $from->getTimestamp() && $event['timestamp'] < $to->getTimestamp();
@@ -76,6 +79,8 @@ class TradingPerformanceCalculator
             }
 
             $matchedQuantity = min($event['quantity'], $holding['quantity']);
+            $soldQuantities[$typeId] = ($soldQuantities[$typeId] ?? 0.0) + $event['quantity'];
+            $matchedQuantities[$typeId] = ($matchedQuantities[$typeId] ?? 0.0) + max(0.0, $matchedQuantity);
             if ($matchedQuantity <= 0) {
                 continue;
             }
@@ -96,30 +101,38 @@ class TradingPerformanceCalculator
             $saleCount++;
         }
 
-        $brokerFees = $this->_splitBrokerFees($reportedCharacterIds, $from, $to, $purchasedTypeIds);
+        $tradedSellShares = [];
+        foreach ($soldQuantities as $typeId => $soldQuantity) {
+            $tradedSellShares[$typeId] = $soldQuantity > 0 ? $matchedQuantities[$typeId] / $soldQuantity : 1.0;
+        }
+        $brokerFees = $this->_splitBrokerFees($reportedCharacterIds, $from, $to, $purchasedTypeIds, $tradedSellShares);
 
         return $this->_buildResult($items, $contracts, $saleCount, $brokerFees, $characterIds);
     }
 
     /**
      * Broker fees of item types never bought (loot, production) are no trading cost and left out.
+     * Sell order fees of bought types count with the share of units that were sold from purchases.
      *
      * @param int[] $characterIds
      * @param array<int, bool> $purchasedTypeIds
+     * @param array<int, float> $tradedSellShares
      * @return array{byType: array<int, float>, unassigned: float, excluded: float, exactCount: int, estimatedCount: int, totalCount: int}
      */
-    private function _splitBrokerFees(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to, array $purchasedTypeIds): array
+    private function _splitBrokerFees(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to, array $purchasedTypeIds, array $tradedSellShares): array
     {
         $attribution = $this->brokerFeeAttributor->attribute($characterIds, $from, $to);
 
         $tradingFees = [];
         $excludedFees = 0.0;
         foreach ($attribution['byType'] as $typeId => $fee) {
-            if (isset($purchasedTypeIds[$typeId])) {
-                $tradingFees[$typeId] = $fee;
-            } else {
-                $excludedFees += $fee;
+            if (!isset($purchasedTypeIds[$typeId])) {
+                $excludedFees += $fee['buy'] + $fee['sell'];
+                continue;
             }
+            $tradedSellFee = $fee['sell'] * ($tradedSellShares[$typeId] ?? 1.0);
+            $tradingFees[$typeId] = $fee['buy'] + $tradedSellFee;
+            $excludedFees += $fee['sell'] - $tradedSellFee;
         }
 
         return [
@@ -334,7 +347,7 @@ class TradingPerformanceCalculator
     }
 
     /**
-     * Finished item exchanges between an own character and an outsider; for purchases the price is split by average item value.
+     * Finished item exchanges between an own character and an outsider; for purchases the price is split by the Jita buy value of the day.
      *
      * @param int[] $characterIds
      * @return list<array<string, mixed>>
@@ -351,7 +364,7 @@ class TradingPerformanceCalculator
             ['characterIds' => ArrayParameterType::INTEGER]
         );
 
-        $prices = $this->jitaPriceService->getGlobalPrices();
+        $averagePrices = $this->jitaPriceService->getGlobalPrices();
         $events = [];
         foreach ($rows as $row) {
             $isIssuerOwn = in_array((int)$row['issuer_id'], $characterIds, true);
@@ -379,7 +392,9 @@ class TradingPerformanceCalculator
                 ];
                 continue;
             }
-            foreach ($this->_splitContractPrice($items, (float)$row['price'], $prices) as $typeId => $split) {
+            // Buyback contracts are priced at Jita buy, the average price would shift the cost between the items
+            $splitPrices = $this->_loadBuyPrices(array_keys($items), $timestamp) + $averagePrices;
+            foreach ($this->_splitContractPrice($items, (float)$row['price'], $splitPrices) as $typeId => $split) {
                 $events[] = [
                     'kind' => 'trade',
                     'characterId' => $ownCharacterId,
