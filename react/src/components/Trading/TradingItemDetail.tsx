@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { fetchJson, formatAge, formatIsk, formatIskShort, formatNumber, Spinner, TradingUrls } from './tradingShared';
 
 interface HistoryDay {
@@ -30,13 +30,15 @@ interface TradingItemDetailProps {
     stationId: number;
     typeId: number;
     onOpenMarket: (typeId: number) => void;
+    // Key figures of the calling list, shown next to the item name
+    summary?: ReactNode;
 }
 
 const CHART_WIDTH = 720;
 const CHART_HEIGHT = 200;
 const VOLUME_HEIGHT = 50;
 
-export default function TradingItemDetail({ urls, stationId, typeId, onOpenMarket }: TradingItemDetailProps) {
+export default function TradingItemDetail({ urls, stationId, typeId, onOpenMarket, summary = null }: TradingItemDetailProps) {
     const [data, setData] = useState<ItemDetailData | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +70,10 @@ export default function TradingItemDetail({ urls, stationId, typeId, onOpenMarke
     return (
         <div className="p-4 flex flex-col gap-4 bg-black/20">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-                <h3 className="text-sm font-semibold text-white">{data.itemName}</h3>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <h3 className="text-sm font-semibold text-white">{data.itemName}</h3>
+                    {summary}
+                </div>
                 <button
                     type="button"
                     onClick={() => onOpenMarket(typeId)}

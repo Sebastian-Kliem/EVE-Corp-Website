@@ -224,7 +224,6 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                             <SortHeader label="Umsatz/Tag" column="avg_volume7d" filters={filters} onSort={toggleSort} title="Durchschnitt der letzten 7 Tage in der Region" />
                             <SortHeader label="Konkurrenz" column="competitors" filters={filters} onSort={toggleSort} title="Orders bis 5 % vom Bestpreis, Kauf / Verkauf" />
                             <SortHeader label="Anpassungen 24h" column="activity" filters={filters} onSort={toggleSort} title="Orders nahe am Bestpreis, die in den letzten 24 Stunden neu eingestellt oder angepasst wurden" />
-                            <SortHeader label="Potenzial/Tag" column="potential" filters={filters} onSort={toggleSort} title="Geschätzter Gewinn pro Tag, Erklärung über der Tabelle" />
                             <th className="p-2.5" />
                         </tr>
                     </thead>
@@ -250,9 +249,6 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                                     <td className="p-2.5 text-right tabular-nums" title={`Letzte Stunde: ${row.buyUpdated1h} Kauf / ${row.sellUpdated1h} Verkauf`}>
                                         {row.buyUpdated24h} / {row.sellUpdated24h}
                                     </td>
-                                    <td className="p-2.5 text-right tabular-nums font-semibold text-eve-primary" title={buildPotentialTooltip(row)}>
-                                        {row.fillable ? formatIskShort(row.potential) : <span className="text-amber-400 font-normal">nicht gefüllt</span>}
-                                    </td>
                                     <td className="p-2.5 text-right">
                                         <button
                                             type="button"
@@ -266,8 +262,8 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                                 </tr>
                                 {openTypeId === row.typeId && (
                                     <tr className="border-b border-white/10">
-                                        <td colSpan={10} className="p-0">
-                                            <TradingItemDetail urls={urls} stationId={settings.stationId} typeId={row.typeId} onOpenMarket={onOpenMarket} />
+                                        <td colSpan={9} className="p-0">
+                                            <TradingItemDetail urls={urls} stationId={settings.stationId} typeId={row.typeId} onOpenMarket={onOpenMarket} summary={<PotentialSummary row={row} />} />
                                         </td>
                                     </tr>
                                 )}
@@ -275,12 +271,12 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                         ))}
                         {data && data.rows.length === 0 && (
                             <tr>
-                                <td colSpan={10} className="p-6 text-center text-eve-muted">Keine Items mit diesen Filtern.</td>
+                                <td colSpan={9} className="p-6 text-center text-eve-muted">Keine Items mit diesen Filtern.</td>
                             </tr>
                         )}
                         {!data && !error && (
                             <tr>
-                                <td colSpan={10} className="p-6">
+                                <td colSpan={9} className="p-6">
                                     <div className="flex items-center justify-center gap-2 text-eve-muted"><Spinner /> Lade Marktdaten...</div>
                                 </td>
                             </tr>
@@ -291,7 +287,11 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
 
             {data && data.total > 0 && (
                 <div className="flex items-center justify-between text-xs text-eve-muted">
-                    <span>{formatNumber(data.total)} Items</span>
+                    <span>
+                        {formatNumber(data.total)} Items
+                        {/* The potential has no column any more, the default order still follows it */}
+                        {filters.sort === 'potential' && <> · sortiert nach Potenzial/Tag ({filters.direction === 'desc' ? 'absteigend' : 'aufsteigend'})</>}
+                    </span>
                     <div className="flex items-center gap-2">
                         <PageButton label="Zurück" disabled={page <= 1} onClick={() => setPage(page - 1)} />
                         <span>Seite {page} von {pageCount}</span>
@@ -344,6 +344,19 @@ function buildPotentialTooltip(row: StationRow): string {
         `Erwartete Stückzahl/Tag: ${formatNumber(row.expectedUnits, 2)}`,
         `Potenzial: ${formatIsk(row.potential)}`,
     ].join('\n');
+}
+
+// Estimated profit per day, shown in the item details instead of a table column
+function PotentialSummary({ row }: { row: StationRow }) {
+    if (!row.fillable) {
+        return <span className="text-xs text-amber-400" title={buildPotentialTooltip(row)}>Potenzial/Tag: nicht gefüllt</span>;
+    }
+    return (
+        <span className="text-xs text-eve-muted" title={buildPotentialTooltip(row)}>
+            Potenzial/Tag: <span className="font-semibold text-eve-primary">{formatIskShort(row.potential)}</span>
+            {' '}· erwartet {formatNumber(row.expectedUnits, row.expectedUnits < 10 ? 1 : 0)} Stk./Tag
+        </span>
+    );
 }
 
 function PotentialExplanation({ fees }: { fees: TradingFees | null }) {
