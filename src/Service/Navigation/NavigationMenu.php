@@ -162,7 +162,8 @@ class NavigationMenu
                 'placement' => self::PLACEMENT_MAIN,
                 'role' => 'ROLE_ADMIN',
                 'items' => [
-                    ['label' => 'Handels-Tool', 'route' => 'app_trading'],
+                    ['label' => 'Station-Trading', 'route' => 'app_trading_station_trading'],
+                    ['label' => 'Orders & Performance', 'route' => 'app_trading_orders'],
                 ],
             ],
             [

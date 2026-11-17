@@ -36,11 +36,24 @@ class TradingController extends AbstractController
         private readonly SdeService $sdeService,
         private readonly ClockInterface $clock
     ) {}
+    // Old single page URL from bookmarks and browser history
 
     #[Route('', name: 'app_trading', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('trading/index.html.twig');
+        return $this->redirectToRoute('app_trading_station_trading', [], Response::HTTP_MOVED_PERMANENTLY);
+    }
+
+    #[Route('/station-trading', name: 'app_trading_station_trading', methods: ['GET'])]
+    public function stationTrading(): Response
+    {
+        return $this->render('trading/station_trading.html.twig');
+    }
+
+    #[Route('/orders', name: 'app_trading_orders', methods: ['GET'])]
+    public function orders(): Response
+    {
+        return $this->render('trading/orders.html.twig');
     }
 
     #[Route('/api/context', name: 'app_trading_context', methods: ['GET'])]

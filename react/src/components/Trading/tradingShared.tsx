@@ -30,7 +30,7 @@ export interface TradingContext {
     statsComputedAt: string | null;
 }
 
-// Shared by all tabs, kept in the browser only
+// Shared by all trading pages, kept in the browser only
 export interface TradingSettings {
     stationId: number;
     capital: string;
