@@ -160,8 +160,8 @@ class NavigationMenu
                 'placement' => self::PLACEMENT_MAIN,
                 'role' => 'ROLE_MEMBER',
                 'items' => [
-                    ['label' => 'Station-Trading', 'route' => 'app_trading_station_trading'],
                     ['label' => 'Orders & Performance', 'route' => 'app_trading_orders'],
+                    ['label' => 'Station-Trading', 'route' => 'app_trading_station_trading'],
                 ],
             ],
             [
