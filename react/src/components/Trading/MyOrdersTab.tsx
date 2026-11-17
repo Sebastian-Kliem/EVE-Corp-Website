@@ -209,10 +209,13 @@ function MarketCard({ market, isCollapsed, onToggle, renderRow }: { market: Mark
                                 return (
                                     <table key={side.key} className="w-full text-xs">
                                         <thead>
-                                            <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
-                                                <th className={`p-2.5 text-left font-bold ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                            <tr>
+                                                <th colSpan={7} className={`px-2.5 pt-3 pb-1 text-center text-sm font-bold uppercase tracking-wider ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
                                                     {side.title} ({sideOrders.length})
                                                 </th>
+                                            </tr>
+                                            <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
+                                                <th className="p-2.5 text-left font-normal">Item</th>
                                                 <th className="p-2.5 text-left font-normal">Status</th>
                                                 <th className="p-2.5 text-right font-normal">Mein Preis</th>
                                                 <th className="p-2.5 text-right font-normal">Bester Konkurrent</th>
