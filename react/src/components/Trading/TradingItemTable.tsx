@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import ItemDetail, { TradingPosition } from './TradingPerformanceDetail';
 import {
-    formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS, LastOpenedBadge,
+    formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS,
     LastOpenedItem, typeIconUrl,
 } from './tradingShared';
 
@@ -133,7 +133,7 @@ function ItemRow({ item, stockQuantity, isExpanded, isLastOpened, typeIconTempla
                     <span className={`text-eve-muted text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
                     <img src={typeIconUrl(typeIconTemplate, item.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
                     <div>
-                        <div className="text-white flex items-center gap-2">{item.itemName}{isLastOpened && <LastOpenedBadge />}</div>
+                        <div className="text-white flex items-center gap-2">{item.itemName}</div>
                         <div className="text-[10px] text-eve-muted">{formatNumber(item.sales)} Verkäufe</div>
                     </div>
                 </div>

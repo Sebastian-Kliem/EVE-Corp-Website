@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import TradingItemDetail from './TradingItemDetail';
 import {
-    fetchJson, formatIsk, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS, LastOpenedBadge,
+    fetchJson, formatIsk, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS,
     LastOpenedItem, loadStored, saveStored,
     Spinner, TradingFees, TradingSettings, TradingUrls, typeIconUrl,
 } from './tradingShared';
@@ -200,7 +200,6 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                                         <div className="flex items-center gap-2">
                                             <img src={typeIconUrl(typeIconTemplate, row.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
                                             <span className="text-white">{row.itemName}</span>
-                                            {isLastOpened(lastOpened, row.typeId) && <LastOpenedBadge />}
                                         </div>
                                     </td>
                                     <td className="p-2.5 text-right tabular-nums text-emerald-400">{formatIskShort(row.buyBest)}</td>

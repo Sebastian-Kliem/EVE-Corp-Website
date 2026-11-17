@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import {
     formatAge, formatIsk, formatNumber, formatPercent, formatPriceForClipboard, isLastOpened, LAST_OPENED_ROW_CLASS,
-    LastOpenedBadge, LastOpenedItem, loadStored, saveStored, typeIconUrl,
+    LastOpenedItem, loadStored, saveStored, typeIconUrl,
 } from './tradingShared';
 
 // Larger jumps are flagged, the competitor may have placed a bait order
@@ -284,7 +284,7 @@ function OrderRow({ order, copied, isLastOpened, now, typeIconTemplate, onClick 
             <td className="p-2.5">
                 <div className="flex items-center gap-2">
                     <img src={typeIconUrl(typeIconTemplate, order.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
-                    <div className="text-white flex items-center gap-2">{order.itemName}{isLastOpened && <LastOpenedBadge />}</div>
+                    <div className="text-white">{order.itemName}</div>
                 </div>
             </td>
             <td className="p-2.5">

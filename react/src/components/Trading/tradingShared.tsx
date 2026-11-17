@@ -62,14 +62,6 @@ export function isLastOpened(lastOpened: LastOpenedItem | null, typeId: number, 
     return lastOpened.typeId === typeId;
 }
 
-export function LastOpenedBadge() {
-    return (
-        <span className="inline-block bg-eve-primary/15 text-eve-primary text-[9px] font-bold uppercase px-1 py-px rounded border border-eve-primary/40 whitespace-nowrap">
-            zuletzt geöffnet
-        </span>
-    );
-}
-
 export const LAST_OPENED_ROW_CLASS = 'bg-eve-primary/10 outline outline-1 -outline-offset-1 outline-eve-primary/60';
 
 export function loadStored<T>(key: string, fallback: T): T {
