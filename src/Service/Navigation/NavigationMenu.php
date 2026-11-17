@@ -153,7 +153,6 @@ class NavigationMenu
                             'app_dashboard_performance_ledger' => 'Performance',
                         ],
                     ],
-                    ['label' => 'Marktaufträge', 'route' => 'app_dashboard_market_overview'],
                 ],
             ],
             [

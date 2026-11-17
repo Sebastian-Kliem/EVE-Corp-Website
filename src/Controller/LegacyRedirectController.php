@@ -22,7 +22,7 @@ class LegacyRedirectController extends AbstractController
         '/personal/industry' => 'app_dashboard_industry_overview',
         '/personal/pi' => 'app_dashboard_pi_overview',
         '/personal/mining' => 'app_dashboard_mining_ledger',
-        '/personal/market' => 'app_dashboard_market_overview',
+        '/personal/market' => 'app_trading_orders',
         '/personal/performance' => 'app_dashboard_performance_ledger',
         '/personal/assets' => 'app_dashboard_assets_overview',
         '/personal/value-history' => 'app_dashboard_assets_overview',
