@@ -23,9 +23,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-// Admin only while the trading tool is being built, later ROLE_MEMBER
 #[Route('/trading')]
-#[IsGranted('ROLE_ADMIN')]
+#[IsGranted('ROLE_MEMBER')]
 class TradingController extends AbstractController
 {
     private const SEARCH_TYPE_LIMIT = 500;
@@ -36,8 +35,8 @@ class TradingController extends AbstractController
         private readonly SdeService $sdeService,
         private readonly ClockInterface $clock
     ) {}
-    // Old single page URL from bookmarks and browser history
 
+    // Old single page URL from bookmarks and browser history
     #[Route('', name: 'app_trading', methods: ['GET'])]
     public function index(): Response
     {

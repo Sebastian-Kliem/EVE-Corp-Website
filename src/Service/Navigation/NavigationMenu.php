@@ -156,10 +156,9 @@ class NavigationMenu
                 ],
             ],
             [
-                // Admin only while the trading tool is being built
                 'label' => 'Handel',
                 'placement' => self::PLACEMENT_MAIN,
-                'role' => 'ROLE_ADMIN',
+                'role' => 'ROLE_MEMBER',
                 'items' => [
                     ['label' => 'Station-Trading', 'route' => 'app_trading_station_trading'],
                     ['label' => 'Orders & Performance', 'route' => 'app_trading_orders'],
