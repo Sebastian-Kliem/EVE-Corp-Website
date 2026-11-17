@@ -46,6 +46,19 @@ class TradingLotStockTest extends TestCase
         $this->assertSame([], $stock->remaining());
     }
 
+    public function testFeeShareTravelsWithTheTakenUnits(): void
+    {
+        $stock = new TradingLotStock();
+        $stock->add(442, 10, 100.0, 1000, 2.0);
+
+        $taken = $stock->take(442, 4, 2000);
+        $remaining = $stock->remaining();
+
+        $this->assertEqualsWithDelta(400.0, $taken['cost'], 0.001);
+        $this->assertEqualsWithDelta(8.0, $taken['fee'], 0.001);
+        $this->assertEqualsWithDelta(612.0, $remaining[442]['cost'], 0.001);
+    }
+
     public function testUnknownTypeTakesNothing(): void
     {
         $taken = (new TradingLotStock())->take(1, 3, 1000);
