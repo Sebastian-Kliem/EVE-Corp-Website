@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
     formatAge, formatIsk, formatNumber, formatPercent, formatPriceForClipboard, isLastOpened, LAST_OPENED_ROW_CLASS,
     LastOpenedBadge, LastOpenedItem, loadStored, saveStored, typeIconUrl,
@@ -43,6 +43,16 @@ const COPIED_STORAGE_KEY = 'wh-trading-copied-prices';
 // A copied price older than this no longer marks the order as being adjusted
 const COPIED_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
+// Location IDs of the market cards the user folded away
+const COLLAPSED_STORAGE_KEY = 'wh-trading-collapsed-markets';
+
+const STATUS_GROUPS: { status: TradingOrder['status']; title: string; hint: string }[] = [
+    { status: 'outbid', title: 'Handlungsbedarf', hint: 'Klick kopiert den neuen Preis und öffnet das Marktfenster im Spiel.' },
+    { status: 'best', title: 'Beste Order', hint: '' },
+    { status: 'gone', title: 'Nicht mehr im Orderbuch', hint: 'Seit dem letzten Abgleich erfüllt, storniert oder abgelaufen; verschwindet mit dem nächsten Order-Sync des Charakters.' },
+    { status: 'unchecked', title: 'Nicht geprüft', hint: 'Nur Orders an den fünf Handelsdrehkreuzen werden mit dem Orderbuch abgeglichen.' },
+];
+
 // Buy orders get overbid, sell orders get undercut
 const SIDES = [
     { key: 'buy', isBuy: true, title: 'Kauforders', outbidLabel: 'überboten' },
@@ -61,6 +71,7 @@ interface MyOrdersTabProps {
 export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened, onOpenMarket, onNotice }: MyOrdersTabProps) {
     const [copiedPrices, setCopiedPrices] = useState<Record<string, CopiedPrice>>(() => _loadCopiedPrices());
     const [now, setNow] = useState(Date.now());
+    const [collapsedMarkets, setCollapsedMarkets] = useState<string[]>(() => _loadCollapsedMarkets());
 
     useEffect(() => {
         const timer = window.setInterval(() => setNow(Date.now()), 30000);
@@ -95,12 +106,25 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened,
         await onOpenMarket(order.typeId, order.orderId);
     };
 
-    const groups: { status: TradingOrder['status']; title: string; hint: string }[] = [
-        { status: 'outbid', title: 'Handlungsbedarf', hint: 'Klick kopiert den neuen Preis und öffnet das Marktfenster im Spiel.' },
-        { status: 'best', title: 'Beste Order', hint: '' },
-        { status: 'gone', title: 'Nicht mehr im Orderbuch', hint: 'Seit dem letzten Abgleich erfüllt, storniert oder abgelaufen; verschwindet mit dem nächsten Order-Sync des Charakters.' },
-        { status: 'unchecked', title: 'Nicht geprüft', hint: 'Nur Orders an den fünf Handelsdrehkreuzen werden mit dem Orderbuch abgeglichen.' },
-    ];
+    const toggleMarket = (locationId: string) => {
+        setCollapsedMarkets(previous => {
+            const next = previous.includes(locationId) ? previous.filter(id => id !== locationId) : [...previous, locationId];
+            saveStored(COLLAPSED_STORAGE_KEY, next);
+            return next;
+        });
+    };
+
+    const renderRow = (order: TradingOrder) => (
+        <OrderRow
+            key={order.orderId}
+            order={order}
+            copied={_activeCopy(copiedPrices[order.orderId], order, now)}
+            isLastOpened={isLastOpened(lastOpened, order.typeId, order.orderId)}
+            now={now}
+            typeIconTemplate={typeIconTemplate}
+            onClick={() => handleOrderClick(order)}
+        />
+    );
 
     return (
         <div className="flex flex-col gap-4">
@@ -109,17 +133,70 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened,
                 neue Orders erscheinen nach dem nächsten Order-Sync des Charakters (ESI-Cache bis 20 Minuten).
             </p>
             <StatusSummary orders={data.orders} />
-            {groups.map(group => {
-                const orders = data.orders.filter(order => order.status === group.status);
+            {_groupByMarket(data.orders).map(market => (
+                <MarketCard
+                    key={market.locationId}
+                    market={market}
+                    isCollapsed={collapsedMarkets.includes(market.locationId)}
+                    onToggle={() => toggleMarket(market.locationId)}
+                    renderRow={renderRow}
+                />
+            ))}
+            {data.orders.length === 0 && (
+                <div className="bg-eve-card border border-eve-border rounded-lg p-6 text-center text-eve-muted text-sm">Keine aktiven Orders.</div>
+            )}
+        </div>
+    );
+}
+
+interface MarketGroup {
+    locationId: string;
+    locationName: string;
+    orders: TradingOrder[];
+}
+
+// One collapsible card per market, outbid orders stay highlighted in the header while collapsed
+function MarketCard({ market, isCollapsed, onToggle, renderRow }: { market: MarketGroup; isCollapsed: boolean; onToggle: () => void; renderRow: (order: TradingOrder) => ReactNode }) {
+    let outbidCount = 0;
+    let buyCount = 0;
+    for (const order of market.orders) {
+        if (order.status === 'outbid') {
+            outbidCount++;
+        }
+        if (order.isBuy) {
+            buyCount++;
+        }
+    }
+
+    return (
+        <div className={`bg-eve-card border shadow-eve rounded-lg overflow-x-auto ${outbidCount > 0 ? 'border-amber-500/40' : 'border-eve-border'}`}>
+            <button
+                type="button"
+                onClick={onToggle}
+                className="w-full px-4 py-3 flex items-center justify-between gap-4 flex-wrap text-left cursor-pointer hover:bg-white/5"
+            >
+                <div className="flex items-center gap-3">
+                    <span className={`text-xs text-eve-primary transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}>▼</span>
+                    <h3 className="text-sm font-semibold text-white">{market.locationName}</h3>
+                    {outbidCount > 0 && (
+                        <span className="bg-amber-500/15 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-500/30">{outbidCount} überboten</span>
+                    )}
+                </div>
+                <span className="text-[11px] text-eve-muted tabular-nums">
+                    {market.orders.length} Orders · <span className="text-emerald-400">{buyCount} Kauf</span> · <span className="text-rose-400">{market.orders.length - buyCount} Verkauf</span>
+                </span>
+            </button>
+            {!isCollapsed && STATUS_GROUPS.map(group => {
+                const orders = market.orders.filter(order => order.status === group.status);
                 if (orders.length === 0) {
                     return null;
                 }
                 return (
-                    <div key={group.status} className={`bg-eve-card border shadow-eve rounded-lg overflow-x-auto ${group.status === 'outbid' ? 'border-amber-500/40' : 'border-eve-border'}`}>
-                        <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between gap-4 flex-wrap">
-                            <h3 className={`text-xs font-bold uppercase tracking-wider ${group.status === 'outbid' ? 'text-amber-400' : 'text-eve-muted'}`}>
+                    <div key={group.status} className="border-t border-white/10">
+                        <div className="px-4 py-2 flex items-center justify-between gap-4 flex-wrap bg-black/20">
+                            <h4 className={`text-xs font-bold uppercase tracking-wider ${group.status === 'outbid' ? 'text-amber-400' : 'text-eve-muted'}`}>
                                 {group.title} ({orders.length})
-                            </h3>
+                            </h4>
                             {group.hint && <span className="text-[11px] text-eve-muted">{group.hint}</span>}
                         </div>
                         {SIDES.map(side => {
@@ -143,17 +220,7 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened,
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {sideOrders.map(order => (
-                                            <OrderRow
-                                                key={order.orderId}
-                                                order={order}
-                                                copied={_activeCopy(copiedPrices[order.orderId], order, now)}
-                                                isLastOpened={isLastOpened(lastOpened, order.typeId, order.orderId)}
-                                                now={now}
-                                                typeIconTemplate={typeIconTemplate}
-                                                onClick={() => handleOrderClick(order)}
-                                            />
-                                        ))}
+                                        {sideOrders.map(renderRow)}
                                     </tbody>
                                 </table>
                             );
@@ -161,11 +228,20 @@ export default function MyOrdersTab({ data, error, typeIconTemplate, lastOpened,
                     </div>
                 );
             })}
-            {data.orders.length === 0 && (
-                <div className="bg-eve-card border border-eve-border rounded-lg p-6 text-center text-eve-muted text-sm">Keine aktiven Orders.</div>
-            )}
         </div>
     );
+}
+
+// Markets with more orders first, then by name
+function _groupByMarket(orders: TradingOrder[]): MarketGroup[] {
+    const groups: Record<string, MarketGroup> = {};
+    for (const order of orders) {
+        if (!groups[order.locationId]) {
+            groups[order.locationId] = { locationId: order.locationId, locationName: order.locationName, orders: [] };
+        }
+        groups[order.locationId].orders.push(order);
+    }
+    return Object.values(groups).sort((first, second) => second.orders.length - first.orders.length || first.locationName.localeCompare(second.locationName, 'de'));
 }
 
 // Outbid and best counts per side at a glance
@@ -208,10 +284,7 @@ function OrderRow({ order, copied, isLastOpened, now, typeIconTemplate, onClick 
             <td className="p-2.5">
                 <div className="flex items-center gap-2">
                     <img src={typeIconUrl(typeIconTemplate, order.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
-                    <div>
-                        <div className="text-white flex items-center gap-2">{order.itemName}{isLastOpened && <LastOpenedBadge />}</div>
-                        <div className="text-[10px] text-eve-muted">{order.locationName}</div>
-                    </div>
+                    <div className="text-white flex items-center gap-2">{order.itemName}{isLastOpened && <LastOpenedBadge />}</div>
                 </div>
             </td>
             <td className="p-2.5">
@@ -303,6 +376,12 @@ function _loadCopiedPrices(): Record<string, CopiedPrice> {
         }
     }
     return fresh;
+}
+
+function _loadCollapsedMarkets(): string[] {
+    // Null fallback, loadStored would merge an array fallback into an object
+    const stored = loadStored<unknown>(COLLAPSED_STORAGE_KEY, null);
+    return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : [];
 }
 
 // A copy counts until a check after it shows the order again
