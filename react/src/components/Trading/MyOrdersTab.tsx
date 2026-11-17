@@ -55,8 +55,8 @@ const STATUS_GROUPS: { status: TradingOrder['status']; title: string; hint: stri
 
 // Buy orders get overbid, sell orders get undercut
 const SIDES = [
-    { key: 'buy', isBuy: true, title: 'Kauforders', outbidLabel: 'überboten' },
     { key: 'sell', isBuy: false, title: 'Verkaufsorders', outbidLabel: 'unterboten' },
+    { key: 'buy', isBuy: true, title: 'Kauforders', outbidLabel: 'überboten' },
 ];
 
 interface MyOrdersTabProps {
@@ -199,32 +199,35 @@ function MarketCard({ market, isCollapsed, onToggle, renderRow }: { market: Mark
                             </h4>
                             {group.hint && <span className="text-[11px] text-eve-muted">{group.hint}</span>}
                         </div>
-                        {SIDES.map(side => {
-                            const sideOrders = orders.filter(order => order.isBuy === side.isBuy);
-                            if (sideOrders.length === 0) {
-                                return null;
-                            }
-                            return (
-                                <table key={side.key} className="w-full text-xs">
-                                    <thead>
-                                        <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
-                                            <th className={`p-2.5 text-left font-bold ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                {side.title} ({sideOrders.length})
-                                            </th>
-                                            <th className="p-2.5 text-left font-normal">Status</th>
-                                            <th className="p-2.5 text-right font-normal">Mein Preis</th>
-                                            <th className="p-2.5 text-right font-normal">Bester Konkurrent</th>
-                                            <th className="p-2.5 text-right font-normal">Neuer Preis</th>
-                                            <th className="p-2.5 text-right font-normal">Marge</th>
-                                            <th className="p-2.5 text-right font-normal">Abgleich</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sideOrders.map(renderRow)}
-                                    </tbody>
-                                </table>
-                            );
-                        })}
+                        {/* Space between the sell and buy table keeps the current side recognisable */}
+                        <div className="flex flex-col gap-6 pb-2">
+                            {SIDES.map(side => {
+                                const sideOrders = orders.filter(order => order.isBuy === side.isBuy);
+                                if (sideOrders.length === 0) {
+                                    return null;
+                                }
+                                return (
+                                    <table key={side.key} className="w-full text-xs">
+                                        <thead>
+                                            <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
+                                                <th className={`p-2.5 text-left font-bold ${side.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {side.title} ({sideOrders.length})
+                                                </th>
+                                                <th className="p-2.5 text-left font-normal">Status</th>
+                                                <th className="p-2.5 text-right font-normal">Mein Preis</th>
+                                                <th className="p-2.5 text-right font-normal">Bester Konkurrent</th>
+                                                <th className="p-2.5 text-right font-normal">Neuer Preis</th>
+                                                <th className="p-2.5 text-right font-normal">Marge</th>
+                                                <th className="p-2.5 text-right font-normal">Abgleich</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {sideOrders.map(renderRow)}
+                                        </tbody>
+                                    </table>
+                                );
+                            })}
+                        </div>
                     </div>
                 );
             })}
