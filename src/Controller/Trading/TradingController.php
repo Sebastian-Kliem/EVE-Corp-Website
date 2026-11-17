@@ -28,6 +28,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class TradingController extends AbstractController
 {
     private const SEARCH_TYPE_LIMIT = 500;
+    private const MAX_FILTER_ENTRIES = 1000;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -112,6 +113,7 @@ class TradingController extends AbstractController
             return new JsonResponse(['error' => 'Unbekanntes Handelsdrehkreuz.'], Response::HTTP_BAD_REQUEST);
         }
         $fees = $this->_resolveFees($request, $this->_findTradingCharacter($user));
+        $typeFilter = $this->_resolveStationTypeFilter((string)$request->query->get('search', ''), $user->getStationTradingFilter());
 
         $result = $query->find([
             'stationId' => $stationId,
@@ -123,7 +125,8 @@ class TradingController extends AbstractController
             'minMargin' => max(0.0, (float)$request->query->get('minMargin', 0)) / 100,
             'maxBuyPrice' => max(0.0, (float)$request->query->get('maxBuyPrice', 0)),
             'minTradedDays' => max(0, $request->query->getInt('minTradedDays', 0)),
-            'typeIds' => $this->_resolveSearchTypeIds((string)$request->query->get('search', '')),
+            'typeIds' => $typeFilter['typeIds'],
+            'excludedTypeIds' => $typeFilter['excludedTypeIds'],
             'sort' => (string)$request->query->get('sort', 'potential'),
             'direction' => (string)$request->query->get('direction', 'desc'),
             'page' => max(1, $request->query->getInt('page', 1)),
@@ -140,6 +143,40 @@ class TradingController extends AbstractController
             'pageSize' => StationTradingQuery::PAGE_SIZE,
             'fees' => $fees,
         ]);
+    }
+
+    #[Route('/api/station-filter', name: 'app_trading_station_filter', methods: ['GET'])]
+    public function stationFilter(): JsonResponse
+    {
+        return new JsonResponse($this->_formatStationFilter($this->_user()));
+    }
+
+    #[Route('/api/station-filter', name: 'app_trading_station_filter_save', methods: ['POST'])]
+    public function saveStationFilter(Request $request): JsonResponse
+    {
+        $user = $this->_user();
+        $body = json_decode($request->getContent(), true) ?? [];
+        $mode = (string)($body['mode'] ?? User::STATION_FILTER_ALL);
+        $marketGroupIds = is_array($body['marketGroupIds'] ?? null) ? $body['marketGroupIds'] : [];
+        $hiddenTypeIds = is_array($body['hiddenTypeIds'] ?? null) ? $body['hiddenTypeIds'] : [];
+
+        if (!in_array($mode, [User::STATION_FILTER_ALL, User::STATION_FILTER_ONLY, User::STATION_FILTER_EXCEPT], true)) {
+            return new JsonResponse(['error' => 'Unbekannter Filtermodus.'], Response::HTTP_BAD_REQUEST);
+        }
+        if (count($marketGroupIds) > self::MAX_FILTER_ENTRIES || count($hiddenTypeIds) > self::MAX_FILTER_ENTRIES) {
+            return new JsonResponse(['error' => 'Zu viele Einträge im Filter.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user->setStationTradingFilter($mode, $marketGroupIds, $hiddenTypeIds);
+        $this->entityManager->flush();
+
+        return new JsonResponse($this->_formatStationFilter($user));
+    }
+
+    #[Route('/api/market-groups', name: 'app_trading_market_groups', methods: ['GET'])]
+    public function marketGroups(): JsonResponse
+    {
+        return new JsonResponse($this->sdeService->getMarketGroups());
     }
 
     #[Route('/api/item', name: 'app_trading_item', methods: ['GET'])]
@@ -295,6 +332,49 @@ class TradingController extends AbstractController
         return [
             'salesTax' => $salesTax !== null && $salesTax !== '' ? max(0.0, (float)$salesTax) / 100 : $calculated['salesTax'],
             'brokerFee' => $brokerFee !== null && $brokerFee !== '' ? max(0.0, (float)$brokerFee) / 100 : $calculated['brokerFee'],
+        ];
+    }
+
+    /**
+     * Combines the search with the saved market group filter and the hidden items.
+     *
+     * @param array{mode: string, marketGroupIds: list<int>, hiddenTypeIds: list<int>} $stationFilter
+     * @return array{typeIds: ?int[], excludedTypeIds: int[]}
+     */
+    private function _resolveStationTypeFilter(string $search, array $stationFilter): array
+    {
+        $typeIds = $this->_resolveSearchTypeIds($search);
+        $excludedTypeIds = $stationFilter['hiddenTypeIds'];
+        if ($stationFilter['marketGroupIds'] === []) {
+            return ['typeIds' => $typeIds, 'excludedTypeIds' => $excludedTypeIds];
+        }
+
+        $groupTypeIds = $this->sdeService->getTypeIdsInMarketGroups($stationFilter['marketGroupIds']);
+        if ($stationFilter['mode'] === User::STATION_FILTER_ONLY) {
+            $typeIds = $typeIds === null ? $groupTypeIds : array_values(array_intersect($typeIds, $groupTypeIds));
+        } elseif ($stationFilter['mode'] === User::STATION_FILTER_EXCEPT) {
+            $excludedTypeIds = array_values(array_unique(array_merge($excludedTypeIds, $groupTypeIds)));
+        }
+
+        return ['typeIds' => $typeIds, 'excludedTypeIds' => $excludedTypeIds];
+    }
+
+    /**
+     * @return array{mode: string, marketGroupIds: list<int>, hiddenItems: list<array{typeId: int, name: string}>}
+     */
+    private function _formatStationFilter(User $user): array
+    {
+        $stationFilter = $user->getStationTradingFilter();
+        $hiddenItems = [];
+        foreach ($stationFilter['hiddenTypeIds'] as $typeId) {
+            $hiddenItems[] = ['typeId' => $typeId, 'name' => $this->sdeService->getItemName($typeId)];
+        }
+        usort($hiddenItems, fn(array $first, array $second): int => strcasecmp($first['name'], $second['name']));
+
+        return [
+            'mode' => $stationFilter['mode'],
+            'marketGroupIds' => $stationFilter['marketGroupIds'],
+            'hiddenItems' => $hiddenItems,
         ];
     }
 

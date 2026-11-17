@@ -345,6 +345,88 @@ class SdeService
     }
 
     /**
+     * Market groups of the in-game market browser that contain published items somewhere below them.
+     *
+     * @return list<array{id: int, parentId: ?int, name: string}>
+     */
+    public function getMarketGroups(): array
+    {
+        try {
+            $groupRows = $this->connection->fetchAllAssociative('SELECT marketGroupID, parentGroupID, marketGroupName FROM invMarketGroups');
+            $groupsWithItems = $this->connection->fetchFirstColumn('SELECT DISTINCT marketGroupID FROM invTypes WHERE published = 1 AND marketGroupID IS NOT NULL');
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $parentIds = [];
+        foreach ($groupRows as $row) {
+            $parentIds[(int)$row['marketGroupID']] = $row['parentGroupID'] === null ? null : (int)$row['parentGroupID'];
+        }
+
+        $visibleIds = [];
+        foreach ($groupsWithItems as $groupId) {
+            $this->_markGroupWithAncestors((int)$groupId, $parentIds, $visibleIds);
+        }
+
+        $groups = [];
+        foreach ($groupRows as $row) {
+            $groupId = (int)$row['marketGroupID'];
+            if (isset($visibleIds[$groupId])) {
+                $groups[] = ['id' => $groupId, 'parentId' => $parentIds[$groupId], 'name' => (string)$row['marketGroupName']];
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * Published item types in the given market groups including all of their subgroups.
+     *
+     * @param int[] $marketGroupIds
+     * @return list<int>
+     */
+    public function getTypeIdsInMarketGroups(array $marketGroupIds): array
+    {
+        if ($marketGroupIds === []) {
+            return [];
+        }
+
+        try {
+            $typeIds = $this->connection->fetchFirstColumn(
+                'WITH RECURSIVE selected(id) AS (
+                    SELECT marketGroupID FROM invMarketGroups WHERE marketGroupID IN (:groupIds)
+                    UNION SELECT g.marketGroupID FROM invMarketGroups g JOIN selected s ON g.parentGroupID = s.id
+                 )
+                 SELECT t.typeID FROM invTypes t JOIN selected s ON t.marketGroupID = s.id WHERE t.published = 1',
+                ['groupIds' => $marketGroupIds],
+                ['groupIds' => ArrayParameterType::INTEGER]
+            );
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($typeIds as $typeId) {
+            $result[] = (int)$typeId;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int, ?int> $parentIds
+     * @param array<int, true> $visibleIds
+     */
+    private function _markGroupWithAncestors(int $groupId, array $parentIds, array &$visibleIds): void
+    {
+        $currentId = $groupId;
+        while ($currentId !== null && !isset($visibleIds[$currentId]) && array_key_exists($currentId, $parentIds)) {
+            $visibleIds[$currentId] = true;
+            $currentId = $parentIds[$currentId];
+        }
+    }
+
+    /**
      * Published skills with their in-game skill group and rank (training time multiplier).
      *
      * @return array<int, array{groupId: int, groupName: string, rank: float}>

@@ -20,6 +20,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public const TRADING_ROUTE_SHORTEST = 'shortest';
     // High security systems only
     public const TRADING_ROUTE_SECURE = 'secure';
+    // Market group and item filter of the station trading list
+    public const SETTING_TRADING_STATION_FILTER = 'trading_station_filter';
+    public const STATION_FILTER_ALL = 'all';
+    public const STATION_FILTER_ONLY = 'only';
+    public const STATION_FILTER_EXCEPT = 'except';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -299,6 +304,51 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTradingRouteMode(string $routeMode): static
     {
         return $this->setSetting(self::SETTING_TRADING_ROUTE_MODE, $routeMode);
+    }
+
+    /**
+     * @return array{mode: string, marketGroupIds: list<int>, hiddenTypeIds: list<int>}
+     */
+    public function getStationTradingFilter(): array
+    {
+        $stored = $this->getSetting(self::SETTING_TRADING_STATION_FILTER, []);
+        $stored = is_array($stored) ? $stored : [];
+        $mode = (string)($stored['mode'] ?? self::STATION_FILTER_ALL);
+
+        return [
+            'mode' => in_array($mode, [self::STATION_FILTER_ALL, self::STATION_FILTER_ONLY, self::STATION_FILTER_EXCEPT], true) ? $mode : self::STATION_FILTER_ALL,
+            'marketGroupIds' => self::_toPositiveIntList($stored['marketGroupIds'] ?? []),
+            'hiddenTypeIds' => self::_toPositiveIntList($stored['hiddenTypeIds'] ?? []),
+        ];
+    }
+
+    public function setStationTradingFilter(string $mode, array $marketGroupIds, array $hiddenTypeIds): static
+    {
+        return $this->setSetting(self::SETTING_TRADING_STATION_FILTER, [
+            'mode' => $mode,
+            'marketGroupIds' => self::_toPositiveIntList($marketGroupIds),
+            'hiddenTypeIds' => self::_toPositiveIntList($hiddenTypeIds),
+        ]);
+    }
+
+    /**
+     * @return list<int> Unique positive IDs, everything else is dropped
+     */
+    private static function _toPositiveIntList(mixed $values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($values as $value) {
+            $id = is_numeric($value) ? (int)$value : 0;
+            if ($id > 0) {
+                $ids[$id] = $id;
+            }
+        }
+
+        return array_values($ids);
     }
 
     public function isFluidLayout(): bool

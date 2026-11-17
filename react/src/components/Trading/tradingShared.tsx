@@ -2,6 +2,8 @@ export interface TradingUrls {
     context: string;
     settings: string;
     station: string;
+    stationFilter: string;
+    marketGroups: string;
     item: string;
     myOrders: string;
     performance: string;

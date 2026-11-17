@@ -20,7 +20,7 @@ class StationTradingQuery
     public function __construct(private readonly Connection $connection) {}
 
     /**
-     * @param array{stationId: int, regionId: int, salesTax: float, brokerFee: float, capital: float, minVolume: float, minMargin: float, maxBuyPrice: float, minTradedDays: int, typeIds: ?array<int>, sort: string, direction: string, page: int} $filter
+     * @param array{stationId: int, regionId: int, salesTax: float, brokerFee: float, capital: float, minVolume: float, minMargin: float, maxBuyPrice: float, minTradedDays: int, typeIds: ?array<int>, excludedTypeIds: array<int>, sort: string, direction: string, page: int} $filter
      * @return array{rows: list<array<string, mixed>>, total: int}
      */
     public function find(array $filter): array
@@ -105,6 +105,11 @@ class StationTradingQuery
             $sql .= ' AND p.type_id IN (:typeIds)';
             $parameters['typeIds'] = $filter['typeIds'] === [] ? [0] : $filter['typeIds'];
             $types['typeIds'] = ArrayParameterType::INTEGER;
+        }
+        if (($filter['excludedTypeIds'] ?? []) !== []) {
+            $sql .= ' AND p.type_id NOT IN (:excludedTypeIds)';
+            $parameters['excludedTypeIds'] = $filter['excludedTypeIds'];
+            $types['excludedTypeIds'] = ArrayParameterType::INTEGER;
         }
 
         return [$sql, $parameters, $types];

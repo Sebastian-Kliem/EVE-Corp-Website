@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, MouseEvent, useEffect, useRef, useState } from 'react';
+import StationCategoryFilter, { StationFilterChange, StationFilterData } from './StationCategoryFilter';
 import TradingItemDetail from './TradingItemDetail';
 import {
     fetchJson, formatIsk, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS,
-    LastOpenedItem, loadStored, saveStored,
+    LastOpenedItem, loadStored, postJson, saveStored,
     Spinner, TradingFees, TradingSettings, TradingUrls, typeIconUrl,
 } from './tradingShared';
 
@@ -79,11 +80,21 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
     const [error, setError] = useState<string | null>(null);
     const [openTypeId, setOpenTypeId] = useState<number | null>(null);
     const [showExplanation, setShowExplanation] = useState(false);
+    const [stationFilter, setStationFilter] = useState<StationFilterData | null>(null);
+    const [savingStationFilter, setSavingStationFilter] = useState(false);
+    // Bumped after the saved category filter changed, the server applies it to the list
+    const [stationFilterVersion, setStationFilterVersion] = useState(0);
     const abortRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
         saveStored(FILTER_STORAGE_KEY, filters);
     }, [filters]);
+
+    useEffect(() => {
+        fetchJson<StationFilterData>(urls.stationFilter)
+            .then(setStationFilter)
+            .catch((e: Error) => setError(e.message));
+    }, [urls.stationFilter]);
 
     useEffect(() => {
         const query = new URLSearchParams({
@@ -122,7 +133,30 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
         }, FILTER_DEBOUNCE_MS);
 
         return () => window.clearTimeout(timer);
-    }, [urls.station, settings, filters, page]);
+    }, [urls.station, settings, filters, page, stationFilterVersion]);
+
+    const saveStationFilter = async (change: StationFilterChange) => {
+        setSavingStationFilter(true);
+        try {
+            setStationFilter(await postJson<StationFilterData>(urls.stationFilter, change));
+            setStationFilterVersion(version => version + 1);
+            setPage(1);
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setSavingStationFilter(false);
+        }
+    };
+
+    const hideItem = (event: MouseEvent, typeId: number) => {
+        // The row click would open the item details
+        event.stopPropagation();
+        if (!stationFilter) {
+            return;
+        }
+        const hiddenTypeIds = stationFilter.hiddenItems.map(item => item.typeId);
+        saveStationFilter({ mode: stationFilter.mode, marketGroupIds: stationFilter.marketGroupIds, hiddenTypeIds: [...hiddenTypeIds, typeId] });
+    };
 
     const updateFilter = (key: keyof StationFilters, value: string) => {
         setFilters(previous => ({ ...previous, [key]: value }));
@@ -160,6 +194,10 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                 </div>
             </div>
 
+            {stationFilter && (
+                <StationCategoryFilter marketGroupsUrl={urls.marketGroups} filter={stationFilter} saving={savingStationFilter} onChange={saveStationFilter} />
+            )}
+
             <div className="bg-eve-card border border-eve-border shadow-eve rounded-lg">
                 <button
                     type="button"
@@ -187,6 +225,7 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                             <SortHeader label="Konkurrenz" column="competitors" filters={filters} onSort={toggleSort} title="Orders bis 5 % vom Bestpreis, Kauf / Verkauf" />
                             <SortHeader label="Anpassungen 24h" column="activity" filters={filters} onSort={toggleSort} title="Orders nahe am Bestpreis, die in den letzten 24 Stunden neu eingestellt oder angepasst wurden" />
                             <SortHeader label="Potenzial/Tag" column="potential" filters={filters} onSort={toggleSort} title="Geschätzter Gewinn pro Tag, Erklärung über der Tabelle" />
+                            <th className="p-2.5" />
                         </tr>
                     </thead>
                     <tbody>
@@ -214,10 +253,20 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                                     <td className="p-2.5 text-right tabular-nums font-semibold text-eve-primary" title={buildPotentialTooltip(row)}>
                                         {row.fillable ? formatIskShort(row.potential) : <span className="text-amber-400 font-normal">nicht gefüllt</span>}
                                     </td>
+                                    <td className="p-2.5 text-right">
+                                        <button
+                                            type="button"
+                                            title="Item dauerhaft ausblenden, wieder einblenden unter Kategorien & ausgeblendete Items"
+                                            onClick={event => hideItem(event, row.typeId)}
+                                            className="text-[11px] text-eve-muted border border-white/10 rounded px-2 py-1 whitespace-nowrap cursor-pointer hover:text-rose-300 hover:border-rose-500/40 hover:bg-rose-500/10"
+                                        >
+                                            Ausblenden
+                                        </button>
+                                    </td>
                                 </tr>
                                 {openTypeId === row.typeId && (
                                     <tr className="border-b border-white/10">
-                                        <td colSpan={9} className="p-0">
+                                        <td colSpan={10} className="p-0">
                                             <TradingItemDetail urls={urls} stationId={settings.stationId} typeId={row.typeId} onOpenMarket={onOpenMarket} />
                                         </td>
                                     </tr>
@@ -226,12 +275,12 @@ export default function StationTradingTab({ urls, settings, typeIconTemplate, la
                         ))}
                         {data && data.rows.length === 0 && (
                             <tr>
-                                <td colSpan={9} className="p-6 text-center text-eve-muted">Keine Items mit diesen Filtern.</td>
+                                <td colSpan={10} className="p-6 text-center text-eve-muted">Keine Items mit diesen Filtern.</td>
                             </tr>
                         )}
                         {!data && !error && (
                             <tr>
-                                <td colSpan={9} className="p-6">
+                                <td colSpan={10} className="p-6">
                                     <div className="flex items-center justify-center gap-2 text-eve-muted"><Spinner /> Lade Marktdaten...</div>
                                 </td>
                             </tr>
