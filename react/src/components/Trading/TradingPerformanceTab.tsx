@@ -1,9 +1,9 @@
-import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react';
-import ItemDetail, { TradingPosition } from './TradingPerformanceDetail';
-import TradingPositionsTable from './TradingPositionsTable';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { TradingPosition } from './TradingPerformanceDetail';
+import TradingItemTable, { PerformanceItem } from './TradingItemTable';
 import {
-    fetchJson, formatIskShort, formatNumber, formatPercent, isLastOpened, LAST_OPENED_ROW_CLASS, LastOpenedBadge,
-    LastOpenedItem, loadStored, saveStored, Spinner, TradingContext, TradingUrls, typeIconUrl,
+    fetchJson, formatIskShort, formatNumber, formatPercent, LastOpenedItem, loadStored, saveStored, Spinner,
+    TradingContext, TradingUrls,
 } from './tradingShared';
 
 interface PerformanceSummary {
@@ -13,7 +13,7 @@ interface PerformanceSummary {
     salesTax: number;
     brokerFees: number;
     brokerFeesItems: number;
-    brokerFeesOpenPositions: number;
+    brokerFeesBuyShare: number;
     brokerFeesUnassigned: number;
     brokerFeesExcluded: number;
     feeBookings: number;
@@ -25,57 +25,14 @@ interface PerformanceSummary {
     orderActions: number;
 }
 
-interface PerformanceItem {
-    typeId: number;
-    itemName: string;
-    quantity: number;
-    revenue: number;
-    cost: number;
-    salesTax: number;
-    brokerFees: number;
-    profit: number;
-    margin: number | null;
-    averageHoldingDays: number | null;
-    sales: number;
-}
-
-interface ContractPosition {
-    typeId: number;
-    itemName: string;
-    quantity: number;
-    cost: number;
-    costSource: 'purchase' | 'mixed' | 'buyPrice' | 'none';
-}
-
-interface PerformanceContract {
-    contractId: string;
-    date: string;
-    mainItemName: string;
-    mainTypeId: number;
-    revenue: number;
-    cost: number;
-    profit: number;
-    margin: number | null;
-    positions: ContractPosition[];
-}
-
 interface PerformanceData {
     summary: PerformanceSummary;
     items: PerformanceItem[];
-    contracts: PerformanceContract[];
     positions: TradingPosition[];
     dataStart: string | null;
 }
 
-const COST_SOURCE_LABELS: Record<ContractPosition['costSource'], string> = {
-    purchase: 'Einkauf',
-    mixed: 'Einkauf + Jita-Buy',
-    buyPrice: 'Jita-Buy (Bestand)',
-    none: 'kein Preis',
-}
-
 type PeriodKey = 'thisMonth' | 'lastMonth' | 'last7' | 'last30' | 'last90' | 'all';
-type SortKey = 'profit' | 'revenue' | 'margin' | 'quantity' | 'averageHoldingDays';
 
 const PERIODS: { key: PeriodKey; label: string }[] = [
     { key: 'thisMonth', label: 'Dieser Monat' },
@@ -84,14 +41,6 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
     { key: 'last30', label: '30 Tage' },
     { key: 'last90', label: '90 Tage' },
     { key: 'all', label: 'Gesamt' },
-];
-
-const SORT_COLUMNS: { key: SortKey; label: string }[] = [
-    { key: 'quantity', label: 'Menge' },
-    { key: 'revenue', label: 'Umsatz' },
-    { key: 'profit', label: 'Gewinn' },
-    { key: 'margin', label: 'Marge' },
-    { key: 'averageHoldingDays', label: 'Haltedauer' },
 ];
 
 const FILTER_STORAGE_KEY = 'wh-trading-performance-filter';
@@ -114,8 +63,6 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
     const [data, setData] = useState<PerformanceData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: 'profit', descending: true });
-    const [expandedTypeId, setExpandedTypeId] = useState<number | null>(null);
     const detailQuery = useMemo(() => {
         const range = _periodRange(filter.period);
         return { from: range.from, to: range.to, characterId: filter.characterId };
@@ -124,7 +71,6 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
     useEffect(() => {
         saveStored(FILTER_STORAGE_KEY, filter);
         setLoading(true);
-        setExpandedTypeId(null);
         fetchJson<PerformanceData>(`${urls.performance}?${new URLSearchParams(detailQuery).toString()}`)
             .then(result => {
                 setData(result);
@@ -133,22 +79,6 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
             .catch((e: Error) => setError(e.message))
             .finally(() => setLoading(false));
     }, [urls.performance, filter, detailQuery]);
-
-    const sortedItems = useMemo(() => {
-        if (!data) {
-            return [];
-        }
-        const items = [...data.items];
-        items.sort((first, second) => {
-            const difference = (first[sort.key] ?? -Infinity) - (second[sort.key] ?? -Infinity);
-            return sort.descending ? -difference : difference;
-        });
-        return items;
-    }, [data, sort]);
-
-    const toggleSort = (key: SortKey) => {
-        setSort(previous => ({ key, descending: previous.key === key ? !previous.descending : true }));
-    };
 
     return (
         <div className="flex flex-col gap-4">
@@ -184,68 +114,21 @@ export default function TradingPerformanceTab({ urls, context, typeIconTemplate,
                 <>
                     <SummaryCards summary={data.summary} />
                     <p className="text-[11px] text-eve-muted">
-                        Realisierter Gewinn aus Verkäufen von Items, die vorher gekauft wurden (Markt und Item-Tausch-Verträge mit Fremden, über alle Charaktere).
-                        Jeder Verkauf wird gegen die jüngsten Einkäufe gerechnet (LIFO), so zeigt sich die Marge pro Flip; teurer Altbestand bleibt in der Bestandstabelle sichtbar.
-                        Marktverkäufe ohne vorherigen Kauf (Loot, Produktion, Altbestand) zählen nicht, PLEX bleibt ganz außen vor (auch per Echtgeld kaufbar). Verkaufsverträge zählen als Ganzes, Items darin ohne Einkauf mit dem Jita-Buy-Preis des Verkaufstags.
-                        Verkaufssteuer wird pro Verkauf zugeordnet. Broker-Gebühren über den Zeitstempel der Order oder geschätzt über den Orderwert; im Zeitraum gezahlt, auch für noch offene Orders.
+                        Realisierter Gewinn aus Marktverkäufen von Items, die vorher am Markt gekauft wurden (über alle Charaktere, ein Kauf mit Charakter A deckt also auch einen Verkauf mit Charakter B).
+                        Jeder Verkauf wird gegen die jüngsten Einkäufe gerechnet (LIFO), so zeigt sich die Marge pro Flip. In Klammern steht, wie viel aus Einkäufen noch da ist.
+                        Marktverkäufe ohne vorherigen Kauf (Loot, Produktion, Altbestand) zählen nicht, PLEX bleibt ganz außen vor (auch per Echtgeld kaufbar). Verträge zählen nicht, weder als Kauf noch als Verkauf.
+                        Verkaufssteuer wird pro Verkauf zugeordnet. Broker-Gebühren über den Zeitstempel der Order oder geschätzt über den Orderwert. Gebühren werden auf die gekauften bzw. eingestellten Stück verteilt und zählen erst, wenn diese verkauft werden; so belastet eine große, oft angepasste Order nicht nur den ersten Verkauf.
                         {data.dataStart && ` Transaktionen liegen ab ${new Date(data.dataStart).toLocaleDateString('de-DE')} vor, ältere Einkäufe fehlen in der Rechnung.`}
                     </p>
-                    {data.contracts.length > 0 && <ContractTable contracts={data.contracts} typeIconTemplate={typeIconTemplate} />}
-                    <div className="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead>
-                                <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
-                                    <th className="p-2.5 text-left font-normal">Marktverkäufe ({sortedItems.length})</th>
-                                    {SORT_COLUMNS.map(column => (
-                                        <th
-                                            key={column.key}
-                                            onClick={() => toggleSort(column.key)}
-                                            className={`p-2.5 text-right font-normal cursor-pointer select-none hover:text-white ${sort.key === column.key ? 'text-white' : ''}`}
-                                        >
-                                            {column.label}{sort.key === column.key ? (sort.descending ? ' ▼' : ' ▲') : ''}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedItems.map(item => {
-                                    const isExpanded = expandedTypeId === item.typeId;
-                                    return (
-                                        <Fragment key={item.typeId}>
-                                            <ItemRow
-                                                item={item}
-                                                isExpanded={isExpanded}
-                                                isLastOpened={isLastOpened(lastOpened, item.typeId)}
-                                                typeIconTemplate={typeIconTemplate}
-                                                onClick={() => setExpandedTypeId(isExpanded ? null : item.typeId)}
-                                            />
-                                            {isExpanded && (
-                                                <tr className="border-b border-white/5">
-                                                    <td colSpan={SORT_COLUMNS.length + 1} className="p-0">
-                                                        <ItemDetail url={urls.performanceItem} query={detailQuery} typeId={item.typeId} onOpenMarket={onOpenMarket} />
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </Fragment>
-                                    );
-                                })}
-                                {sortedItems.length === 0 && (
-                                    <tr>
-                                        <td colSpan={SORT_COLUMNS.length + 1} className="p-6 text-center text-eve-muted">Keine Handelsverkäufe im Zeitraum.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    {data.positions.length > 0 && (
-                        <TradingPositionsTable
-                            positions={data.positions}
-                            detailUrl={urls.performanceItem}
-                            detailQuery={detailQuery}
-                            typeIconTemplate={typeIconTemplate}
-                            onOpenMarket={onOpenMarket}
-                        />
-                    )}
+                    <TradingItemTable
+                        items={data.items}
+                        positions={data.positions}
+                        detailUrl={urls.performanceItem}
+                        detailQuery={detailQuery}
+                        typeIconTemplate={typeIconTemplate}
+                        lastOpened={lastOpened}
+                        onOpenMarket={onOpenMarket}
+                    />
                 </>
             )}
         </div>
@@ -263,8 +146,8 @@ function SummaryCards({ summary }: { summary: PerformanceSummary }) {
             </Card>
             <Card label="Gebühren" valueClass="text-amber-400" value={formatIskShort(summary.salesTax + summary.brokerFees)}>
                 <div>Steuer {formatIskShort(summary.salesTax)}, Broker {formatIskShort(summary.brokerFees)}</div>
-                <div title="Broker-Gebühren gekaufter Items: verkaufte Items / gekauft, aber im Zeitraum nicht verkauft / keinem Item zuordenbar">
-                    Broker: {formatIskShort(summary.brokerFeesItems)} verkauft, {formatIskShort(summary.brokerFeesOpenPositions)} offen, {formatIskShort(summary.brokerFeesUnassigned)} unbekannt
+                <div title="Anteil der Kauf- und Verkaufsgebühren für die verkauften Stück / Buchungen, die keiner Order zuordenbar sind. Gebühren für noch nicht verkaufte Stück zählen erst beim Verkauf.">
+                    Broker: {formatIskShort(summary.brokerFeesItems)} auf Verkäufe (davon {formatIskShort(summary.brokerFeesBuyShare)} Kauf), {formatIskShort(summary.brokerFeesUnassigned)} unbekannt
                 </div>
                 <div title="Gebühren für Orders von Items ohne Einkauf (Loot, Produktion) zählen nicht zum Handel">
                     {formatIskShort(summary.brokerFeesExcluded)} für Loot/Produktion herausgerechnet
@@ -287,110 +170,6 @@ function Card({ label, value, valueClass = 'text-white', children }: { label: st
             <div className={`text-lg font-bold tabular-nums ${valueClass}`}>{value}</div>
             <div className="text-[11px] text-eve-muted">{children}</div>
         </div>
-    );
-}
-
-function ItemRow({ item, isExpanded, isLastOpened, typeIconTemplate, onClick }: { item: PerformanceItem; isExpanded: boolean; isLastOpened: boolean; typeIconTemplate: string; onClick: () => void }) {
-    return (
-        <tr onClick={onClick} title="Käufe, Verkäufe und Bestand anzeigen" className={`border-b border-white/5 cursor-pointer hover:bg-white/5 ${isLastOpened ? LAST_OPENED_ROW_CLASS : ''}`}>
-            <td className="p-2.5">
-                <div className="flex items-center gap-2">
-                    <span className={`text-eve-muted text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
-                    <img src={typeIconUrl(typeIconTemplate, item.typeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
-                    <div>
-                        <div className="text-white flex items-center gap-2">{item.itemName}{isLastOpened && <LastOpenedBadge />}</div>
-                        <div className="text-[10px] text-eve-muted">
-                            {formatNumber(item.sales)} Verkäufe
-                        </div>
-                    </div>
-                </div>
-            </td>
-            <td className="p-2.5 text-right tabular-nums">{formatNumber(item.quantity)}</td>
-            <td className="p-2.5 text-right tabular-nums">
-                <div className="text-white">{formatIskShort(item.revenue)}</div>
-                <div className="text-[10px] text-eve-muted">Einstand {formatIskShort(item.cost)}</div>
-            </td>
-            <td className={`p-2.5 text-right tabular-nums font-semibold ${item.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {formatIskShort(item.profit)}
-                <div className="text-[10px] text-eve-muted font-normal">Steuer {formatIskShort(item.salesTax)}, Broker {formatIskShort(item.brokerFees)}</div>
-            </td>
-            <td className="p-2.5 text-right tabular-nums">{item.margin !== null ? formatPercent(item.margin) : ''}</td>
-            <td className="p-2.5 text-right tabular-nums text-eve-muted">
-                {item.averageHoldingDays !== null ? `${formatNumber(item.averageHoldingDays, 1)} Tage` : ''}
-            </td>
-        </tr>
-    );
-}
-
-function ContractTable({ contracts, typeIconTemplate }: { contracts: PerformanceContract[]; typeIconTemplate: string }) {
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-
-    return (
-        <div className="bg-eve-card border border-eve-border shadow-eve rounded-lg overflow-x-auto">
-            <table className="w-full text-xs">
-                <thead>
-                    <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-eve-muted">
-                        <th className="p-2.5 text-left font-normal">Verkaufsverträge ({contracts.length})</th>
-                        <th className="p-2.5 text-right font-normal">Abgeschlossen</th>
-                        <th className="p-2.5 text-right font-normal">Preis</th>
-                        <th className="p-2.5 text-right font-normal">Gewinn</th>
-                        <th className="p-2.5 text-right font-normal">Marge</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {contracts.map(contract => {
-                        const isExpanded = expandedId === contract.contractId;
-                        const otherCount = contract.positions.length - 1;
-                        return (
-                            <ContractRows
-                                key={contract.contractId}
-                                contract={contract}
-                                title={otherCount > 0 ? `${contract.mainItemName} + ${otherCount} Items` : contract.mainItemName}
-                                isExpanded={isExpanded}
-                                typeIconTemplate={typeIconTemplate}
-                                onToggle={() => setExpandedId(isExpanded ? null : contract.contractId)}
-                            />
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-function ContractRows({ contract, title, isExpanded, typeIconTemplate, onToggle }: { contract: PerformanceContract; title: string; isExpanded: boolean; typeIconTemplate: string; onToggle: () => void }) {
-    return (
-        <>
-            <tr onClick={onToggle} className="border-b border-white/5 cursor-pointer hover:bg-white/5">
-                <td className="p-2.5">
-                    <div className="flex items-center gap-2">
-                        <span className={`text-eve-muted text-[10px] transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
-                        <img src={typeIconUrl(typeIconTemplate, contract.mainTypeId)} alt="" className="w-6 h-6 rounded" loading="lazy" />
-                        <div className="text-white">{title}</div>
-                    </div>
-                </td>
-                <td className="p-2.5 text-right tabular-nums text-eve-muted">{new Date(contract.date).toLocaleDateString('de-DE')}</td>
-                <td className="p-2.5 text-right tabular-nums">
-                    <div className="text-white">{formatIskShort(contract.revenue)}</div>
-                    <div className="text-[10px] text-eve-muted">Einstand {formatIskShort(contract.cost)}</div>
-                </td>
-                <td className={`p-2.5 text-right tabular-nums font-semibold ${contract.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatIskShort(contract.profit)}</td>
-                <td className="p-2.5 text-right tabular-nums">{contract.margin !== null ? formatPercent(contract.margin) : ''}</td>
-            </tr>
-            {isExpanded && contract.positions.map(position => (
-                <tr key={position.typeId} className="border-b border-white/5 bg-black/20">
-                    <td className="py-1.5 pl-12 pr-2.5">
-                        <div className="flex items-center gap-2">
-                            <img src={typeIconUrl(typeIconTemplate, position.typeId)} alt="" className="w-5 h-5 rounded" loading="lazy" />
-                            <span className="text-eve-text">{formatNumber(position.quantity)} x {position.itemName}</span>
-                        </div>
-                    </td>
-                    <td className={`py-1.5 px-2.5 text-right text-[10px] ${position.costSource === 'purchase' ? 'text-eve-muted' : 'text-amber-400'}`}>{COST_SOURCE_LABELS[position.costSource]}</td>
-                    <td className="py-1.5 px-2.5 text-right tabular-nums text-eve-muted">Einstand {formatIskShort(position.cost)}</td>
-                    <td colSpan={2}></td>
-                </tr>
-            ))}
-        </>
     );
 }
 

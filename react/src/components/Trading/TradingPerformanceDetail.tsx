@@ -18,12 +18,12 @@ interface DetailEntry {
     date: string;
     characterId: number;
     isBuy: boolean;
-    isContract: boolean;
     quantity: number;
     unitPrice: number;
     matchedQuantity?: number;
     unitCost?: number | null;
     salesTax?: number;
+    brokerFee?: number;
     profit?: number | null;
 }
 
@@ -103,8 +103,8 @@ export default function ItemDetail({ url, query, typeId, onOpenMarket }: ItemDet
                         <th className="py-1.5 px-2 text-left font-normal">Art</th>
                         <th className="py-1.5 px-2 text-right font-normal">Menge</th>
                         <th className="py-1.5 px-2 text-right font-normal">Preis</th>
-                        <th className="py-1.5 px-2 text-right font-normal">Einstand</th>
-                        <th className="py-1.5 px-2 text-right font-normal">Gewinn</th>
+                        <th className="py-1.5 px-2 text-right font-normal" title="Inklusive anteiliger Kaufgebühr">Einstand</th>
+                        <th className="py-1.5 px-2 text-right font-normal" title="Nach Verkaufssteuer und anteiligen Broker-Gebühren">Gewinn</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,7 +141,7 @@ function EntryRow({ entry, characterName }: { entry: DetailEntry; characterName:
             <td className="py-1 px-2 text-eve-muted whitespace-nowrap">{new Date(entry.date).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</td>
             <td className="py-1 px-2 text-eve-muted">{characterName}</td>
             <td className={`py-1 px-2 ${entry.isBuy ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {entry.isBuy ? (entry.isContract ? 'Kauf (Vertrag)' : 'Kauf') : 'Verkauf'}
+                {entry.isBuy ? 'Kauf' : 'Verkauf'}
             </td>
             <td className="py-1 px-2 text-right tabular-nums" title={isUnmatched ? 'Teilweise ohne Einkauf (Loot, Produktion, Altbestand), dieser Teil zählt nicht' : ''}>
                 {formatNumber(entry.quantity)}

@@ -13,7 +13,7 @@ use Doctrine\DBAL\Connection;
  */
 class TradingBrokerFeeAttributor
 {
-    // Orders run at most 90 days, older states cannot belong to a fee in the period
+    // Orders run at most 90 days, older states cannot belong to a fee in the range
     private const MAX_ORDER_DAYS = 90;
     // Effective fee rate when a character has no exactly matched fee to learn from
     private const DEFAULT_FEE_RATE = 0.015;
@@ -23,14 +23,15 @@ class TradingBrokerFeeAttributor
     public function __construct(private readonly Connection $connection) {}
 
     /**
+     * Every broker fee booking in the range with the order it most likely belongs to.
+     *
      * @param int[] $characterIds
-     * @return array{byType: array<int, array{buy: float, sell: float}>, unassigned: float, exactCount: int, estimatedCount: int, totalCount: int}
+     * @return list<array{characterId: int, timestamp: int, amount: float, typeId: ?int, isBuy: ?bool, isExact: bool}> TypeId null when unassigned
      */
     public function attribute(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        $result = ['byType' => [], 'unassigned' => 0.0, 'exactCount' => 0, 'estimatedCount' => 0, 'totalCount' => 0];
         if ($characterIds === []) {
-            return $result;
+            return [];
         }
 
         $fees = $this->_loadFees($characterIds, $from, $to);
@@ -43,17 +44,16 @@ class TradingBrokerFeeAttributor
             $ordersByCharacter[$state['characterId']][$state['orderId']][] = $state;
         }
 
+        $attributedFees = [];
         $unmatchedFees = [];
         $feeRates = [];
         foreach ($fees as $fee) {
-            $result['totalCount']++;
             $state = $statesBySecond[$fee['characterId'] . '|' . $fee['date']] ?? null;
             if ($state === null) {
                 $unmatchedFees[] = $fee;
                 continue;
             }
-            $result['byType'] = $this->_addFee($result['byType'], $state, $fee['amount']);
-            $result['exactCount']++;
+            $attributedFees[] = $this->_attributedFee($fee, $state, true);
             if ($state['value'] > 0) {
                 $feeRates[$fee['characterId']][] = $fee['amount'] / $state['value'];
             }
@@ -62,28 +62,27 @@ class TradingBrokerFeeAttributor
         foreach ($unmatchedFees as $fee) {
             $feeRate = $this->_median($feeRates[$fee['characterId']] ?? []) ?? self::DEFAULT_FEE_RATE;
             $state = $this->_estimateState($fee, $ordersByCharacter[$fee['characterId']] ?? [], $feeRate);
-            if ($state === null) {
-                $result['unassigned'] += $fee['amount'];
-                continue;
-            }
-            $result['byType'] = $this->_addFee($result['byType'], $state, $fee['amount']);
-            $result['estimatedCount']++;
+            $attributedFees[] = $this->_attributedFee($fee, $state, false);
         }
 
-        return $result;
+        return $attributedFees;
     }
 
     /**
-     * @param array<int, array{buy: float, sell: float}> $byType
-     * @param array<string, mixed> $state
-     * @return array<int, array{buy: float, sell: float}>
+     * @param array{characterId: int, date: string, amount: float} $fee
+     * @param ?array<string, mixed> $state
+     * @return array{characterId: int, timestamp: int, amount: float, typeId: ?int, isBuy: ?bool, isExact: bool}
      */
-    private function _addFee(array $byType, array $state, float $amount): array
+    private function _attributedFee(array $fee, ?array $state, bool $isExact): array
     {
-        $byType[$state['typeId']] ??= ['buy' => 0.0, 'sell' => 0.0];
-        $byType[$state['typeId']][$state['isBuy'] ? 'buy' : 'sell'] += $amount;
-
-        return $byType;
+        return [
+            'characterId' => $fee['characterId'],
+            'timestamp' => (int)strtotime($fee['date'] . ' UTC'),
+            'amount' => $fee['amount'],
+            'typeId' => $state === null ? null : (int)$state['typeId'],
+            'isBuy' => $state === null ? null : (bool)$state['isBuy'],
+            'isExact' => $isExact,
+        ];
     }
 
     /**

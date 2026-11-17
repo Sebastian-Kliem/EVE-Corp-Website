@@ -3,27 +3,26 @@
 namespace App\Service\Trading;
 
 use App\Entity\EveCharacter;
-use App\Service\JitaPriceService;
 use App\Service\Market\MarketHub;
 use App\Service\SdeService;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 
 /**
- * Realised trading profit of a user: sales are matched against the newest own purchases (LIFO, market and contracts).
+ * Realised market trading profit of a user: sales are matched against the newest own market purchases (LIFO).
  *
  * Market sales without a preceding purchase (loot, production, old stock) carry no cost basis and are left out completely.
- * Sale contracts are reported as a whole, items in them without a purchase are valued at the Jita buy price of the sale day.
+ * Contracts are ignored, delivery contracts into wormholes distort the cost of single items.
  */
 class TradingPerformanceCalculator
 {
     private const SECONDS_PER_DAY = 86400;
+    private const EVE_START_DATE = '2003-05-06';
     // PLEX can also be bought for real money into the vault, which ESI does not show
     private const IGNORED_TYPE_IDS = [44992 => true];
 
     public function __construct(
         private readonly Connection $connection,
-        private readonly JitaPriceService $jitaPriceService,
         private readonly SdeService $sdeService,
         private readonly TradingBrokerFeeAttributor $brokerFeeAttributor
     ) {}
@@ -47,12 +46,12 @@ class TradingPerformanceCalculator
         $events = $this->_loadEvents($characterIds);
         $taxBySale = $this->_loadSalesTax($characterIds);
         $reportedCharacterIds = $characterId === null ? $characterIds : [$characterId];
+        $fees = $this->brokerFeeAttributor->attribute($characterIds, new \DateTimeImmutable(self::EVE_START_DATE), new \DateTimeImmutable());
+        $feeRates = $this->_feeRates($events, $fees, $this->_loadListedSellValues($characterIds));
 
         $stock = new TradingLotStock();
         $items = [];
         $detailEntries = [];
-        $contracts = [];
-        $purchasedTypeIds = [];
         // Sold and cost-matched units per type over all time, the rest of the sales are loot or production
         $soldQuantities = [];
         $matchedQuantities = [];
@@ -61,21 +60,11 @@ class TradingPerformanceCalculator
             $isInPeriod = $event['timestamp'] >= $from->getTimestamp() && $event['timestamp'] < $to->getTimestamp();
             $isReported = $isInPeriod && in_array($event['characterId'], $reportedCharacterIds, true);
 
-            if ($event['kind'] === 'contractSale') {
-                $contract = $this->_processContractSale($stock, $event);
-                if ($isReported) {
-                    $contracts[] = $contract;
-                }
-                continue;
-            }
-
             $typeId = $event['typeId'];
             $isDetail = $isReported && $typeId === $detailTypeId;
             if ($event['isBuy']) {
-                $stock->add($typeId, $event['quantity'], $event['unitPrice'], $event['timestamp']);
-                if ($event['timestamp'] < $to->getTimestamp()) {
-                    $purchasedTypeIds[$typeId] = true;
-                }
+                $unitFee = $event['unitPrice'] * ($feeRates['buy'][$typeId] ?? 0.0);
+                $stock->add($typeId, $event['quantity'], $event['unitPrice'], $event['timestamp'], $unitFee);
                 if ($isDetail) {
                     $detailEntries[] = $this->_detailEntry($event, null, 0.0);
                 }
@@ -86,8 +75,9 @@ class TradingPerformanceCalculator
             $soldQuantities[$typeId] = ($soldQuantities[$typeId] ?? 0.0) + $event['quantity'];
             $matchedQuantities[$typeId] = ($matchedQuantities[$typeId] ?? 0.0) + $taken['quantity'];
             $tax = ($taxBySale[$event['taxKey']] ?? 0.0) * $event['taxShare'] * ($taken['quantity'] / $event['quantity']);
+            $sellFee = $taken['quantity'] * $event['unitPrice'] * ($feeRates['sell'][$typeId] ?? 0.0);
             if ($isDetail) {
-                $detailEntries[] = $this->_detailEntry($event, $taken, $tax);
+                $detailEntries[] = $this->_detailEntry($event, $taken, $tax, $sellFee);
             }
             if ($taken['quantity'] <= 0 || !$isReported) {
                 continue;
@@ -97,6 +87,8 @@ class TradingPerformanceCalculator
                 'quantity' => $taken['quantity'],
                 'revenue' => $taken['quantity'] * $event['unitPrice'],
                 'cost' => $taken['cost'],
+                'brokerFee' => $taken['fee'] + $sellFee,
+                'buyFee' => $taken['fee'],
                 'tax' => $tax,
                 'holdingSeconds' => $taken['holdingSeconds'],
             ];
@@ -108,9 +100,9 @@ class TradingPerformanceCalculator
         foreach ($soldQuantities as $typeId => $soldQuantity) {
             $tradedSellShares[$typeId] = $soldQuantity > 0 ? $matchedQuantities[$typeId] / $soldQuantity : 1.0;
         }
-        $brokerFees = $this->_splitBrokerFees($reportedCharacterIds, $from, $to, $purchasedTypeIds, $tradedSellShares);
+        $brokerFees = $this->_summarizeBrokerFees($fees, $reportedCharacterIds, $from, $to, $feeRates['buy'], $tradedSellShares);
 
-        $result = $this->_buildResult($items, $contracts, $saleCount, $brokerFees, $characterIds);
+        $result = $this->_buildResult($items, $saleCount, $brokerFees, $characterIds);
         // Types never sold on the market are production inputs, not trading stock
         $tradedStock = array_intersect_key($stock->remaining(), $soldQuantities);
         $result['positions'] = $this->_buildPositions($tradedStock, $characterIds);
@@ -127,16 +119,15 @@ class TradingPerformanceCalculator
 
     /**
      * @param array<string, mixed> $event
-     * @param ?array{quantity: float, cost: float, holdingSeconds: float} $taken Null for purchases
+     * @param ?array{quantity: float, cost: float, fee: float, holdingSeconds: float} $taken Null for purchases
      * @return array<string, mixed>
      */
-    private function _detailEntry(array $event, ?array $taken, float $tax): array
+    private function _detailEntry(array $event, ?array $taken, float $tax, float $sellFee = 0.0): array
     {
         $entry = [
             'date' => (new \DateTimeImmutable('@' . $event['timestamp']))->format(\DateTimeInterface::ATOM),
             'characterId' => $event['characterId'],
             'isBuy' => $event['isBuy'],
-            'isContract' => $event['isContract'] ?? false,
             'quantity' => $event['quantity'],
             'unitPrice' => $event['unitPrice'],
         ];
@@ -147,9 +138,11 @@ class TradingPerformanceCalculator
         $revenue = $taken['quantity'] * $event['unitPrice'];
         return $entry + [
             'matchedQuantity' => $taken['quantity'],
-            'unitCost' => $taken['quantity'] > 0 ? $taken['cost'] / $taken['quantity'] : null,
+            // Including the buy order fee share
+            'unitCost' => $taken['quantity'] > 0 ? ($taken['cost'] + $taken['fee']) / $taken['quantity'] : null,
             'salesTax' => $tax,
-            'profit' => $taken['quantity'] > 0 ? $revenue - $taken['cost'] - $tax : null,
+            'brokerFee' => $sellFee,
+            'profit' => $taken['quantity'] > 0 ? $revenue - $taken['cost'] - $taken['fee'] - $tax - $sellFee : null,
         ];
     }
 
@@ -247,128 +240,108 @@ class TradingPerformanceCalculator
     }
 
     /**
-     * Broker fees of item types never bought (loot, production) are no trading cost and left out.
-     * Sell order fees of bought types count with the share of units that were sold from purchases.
+     * Broker fees per traded ISK and type and order side; each unit carries its share into the sale, so a fee for a large
+     * order spreads over all its units instead of hitting the first sale. Sell fees also spread over units still listed.
+     * Only trades after the first fee booking of the character count, older journal entries are not synced.
+     *
+     * @param list<array<string, mixed>> $events
+     * @param list<array{characterId: int, timestamp: int, amount: float, typeId: ?int, isBuy: ?bool, isExact: bool}> $fees
+     * @param array<int, float> $listedSellValues
+     * @return array{buy: array<int, float>, sell: array<int, float>} Buy rates for every bought type
+     */
+    private function _feeRates(array $events, array $fees, array $listedSellValues): array
+    {
+        $firstFeeTimestamps = [];
+        $feeSums = ['buy' => [], 'sell' => []];
+        foreach ($fees as $fee) {
+            $firstFeeTimestamps[$fee['characterId']] = min($firstFeeTimestamps[$fee['characterId']] ?? PHP_INT_MAX, $fee['timestamp']);
+            if ($fee['typeId'] !== null) {
+                $side = $fee['isBuy'] ? 'buy' : 'sell';
+                $feeSums[$side][$fee['typeId']] = ($feeSums[$side][$fee['typeId']] ?? 0.0) + $fee['amount'];
+            }
+        }
+
+        $tradedValues = ['buy' => [], 'sell' => $listedSellValues];
+        // Types bought only before the fee data start still count as traded, without a known fee
+        $rates = ['buy' => [], 'sell' => []];
+        foreach ($events as $event) {
+            $side = $event['isBuy'] ? 'buy' : 'sell';
+            if ($event['isBuy']) {
+                $rates['buy'][$event['typeId']] = 0.0;
+            }
+            if ($event['timestamp'] >= ($firstFeeTimestamps[$event['characterId']] ?? PHP_INT_MAX)) {
+                $tradedValues[$side][$event['typeId']] = ($tradedValues[$side][$event['typeId']] ?? 0.0) + $event['quantity'] * $event['unitPrice'];
+            }
+        }
+
+        foreach ($tradedValues as $side => $values) {
+            foreach ($values as $typeId => $value) {
+                if ($value > 0) {
+                    $rates[$side][$typeId] = ($feeSums[$side][$typeId] ?? 0.0) / $value;
+                }
+            }
+        }
+
+        return $rates;
+    }
+
+    /**
+     * Value of the own sell orders that are still listed.
      *
      * @param int[] $characterIds
-     * @param array<int, bool> $purchasedTypeIds
-     * @param array<int, float> $tradedSellShares
-     * @return array{byType: array<int, float>, unassigned: float, excluded: float, exactCount: int, estimatedCount: int, totalCount: int}
-     */
-    private function _splitBrokerFees(array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to, array $purchasedTypeIds, array $tradedSellShares): array
-    {
-        $attribution = $this->brokerFeeAttributor->attribute($characterIds, $from, $to);
-
-        $tradingFees = [];
-        $excludedFees = 0.0;
-        foreach ($attribution['byType'] as $typeId => $fee) {
-            if (!isset($purchasedTypeIds[$typeId])) {
-                $excludedFees += $fee['buy'] + $fee['sell'];
-                continue;
-            }
-            $tradedSellFee = $fee['sell'] * ($tradedSellShares[$typeId] ?? 1.0);
-            $tradingFees[$typeId] = $fee['buy'] + $tradedSellFee;
-            $excludedFees += $fee['sell'] - $tradedSellFee;
-        }
-
-        return [
-            'byType' => $tradingFees,
-            'unassigned' => $attribution['unassigned'],
-            'excluded' => $excludedFees,
-            'exactCount' => $attribution['exactCount'],
-            'estimatedCount' => $attribution['estimatedCount'],
-            'totalCount' => $attribution['totalCount'],
-        ];
-    }
-
-    /**
-     * Takes the contract items out of the stock and compares the contract price with their cost.
-     *
-     * @param array<string, mixed> $event
-     * @return array<string, mixed>
-     */
-    private function _processContractSale(TradingLotStock $stock, array $event): array
-    {
-        $buyPrices = null;
-        $positions = [];
-        $totalCost = 0.0;
-        foreach ($event['items'] as $typeId => $quantity) {
-            $taken = $stock->take($typeId, $quantity, $event['timestamp']);
-            $matchedQuantity = $taken['quantity'];
-
-            $cost = $taken['cost'];
-            $remainingQuantity = $quantity - $matchedQuantity;
-            $costSource = 'purchase';
-            if ($remainingQuantity > 0) {
-                // Only looked up for contracts with own stock, most contracts are fully covered by purchases
-                $buyPrices ??= $this->_loadBuyPrices(array_keys($event['items']), $event['timestamp']);
-                $buyPrice = $buyPrices[$typeId] ?? null;
-                $cost += $remainingQuantity * ($buyPrice ?? 0.0);
-                $costSource = $buyPrice === null ? 'none' : ($matchedQuantity > 0 ? 'mixed' : 'buyPrice');
-            }
-
-            $totalCost += $cost;
-            $positions[] = [
-                'typeId' => $typeId,
-                'itemName' => $this->sdeService->getItemName($typeId),
-                'quantity' => $quantity,
-                'cost' => $cost,
-                'costSource' => $costSource,
-            ];
-        }
-        usort($positions, fn(array $first, array $second): int => $second['cost'] <=> $first['cost']);
-
-        $profit = $event['price'] - $totalCost;
-
-        return [
-            'contractId' => $event['contractId'],
-            'date' => (new \DateTimeImmutable('@' . $event['timestamp']))->format(\DateTimeInterface::ATOM),
-            'mainItemName' => $positions[0]['itemName'] ?? '',
-            'mainTypeId' => $positions[0]['typeId'] ?? 0,
-            'revenue' => $event['price'],
-            'cost' => $totalCost,
-            'profit' => $profit,
-            'margin' => $event['price'] > 0 ? $profit / $event['price'] : null,
-            'positions' => $positions,
-        ];
-    }
-
-    /**
-     * Jita buy side of the sale day: lowest traded price in The Forge (history), else the current best buy order.
-     *
-     * @param int[] $typeIds
      * @return array<int, float>
      */
-    private function _loadBuyPrices(array $typeIds, int $timestamp): array
+    private function _loadListedSellValues(array $characterIds): array
     {
-        $prices = [];
-        $historyRows = $this->connection->fetchAllAssociative(
-            'SELECT type_id, lowest FROM market_history WHERE region_id = :regionId AND date = :date AND type_id IN (:typeIds)',
-            [
-                'regionId' => MarketHub::HUBS[MarketHub::JITA]['regionId'],
-                'date' => gmdate('Y-m-d', $timestamp),
-                'typeIds' => $typeIds,
-            ],
-            ['typeIds' => ArrayParameterType::INTEGER]
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT type_id, SUM(price * volume_remain) AS listed_value FROM eve_character_market_order
+             WHERE character_id IN (:characterIds) AND is_buy = 0 AND is_corporation = 0 GROUP BY type_id',
+            ['characterIds' => $characterIds],
+            ['characterIds' => ArrayParameterType::INTEGER]
         );
-        foreach ($historyRows as $row) {
-            $prices[(int)$row['type_id']] = (float)$row['lowest'];
+
+        $values = [];
+        foreach ($rows as $row) {
+            $values[(int)$row['type_id']] = (float)$row['listed_value'];
         }
 
-        $missingTypeIds = array_values(array_diff($typeIds, array_keys($prices)));
-        if ($missingTypeIds === []) {
-            return $prices;
-        }
-        $currentRows = $this->connection->fetchAllAssociative(
-            'SELECT type_id, buy_best FROM market_price WHERE location_id = :stationId AND type_id IN (:typeIds) AND buy_best IS NOT NULL',
-            ['stationId' => MarketHub::JITA, 'typeIds' => $missingTypeIds],
-            ['typeIds' => ArrayParameterType::INTEGER]
-        );
-        foreach ($currentRows as $row) {
-            $prices[(int)$row['type_id']] = (float)$row['buy_best'];
+        return $values;
+    }
+
+    /**
+     * Broker fee bookings in the period for the match statistics. The fees themselves reach the result through the
+     * sold units (see _feeRates); fees of types never bought (loot, production) and the sell fee share of untraded
+     * units are no trading cost, unassigned bookings are charged to the period.
+     *
+     * @param list<array{characterId: int, timestamp: int, amount: float, typeId: ?int, isBuy: ?bool, isExact: bool}> $fees
+     * @param int[] $characterIds
+     * @param array<int, float> $buyFeeRates
+     * @param array<int, float> $tradedSellShares
+     * @return array{unassigned: float, excluded: float, exactCount: int, estimatedCount: int, totalCount: int}
+     */
+    private function _summarizeBrokerFees(array $fees, array $characterIds, \DateTimeImmutable $from, \DateTimeImmutable $to, array $buyFeeRates, array $tradedSellShares): array
+    {
+        $result = ['unassigned' => 0.0, 'excluded' => 0.0, 'exactCount' => 0, 'estimatedCount' => 0, 'totalCount' => 0];
+        foreach ($fees as $fee) {
+            if ($fee['timestamp'] < $from->getTimestamp() || $fee['timestamp'] >= $to->getTimestamp() || !in_array($fee['characterId'], $characterIds, true)) {
+                continue;
+            }
+            $result['totalCount']++;
+            $typeId = $fee['typeId'];
+            if ($typeId === null) {
+                $result['unassigned'] += $fee['amount'];
+                continue;
+            }
+            $result[$fee['isExact'] ? 'exactCount' : 'estimatedCount']++;
+
+            if (!isset($buyFeeRates[$typeId])) {
+                $result['excluded'] += $fee['amount'];
+            } elseif (!$fee['isBuy']) {
+                $result['excluded'] += $fee['amount'] * (1 - ($tradedSellShares[$typeId] ?? 1.0));
+            }
         }
 
-        return $prices;
+        return $result;
     }
 
     /**
@@ -383,6 +356,8 @@ class TradingPerformanceCalculator
             'quantity' => 0.0,
             'revenue' => 0.0,
             'cost' => 0.0,
+            'brokerFees' => 0.0,
+            'buyFees' => 0.0,
             'tax' => 0.0,
             'holdingSeconds' => 0.0,
             'sales' => 0,
@@ -391,6 +366,8 @@ class TradingPerformanceCalculator
         $item['quantity'] += $sale['quantity'];
         $item['revenue'] += $sale['revenue'];
         $item['cost'] += $sale['cost'];
+        $item['brokerFees'] += $sale['brokerFee'];
+        $item['buyFees'] += $sale['buyFee'];
         $item['tax'] += $sale['tax'];
         $item['holdingSeconds'] += $sale['holdingSeconds'];
         $item['sales']++;
@@ -399,7 +376,7 @@ class TradingPerformanceCalculator
     }
 
     /**
-     * Market transactions, contract purchases split into items and whole sale contracts, oldest first.
+     * Market transactions, oldest first.
      *
      * @param int[] $characterIds
      * @return list<array<string, mixed>>
@@ -407,9 +384,6 @@ class TradingPerformanceCalculator
     private function _loadEvents(array $characterIds): array
     {
         $events = $this->_loadMarketEvents($characterIds);
-        foreach ($this->_loadContractEvents($characterIds) as $event) {
-            $events[] = $event;
-        }
 
         // Purchases first within the same second, so an instant resale finds its cost basis
         usort($events, function (array $first, array $second): int {
@@ -448,7 +422,6 @@ class TradingPerformanceCalculator
             $taxKey = $row['character_id'] . '|' . $row['date'];
             $isBuy = (bool)$row['is_buy'];
             $events[] = [
-                'kind' => 'trade',
                 'characterId' => (int)$row['character_id'],
                 'timestamp' => $this->_toTimestamp((string)$row['date']),
                 'typeId' => (int)$row['type_id'],
@@ -462,127 +435,6 @@ class TradingPerformanceCalculator
         }
 
         return $events;
-    }
-
-    /**
-     * Finished item exchanges between an own character and an outsider; for purchases the price is split by the Jita buy value of the day.
-     *
-     * @param int[] $characterIds
-     * @return list<array<string, mixed>>
-     */
-    private function _loadContractEvents(array $characterIds): array
-    {
-        $rows = $this->connection->fetchAllAssociative(
-            "SELECT contract_id, MIN(character_id) AS character_id, price, date_completed, items, issuer_id, acceptor_id
-             FROM eve_character_contract
-             WHERE character_id IN (:characterIds) AND type = 'item_exchange' AND status = 'finished'
-               AND for_corporation = 0 AND price > 0 AND date_completed IS NOT NULL
-             GROUP BY contract_id, price, date_completed, items, issuer_id, acceptor_id",
-            ['characterIds' => $characterIds],
-            ['characterIds' => ArrayParameterType::INTEGER]
-        );
-
-        $averagePrices = $this->jitaPriceService->getGlobalPrices();
-        $events = [];
-        foreach ($rows as $row) {
-            $isIssuerOwn = in_array((int)$row['issuer_id'], $characterIds, true);
-            $isAcceptorOwn = in_array((int)$row['acceptor_id'], $characterIds, true);
-            // Transfers between own characters are no trade
-            if ($isIssuerOwn === $isAcceptorOwn) {
-                continue;
-            }
-            $items = $this->_contractItems((string)$row['items']);
-            if ($items === null) {
-                continue;
-            }
-
-            $ownCharacterId = $isIssuerOwn ? (int)$row['issuer_id'] : (int)$row['acceptor_id'];
-            $timestamp = $this->_toTimestamp((string)$row['date_completed']);
-            if ($isIssuerOwn) {
-                $events[] = [
-                    'kind' => 'contractSale',
-                    'characterId' => $ownCharacterId,
-                    'timestamp' => $timestamp,
-                    'contractId' => (string)$row['contract_id'],
-                    'price' => (float)$row['price'],
-                    'items' => $items,
-                    'isBuy' => false,
-                ];
-                continue;
-            }
-            // Buyback contracts are priced at Jita buy, the average price would shift the cost between the items
-            $splitPrices = $this->_loadBuyPrices(array_keys($items), $timestamp) + $averagePrices;
-            foreach ($this->_splitContractPrice($items, (float)$row['price'], $splitPrices) as $typeId => $split) {
-                $events[] = [
-                    'kind' => 'trade',
-                    'characterId' => $ownCharacterId,
-                    'timestamp' => $timestamp,
-                    'typeId' => $typeId,
-                    'quantity' => $split['quantity'],
-                    'unitPrice' => $split['unitPrice'],
-                    'isBuy' => true,
-                    'isContract' => true,
-                    'taxKey' => '',
-                    'taxShare' => 0.0,
-                ];
-            }
-        }
-
-        return $events;
-    }
-
-    /**
-     * Included items without blueprint copies, null for contracts that also request items in return.
-     *
-     * @return ?array<int, float> Type ID => quantity
-     */
-    private function _contractItems(string $itemsJson): ?array
-    {
-        $decoded = json_decode($itemsJson, true);
-        if (!is_array($decoded) || $decoded === []) {
-            return null;
-        }
-
-        $items = [];
-        foreach ($decoded as $item) {
-            if (empty($item['isIncluded'])) {
-                return null;
-            }
-            $typeId = (int)($item['typeId'] ?? 0);
-            if (!empty($item['isBlueprintCopy']) || isset(self::IGNORED_TYPE_IDS[$typeId])) {
-                continue;
-            }
-            $items[$typeId] = ($items[$typeId] ?? 0.0) + (float)($item['quantity'] ?? 0);
-        }
-
-        return $items === [] ? null : $items;
-    }
-
-    /**
-     * @param array<int, float> $items
-     * @param array<int, float> $prices
-     * @return array<int, array{quantity: float, unitPrice: float}>
-     */
-    private function _splitContractPrice(array $items, float $contractPrice, array $prices): array
-    {
-        $totalValue = 0.0;
-        $totalQuantity = 0.0;
-        foreach ($items as $typeId => $quantity) {
-            $totalValue += ($prices[$typeId] ?? 0.0) * $quantity;
-            $totalQuantity += $quantity;
-        }
-
-        $split = [];
-        foreach ($items as $typeId => $quantity) {
-            if ($quantity <= 0) {
-                continue;
-            }
-            // Without any known price every unit gets the same share
-            $share = $totalValue > 0 ? ($prices[$typeId] ?? 0.0) * $quantity / $totalValue : $quantity / $totalQuantity;
-            $split[$typeId] = ['quantity' => $quantity, 'unitPrice' => $contractPrice * $share / $quantity];
-        }
-
-        return $split;
     }
 
     /**
@@ -625,35 +477,25 @@ class TradingPerformanceCalculator
 
     /**
      * @param array<int, array<string, mixed>> $items
-     * @param list<array<string, mixed>> $contracts
-     * @param array{byType: array<int, float>, unassigned: float, excluded: float, exactCount: int, estimatedCount: int, totalCount: int} $brokerFees
+     * @param array{unassigned: float, excluded: float, exactCount: int, estimatedCount: int, totalCount: int} $brokerFees
      * @param int[] $characterIds
      * @return array<string, mixed>
      */
-    private function _buildResult(array $items, array $contracts, int $saleCount, array $brokerFees, array $characterIds): array
+    private function _buildResult(array $items, int $saleCount, array $brokerFees, array $characterIds): array
     {
-        $summary = ['revenue' => 0.0, 'cost' => 0.0, 'tax' => 0.0, 'itemBrokerFees' => 0.0];
-        $openPositionFees = $brokerFees['byType'];
+        $summary = ['revenue' => 0.0, 'cost' => 0.0, 'tax' => 0.0, 'itemBrokerFees' => 0.0, 'buyFees' => 0.0];
         $rows = [];
-        foreach ($items as $typeId => $item) {
-            $item['brokerFees'] = $openPositionFees[$typeId] ?? 0.0;
-            unset($openPositionFees[$typeId]);
+        foreach ($items as $item) {
             $summary['revenue'] += $item['revenue'];
             $summary['cost'] += $item['cost'];
             $summary['tax'] += $item['tax'];
             $summary['itemBrokerFees'] += $item['brokerFees'];
+            $summary['buyFees'] += $item['buyFees'];
             $rows[] = $this->_formatItem($item);
         }
         usort($rows, fn(array $first, array $second): int => $second['profit'] <=> $first['profit']);
-        foreach ($contracts as $contract) {
-            $summary['revenue'] += $contract['revenue'];
-            $summary['cost'] += $contract['cost'];
-        }
-        usort($contracts, fn(array $first, array $second): int => $second['date'] <=> $first['date']);
 
-        // Fees of bought items without a sale in the period still belong to trading (open positions)
-        $openFees = array_sum($openPositionFees);
-        $totalBrokerFees = $summary['itemBrokerFees'] + $openFees + $brokerFees['unassigned'];
+        $totalBrokerFees = $summary['itemBrokerFees'] + $brokerFees['unassigned'];
         $grossProfit = $summary['revenue'] - $summary['cost'];
         $netProfit = $grossProfit - $summary['tax'] - $totalBrokerFees;
 
@@ -665,7 +507,7 @@ class TradingPerformanceCalculator
                 'salesTax' => $summary['tax'],
                 'brokerFees' => $totalBrokerFees,
                 'brokerFeesItems' => $summary['itemBrokerFees'],
-                'brokerFeesOpenPositions' => $openFees,
+                'brokerFeesBuyShare' => $summary['buyFees'],
                 'brokerFeesUnassigned' => $brokerFees['unassigned'],
                 'brokerFeesExcluded' => $brokerFees['excluded'],
                 'feeBookings' => $brokerFees['totalCount'],
@@ -673,11 +515,10 @@ class TradingPerformanceCalculator
                 'feeBookingsEstimated' => $brokerFees['estimatedCount'],
                 'netProfit' => $netProfit,
                 'margin' => $summary['revenue'] > 0 ? $netProfit / $summary['revenue'] : null,
-                'sales' => $saleCount + count($contracts),
+                'sales' => $saleCount,
                 'orderActions' => $brokerFees['totalCount'],
             ],
             'items' => $rows,
-            'contracts' => $contracts,
             'dataStart' => $this->_findDataStart($characterIds),
         ];
     }
@@ -713,12 +554,11 @@ class TradingPerformanceCalculator
         return [
             'summary' => [
                 'revenue' => 0.0, 'cost' => 0.0, 'grossProfit' => 0.0, 'salesTax' => 0.0, 'brokerFees' => 0.0,
-                'brokerFeesItems' => 0.0, 'brokerFeesOpenPositions' => 0.0, 'brokerFeesUnassigned' => 0.0, 'brokerFeesExcluded' => 0.0,
+                'brokerFeesItems' => 0.0, 'brokerFeesBuyShare' => 0.0, 'brokerFeesUnassigned' => 0.0, 'brokerFeesExcluded' => 0.0,
                 'feeBookings' => 0, 'feeBookingsExact' => 0, 'feeBookingsEstimated' => 0,
                 'netProfit' => 0.0, 'margin' => null, 'sales' => 0, 'orderActions' => 0,
             ],
             'items' => [],
-            'contracts' => [],
             'positions' => [],
             'dataStart' => null,
         ];
