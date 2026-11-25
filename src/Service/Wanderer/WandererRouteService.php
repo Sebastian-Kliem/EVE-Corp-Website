@@ -16,6 +16,8 @@ use Psr\Log\LoggerInterface;
 
 class WandererRouteService
 {
+    public const HOME_SYSTEM_SETTING_KEY = 'wanderer_home_system';
+
     public function __construct(
         private readonly WandererRouteRuleRepository $ruleRepository,
         private readonly EsiClient $esiClient,
@@ -24,6 +26,19 @@ class WandererRouteService
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger
     ) {}
+
+    /**
+     * Resolves the configured home system name to its solar system ID.
+     */
+    public function resolveHomeSystemId(): ?int
+    {
+        $homeSystemName = $this->discordWebhookService->getSetting(self::HOME_SYSTEM_SETTING_KEY);
+        if ($homeSystemName === null) {
+            return null;
+        }
+
+        return $this->sdeService->getSolarSystemIdByName($homeSystemName);
+    }
 
     /**
      * Evaluates all active route rules for a new map connection (from the Wanderer API).
@@ -274,7 +289,7 @@ class WandererRouteService
             return [];
         }
 
-        if (!$this->_isWormholeConnection($connection)) {
+        if (!WandererHomeChain::isWormholeConnection($connection)) {
             $this->logger->info(sprintf(
                 '[WandererRouteService] Ignored connection between %s and %s (not a wormhole connection).',
                 $connection['solar_system_source'],
@@ -322,39 +337,5 @@ class WandererRouteService
             SecurityStatus::LOWSEC => DiscordColor::ORANGE,
             default => DiscordColor::RED,
         };
-    }
-
-    /**
-     * Checks if a connection is potentially a wormhole connection (i.e. not a pure K-space stargate jump).
-     */
-    private function _isWormholeConnection(array $data): bool
-    {
-        $sourceId = isset($data['solar_system_source']) ? (int)$data['solar_system_source'] : 0;
-        $targetId = isset($data['solar_system_target']) ? (int)$data['solar_system_target'] : 0;
-
-        // 1. If Wanderer explicitly flags it as a stargate connection (type === 1), it is not a wormhole exit
-        if (isset($data['type']) && ((int)$data['type'] === 1 || $data['type'] === 'stargate')) {
-            return false;
-        }
-
-        // 2. If either side is a J-space / Wormhole system (EVE solarSystemID 31000000-31999999)
-        $isSourceWh = ($sourceId >= 31000000 && $sourceId < 32000000);
-        $isTargetWh = ($targetId >= 31000000 && $targetId < 32000000);
-
-        if ($isSourceWh || $isTargetWh) {
-            return true;
-        }
-
-        // 3. For K-space to K-space connections, only accept if explicitly a wormhole connection (type === 0 or wormhole_type set)
-        if (!empty($data['wormhole_type'])) {
-            return true;
-        }
-
-        if (isset($data['type']) && ((int)$data['type'] === 0 || $data['type'] === 'wormhole')) {
-            return true;
-        }
-
-        // Pure K-space to K-space without wormhole type: reject (normal gate travel)
-        return false;
     }
 }

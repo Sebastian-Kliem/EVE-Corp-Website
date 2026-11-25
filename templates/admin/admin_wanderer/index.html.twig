@@ -84,6 +84,14 @@
                     </div>
 
                     <div>
+                        <label for="wanderer_home_system" class="block text-xs font-medium text-white">
+                            Heimatsystem
+                        </label>
+                        <p class="text-[11px] text-eve-muted mt-0.5 mb-1.5">Nur Wurmlöcher, die über die Kette mit diesem System verbunden sind, lösen Routenmeldungen aus. Filament-Sprünge werden ignoriert. Ohne Heimatsystem sind die Meldungen pausiert.</p>
+                        <input type="text" id="wanderer_home_system" name="wanderer_home_system" value="{{ settings.wanderer_home_system }}" placeholder="z. B. J123456" class="w-full bg-[#080d1a] border border-eve-border rounded-lg px-3 py-2 text-xs text-white focus:border-eve-primary focus:outline-none transition-colors">
+                    </div>
+
+                    <div>
                         <label for="wanderer_api_key" class="block text-xs font-medium text-white">
                             Map-API-Key
                         </label>

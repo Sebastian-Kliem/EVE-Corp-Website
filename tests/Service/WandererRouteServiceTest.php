@@ -170,6 +170,7 @@ class WandererRouteServiceTest extends TestCase
             'solar_system_source' => 30000144,
             'solar_system_target' => 30000144,
             'type' => 0,
+            'wormhole_type' => 'K162',
         ], 'Home Chain');
     }
 

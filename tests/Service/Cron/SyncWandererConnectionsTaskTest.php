@@ -22,25 +22,25 @@ class SyncWandererConnectionsTaskTest extends TestCase
 
     public function testFirstRunOnlyRecordsExistingConnections(): void
     {
-        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService = $this->_createRouteService();
         $routeService->expects($this->never())->method('processNewConnection');
 
         $this->_runTask([$this->_connection('a', self::WORMHOLE, self::PERIMETER)], $routeService);
 
-        $this->assertSame(['a' => [self::WORMHOLE, self::PERIMETER]], $this->_storedConnections());
+        $this->assertSame(['a' => [self::WORMHOLE, self::PERIMETER, true]], $this->_storedConnections());
     }
 
     public function testNewConnectionIsProcessedAndStillConnectedSystemsAreSkipped(): void
     {
         $this->_storeConnections(['a' => [self::WORMHOLE, self::PERIMETER], 'gone' => [self::WORMHOLE, self::AMARR]]);
 
-        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService = $this->_createRouteService();
         $routeService->expects($this->once())
             ->method('processNewConnection')
             ->with(
                 $this->callback(fn (array $connection): bool => $connection['id'] === 'b'),
                 'keepers-of-duat',
-                // Systems of the previous poll, including the one of the collapsed connection
+                // Home chain of the previous poll, including the system of the collapsed connection
                 [self::WORMHOLE, self::PERIMETER, self::AMARR]
             )
             ->willReturn(['processed_systems' => 1, 'matched_rules' => 0, 'corp_notifications' => 0, 'user_notifications' => 0]);
@@ -58,7 +58,7 @@ class SyncWandererConnectionsTaskTest extends TestCase
         // Amarr was not connected in the previous poll
         $this->_storeConnections(['a' => [self::WORMHOLE, self::PERIMETER]]);
 
-        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService = $this->_createRouteService();
         $routeService->expects($this->once())
             ->method('processNewConnection')
             ->with($this->anything(), $this->anything(), [self::WORMHOLE, self::PERIMETER])
@@ -75,7 +75,7 @@ class SyncWandererConnectionsTaskTest extends TestCase
         $this->_storeConnections([]);
 
         $alreadyConnectedPerCall = [];
-        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService = $this->_createRouteService();
         $routeService->expects($this->exactly(2))
             ->method('processNewConnection')
             ->willReturnCallback(function (array $connection, ?string $mapName, array $alreadyConnected) use (&$alreadyConnectedPerCall): array {
@@ -88,8 +88,102 @@ class SyncWandererConnectionsTaskTest extends TestCase
             $this->_connection('b', 31002000, self::PERIMETER),
         ], $routeService);
 
-        $this->assertSame([], $alreadyConnectedPerCall[0]);
+        $this->assertSame([self::WORMHOLE], $alreadyConnectedPerCall[0]);
         $this->assertSame([self::WORMHOLE, self::PERIMETER], $alreadyConnectedPerCall[1]);
+    }
+
+    public function testFilamentJumpOutsideTheHomeChainIsIgnored(): void
+    {
+        $this->_storeConnections(['a' => [self::WORMHOLE, self::PERIMETER, true]]);
+
+        $routeService = $this->_createRouteService();
+        $routeService->expects($this->never())->method('processNewConnection');
+
+        // Filament jump from a system that is not linked to the home system
+        $this->_runTask([
+            $this->_connection('a', self::WORMHOLE, self::PERIMETER),
+            $this->_connection('f', 30004759, self::AMARR),
+        ], $routeService);
+
+        $this->assertSame(['a', 'f'], array_keys($this->_storedConnections()));
+    }
+
+    public function testStargateDoesNotExtendTheHomeChain(): void
+    {
+        $this->_storeConnections(['a' => [self::WORMHOLE, self::PERIMETER, true]]);
+
+        $routeService = $this->_createRouteService();
+        $routeService->expects($this->never())->method('processNewConnection');
+
+        $gateConnection = $this->_connection('g', self::PERIMETER, 30000142);
+        $gateConnection['type'] = 1;
+        $this->_runTask([
+            $this->_connection('a', self::WORMHOLE, self::PERIMETER),
+            $gateConnection,
+            $this->_connection('f', 30000142, self::AMARR),
+        ], $routeService);
+    }
+
+    public function testSystemReachedByFilamentIsAnnouncedOnceTheChainConnectsIt(): void
+    {
+        $this->_storeConnections([
+            'a' => [self::WORMHOLE, self::PERIMETER, true],
+            'f' => [30004759, self::AMARR, true],
+        ]);
+
+        $routeService = $this->_createRouteService();
+        $routeService->expects($this->once())
+            ->method('processNewConnection')
+            ->with($this->callback(fn (array $connection): bool => $connection['id'] === 'b'), $this->anything(), [self::WORMHOLE, self::PERIMETER])
+            ->willReturn(['processed_systems' => 1, 'matched_rules' => 1, 'corp_notifications' => 1, 'user_notifications' => 0]);
+
+        $this->_runTask([
+            $this->_connection('a', self::WORMHOLE, self::PERIMETER),
+            $this->_connection('f', 30004759, self::AMARR),
+            $this->_connection('b', self::WORMHOLE, self::AMARR),
+        ], $routeService);
+    }
+
+    public function testPochvenFilamentIntoHighsecIsIgnoredEvenInsideTheChain(): void
+    {
+        $pochvenSystem = 30001372;
+        $this->_storeConnections(['a' => [self::WORMHOLE, $pochvenSystem, true]]);
+
+        $routeService = $this->_createRouteService();
+        $routeService->expects($this->never())->method('processNewConnection');
+
+        // Wanderer tracker records the filament jump as type 0 without a wormhole type
+        $this->_runTask([
+            $this->_connection('a', self::WORMHOLE, $pochvenSystem),
+            $this->_connection('f', $pochvenSystem, self::PERIMETER),
+        ], $routeService);
+    }
+
+    public function testScannedKSpaceWormholeInsideTheChainIsProcessed(): void
+    {
+        $this->_storeConnections(['a' => [self::WORMHOLE, self::AMARR, true]]);
+
+        $routeService = $this->_createRouteService();
+        $routeService->expects($this->once())
+            ->method('processNewConnection')
+            ->willReturn(['processed_systems' => 1, 'matched_rules' => 0, 'corp_notifications' => 0, 'user_notifications' => 0]);
+
+        $scannedWormhole = $this->_connection('k', self::AMARR, self::PERIMETER);
+        $scannedWormhole['wormhole_type'] = 'K162';
+        $this->_runTask([$this->_connection('a', self::WORMHOLE, self::AMARR), $scannedWormhole], $routeService);
+    }
+
+    public function testMissingHomeSystemPausesAlerts(): void
+    {
+        $this->_storeConnections([]);
+
+        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService->method('resolveHomeSystemId')->willReturn(null);
+        $routeService->expects($this->never())->method('processNewConnection');
+
+        $this->_runTask([$this->_connection('a', self::WORMHOLE, self::PERIMETER)], $routeService);
+
+        $this->assertSame(['a'], array_keys($this->_storedConnections()));
     }
 
     public function testUnconfiguredApiIsSkipped(): void
@@ -98,12 +192,20 @@ class SyncWandererConnectionsTaskTest extends TestCase
         $apiClient->method('isConfigured')->willReturn(false);
         $apiClient->expects($this->never())->method('fetchConnections');
 
-        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService = $this->_createRouteService();
         $routeService->expects($this->never())->method('processNewConnection');
 
         $this->_createTask($apiClient, $routeService)->execute();
 
         $this->assertNull($this->stateSetting);
+    }
+
+    private function _createRouteService(): WandererRouteService&\PHPUnit\Framework\MockObject\MockObject
+    {
+        $routeService = $this->createMock(WandererRouteService::class);
+        $routeService->method('resolveHomeSystemId')->willReturn(self::WORMHOLE);
+
+        return $routeService;
     }
 
     /**
@@ -136,7 +238,7 @@ class SyncWandererConnectionsTaskTest extends TestCase
     }
 
     /**
-     * @param array<string, int[]> $connections
+     * @param array<string, array<int, int|bool>> $connections
      */
     private function _storeConnections(array $connections): void
     {
@@ -144,7 +246,7 @@ class SyncWandererConnectionsTaskTest extends TestCase
     }
 
     /**
-     * @return array<string, int[]>
+     * @return array<string, array<int, int|bool>>
      */
     private function _storedConnections(): array
     {

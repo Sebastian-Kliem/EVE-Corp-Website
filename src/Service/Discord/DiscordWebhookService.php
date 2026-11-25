@@ -35,6 +35,7 @@ class DiscordWebhookService
         'wanderer_api_url' => 'wanderer_api_url',
         'wanderer_map_slug' => 'wanderer_map_slug',
         'wanderer_api_key' => 'wanderer_api_key',
+        'wanderer_home_system' => 'wanderer_home_system',
     ];
 
     // Settings that are never rendered back into a form; an empty submission keeps the stored value

@@ -4,6 +4,7 @@ namespace App\Service\Cron;
 
 use App\Entity\AppSetting;
 use App\Service\Wanderer\WandererApiClient;
+use App\Service\Wanderer\WandererHomeChain;
 use App\Service\Wanderer\WandererRouteService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -48,6 +49,7 @@ class SyncWandererConnectionsTask implements CronTaskInterface
             $currentConnections[$connectionId] = [
                 (int)($connection['solar_system_source'] ?? 0),
                 (int)($connection['solar_system_target'] ?? 0),
+                WandererHomeChain::isWormholeConnection($connection),
             ];
         }
 
@@ -58,18 +60,33 @@ class SyncWandererConnectionsTask implements CronTaskInterface
             return;
         }
 
-        // A system is announced again only after it was disconnected from the map in between
-        $connectedSystemIds = [];
-        foreach ($previousConnections as $systemIds) {
-            foreach ($systemIds as $systemId) {
-                $connectedSystemIds[$systemId] = true;
-            }
+        // Without a home system no connection can be proven to be our route
+        $homeSystemId = $this->routeService->resolveHomeSystemId();
+        if ($homeSystemId === null) {
+            $this->_saveKnownConnections($currentConnections);
+            $this->cronLogWriter->write('[Wanderer] Kein gültiges Heimatsystem konfiguriert, Routenmeldungen pausiert.');
+            return;
         }
+
+        $homeChainSystemIds = WandererHomeChain::collectSystemIds($currentConnections, $homeSystemId);
+
+        // A system is announced again only after it was cut off from the home chain in between
+        $connectedSystemIds = WandererHomeChain::collectSystemIds($previousConnections, $homeSystemId);
 
         $mapSlug = $this->wandererApiClient->getMapSlug();
         foreach ($connections as $connection) {
             $connectionId = (string)($connection['id'] ?? '');
             if ($connectionId === '' || isset($previousConnections[$connectionId])) {
+                continue;
+            }
+
+            [$sourceSystemId, $targetSystemId] = $currentConnections[$connectionId];
+            if (!$this->_isPartOfHomeChain($currentConnections[$connectionId], $homeChainSystemIds)) {
+                $this->cronLogWriter->write(sprintf(
+                    '[Wanderer] Neue Verbindung %d -> %d ignoriert: kein Wurmloch mit Verbindung zum Heimatsystem (z. B. Filament).',
+                    $sourceSystemId,
+                    $targetSystemId
+                ));
                 continue;
             }
 
@@ -82,16 +99,26 @@ class SyncWandererConnectionsTask implements CronTaskInterface
                 $result['matched_rules']
             ));
 
-            foreach ($currentConnections[$connectionId] as $systemId) {
-                $connectedSystemIds[$systemId] = true;
-            }
+            $connectedSystemIds[$sourceSystemId] = true;
+            $connectedSystemIds[$targetSystemId] = true;
         }
 
         $this->_saveKnownConnections($currentConnections);
     }
 
     /**
-     * @return array<string, int[]>|null connection ID => [source, target]; null when not initialized yet
+     * @param array{0: int, 1: int, 2: bool} $knownConnection [source, target, isWormhole]
+     * @param array<int, true> $homeChainSystemIds
+     */
+    private function _isPartOfHomeChain(array $knownConnection, array $homeChainSystemIds): bool
+    {
+        [$sourceSystemId, $targetSystemId, $isWormhole] = $knownConnection;
+
+        return $isWormhole && isset($homeChainSystemIds[$sourceSystemId], $homeChainSystemIds[$targetSystemId]);
+    }
+
+    /**
+     * @return array<string, array<int, int|bool>>|null connection ID => [source, target, isWormhole]; null when not initialized yet
      */
     private function _loadKnownConnections(): ?array
     {
@@ -109,7 +136,7 @@ class SyncWandererConnectionsTask implements CronTaskInterface
     }
 
     /**
-     * @param array<string, int[]> $connections
+     * @param array<string, array<int, int|bool>> $connections
      */
     private function _saveKnownConnections(array $connections): void
     {

@@ -10,6 +10,7 @@ use App\Service\Discord\Model\DiscordEmbed;
 use App\Service\Discord\Model\DiscordMessage;
 use App\Service\SdeService;
 use App\Service\Wanderer\WandererApiClient;
+use App\Service\Wanderer\WandererRouteService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -46,6 +47,12 @@ class AdminWandererController extends AbstractController
     {
         if (!$this->isCsrfTokenValid('wanderer_settings_save', $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungueltiges CSRF-Token.');
+            return $this->redirectToRoute('app_admin_wanderer_index');
+        }
+
+        $homeSystemInput = trim((string)$request->request->get(WandererRouteService::HOME_SYSTEM_SETTING_KEY, ''));
+        if ($homeSystemInput !== '' && $this->sdeService->getSolarSystemIdByName($homeSystemInput) === null) {
+            $this->addFlash('error', sprintf('"%s" ist kein bekanntes Sonnensystem. Bitte den exakten Systemnamen angeben.', $homeSystemInput));
             return $this->redirectToRoute('app_admin_wanderer_index');
         }
 
