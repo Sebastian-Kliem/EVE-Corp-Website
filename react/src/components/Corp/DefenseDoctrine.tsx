@@ -6,17 +6,26 @@ export interface FitItem {
     shipName: string;
     shipTypeId: number | null;
     role: string;
+    quantity: number;
     eft: string;
     notes: string;
-    sortOrder: number;
+    fittingUrl: string;
+}
+
+export interface DoctrineFleet {
+    id: number;
+    name: string;
+    description: string;
     updatedAt: string;
-    createdByName: string | null;
+    fits: FitItem[];
 }
 
 interface DefenseDoctrineProps {
     initialNotes: string;
     initialNotesUpdatedAt: string | null;
-    initialFits: FitItem[];
+    initialFleet: DoctrineFleet | null;
+    fleetOptions: { id: number; name: string }[];
+    fleetsUrl: string;
     canManage?: boolean;
     imagePaths: {
         types: string;
@@ -24,9 +33,7 @@ interface DefenseDoctrineProps {
     };
     apiEndpoints: {
         saveNotes: string;
-        createFit: string;
-        updateFit: string; // contains '123456789' as placeholder for id
-        deleteFit: string; // contains '123456789' as placeholder for id
+        saveFleet: string;
     };
 }
 
@@ -44,7 +51,9 @@ const AVAILABLE_ROLES = [
 export default function DefenseDoctrine({
     initialNotes,
     initialNotesUpdatedAt,
-    initialFits,
+    initialFleet,
+    fleetOptions,
+    fleetsUrl,
     canManage = false,
     imagePaths,
     apiEndpoints,
@@ -56,20 +65,13 @@ export default function DefenseDoctrine({
     const [notesDraft, setNotesDraft] = useState(initialNotes);
     const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-    // Fits state
-    const [fits, setFits] = useState<FitItem[]>(initialFits);
+    // Doctrine fleet state
+    const [fleet, setFleet] = useState<DoctrineFleet | null>(initialFleet);
+    const [fleetDraftId, setFleetDraftId] = useState<number>(initialFleet ? initialFleet.id : 0);
+    const [isSavingFleet, setIsSavingFleet] = useState(false);
+    const fits = fleet ? fleet.fits : [];
     const [selectedRole, setSelectedRole] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState<string>('');
-
-    // Fit Form modal/drawer state
-    const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-    const [editingFitId, setEditingFitId] = useState<number | null>(null);
-    const [formTitle, setFormTitle] = useState('');
-    const [formShipName, setFormShipName] = useState('');
-    const [formRole, setFormRole] = useState('DPS');
-    const [formEft, setFormEft] = useState('');
-    const [formNotes, setFormNotes] = useState('');
-    const [isSubmittingFit, setIsSubmittingFit] = useState(false);
 
     // UX feedback
     const [copiedFitId, setCopiedFitId] = useState<number | null>(null);
@@ -81,33 +83,6 @@ export default function DefenseDoctrine({
         setTimeout(() => {
             setFeedbackMessage(null);
         }, 4000);
-    };
-
-    // Parse EFT on paste or change
-    const handleEftChange = (newEft: string) => {
-        setFormEft(newEft);
-
-        // Auto-extract ship name and fit title if empty
-        const lines = newEft.trim().split(/\r?\n/);
-        if (lines.length > 0) {
-            const firstLine = lines[0].trim();
-            const match = firstLine.match(/^\s*\[\s*([^,\]]+?)\s*,\s*([^\]]+?)\s*]/);
-            if (match) {
-                const parsedShip = match[1].trim();
-                const parsedTitle = match[2].trim();
-                if (!formShipName) {
-                    setFormShipName(parsedShip);
-                }
-                if (!formTitle) {
-                    setFormTitle(parsedTitle);
-                }
-            } else {
-                const singleMatch = firstLine.match(/^\s*\[\s*([^\]]+?)\s*]/);
-                if (singleMatch && !formShipName) {
-                    setFormShipName(singleMatch[1].trim());
-                }
-            }
-        }
     };
 
     // Save General Notes
@@ -135,98 +110,26 @@ export default function DefenseDoctrine({
         }
     };
 
-    // Open Fit Form (Create)
-    const handleOpenCreateForm = () => {
-        setEditingFitId(null);
-        setFormTitle('');
-        setFormShipName('');
-        setFormRole('DPS');
-        setFormEft('');
-        setFormNotes('');
-        setIsFormOpen(true);
-    };
-
-    // Open Fit Form (Edit)
-    const handleOpenEditForm = (fit: FitItem) => {
-        setEditingFitId(fit.id);
-        setFormTitle(fit.title);
-        setFormShipName(fit.shipName);
-        setFormRole(fit.role || 'DPS');
-        setFormEft(fit.eft);
-        setFormNotes(fit.notes || '');
-        setIsFormOpen(true);
-    };
-
-    // Submit Fit (Create or Update)
-    const handleSubmitFit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formEft.trim()) {
-            showFeedback('error', 'Bitte gib ein gültiges EFT-Fitting ein.');
-            return;
-        }
-
-        setIsSubmittingFit(true);
+    // Save which fleet is the defense doctrine
+    const handleSaveFleet = async () => {
+        setIsSavingFleet(true);
         try {
-            const isEditing = editingFitId !== null;
-            const endpoint = isEditing
-                ? apiEndpoints.updateFit.replace('123456789', editingFitId.toString())
-                : apiEndpoints.createFit;
-
-            const res = await fetch(endpoint, {
-                method: isEditing ? 'PUT' : 'POST',
+            const res = await fetch(apiEndpoints.saveFleet, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: formTitle,
-                    shipName: formShipName,
-                    role: formRole,
-                    eft: formEft,
-                    notes: formNotes,
-                }),
+                body: JSON.stringify({ fleetId: fleetDraftId }),
             });
-
             const data = await res.json();
             if (!res.ok) {
-                showFeedback('error', data.error || 'Fehler beim Speichern des Fits.');
+                showFeedback('error', data.error || 'Fehler beim Speichern der Doktrin-Flotte.');
                 return;
             }
-
-            if (isEditing) {
-                setFits((prev) => prev.map((f) => (f.id === editingFitId ? data.fit : f)));
-                showFeedback('success', `Fit "${data.fit.title}" wurde erfolgreich aktualisiert.`);
-            } else {
-                setFits((prev) => [data.fit, ...prev]);
-                showFeedback('success', `Neuer Fit "${data.fit.title}" wurde erfolgreich hinzugefügt.`);
-            }
-
-            setIsFormOpen(false);
+            setFleet(data.fleet);
+            showFeedback('success', data.fleet ? `Doktrin-Flotte "${data.fleet.name}" gesetzt.` : 'Doktrin-Flotte entfernt.');
         } catch (err: any) {
             showFeedback('error', err.message || 'Speichern fehlgeschlagen.');
         } finally {
-            setIsSubmittingFit(false);
-        }
-    };
-
-    // Delete Fit
-    const handleDeleteFit = async (fit: FitItem) => {
-        if (!window.confirm(`Möchtest du den Fit "${fit.title}" wirklich löschen?`)) {
-            return;
-        }
-
-        try {
-            const endpoint = apiEndpoints.deleteFit.replace('123456789', fit.id.toString());
-            const res = await fetch(endpoint, {
-                method: 'DELETE',
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                showFeedback('error', data.error || 'Fehler beim Löschen.');
-                return;
-            }
-
-            setFits((prev) => prev.filter((f) => f.id !== fit.id));
-            showFeedback('success', `Fit "${fit.title}" wurde gelöscht.`);
-        } catch (err: any) {
-            showFeedback('error', err.message || 'Löschen fehlgeschlagen.');
+            setIsSavingFleet(false);
         }
     };
 
@@ -416,23 +319,46 @@ export default function DefenseDoctrine({
                         <span className="text-2xl">🚀</span>
                         <div>
                             <h2 className="text-xl font-bold text-white tracking-wide">
-                                Doktrin-Fits ({fits.length})
+                                {fleet ? `Doktrin-Flotte: ${fleet.name}` : 'Doktrin-Flotte'} ({fits.length})
                             </h2>
                             <p className="text-xs text-eve-muted">
-                                Standardisierte Fittings für Schiffe unserer Verteidigungsflotte mit 1-Click Export.
+                                Fits und Rollen kommen aus der verknüpften Flotte. Bearbeitet wird sie auf der{' '}
+                                <a href={fleetsUrl} className="text-eve-primary hover:underline">Flotten-Seite</a>.
+                                {fleet && ` Stand: ${fleet.updatedAt}`}
                             </p>
                         </div>
                     </div>
 
                     {canManage && (
-                        <button
-                            onClick={handleOpenCreateForm}
-                            className="inline-flex items-center gap-2 border border-transparent rounded-lg bg-eve-primary hover:brightness-115 text-[#060911] hover:text-[#060911] font-semibold text-sm px-4 py-2.5 shadow-eve transition-all duration-300 hover:-translate-y-0.5 cursor-pointer"
-                        >
-                            ➕ Neuen Fit hinzufügen
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={fleetDraftId}
+                                onChange={(e) => setFleetDraftId(Number(e.target.value))}
+                                className="rounded-lg px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
+                            >
+                                <option value={0}>Keine Flotte</option>
+                                {fleetOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                        {option.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={handleSaveFleet}
+                                disabled={isSavingFleet || fleetDraftId === (fleet ? fleet.id : 0)}
+                                className="inline-flex items-center gap-2 rounded-lg bg-eve-primary text-[#060911] font-semibold text-sm px-4 py-2 cursor-pointer transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSavingFleet ? 'Speichern...' : 'Als Doktrin setzen'}
+                            </button>
+                        </div>
                     )}
                 </div>
+
+                {fleet && fleet.description.trim() && (
+                    <div className="mb-6 text-sm text-eve-text whitespace-pre-line leading-relaxed bg-[#0b0f19]/60 border border-white/5 rounded-lg p-4">
+                        {fleet.description}
+                    </div>
+                )}
 
                 {/* Filters & Search */}
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-black/20 p-3 rounded-lg border border-white/5">
@@ -448,9 +374,12 @@ export default function DefenseDoctrine({
                         >
                             Alle ({fits.length})
                         </button>
-                        {AVAILABLE_ROLES.map((r) => {
+                        {Object.keys(roleCounts).sort((left, right) => {
+                            const leftIndex = AVAILABLE_ROLES.indexOf(left);
+                            const rightIndex = AVAILABLE_ROLES.indexOf(right);
+                            return (leftIndex === -1 ? 99 : leftIndex) - (rightIndex === -1 ? 99 : rightIndex) || left.localeCompare(right);
+                        }).map((r) => {
                             const count = roleCounts[r] || 0;
-                            if (count === 0 && selectedRole !== r) return null;
                             return (
                                 <button
                                     key={r}
@@ -493,17 +422,19 @@ export default function DefenseDoctrine({
                 {filteredFits.length === 0 ? (
                     <div className="text-center py-16 rounded-xl bg-white/[0.02] border border-dashed border-white/10">
                         <p className="text-eve-muted mb-3">
-                            {fits.length === 0
-                                ? 'Aktuell sind noch keine Verteidigungsfits hinterlegt.'
+                            {!fleet
+                                ? 'Es ist noch keine Flotte als Verteidigungsdoktrin hinterlegt.'
+                                : fits.length === 0
+                                ? 'Die Doktrin-Flotte enthält noch keine Fits.'
                                 : 'Keine passenden Verteidigungsfits für diesen Filter/Suchbegriff gefunden.'}
                         </p>
                         {canManage && (
-                            <button
-                                onClick={handleOpenCreateForm}
+                            <a
+                                href={fleetsUrl}
                                 className="inline-flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium text-xs px-4 py-2 cursor-pointer transition-colors duration-200"
                             >
-                                ➕ Ersten Fit erstellen
-                            </button>
+                                Zur Flotten-Seite
+                            </a>
                         )}
                     </div>
                 ) : (
@@ -536,6 +467,14 @@ export default function DefenseDoctrine({
                                                     <span className="text-xs font-semibold text-eve-primary">
                                                         {fit.shipName}
                                                     </span>
+                                                    {fit.fittingUrl && (
+                                                        <a
+                                                            href={fit.fittingUrl}
+                                                            className="block text-[11px] text-eve-muted hover:text-eve-primary hover:underline"
+                                                        >
+                                                            In der Fit-Bibliothek öffnen
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -580,26 +519,6 @@ export default function DefenseDoctrine({
                                             >
                                                 {isExpanded ? '▲' : '👁️'}
                                             </button>
-
-                                            {canManage && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleOpenEditForm(fit)}
-                                                        title="Fit bearbeiten"
-                                                        className="inline-flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-white/5"
-                                                    >
-                                                        ✏️
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleDeleteFit(fit)}
-                                                        title="Fit löschen"
-                                                        className="inline-flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-2 cursor-pointer transition-colors duration-200 border border-red-500/20"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </>
-                                            )}
                                         </div>
 
                                         {/* Expanded EFT Fitting Raw View */}
@@ -623,10 +542,7 @@ export default function DefenseDoctrine({
                                         )}
 
                                         <div className="flex items-center justify-between text-[10px] text-eve-muted mt-3">
-                                            <span>
-                                                {fit.createdByName ? `Erstellt von: ${fit.createdByName}` : 'Corp-Fit'}
-                                            </span>
-                                            <span>Aktualisiert: {fit.updatedAt}</span>
+                                            <span>Anzahl in der Flotte: {fit.quantity}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -635,129 +551,6 @@ export default function DefenseDoctrine({
                     </div>
                 )}
             </div>
-
-            {/* Modal: Fit erstellen / bearbeiten */}
-            {isFormOpen && canManage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-                    <div className="bg-[#0f1523] border border-eve-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] w-full max-w-[650px] overflow-hidden my-8">
-                        <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#141b2d]">
-                            <div className="flex items-center gap-2.5">
-                                <span className="text-xl">🚀</span>
-                                <h3 className="text-lg font-bold text-white">
-                                    {editingFitId !== null ? 'Doktrin-Fit bearbeiten' : 'Neuen Doktrin-Fit hinzufügen'}
-                                </h3>
-                            </div>
-                            <button
-                                onClick={() => setIsFormOpen(false)}
-                                className="text-eve-muted hover:text-white text-lg font-bold cursor-pointer p-1"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmitFit} className="p-6 flex flex-col gap-4">
-                            {/* EFT Input Area */}
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-white flex items-center justify-between">
-                                    <span>EFT-Fitting (Copy & Paste aus EVE / Pyfa): *</span>
-                                    <span className="text-[11px] text-eve-muted font-normal">
-                                        Schiffsname & Titel werden automatisch erkannt
-                                    </span>
-                                </label>
-                                <textarea
-                                    required
-                                    rows={8}
-                                    placeholder="[Praxis, Heavy Shield Brawler]&#10;Damage Control II&#10;...&#10;Heavy Missile Launcher II&#10;...&#10;Large Core Defence Field Extender I"
-                                    value={formEft}
-                                    onChange={(e) => handleEftChange(e.target.value)}
-                                    className="rounded-lg w-full px-3.5 py-2.5 text-xs font-mono border border-eve-border text-eve-text bg-[#080c14] focus:outline-none focus:border-eve-primary focus:shadow-[0_0_10px_rgba(0,240,255,0.25)] transition-all duration-300 resize-y leading-relaxed"
-                                />
-                            </div>
-
-                            {/* Two Column Row: Ship Name & Fit Title */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-xs font-semibold text-white">
-                                        Schiffsmodell: *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Z. B. Praxis, Dominix, Guardian"
-                                        value={formShipName}
-                                        onChange={(e) => setFormShipName(e.target.value)}
-                                        className="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
-                                    />
-                                </div>
-
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-xs font-semibold text-white">
-                                        Fit-Bezeichnung / Titel: *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="Z. B. Heavy Armor Brawler"
-                                        value={formTitle}
-                                        onChange={(e) => setFormTitle(e.target.value)}
-                                        className="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Role Dropdown */}
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-white">
-                                    Rolle / Kategorie:
-                                </label>
-                                <select
-                                    value={formRole}
-                                    onChange={(e) => setFormRole(e.target.value)}
-                                    className="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 cursor-pointer"
-                                >
-                                    {AVAILABLE_ROLES.map((r) => (
-                                        <option key={r} value={r}>
-                                            {r}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Notes for this specific fit */}
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-semibold text-white">
-                                    Anmerkungen & Taktik für diesen Fit (optional):
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Z. B. Drohnen-Setup: 5x Infiltrator II. Munition: Caldari Navy Scourge. Immer Cap Booster nachladen..."
-                                    value={formNotes}
-                                    onChange={(e) => setFormNotes(e.target.value)}
-                                    className="rounded-lg w-full px-3 py-2 text-sm border border-eve-border text-eve-text bg-[#0f172a59] focus:outline-none focus:border-eve-primary transition-all duration-300 resize-y leading-relaxed"
-                                />
-                            </div>
-
-                            {/* Form Actions */}
-                            <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-white/10">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsFormOpen(false)}
-                                    className="rounded-lg px-4 py-2 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 transition-colors duration-200 cursor-pointer"
-                                >
-                                    Abbrechen
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmittingFit}
-                                    className="rounded-lg px-5 py-2 text-xs font-semibold text-[#060911] bg-eve-primary hover:brightness-115 shadow-eve transition-all duration-200 cursor-pointer disabled:opacity-50"
-                                >
-                                    {isSubmittingFit ? 'Speichern...' : '💾 Fit speichern'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

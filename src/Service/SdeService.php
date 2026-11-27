@@ -20,6 +20,8 @@ class SdeService
 
     private const SKILL_CATEGORY_ID = 16;
     private const SKILL_RANK_ATTRIBUTE_ID = 275;
+    // Dogma attribute pairs: required skill typeID => required level
+    private const REQUIRED_SKILL_ATTRIBUTES = [182 => 277, 183 => 278, 184 => 279, 1285 => 1286, 1289 => 1287, 1290 => 1288];
 
     public function __construct(ManagerRegistry $doctrine)
     {
@@ -460,6 +462,56 @@ class SdeService
         }
 
         return $this->skillCatalog;
+    }
+
+    /**
+     * Direct skill requirements of the given types (no prerequisite chains).
+     *
+     * @param int[] $typeIds
+     * @return array<int, array<int, int>> Map of typeId => [skillId => level]
+     */
+    public function getRequiredSkills(array $typeIds): array
+    {
+        $typeIds = array_values(array_unique(array_filter(array_map('intval', $typeIds))));
+        if (empty($typeIds)) {
+            return [];
+        }
+
+        $attributeIds = [];
+        foreach (self::REQUIRED_SKILL_ATTRIBUTES as $skillAttributeId => $levelAttributeId) {
+            $attributeIds[] = $skillAttributeId;
+            $attributeIds[] = $levelAttributeId;
+        }
+
+        try {
+            $rows = $this->connection->fetchAllAssociative(
+                'SELECT typeID, attributeID, COALESCE(valueInt, valueFloat) AS value
+                 FROM dgmTypeAttributes
+                 WHERE typeID IN (:typeIds) AND attributeID IN (:attributeIds)',
+                ['typeIds' => $typeIds, 'attributeIds' => $attributeIds],
+                ['typeIds' => ArrayParameterType::INTEGER, 'attributeIds' => ArrayParameterType::INTEGER]
+            );
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        $attributesByType = [];
+        foreach ($rows as $row) {
+            $attributesByType[(int) $row['typeID']][(int) $row['attributeID']] = (int) $row['value'];
+        }
+
+        $requirements = [];
+        foreach ($attributesByType as $typeId => $attributes) {
+            foreach (self::REQUIRED_SKILL_ATTRIBUTES as $skillAttributeId => $levelAttributeId) {
+                $skillId = $attributes[$skillAttributeId] ?? 0;
+                if ($skillId <= 0) {
+                    continue;
+                }
+                $requirements[$typeId][$skillId] = max(1, $attributes[$levelAttributeId] ?? 1);
+            }
+        }
+
+        return $requirements;
     }
 
     /**

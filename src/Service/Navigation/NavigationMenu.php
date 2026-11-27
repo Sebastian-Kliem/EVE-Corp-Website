@@ -111,6 +111,8 @@ class NavigationMenu
                 'items' => [
                     ['label' => 'Linksammlung', 'route' => 'link_collection'],
                     ['label' => 'Wurmloch-Sites', 'route' => 'app_wormhole_sites'],
+                    ['label' => 'Fittings', 'route' => 'app_general_fittings'],
+                    ['label' => 'Flotten', 'route' => 'app_general_fleets'],
                 ],
             ],
             [

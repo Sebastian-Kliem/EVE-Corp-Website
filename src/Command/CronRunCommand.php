@@ -106,6 +106,7 @@ class CronRunCommand extends Command
             'character:sync-killmails' => 3,
             'character:sync-mining-ledger' => 4,
             'character:sync-industry-jobs' => 5,
+            'character:sync-fittings' => 5,
             'structure:update-cache' => 6,
             'character:sync-pi' => 7,
             'corporation:sync-structures' => 8,
@@ -290,6 +291,11 @@ class CronRunCommand extends Command
                 'name' => 'Charakter-Industrieaufträge synchronisieren (Industry Jobs)',
                 'command' => 'character:sync-industry-jobs',
                 'expression' => '*/5 * * * *', // every 5 minutes
+            ],
+            [
+                'name' => 'Charakter-Fittings importieren (Fit-Bibliothek)',
+                'command' => 'character:sync-fittings',
+                'expression' => '*/30 * * * *', // every 30 minutes
             ],
             [
                 'name' => 'Struktur-Cache aktualisieren (Spieler-Strukturen)',

@@ -293,6 +293,19 @@ class EsiClient
     /**
      * Performs a request to the ESI API.
      */
+    /**
+     * Drops the cached GET response so the next request sees changes made through ESI writes.
+     */
+    public function forgetCachedResponse(string $path, array $options = [], ?EveCharacter $character = null): void
+    {
+        $this->cachePool->deleteItem($this->_responseCacheKey($path, $options, $character));
+    }
+
+    private function _responseCacheKey(string $path, array $options, ?EveCharacter $character): string
+    {
+        return 'esi_wh_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
+    }
+
     public function request(string $method, string $path, array $options = [], ?EveCharacter $character = null): mixed
     {
         $result = $this->requestWithHeaders($method, $path, $options, $character);
@@ -314,7 +327,7 @@ class EsiClient
 
         if ($useCache) {
             // Generate a secure, unique cache key based on path, options, and character ownership
-            $cacheKey = 'esi_wh_' . md5($path . '_' . json_encode($options) . '_' . ($character ? $character->getId() : 'public'));
+            $cacheKey = $this->_responseCacheKey($path, $options, $character);
             $cacheItem = $this->cachePool->getItem($cacheKey);
             if ($cacheItem->isHit()) {
                 $cachedResult = $this->_normalizeCachedResult($cacheItem->get());

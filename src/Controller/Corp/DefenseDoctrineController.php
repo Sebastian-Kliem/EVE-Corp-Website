@@ -3,9 +3,10 @@
 namespace App\Controller\Corp;
 
 use App\Entity\AppSetting;
-use App\Entity\DefenseDoctrineFit;
-use App\Entity\User;
-use App\Repository\DefenseDoctrineFitRepository;
+use App\Entity\Fitting\FleetComposition;
+use App\Repository\FleetCompositionRepository;
+use App\Service\Fitting\DefenseDoctrineFleet;
+use App\Service\Fitting\EftFormatter;
 use App\Service\SdeService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,8 +24,10 @@ class DefenseDoctrineController extends AbstractController
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly DefenseDoctrineFitRepository $fitRepository,
-        private readonly SdeService $sdeService
+        private readonly FleetCompositionRepository $fleetRepository,
+        private readonly DefenseDoctrineFleet $doctrineFleet,
+        private readonly SdeService $sdeService,
+        private readonly EftFormatter $eftFormatter
     ) {}
 
     #[Route('', name: 'app_corp_defense_doctrine', methods: ['GET'])]
@@ -33,26 +36,18 @@ class DefenseDoctrineController extends AbstractController
         $settingRepo = $this->entityManager->getRepository(AppSetting::class);
         $notesSetting = $settingRepo->find(self::SETTING_KEY_NOTES);
 
-        $fits = $this->fitRepository->findAllOrdered();
-        $fitsData = array_map(function (DefenseDoctrineFit $fit) {
-            return [
-                'id' => $fit->getId(),
-                'title' => $fit->getTitle(),
-                'shipName' => $fit->getShipName(),
-                'shipTypeId' => $fit->getShipTypeId(),
-                'role' => $fit->getRole() ?: 'Allgemein',
-                'eft' => $fit->getEft(),
-                'notes' => $fit->getNotes() ?: '',
-                'sortOrder' => $fit->getSortOrder(),
-                'updatedAt' => $fit->getUpdatedAt()->format('d.m.Y H:i'),
-                'createdByName' => $fit->getCreatedBy() ? $fit->getCreatedBy()->getDisplayName() : null,
-            ];
-        }, $fits);
+        $this->doctrineFleet->migrateLegacyFits();
+
+        $fleetOptions = [];
+        foreach ($this->fleetRepository->findBy([], ['name' => 'ASC']) as $fleet) {
+            $fleetOptions[] = ['id' => $fleet->getId(), 'name' => $fleet->getName()];
+        }
 
         return $this->render('corp/defense_doctrine.html.twig', [
             'notes' => $notesSetting ? ($notesSetting->getValue() ?? '') : '',
             'notesUpdatedAt' => $notesSetting ? $notesSetting->getUpdatedAt()->format('d.m.Y H:i') : null,
-            'fits' => $fitsData,
+            'fleet' => $this->_serializeFleet($this->doctrineFleet->getFleet()),
+            'fleetOptions' => $fleetOptions,
             'canManage' => $this->isGranted('ROLE_OFFICER'),
         ]);
     }
@@ -83,186 +78,54 @@ class DefenseDoctrineController extends AbstractController
         ]);
     }
 
-    #[Route('/api/fits', name: 'app_corp_defense_doctrine_create_fit', methods: ['POST'])]
+    #[Route('/api/fleet', name: 'app_corp_defense_doctrine_save_fleet', methods: ['POST'])]
     #[IsGranted('ROLE_OFFICER')]
-    public function createFit(Request $request): JsonResponse
+    public function saveFleet(Request $request): JsonResponse
     {
-        $currentUser = $this->getUser();
-        if (!$currentUser instanceof User) {
-            return new JsonResponse(['error' => 'Nicht autorisiert.'], Response::HTTP_UNAUTHORIZED);
-        }
-
         $data = json_decode($request->getContent(), true);
-        $eft = trim((string)($data['eft'] ?? ''));
+        $fleetId = (int) ($data['fleetId'] ?? 0);
 
-        if (empty($eft)) {
-            return new JsonResponse(['error' => 'Das EFT-Fitting darf nicht leer sein.'], Response::HTTP_BAD_REQUEST);
+        $fleet = $fleetId > 0 ? $this->fleetRepository->find($fleetId) : null;
+        if ($fleetId > 0 && $fleet === null) {
+            return new JsonResponse(['error' => 'Flotte nicht gefunden.'], Response::HTTP_NOT_FOUND);
         }
 
-        $parsed = $this->_parseEft($eft);
-        
-        $shipName = trim((string)($data['shipName'] ?? ''));
-        if (empty($shipName) && !empty($parsed['shipName'])) {
-            $shipName = $parsed['shipName'];
-        }
+        $this->doctrineFleet->setFleet($fleet);
 
-        $title = trim((string)($data['title'] ?? ''));
-        if (empty($title)) {
-            $title = !empty($parsed['title']) ? $parsed['title'] : ($shipName ?: 'Verteidigungsfit');
-        }
-
-        $role = trim((string)($data['role'] ?? 'DPS'));
-        if (empty($role)) {
-            $role = 'DPS';
-        }
-
-        $notes = trim((string)($data['notes'] ?? ''));
-
-        // Resolve ship type ID via SDE
-        $shipTypeId = null;
-        if (!empty($shipName)) {
-            $resolved = $this->sdeService->resolveItemNames([$shipName]);
-            $lowerName = strtolower($shipName);
-            if (isset($resolved[$lowerName])) {
-                $shipTypeId = $resolved[$lowerName]['id'];
-                $shipName = $resolved[$lowerName]['name'];
-            }
-        }
-
-        $fit = new DefenseDoctrineFit();
-        $fit->setTitle($title);
-        $fit->setShipName($shipName ?: 'Unbekanntes Schiff');
-        $fit->setShipTypeId($shipTypeId);
-        $fit->setRole($role);
-        $fit->setEft($eft);
-        $fit->setNotes($notes ?: null);
-        $fit->setCreatedBy($currentUser);
-        $fit->setSortOrder((int)($data['sortOrder'] ?? 0));
-
-        $this->entityManager->persist($fit);
-        $this->entityManager->flush();
-
-        return new JsonResponse([
-            'success' => true,
-            'fit' => [
-                'id' => $fit->getId(),
-                'title' => $fit->getTitle(),
-                'shipName' => $fit->getShipName(),
-                'shipTypeId' => $fit->getShipTypeId(),
-                'role' => $fit->getRole() ?: 'Allgemein',
-                'eft' => $fit->getEft(),
-                'notes' => $fit->getNotes() ?: '',
-                'sortOrder' => $fit->getSortOrder(),
-                'updatedAt' => $fit->getUpdatedAt()->format('d.m.Y H:i'),
-                'createdByName' => $currentUser->getDisplayName(),
-            ],
-        ]);
+        return new JsonResponse(['success' => true, 'fleet' => $this->_serializeFleet($fleet)]);
     }
 
-    #[Route('/api/fits/{id}', name: 'app_corp_defense_doctrine_update_fit', methods: ['PUT', 'POST'])]
-    #[IsGranted('ROLE_OFFICER')]
-    public function updateFit(int $id, Request $request): JsonResponse
+    /**
+     * Doctrine view of the fleet: one card per entry with EFT for copy & paste.
+     */
+    private function _serializeFleet(?FleetComposition $fleet): ?array
     {
-        $fit = $this->fitRepository->find($id);
-        if (!$fit) {
-            return new JsonResponse(['error' => 'Fit nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        if ($fleet === null) {
+            return null;
         }
 
-        $data = json_decode($request->getContent(), true);
-        $eft = trim((string)($data['eft'] ?? ''));
-
-        if (empty($eft)) {
-            return new JsonResponse(['error' => 'Das EFT-Fitting darf nicht leer sein.'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $parsed = $this->_parseEft($eft);
-
-        $shipName = trim((string)($data['shipName'] ?? ''));
-        if (empty($shipName) && !empty($parsed['shipName'])) {
-            $shipName = $parsed['shipName'];
-        }
-
-        $title = trim((string)($data['title'] ?? ''));
-        if (empty($title)) {
-            $title = !empty($parsed['title']) ? $parsed['title'] : ($shipName ?: 'Verteidigungsfit');
-        }
-
-        $role = trim((string)($data['role'] ?? 'DPS'));
-        $notes = trim((string)($data['notes'] ?? ''));
-
-        // Resolve ship type ID via SDE
-        $shipTypeId = null;
-        if (!empty($shipName)) {
-            $resolved = $this->sdeService->resolveItemNames([$shipName]);
-            $lowerName = strtolower($shipName);
-            if (isset($resolved[$lowerName])) {
-                $shipTypeId = $resolved[$lowerName]['id'];
-                $shipName = $resolved[$lowerName]['name'];
-            }
-        }
-
-        $fit->setTitle($title);
-        $fit->setShipName($shipName ?: 'Unbekanntes Schiff');
-        $fit->setShipTypeId($shipTypeId);
-        $fit->setRole($role ?: 'DPS');
-        $fit->setEft($eft);
-        $fit->setNotes($notes ?: null);
-        if (isset($data['sortOrder'])) {
-            $fit->setSortOrder((int)$data['sortOrder']);
-        }
-
-        $this->entityManager->flush();
-
-        return new JsonResponse([
-            'success' => true,
-            'fit' => [
-                'id' => $fit->getId(),
-                'title' => $fit->getTitle(),
-                'shipName' => $fit->getShipName(),
-                'shipTypeId' => $fit->getShipTypeId(),
-                'role' => $fit->getRole() ?: 'Allgemein',
-                'eft' => $fit->getEft(),
-                'notes' => $fit->getNotes() ?: '',
-                'sortOrder' => $fit->getSortOrder(),
-                'updatedAt' => $fit->getUpdatedAt()->format('d.m.Y H:i'),
-                'createdByName' => $fit->getCreatedBy() ? $fit->getCreatedBy()->getDisplayName() : null,
-            ],
-        ]);
-    }
-
-    #[Route('/api/fits/{id}', name: 'app_corp_defense_doctrine_delete_fit', methods: ['DELETE'])]
-    #[IsGranted('ROLE_OFFICER')]
-    public function deleteFit(int $id): JsonResponse
-    {
-        $fit = $this->fitRepository->find($id);
-        if (!$fit) {
-            return new JsonResponse(['error' => 'Fit nicht gefunden.'], Response::HTTP_NOT_FOUND);
-        }
-
-        $this->entityManager->remove($fit);
-        $this->entityManager->flush();
-
-        return new JsonResponse(['success' => true]);
-    }
-
-    private function _parseEft(string $eft): array
-    {
-        $lines = preg_split('/\r\n|\r|\n/', trim($eft));
-        $firstLine = $lines[0] ?? '';
-
-        $shipName = null;
-        $title = null;
-
-        if (preg_match('/^\s*\[\s*([^,\]]+?)\s*,\s*([^\]]+?)\s*\]/', $firstLine, $matches)) {
-            $shipName = trim($matches[1]);
-            $title = trim($matches[2]);
-        } elseif (preg_match('/^\s*\[\s*([^\]]+?)\s*\]/', $firstLine, $matches)) {
-            $shipName = trim($matches[1]);
+        $fits = [];
+        foreach ($fleet->getEntries() as $entry) {
+            $fitting = $entry->getFitting();
+            $fits[] = [
+                'id' => $entry->getId(),
+                'title' => $fitting->getName(),
+                'shipName' => $this->sdeService->getItemName($fitting->getShipTypeId()),
+                'shipTypeId' => $fitting->getShipTypeId(),
+                'role' => $entry->getRole() ?: 'Allgemein',
+                'quantity' => $entry->getQuantity(),
+                'eft' => $this->eftFormatter->format($fitting),
+                'notes' => $entry->getNotes() ?? '',
+                'fittingUrl' => $this->generateUrl('app_general_fittings', ['fit' => $fitting->getId()]),
+            ];
         }
 
         return [
-            'shipName' => $shipName,
-            'title' => $title,
+            'id' => $fleet->getId(),
+            'name' => $fleet->getName(),
+            'description' => $fleet->getDescription() ?? '',
+            'updatedAt' => $fleet->getUpdatedAt()->format('d.m.Y H:i'),
+            'fits' => $fits,
         ];
     }
 }
